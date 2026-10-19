@@ -130,7 +130,7 @@ async function crRepoSaves() {
   const r = await fetch('https://api.github.com/repos/' + SAVE_REPO + '/contents/' + SAVE_DIR + '?ref=main', { headers: { Accept: 'application/vnd.github+json' } });
   if (r.status === 404) return [];
   if (!r.ok) throw new Error('GitHub respondeu ' + r.status);
-  return (await r.json()).filter(f => f.type === 'file' && /.json$/i.test(f.name)).map(f => ({ name: f.name, url: f.download_url }));
+  return (await r.json()).filter(f => f.type === 'file' && /\.json$/i.test(f.name)).map(f => ({ name: f.name, url: f.download_url }));
 }
 const crSaveErr = () => saveErr;
 async function crImportUrl(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) return { ok: false, msg: 'Não consegui baixar o save (' + r.status + ').' }; return crImportData(await r.text()); }

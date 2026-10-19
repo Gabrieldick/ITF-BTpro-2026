@@ -50,7 +50,7 @@ function renderBoard() {
   const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const pn = p => {
     if (!p.char) return 'CPU';
-    const w = nameOf(p.char).trim().split(/s+/), sur = shortOf(p.char);
+    const w = nameOf(p.char).trim().split(/\s+/), sur = shortOf(p.char);
     return '<span class="pl">' + flagSVG(p.char.pais) + (w.length > 1 ? '<span class="ini">' + esc(w[0][0].toUpperCase()) + '. </span>' : '') + esc(sur) + '</span>';
   };
   const tn = t => $s.teams[t].map(pn).join('<span class="sep"> / </span>');
@@ -87,8 +87,40 @@ function awardPoint(w) {
   }
   return 'point';
 }
-function pointTo(w, reason) {
+// ---------- estatísticas do jogo ----------
+const CAT_NAME = { saque: 'saque', smash: 'smash', drive: 'drive', curta: 'curta', lob: 'lob', defesa: 'defesa' };
+const CAT_WIN = { smash: 'Smash vencedor', drive: 'Drive vencedor', curta: 'Curta vencedora', lob: 'Lob vencedor', defesa: 'Defesa vencedora' };
+const FEM_CAT = { curta: 1, defesa: 1 };
+// "de N. BURMAK" ou "seu"/"sua" quando é você
+const deP = (p, fem) => p && p.isHuman ? (fem ? 'sua' : 'seu') : 'de ' + whoName(p);
+// "Smash vencedor de N. BURMAK" / "Seu smash vencedor"
+const phrase = (noun, p, fem, tail) => (p && p.isHuman ? (fem ? 'Sua ' : 'Seu ') + noun.toLowerCase() : noun + ' de ' + whoName(p)) + (tail || '');
+function statOf(p) { const k = $s.players.indexOf(p); if (!S.pstats) S.pstats = []; if (!S.pstats[k]) S.pstats[k] = { saque: 0, smash: 0, drive: 0, curta: 0, lob: 0, defesa: 0, fe: 0, ue: 0 }; return S.pstats[k]; }
+function whoName(p) {
+  if (!p) return '?';
+  if (p.isHuman) return 'você';
+  if (!p.char) return 'CPU';
+  const w = nameOf(p.char).trim().split(/\s+/);
+  return (w.length > 1 ? w[0][0].toUpperCase() + '. ' : '') + shortOf(p.char);
+}
+// de quem foi o ponto: vencedor de quem bateu por último, ou erro (forçado / não forçado) de quem errou
+function creditPoint(w, kind) {
+  const lh = S.lastHit, at = S.attempt;
+  if (kind === 'in') {
+    if (at && at.hitId === S.hitId && at.p.team !== w) { const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++; return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p); }
+    if (lh && lh.p.team === w) { statOf(lh.p)[lh.cat]++; return lh.cat === 'saque' ? phrase('Ace', lh.p) : phrase(CAT_WIN[lh.cat], lh.p, FEM_CAT[lh.cat]); }
+    return '';
+  }
+  if (!lh || lh.p.team === w) return '';
+  const st = statOf(lh.p), where = kind === 'net' ? 'na rede' : 'fora';
+  if (lh.cat === 'saque') { st.ue++; return lh.p.isHuman ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
+  if (lh.hard) st.fe++; else st.ue++;
+  return phrase(lh.hard ? 'Erro forçado' : 'Erro não forçado', lh.p, false, ' (' + CAT_NAME[lh.cat] + ' ' + where + ')');
+}
+function pointTo(w, reason, kind) {
   if (S.mode === 'dead') return;
+  const credit = creditPoint(w, kind);
+  if (credit) reason = credit[0].toUpperCase() + credit.slice(1) + '.';
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   const ev = awardPoint(w);
@@ -132,7 +164,7 @@ function setupPoint() {
   if (sp === human) {
     banner(gold ? 'Ponto de ouro' : 'Seu saque', isTouch() ? 'Segure um golpe para lançar a bola e solte na faixa verde.' : 'Segure J forte · K alto · L curto · Espaço seguro e solte na faixa verde.', 0, gold);
   } else if (sp === partner) {
-    banner(gold ? 'Ponto de ouro' : 'Saque da sua parceira', 'Fique pronto na sua metade da quadra.', 1500, gold);
+    banner(gold ? 'Ponto de ouro' : (partner.char && !partner.char.fem ? 'Saque do seu parceiro' : 'Saque da sua parceira'), 'Fique pronto na sua metade da quadra.', 1500, gold);
   } else {
     banner(gold ? 'Ponto de ouro' : 'Saque da CPU', 'Prepare-se para devolver sem deixar cair.', 1500, gold);
   }
@@ -153,12 +185,26 @@ function newMatch() {
   configureMode();
   S.score = { pts: [0, 0], games: [0, 0], tb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
-  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 };
+  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.lastHit = null; S.attempt = null;
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
   document.body.classList.remove('in-menu');
   clearPrints();
   applyCam(); applyGfx(); applyRackets(); applyPlayerStyle();
   setupPoint();
+}
+// tabela do fim do jogo: pontos por golpe, erros forçados e não forçados de cada jogador e da dupla
+function renderMatchStats() {
+  const rows = [['Aces', 'saque'], ['Smash', 'smash'], ['Drive', 'drive'], ['Curta', 'curta'], ['Lob', 'lob'], ['Defesa', 'defesa']];
+  const teams = $s.teams.map(tm => tm.map(p => ({ p, s: statOf(p) })));
+  const win = s => rows.reduce((t, r) => t + s[r[1]], 0);
+  const val = (s, k) => typeof k === 'function' ? k(s) : s[k];
+  const sum = (tm, k) => tm.reduce((t, x) => t + val(x.s, k), 0);
+  const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const head = teams.map((tm, ti) => tm.map(x => '<th class="t' + ti + '">' + flagSVG(x.p.char && x.p.char.pais) + ' ' + esc(x.p.isHuman ? 'VOCÊ' : x.p.char ? shortOf(x.p.char) : 'CPU') + '</th>').join('') + (tm.length > 1 ? '<th class="tt t' + ti + '">DUPLA</th>' : '')).join('');
+  const line = (lbl, k, cls) => '<tr class="' + (cls || '') + '"><td>' + lbl + '</td>' + teams.map(tm => tm.map(x => '<td>' + val(x.s, k) + '</td>').join('') + (tm.length > 1 ? '<td class="tt">' + sum(tm, k) + '</td>' : '')).join('') + '</tr>';
+  $('stTable').innerHTML = '<table class="mstats"><thead><tr><th></th>' + head + '</tr></thead><tbody>'
+    + rows.map(r => line(r[0], r[1])).join('') + line('Pontos vencedores', win, 'sum')
+    + line('Erros forçados', 'fe', 'err') + line('Erros não forçados', 'ue', 'err') + '</tbody></table>';
 }
 function showOver() {
   S.mode = 'over'; hideBanner();
@@ -170,6 +216,7 @@ function showOver() {
   $('stPts').textContent = `${S.stats.pts[0]}–${S.stats.pts[1]}`;
   $('stRally').textContent = S.stats.maxRally;
   $('stSmash').textContent = S.stats.smashes;
+  renderMatchStats();
   const inChamp = !!S.champActive, inCareer = !!S.careerActive;
   if (inChamp) champMatchEnded(w === 0);
   if (inCareer) careerMatchEnded(w === 0);

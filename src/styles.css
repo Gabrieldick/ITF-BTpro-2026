@@ -370,3 +370,16 @@ em.dn { color: #c2410c; font-style: normal; font-weight: 800; margin-left: 2px; 
 .cr-file { cursor: pointer; display: inline-flex; align-items: center; }
 
 #fpsBox { position: fixed; left: 8px; bottom: 8px; z-index: 50; background: rgba(0,0,0,.55); color: #fff; font: 700 12px/1 system-ui, sans-serif; padding: 5px 8px; border-radius: 6px; pointer-events: none; }
+
+/* estatísticas do fim do jogo */
+.mstats-wrap { overflow-x: auto; }
+.mstats { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--ink); }
+.mstats th, .mstats td { padding: 4px 6px; text-align: center; white-space: nowrap; }
+.mstats td:first-child { text-align: left; color: #3c4d5c; font-weight: 700; }
+.mstats th { font-size: 11px; letter-spacing: .04em; border-bottom: 2px solid #e3d9c4; }
+.mstats th svg.flag { width: 15px; height: 10px; vertical-align: -1px; }
+.mstats th.t0 { color: #c2410c; } .mstats th.t1 { color: #0b7a83; }
+.mstats .tt { font-weight: 800; background: rgba(23,50,77,.06); }
+.mstats tr.sum td { border-top: 1.5px solid #e3d9c4; font-weight: 800; }
+.mstats tr.err td:not(:first-child) { color: #b4232a; }
+.mstats td { font-family: var(--f-num); font-variant-numeric: tabular-nums; }

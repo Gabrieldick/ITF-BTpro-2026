@@ -34,7 +34,7 @@ function updateBall(dt) {
         ball.pos.set(xAt, yAt, prev.z > 0 ? .08 : -.08);
         ball.vel.set(0, -.5, prev.z > 0 ? 1.2 : -1.2);
         ball.state = 'dead';
-        pointTo(1 - S.lastTeam, 'A bola ficou na rede.');
+        pointTo(1 - S.lastTeam, 'A bola ficou na rede.', 'net');
         return;
       }
     }
@@ -45,8 +45,8 @@ function updateBall(dt) {
       const owner = z > 0 ? 0 : 1;
       sndSand(); puff(x, z, 16, 1);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;
-      if (inB) pointTo(1 - owner, owner === 0 ? 'A bola tocou a areia do seu lado.' : 'A bola tocou a areia do lado da CPU.');
-      else pointTo(1 - S.lastTeam, S.rally <= 1 ? 'Saque fora.' : 'Bola fora.');
+      if (inB) pointTo(1 - owner, owner === 0 ? 'A bola tocou a areia do seu lado.' : 'A bola tocou a areia do lado da CPU.', 'in');
+      else pointTo(1 - S.lastTeam, S.rally <= 1 ? 'Saque fora.' : 'Bola fora.', 'out');
     }
     return;
   }

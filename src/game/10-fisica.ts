@@ -101,13 +101,27 @@ function doHit(p, type, q, isServe, mod) {
   // devolução de saque pesa menos (o recebedor já está esperando a bola)
   const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .35 : 0), 0, 1.3) * (S.rally === 1 ? .5 : 1);
   if (pressure > 0) {
-    const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5, 0, 1);
+    // contra bola forte, o golpe de defesa é o mais seguro; a curta (toque) é uma aposta: levanta ou sai mais
+    const risk = key === 'defesa' ? .6 : key === 'curta' ? 1.45 : 1;
+    const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5 + (key === 'defesa' ? .06 : 0), 0, 1);
     grade = qq;
-    const pOut = pressure * (1 - qq) * .45, pPop = pressure * (.12 + (1 - qq) * .9);
+    const pOut = pressure * (1 - qq) * .45 * risk, pPop = pressure * (.12 + (1 - qq) * .9) * risk;
     const r0 = Math.random();
     if (r0 < pOut) wild = true; else if (r0 < pOut + pPop) pop = true;
   }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
+  // defesa: quanto melhor o golpe (timing/posição) e o atributo, mais baixa e rápida ela volta; só a ruim flutua
+  if (!pop && key === 'defesa') {
+    const dq = mod.timing === undefined ? grade : grade * .6 + mod.timing * .4;
+    const dk = clamp((dq - .4) / .45, 0, 1);
+    // contra pancada, a defesa boa (e às vezes a amarela) pode virar um lob alto para o fundo
+    if ((pressure > .3 || inSpeed > 14) && dq >= .5 && Math.random() < lerp(.3, .55, dk)) {
+      spec.T = rand(1.75, 2.15); spec.depth = [6.3, 7.4]; spec.margin = .5; spec.label = 'DEFESA ALTA';
+    } else {
+      spec.T = lerp(1.25, .82, dk) * lerp(1.06, .94, attrK(p, 'def'));
+      spec.margin = lerp(.3, .14, dk);
+    }
+  }
   let lobLong = 0, finisher = false;
   if (!isServe && key === 'smash' && Math.abs(p.pos.z) < 2.2 && ball.pos.y > 2.0) {
     finisher = true;
@@ -168,6 +182,8 @@ function doHit(p, type, q, isServe, mod) {
     mis = true;
     if (Math.random() < .5) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
   }
+  // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado)
+  S.lastHit = { p, cat: isServe ? 'saque' : key, hard: !isServe && (inSpeed > 14 || !!ball.finisher || pressure > .35 || q < .45), hitId: S.hitId + 1 };
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .22 : 0); ball.finisher = finisher;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;

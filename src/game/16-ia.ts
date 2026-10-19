@@ -223,7 +223,7 @@ function updateHuman(dt) {
       if (sw.type === 'defesa' || r.pressure > .2) defenseFeedback(r);
       feedback(r.label, r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : ''), null);
     }
-    sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') feedback('SMASH', 'FUROU', null); sw.t = -1; sw.meter = null; }
+    sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { feedback('SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
   }
 }
 function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z) < 3.2); }
@@ -302,7 +302,7 @@ function updateAI(p, dt) {
           p.ai.swung = true; p.swing.dur = shot === 'curta' ? .5 : SWING_DUR; p.swing.t = 0; p.swing.type = shot; p.swing.hit = false; p.swing.side = sideOf(p, p.ai.plan ? p.ai.plan.pt : null); p.swing.var = swingVar(shot, p.ai.plan ? p.ai.plan.pt.y : ball.pos.y, p);
         }
         if (shot === 'smash' && ball.pos.y >= 1.9 ? canHit(p, 'smash', .66) : canHit(p, 'defesa', .9)) {
-          if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; }
+          if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
             const r = doHit(p, shot, rand(D.q[0], D.q[1]), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) } : {}));
