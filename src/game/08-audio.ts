@@ -8,11 +8,16 @@ import { renderer, sun } from './02-render';
 import { sky } from './03-cenario';
 import { particles } from './07-glb';
 // ---------- Qualidade gráfica ----------
+// resolução: base pela qualidade x escala dinâmica (cai quando o jogo não segura 60 fps)
+let resScale = 1;
+const basePR = () => { const dpr = window.devicePixelRatio || 1; return S.settings.gfx !== 'leve' ? Math.min(dpr, 1.5) : Math.min(dpr, 1); };
+function applyPR() { renderer.setPixelRatio(basePR() * resScale); }
+function setResScale(v) { if (Math.abs(v - resScale) < .01) return; resScale = v; applyPR(); }
+const getResScale = () => resScale;
 function applyGfx() {
   const hi = S.settings.gfx !== 'leve';
-  const dpr = window.devicePixelRatio || 1;
-  renderer.setPixelRatio(hi ? Math.min(dpr, 2) : Math.min(dpr, 1));
-  const size = hi ? Math.min(4096, renderer.capabilities.maxTextureSize || 4096) : 1024;
+  applyPR();
+  const size = hi ? 2048 : 1024;
   if (sun.shadow.mapSize.x !== size) {
     sun.shadow.mapSize.set(size, size);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
@@ -121,4 +126,4 @@ function startSurf() {
   surf = { g };
 }
 
-export { HITS, ac, applyGfx, sndHit, sndSand, sndWhistle, surf };
+export { HITS, ac, applyGfx, setResScale, getResScale, sndHit, sndSand, sndWhistle, surf };

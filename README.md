@@ -32,6 +32,7 @@ O jogo guarda várias carreiras no navegador (Carreira → **Carreiras**). Para 
 | C | 1ª / 3ª pessoa |
 | − / = | FOV da 1ª pessoa |
 | B / N / V | assistências: seguir a bola / onde a bola cai / flecha de mira |
+| F | mostra o contador de FPS e a resolução |
 | Esc | pausa |
 
 No celular: joystick e botões na tela.
