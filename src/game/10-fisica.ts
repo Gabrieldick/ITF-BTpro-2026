@@ -53,6 +53,7 @@ function canHit(p, type, scale) {
   const dh = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z, type === 'smash' ? 0 : Math.max(0, Math.abs(ball.pos.y - 1.05 * hScale(p)) - .55) * .7);
   const maxY = (type === 'smash' ? 3.0 : 2.6) * hScale(p);
   if (ball.pos.y < .8) scale = (scale || 1) * (1 + .14 * shortK(p));
+  if (p.dive && p.dive.t < .5 && ball.pos.y < 1.3) scale = (scale || 1) * 1.3; // no mergulho o braço vai até o fim
   return dh <= reachOf(type, p) * (scale || 1) && ball.pos.y >= .12 && ball.pos.y <= maxY;
 }
 function hitQuality(p, type) {
@@ -65,6 +66,7 @@ function hitQuality(p, type) {
   if (type === 'defesa') q = Math.max(q, .45);
   q *= lerp(.86, 1.06, attrK(p, ATTR_OF[type] || 'def'));
   if (type === 'curta' || ball.pos.y < .8) q *= 1 + .07 * shortK(p);
+  if (p.dive) q *= .82; // golpe de mergulho: salva a bola, mas sai pior
   return clamp(q, .1, 1);
 }
 function doHit(p, type, q, isServe, mod) {
@@ -202,7 +204,8 @@ function doHit(p, type, q, isServe, mod) {
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;
   if (key === 'smash' && ball.pos.y > 2.2) startJump(p, .38, .3);
   if (pressure <= 0 && mod.timing !== undefined) grade = q * .6 + mod.timing * .4;
-  return { key, label: spec.label, mis, pop, wild, grade, pressure, backhand: bhSide, contact: contactWord };
+  if (key === 'curta' && !pop) grade = Math.max(.05, curtaK); // a cor do anel da curta mostra o quão boa ela saiu
+  return { key, label: spec.label, mis, pop, wild, grade, pressure, backhand: bhSide, contact: contactWord, curtaK };
 }
 
 export { reachOf, canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach, solveShot };

@@ -13,7 +13,7 @@ import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, f
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
 import { canHit, predictLanding, reachOf } from './10-fisica';
 import { defRing, updateAimMarker } from './11-mira';
-import { LOB_MAX, MTR } from './12-controles';
+import { LOB_MAX, MTR, timeToReach } from './12-controles';
 import { assignee } from './16-ia';
 // ---------- Animação: cinemática inversa em braços e pernas ----------
 const _id = new V3(), _iu = new V3(), _iw = new V3(), _in = new V3(), _iX = new V3(), _iY = new V3(), _iZ = new V3(), _im = new THREE.Matrix4();
@@ -88,8 +88,10 @@ function animateAthlete(p, dt) {
   m.group.position.set(p.pos.x, jy, p.pos.z);
   if (sp > .25) p.gait += dt * Math.PI * 2 * (1.35 + sp * .3);
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
-  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05;
-  const lungeA = Math.abs(pose.lunge), lungeS = Math.sign(pose.lunge) || 1;
+  // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
+  const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1;
+  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05 + diveK * .42;
+  const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95), lungeS = Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA, .92 - crouch - .08 * lungeA + run * .025 * Math.cos(2 * p.gait), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
   if (!p.prevVel) p.prevVel = new V3();
@@ -101,7 +103,7 @@ function animateAthlete(p, dt) {
   m.hips.position.x += clamp(-p.accR * .006, -.05, .05);
   m.hips.rotation.set(0, Math.sin(p.gait) * .11 * run, Math.cos(p.gait) * .035 * run);
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
-  m.spine.rotation.set(-(pose.lean + run * .1) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll);
+  m.spine.rotation.set(-(pose.lean + run * .1 + diveK * .75) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: pés presos na areia
@@ -202,6 +204,7 @@ function animateFP() {
     th = kf(k.sh, u, 1.2); ph = kf(k.ph, u, .12) * .6; ry = -.35 + kf(k.tw, u, 0) * .5; fw = kf(k.fw, u, FP_UP);
   } else { th += Math.sin(p.gait) * .04 * Math.min(1, Math.hypot(p.vel.x, p.vel.z) / 4); }
   fpArm.rotation.set(th, ry, ph);
+  if (fpArm.parent) fpArm.parent.scale.x = p.lefty ? -1 : 1; // canhoto: braço e raquete do lado esquerdo
   if (fpWrist) fpWrist.rotation.set(fw, 0, -.15);
 }
 const camPos = new V3(0, 6, 16), camLook = new V3(0, 1, 0), tmpA = new V3(), tmpB = new V3();
@@ -346,8 +349,11 @@ function updateVisuals(dt) {
   const ready = incoming && canHit(human, 'lob');
   const readyDef = incoming && canHit(human, 'defesa');
   const high = ball.pos.y >= 1.9;
-  reachRing.material.color.setHex(ready ? 0xffb11f : readyDef ? 0x4fd18b : 0xffffff);
-  reachRing.material.opacity = ready || readyDef ? .6 : .18;
+  // dica de timing (curta/defesa): amarelo = vem aí, verde = aperte agora, laranja = já está no alcance (atrasado)
+  const ttr = incoming && human.swing.t < 0 && !human.charging && ball.pos.y < 2.2 ? timeToReach(human) : null;
+  const cue = readyDef ? 0xffb11f : ttr !== null && ttr >= .05 && ttr <= .28 ? 0x4fd18b : ttr !== null && ttr <= .5 ? 0xffd23f : 0xffffff;
+  reachRing.material.color.setHex(cue);
+  reachRing.material.opacity = cue === 0xffffff ? .18 : .65;
   placeMeter(fp);
   updateTags(fp);
   if (ball.state === 'held') placeHeldBall();

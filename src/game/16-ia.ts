@@ -11,6 +11,7 @@ import { dupla, feedback } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, keys, touch } from './12-controles';
+import { puff } from './07-glb';
 import { sideOf } from './18-animacao';
 // estilo de cada personagem: pela descrição real, pelo estilo da carreira ou pelos atributos
 function playStyleOf(c) {
@@ -135,6 +136,12 @@ function updateHuman(dt) {
   const lowBall = ball.state === 'live' && S.lastTeam === 1 && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
   const spd = P_SPEED * lerp(.82, 1.12, attrK(p, 'vel')) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1);
   let tvx = ix * spd, tvz = iz * spd;
+  if (p.dive) {
+    p.dive.t += dt;
+    if (p.dive.t < .28) { tvx = p.dive.dx * p.dive.spd; tvz = p.dive.dz * p.dive.spd; p.vel.x = tvx; p.vel.z = tvz; }
+    else { tvx = 0; tvz = 0; p.vel.x *= .6; p.vel.z *= .6; if (!p.dive.landed) { p.dive.landed = true; puff(p.pos.x, p.pos.z, 14, .9); } }
+    if (p.dive.t >= p.dive.dur) p.dive = null;
+  }
   const serving = S.serverPlayer === human && (S.mode === 'serve' || S.mode === 'toss');
   if (serving) {
     tvz = 0; if (S.mode === 'toss') tvx = 0;
@@ -221,8 +228,10 @@ function updateHuman(dt) {
       if (!sw.meter) mod.timing = su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);
-      if (sw.type === 'defesa' || r.pressure > .2) defenseFeedback(r);
-      feedback(r.label, r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : ''), null);
+      if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r);
+      // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)
+      const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .8 ? 'MATADORA' : r.curtaK > .45 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
+      feedback(r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
     }
     sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { feedback('SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
   }

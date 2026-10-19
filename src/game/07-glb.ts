@@ -185,7 +185,9 @@ function applyRackets() {
 // braço em primeira pessoa (preso à câmera)
 let fpRacket = null;
 let fpWrist = null, fpSkin = null;
-const fpArm = new THREE.Group(); fpArm.position.set(.24, -.34, -.34); fpArm.rotation.order = 'YXZ'; camera.add(fpArm);
+// o braço fica dentro de um grupo espelhável (canhoto em primeira pessoa)
+const fpMirror = new THREE.Group(); camera.add(fpMirror);
+const fpArm = new THREE.Group(); fpArm.position.set(.24, -.34, -.34); fpArm.rotation.order = 'YXZ'; fpMirror.add(fpArm);
 {
   const skin = mat('#c68a5e', { roughness: .55 }); fpSkin = skin;
   fpArm.add(new THREE.Mesh(capsuleGeo(.04, .03, .4), skin));

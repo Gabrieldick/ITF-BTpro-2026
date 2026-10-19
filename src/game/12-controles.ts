@@ -1,6 +1,7 @@
 // @ts-nocheck
 // teclado, toque, barras de força e menus
 import './11-mira';
+import { canHit } from './10-fisica';
 import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall } from './00-base';
 import { S, isMobile } from './01-estado';
 import { camera } from './02-render';
@@ -82,6 +83,20 @@ function timeToReach(p) {
   }
   return null;
 }
+// mergulho: bola baixa que vai cair um pouco além do alcance → o jogador se joga nela
+function tryDive(type) {
+  const p = human;
+  if (ball.state !== 'live' || S.lastTeam === p.team || canHit(p, type)) return;
+  const pos = ball.pos.clone(), vel = ball.vel.clone(), dt = .01;
+  for (let t = 0; t < .7; t += dt) {
+    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    if (pos.y < C.ballR) break;
+    if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && pos.y < 1.1) {
+      const dx = pos.x - p.pos.x, dz = pos.z - p.pos.z, d = Math.hypot(dx, dz), r = 1.35;
+      if (d > r * .95 && d < r + 1.25 && t > .12) { p.dive = { t: 0, dur: .9, dx: dx / d, dz: dz / d, spd: Math.min(7, (d - r * .7) / .28) }; return; }
+    }
+  }
+}
 // altura em que a bola vai chegar ao jogador (quando ela entrar a ~1 m dele)
 function contactY(p) {
   if (ball.state !== 'live') return ball.pos.y;
@@ -144,6 +159,7 @@ function pressShot(type) {
     const sw = human.swing;
     if (sw.t >= 0 && sw.t < sw.dur * .8) return;
     if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type); return; }
+    if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !human.dive) tryDive(type);
     sw.t = 0; sw.type = type; sw.dur = type === 'curta' ? .5 : SWING_DUR; sw.hit = false; sw.meter = null; sw.lob = null;
     sw.side = sideOf(human, humanPlan.id === S.hitId && humanPlan.plan ? humanPlan.plan.pt : null);
     sw.var = swingVar(type, humanPlan.id === S.hitId && humanPlan.plan ? humanPlan.plan.pt.y : ball.pos.y, human);
@@ -267,4 +283,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
