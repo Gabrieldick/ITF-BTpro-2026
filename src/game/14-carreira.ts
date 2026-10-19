@@ -323,8 +323,8 @@ function crFinishTour() {
   $s.CR.results.push({ w: absWeek(), pts });
   if (place === 0) { $s.CR.titles[t.tier] = ($s.CR.titles[t.tier] || 0) + 1; $s.CR.maxTier = Math.max($s.CR.maxTier, Math.min(8, t.tier + 1));
     const bon = $s.CR.sponsors.reduce((x, sp) => x + sp.bonus, 0); if (bon) { $s.CR.money += bon; t.sponsorBonus = bon; }
-    crAddFama(3 + t.tier * 2 + (crInv('marca') >= 3 ? 2 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
-  else if (place === 1) crAddFama(1 + t.tier * .5);
+    crAddFama(1 + t.tier * 1.6 + (crInv('marca') >= 3 ? 2 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
+  else if (place === 1) crAddFama(.3 + t.tier * .5);
   $s.CR.chem = Math.min(5, $s.CR.chem + 1);
   // quem você venceu pode querer jogar com você
   const offers = [];
@@ -343,9 +343,9 @@ const crXpMul = () => 1 + crStaffList().reduce((t, x) => t + (x.xp || 0), 0) + (
 const crTitlesAt = t => Object.entries($s.CR.titles || {}).reduce((n, [k, v]) => n + (+k >= t ? v : 0), 0);
 const INVEST = {
   marca: { nome: 'Marca pessoal', ic: '🏷️', niveis: [
-    { nome: 'Marca própria', preco: 25000, desc: 'Royalties toda semana conforme a sua fama; a fama cai pela metade da velocidade.', req: () => $s.CR.fama >= 35 ? '' : 'Precisa de 35 de fama' },
+    { nome: 'Marca própria', preco: 25000, desc: 'Royalties toda semana conforme a sua fama; a fama cai pela metade da velocidade.', req: () => $s.CR.fama >= 30 ? '' : 'Precisa de 30 de fama' },
     { nome: 'Raquete assinatura', preco: 70000, desc: 'Sua raquete sob medida: melhor que a Zênite e com +2 nos seus três melhores atributos. Royalties em dobro.', req: () => crTitlesAt(5) >= 1 ? '' : 'Precisa de um título de BT100 ou maior' },
-    { nome: 'Linha completa de produtos', preco: 180000, desc: 'Roupas, bolas e acessórios com seu nome: royalties ×3,5 e +2 de fama a cada título.', req: () => $s.CR.fama >= 70 && crTitlesAt(7) >= 1 ? '' : 'Precisa de 70 de fama e um título de BT400 ou maior' },
+    { nome: 'Linha completa de produtos', preco: 180000, desc: 'Roupas, bolas e acessórios com seu nome: royalties ×3,5 e +2 de fama a cada título.', req: () => $s.CR.fama >= 60 && crTitlesAt(7) >= 1 ? '' : 'Precisa de 60 de fama e um título de BT400 ou maior' },
   ] },
   quadra: { nome: 'Quadra de beach', ic: '🏖️', niveis: [
     { nome: 'Quadra própria', preco: 15000, desc: 'Treinar fica de graça e rende +3 pontos de evolução; aulas rendem 40% mais.', req: () => '' },
@@ -394,7 +394,7 @@ function crNextWeek(note) {
   let msg = note || '';
   const spm = crSponsorWeek(); if (spm) msg += (msg ? ' ' : '') + spm;
   const ivg = crInvWeek(); if (ivg) msg += (msg ? ' ' : '') + 'Negócios renderam ' + money(ivg) + '.';
-  crAddFama(crInv('marca') ? -.2 : -.4); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
+  crFamaWeek(); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
   crMaybeSponsor();
   if (Math.random() < .3) { const ev = crRollEvent(); if (ev) msg += (msg ? ' ' : '') + ev; }
   if ($s.CR.week > SEASON_WEEKS) {
@@ -482,7 +482,21 @@ function crHire(id) {
 const crLessonIncome = () => Math.round(Math.max(120, Math.round(TIERS[crMaxTier()].prize[0] * .15 / 10) * 10) * (crInv('quadra') ? 1.4 : 1));
 // ---------- fama e patrocínio ----------
 const BRANDS = ['Areia Fina', 'Solar Max Protetor', 'MarAzul Seguros', 'Coco Gelado', 'Tropicália Moda Praia', 'Ondas Telecom', 'Brisa Energéticos', 'Duna Óculos', 'Litoral Bank', 'Salina Isotônico', 'Farol Viagens', 'Arrecife Calçados', 'Maresia Relógios', 'Sol & Sal Cosméticos'];
-function crAddFama(v) { $s.CR.fama = clamp(($s.CR.fama || 0) + v, 0, 100); }
+// fama acompanha a sua posição no ranking (como um ranking de popularidade), mais o prestígio dos títulos:
+// 1º do ranking ≈ 100, top 10 ≈ 55, top 50 ≈ 25; títulos grandes somam até +18. Eventos e títulos dão picos,
+// mas a fama nunca passa muito do que o seu nível sustenta e volta aos poucos para esse alvo.
+function crFamaTarget() {
+  const rank = crRank(), N = crWorld().length + 1;
+  const base = 100 * Math.pow(Math.max(0, 1 - Math.log(rank) / Math.log(N)), 1.3);
+  const prestige = Math.min(18, Object.entries($s.CR.titles || {}).reduce((t, [k, v]) => t + v * .3 * Math.pow(+k + 1, 1.4), 0));
+  return clamp(base + prestige, 0, 100);
+}
+function crAddFama(v) { const cap = Math.min(100, crFamaTarget() + 12); const f = $s.CR.fama || 0; $s.CR.fama = v >= 0 ? Math.max(f, Math.min(f + v, cap)) : Math.max(0, f + v); } // ganhar nunca reduz; acima do teto o pico não soma
+function crFamaWeek() {
+  const tg = crFamaTarget(), f = $s.CR.fama || 0;
+  // acima do alvo cai devagar (mais devagar ainda com marca própria); abaixo sobe aos poucos
+  $s.CR.fama = clamp(f + (tg - f) * (f > tg ? (crInv('marca') ? .05 : .1) : .08), 0, 100);
+}
 function crMaybeSponsor(force) {
   if ($s.CR.sponsors.length + $s.CR.spOffers.length >= 4) return;
   if (!force && Math.random() > .08 + $s.CR.fama / 250) return;
@@ -537,4 +551,4 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
