@@ -77,7 +77,18 @@ function animateAthlete(p, dt) {
   p.yaw += (yawT - p.yaw) * Math.min(1, dt * 6);
   const prepT = p.debug ? 0 : smashPrep(p, swingU);
   p.prep = (p.prep || 0) + (prepT - (p.prep || 0)) * Math.min(1, dt * (prepT > (p.prep || 0) ? 7 : 12));
-  const yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw + p.prep * .95 * (p.lefty ? 1 : -1);
+  // recuar não é andar de costas: o corpo vira de lado e as pernas cruzam (idem numa corrida lateral longa)
+  const fT = p.team === 0 ? 1 : -1, back = p.vel.z * fT, latV = p.vel.x * fT;
+  const busy = swingU >= 0 || p.charging || (S.mode === 'toss' && S.serverPlayer === p) || !!p.dive;
+  const backK = busy ? 0 : clamp((back - .9) / 2, 0, 1), latK = busy ? 0 : clamp((Math.abs(latV) - 2.6) / 1.6, 0, 1) * (1 - backK);
+  const turnSign = Math.abs(latV) > .6 ? -Math.sign(latV) : (p.lefty ? 1 : -1);
+  const mtT = (backK * .95 + latK * .55) * turnSign;
+  p.moveTurn = (p.moveTurn || 0) + (mtT - (p.moveTurn || 0)) * Math.min(1, dt * 6);
+  // base baixa: bola rápida vindo na direção do jogador → abaixa e abre as pernas (prontidão para defender)
+  const bsp = Math.hypot(ball.vel.x, ball.vel.z);
+  const lowT = !busy && ball.state === 'live' && S.lastTeam !== p.team && bsp > 10 && Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) < 8 ? clamp((bsp - 10) / 6, .5, 1) : 0;
+  p.lowK = (p.lowK || 0) + (lowT - (p.lowK || 0)) * Math.min(1, dt * 10);
+  const yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep);
   m.group.rotation.y = yaw;
   if (p.jump > 0) p.jump = Math.max(0, p.jump - dt);
   if (p.split > 0) { p.split = Math.max(0, p.split - dt); if (p.split === 0) p.burst = .3; }
@@ -90,7 +101,8 @@ function animateAthlete(p, dt) {
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
   const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1;
-  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05 + diveK * .42;
+  const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
+  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05 + diveK * .42 + p.lowK * .11 * (1 - run * .5) + defLow;
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95), lungeS = Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA, .92 - crouch - .08 * lungeA + run * .025 * Math.cos(2 * p.gait), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
@@ -115,7 +127,7 @@ function animateAthlete(p, dt) {
   const air = jy > .05;
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1, L = m.legs[i];
-    let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0)), fz = 0;
+    let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)), fz = 0;
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     const shuffle = sp > .25 && sp < 4.2 ? Math.abs(lvx) : 0; // deslocamento lateral: passo cruzado vira passo lateral
     const ph = p.gait + (i ? Math.PI * (1 - .45 * shuffle) : 0);

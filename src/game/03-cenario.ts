@@ -4,6 +4,7 @@ import './02-render';
 import * as THREE from 'three';
 import { C, HALF_W, SHORE_Z, V3, WATERLINE, ZONE3, clamp, fbm, rand, smooth } from './00-base';
 import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene } from './02-render';
+const PROPS = []; // guarda-sóis e palmeiras perto da quadra (somem quando há arquibancada)
 // ---------- Céu procedural com nuvens e sol ----------
 const SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 w = modelMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*w; }';
 const SKY_FS = [
@@ -177,17 +178,19 @@ netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping; netTex.repeat.set(C.netHalf 
 const netMat = new THREE.MeshStandardMaterial({ color: col('#20262c'), map: netTex, transparent: true, alphaTest: .3, side: THREE.DoubleSide, roughness: .9 });
 const net = new THREE.Mesh(new THREE.PlaneGeometry(C.netHalf * 2, 1.0), netMat);
 net.position.set(0, C.netH - .5, 0); scene.add(net);
-const bandTex = canvasTex(512, 16, (x, w, h) => { x.fillStyle = '#f6f4ee'; x.fillRect(0, 0, w, h); x.fillStyle = '#1f4fb8'; for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 32, h); });
+const drawBand = c => (x, w, h) => { x.fillStyle = '#f6f4ee'; x.fillRect(0, 0, w, h); x.fillStyle = c; for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 32, h); };
+const bandTex = canvasTex(512, 16, drawBand('#1f4fb8'));
 bandTex.wrapS = THREE.RepeatWrapping; bandTex.repeat.set(3, 1);
 const band = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .07, .012), mat('#ffffff', { map: bandTex, roughness: .6 }));
 band.position.set(0, C.netH - .035, 0); band.castShadow = true; scene.add(band);
+const padMat = mat('#1f4fb8', { roughness: .7 });
 const band2 = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .035, .01), mat('#1f4fb8'));
 band2.position.set(0, C.netH - 1.0, 0); scene.add(band2);
 [-1, 1].forEach(s => {
   const px = s * (C.netHalf + .12);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(.045, .05, 1.95, 16), mat('#e9edf0', { roughness: .25, metalness: .7 }));
   post.position.set(px, .975, 0); post.castShadow = true; scene.add(post);
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 1.4, 16), mat('#1f4fb8', { roughness: .7 }));
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 1.4, 16), padMat);
   pad.position.set(px, .7, 0); pad.castShadow = true; scene.add(pad);
   const cap = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), mat('#d8dde0', { metalness: .7, roughness: .3 })); cap.position.set(px, 1.96, 0); scene.add(cap);
   const rope = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, 2.6, 4), mat('#e8e2d0'));
@@ -246,7 +249,7 @@ function palm(x, z, h, lean) {
     piv.add(f); g.add(piv);
   }
   for (let i = 0; i < 5; i++) { const nut = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), mat('#5a3f22', { roughness: .6 })); nut.position.copy(top).add(new V3(rand(-.2, .2), -.2, rand(-.2, .2))); g.add(nut); }
-  g.position.set(x, -.05, z); g.rotation.y = Math.random() * Math.PI * 2; scene.add(g);
+  g.position.set(x, -.05, z); g.rotation.y = Math.random() * Math.PI * 2; scene.add(g); PROPS.push(g);
 }
 palm(-10.5, -6, 7.5, .25); palm(-12.5, 5, 8.5, -.2); palm(11, -9, 8, .3); palm(13, 6, 7, -.25);
 palm(-15, -22, 9, .2); palm(16, -23, 8.5, .15); palm(-9.5, 18, 7, .2); palm(10.5, 20, 8, -.3);
@@ -267,7 +270,7 @@ function umbrella(x, z, c1, c2) {
   const seat = new THREE.Mesh(new THREE.PlaneGeometry(.5, .55), mat(c1, { side: THREE.DoubleSide })); seat.position.set(0, .3, .1); seat.rotation.x = -1.2; chair.add(seat);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(.5, .7), mat(c1, { side: THREE.DoubleSide })); back.position.set(0, .55, -.25); back.rotation.x = -.45; chair.add(back);
   chair.position.set(-.8, 0, .4); chair.rotation.y = rand(-.6, .6); chair.traverse(m => { if (m.isMesh) m.castShadow = true; }); g.add(chair);
-  g.position.set(x, 0, z); g.rotation.y = rand(0, Math.PI * 2); scene.add(g);
+  g.position.set(x, 0, z); g.rotation.y = rand(0, Math.PI * 2); scene.add(g); PROPS.push(g);
 }
 umbrella(-8.2, 1.5, '#ff5a1f', '#fbf6ea'); umbrella(8.6, -3, '#ffd23f', '#1f4fb8'); umbrella(-9, -15, '#1f4fb8', '#fbf6ea');
 umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); umbrella(19, -12, '#ff5a1f', '#ffd23f');
@@ -294,4 +297,88 @@ umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); 
   });
 }
 
-export { linesGroup, seaMat, sky };
+// ---------- Arenas: cores da quadra por local e arquibancadas conforme o tamanho do torneio ----------
+// size 0 = praia aberta · 1 = arquibancada pequena num lado · 2 = dos dois lados com placas · 3 = estádio (lados + fundo)
+const ARENA = { group: new THREE.Group(), key: '', crowd: [], cheerT: 0 };
+scene.add(ARENA.group);
+const SKIN_C = ['#f1cfae', '#e2b48f', '#d2a07a', '#c68a5e', '#a8704a', '#8d5a3b', '#6b4229'];
+function bleachers(side, x0, z0, len, rows, seatCol, along) {
+  // along = 'z' (arquibancada lateral, de frente para a quadra em x) ou 'x' (no fundo, de frente em z)
+  const g = new THREE.Group();
+  const frame = mat('#9aa3aa', { metalness: .6, roughness: .45 }), seat = mat(seatCol, { roughness: .6 });
+  const seats = [];
+  for (let r = 0; r < rows; r++) {
+    const off = r * .82, hgt = r * .45 + .3;
+    const step = new THREE.Mesh(along === 'z' ? new THREE.BoxGeometry(.82, hgt, len) : new THREE.BoxGeometry(len, hgt, .82), r % 2 ? frame : seat);
+    if (along === 'z') step.position.set(x0 + side * (off + .41), hgt / 2, z0); else step.position.set(x0, hgt / 2, z0 + side * (off + .41));
+    step.receiveShadow = true; g.add(step);
+    for (let i = 0; i < len / .62 - 1; i++) {
+      if (Math.random() < .12) continue; // lugares vazios
+      const u = -len / 2 + .5 + i * .62 + rand(-.05, .05);
+      seats.push(along === 'z' ? [x0 + side * (off + .45), hgt, z0 + u, side, 'z'] : [x0 + u, hgt, z0 + side * (off + .45), side, 'x']);
+    }
+  }
+  ARENA.group.add(g);
+  return seats;
+}
+function crowd(seats) {
+  if (!seats.length) return;
+  const body = new THREE.InstancedMesh(new THREE.BoxGeometry(.4, .62, .3), new THREE.MeshStandardMaterial({ roughness: .8 }), seats.length);
+  const head = new THREE.InstancedMesh(new THREE.SphereGeometry(.13, 10, 8), new THREE.MeshStandardMaterial({ roughness: .7 }), seats.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color();
+  const shirts = ['#ff5a1f', '#fbf6ea', '#17324d', '#ffd23f', '#0b7a83', '#e2364a', '#2457c5', '#7fd6db', '#3b1f5c', '#f4f1ea'];
+  seats.forEach(([x, y, z, side, along], i) => {
+    q.setFromAxisAngle(new V3(0, 1, 0), along === 'z' ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0));
+    m4.compose(new V3(x, y + .31, z), q, new V3(1, 1, 1)); body.setMatrixAt(i, m4);
+    m4.compose(new V3(x, y + .75, z), q, new V3(1, 1, 1)); head.setMatrixAt(i, m4);
+    body.setColorAt(i, c.set(shirts[Math.floor(Math.random() * shirts.length)]).convertSRGBToLinear());
+    head.setColorAt(i, c.set(SKIN_C[Math.floor(Math.random() * SKIN_C.length)]).convertSRGBToLinear());
+  });
+  ARENA.group.add(body, head);
+  ARENA.crowd.push({ body, head, seats, ph: seats.map(() => Math.random() * 6) });
+}
+function boards(x0, z0, len, along, c1, c2, text) {
+  const t = canvasTex(1024, 64, (x, w, h) => { x.fillStyle = c1; x.fillRect(0, 0, w, h); x.fillStyle = c2; x.font = 'bold 40px sans-serif'; x.textBaseline = 'middle';
+    const step = x.measureText(text).width + 70; for (let px = 24; px < w; px += step) x.fillText(text, px, h / 2); });
+  const b = new THREE.Mesh(along === 'z' ? new THREE.BoxGeometry(.06, .7, len) : new THREE.BoxGeometry(len, .7, .06), [mat('#222'), mat('#222'), mat('#222'), mat('#222'), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .25 }), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .25 })]);
+  if (along === 'z') { b.material = [mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .25 }), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .25 }), mat('#222'), mat('#222'), mat('#222'), mat('#222')]; }
+  b.position.set(x0, .35, z0); ARENA.group.add(b);
+}
+function applyArena(a) {
+  a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#17324d', '#ffd23f'], text: 'PONTO DE OURO' }, a || {});
+  const key = JSON.stringify(a); if (key === ARENA.key) return; ARENA.key = key;
+  tapeMat.color.copy(col(a.line)); padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
+  const bc = bandTex.image.getContext('2d'); drawBand(a.trim)(bc, bandTex.image.width, bandTex.image.height); bandTex.needsUpdate = true;
+  sandMat.color.copy(col(a.sand));
+  // arquibancadas
+  ARENA.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  ARENA.group.clear(); ARENA.crowd = [];
+  PROPS.forEach(g => { g.visible = !(a.size > 0 && Math.abs(g.position.x) < 15 && g.position.z > -22 && g.position.z < 16); });
+  const L = C.halfL * 2 + 4, W = 7.8;
+  let seats = [];
+  if (a.size >= 1) seats = seats.concat(bleachers(-1, -W, -1, L * (a.size >= 2 ? 1 : .7), a.size >= 3 ? 8 : a.size >= 2 ? 5 : 3, a.seat, 'z'));
+  if (a.size >= 2) seats = seats.concat(bleachers(1, W, -1, L, a.size >= 3 ? 8 : 5, a.seat, 'z'));
+  if (a.size >= 3) seats = seats.concat(bleachers(-1, 0, -(C.halfL + 5.5), 2 * W - 1, 6, a.seat, 'x'));
+  crowd(seats);
+  if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
+  if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
+}
+// torcida comemora depois do ponto
+function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); }
+const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cs = new V3(1, 1, 1);
+function updateArena(dt) {
+  if (!ARENA.crowd.length || ARENA.cheerT <= 0) return;
+  ARENA.cheerT = Math.max(0, ARENA.cheerT - dt);
+  const t = performance.now() / 1000, amp = Math.min(1, ARENA.cheerT) * .22;
+  ARENA.crowd.forEach(cr => {
+    cr.seats.forEach(([x, y, z, side, along], i) => {
+      const j = Math.max(0, Math.sin(t * 9 + cr.ph[i])) * amp;
+      _cq.setFromAxisAngle(new V3(0, 1, 0), along === 'z' ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0));
+      _cm.compose(_cp.set(x, y + .31 + j, z), _cq, _cs); cr.body.setMatrixAt(i, _cm);
+      _cm.compose(_cp.set(x, y + .75 + j, z), _cq, _cs); cr.head.setMatrixAt(i, _cm);
+    });
+    cr.body.instanceMatrix.needsUpdate = true; cr.head.instanceMatrix.needsUpdate = true;
+  });
+}
+
+export { applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };

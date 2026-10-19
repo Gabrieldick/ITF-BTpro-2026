@@ -5,7 +5,7 @@ import { $s } from '../state';
 import { C, HALF_W, ZONE3, nameOf, shortOf } from './00-base';
 import { flagSVG } from '../flags';
 import { S } from './01-estado';
-import { linesGroup } from './03-cenario';
+import { applyArena, cheerArena, linesGroup } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail } from './07-glb';
 import { applyGfx, sndWhistle } from './08-audio';
@@ -125,7 +125,7 @@ function pointTo(w, reason, kind) {
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   const ev = awardPoint(w);
   renderBoard();
-  sndWhistle(w === 0);
+  sndWhistle(w === 0); cheerArena(ev === 'match' ? 3 : ev === 'game' ? 2 : 1.2);
   landRing.visible = false;
   const g = S.score.games;
   const d = dupla();
@@ -180,7 +180,28 @@ function configureMode() {
   const mySide = S.settings.side === 'esquerda' ? -1 : 1;
   human.slot = d ? mySide : 0; partner.slot = -mySide; cpuA.slot = d ? 1 : 0; cpuB.slot = -1;
 }
+// arena de cada partida: na carreira depende do nível do torneio e do local; no campeonato, arena média
+const ARENA_PAL = {
+  BRA: { line: '#1f4fb8', trim: '#ffd23f', sand: '#ffffff', seat: '#0a7d3c', board: ['#0a7d3c', '#ffd23f'] },
+  ITA: { line: '#d6332f', trim: '#0b7a3c', sand: '#f7ecd6', seat: '#d6332f', board: ['#0b7a3c', '#ffffff'] },
+  ESP: { line: '#e8a317', trim: '#c8102e', sand: '#f6e6c6', seat: '#c8102e', board: ['#c8102e', '#ffd23f'] },
+  FRA: { line: '#2457c5', trim: '#ef4135', sand: '#f8eedc', seat: '#2457c5', board: ['#2457c5', '#ffffff'] },
+  POR: { line: '#046a38', trim: '#da291c', sand: '#f6ead2', seat: '#da291c', board: ['#046a38', '#ffe900'] },
+  ARU: { line: '#ff5a1f', trim: '#418fde', sand: '#fffdf8', seat: '#418fde', board: ['#418fde', '#fbe122'] },
+  MUN: { line: '#111111', trim: '#e8a317', sand: '#fffaf0', seat: '#17324d', board: ['#111111', '#e8a317'] },
+};
+function arenaFor() {
+  if (S.careerActive && $s.CR && $s.CR.tour) {
+    const t = $s.CR.tour, n = (t.name || '').toLowerCase();
+    const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
+    const size = t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
+    return Object.assign({ size, text: (t.name || '').toUpperCase().slice(0, 22) }, ARENA_PAL[loc]);
+  }
+  if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO' }, ARENA_PAL.BRA);
+  return { size: 0 };
+}
 function newMatch() {
+  applyArena(arenaFor());
   assignCharacters();
   configureMode();
   S.score = { pts: [0, 0], games: [0, 0], tb: false };

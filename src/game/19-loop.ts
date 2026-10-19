@@ -4,7 +4,7 @@ import './18-animacao';
 import { STEP } from './00-base';
 import { S } from './01-estado';
 import { camera, renderer, scene } from './02-render';
-import { seaMat, sky } from './03-cenario';
+import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
 import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
 import { CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, fpArm, fpWrist, loadModels } from './07-glb';
@@ -47,6 +47,7 @@ function frame(now) {
   const tsec = now / 1000;
   seaMat.uniforms.time.value = tsec; sky.material.uniforms.time.value = tsec;
   updateVisuals(dt);
+  updateArena(dt);
   updateCamera(dt);
   renderer.render(scene, camera);
 }
@@ -68,7 +69,7 @@ function start(data) {
     setupPoint(); setPaused(true);
   }
   renderBoard();
-  window.__pdo = { MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { step(dt); updateVisuals(dt); }, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, GLB };
+  window.__pdo = { MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { step(dt); updateVisuals(dt); }, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, GLB };
   loadModels().then(ok => {
     assignCharacters(); configureMode();
     if (!ok) { const fs2 = document.getElementById('fsPlayers'); if (fs2) fs2.hidden = true; }
