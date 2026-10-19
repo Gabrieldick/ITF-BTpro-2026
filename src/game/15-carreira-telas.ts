@@ -8,7 +8,7 @@ import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { $, el, feedback, hideBanner, newMatch } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound } from './12-controles';
-import { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr } from './14-carreira';
+import { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -29,7 +29,7 @@ function renderCareer() {
   const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
   if ($s.CR.tour) { body.innerHTML = crTourHTML(); bindTour(); return; }
-  body.innerHTML = ({ agenda: crAgendaHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML }[crTab])();
+  body.innerHTML = ({ agenda: crAgendaHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML }[crTab])();
   bindCareerBody();
 }
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -89,6 +89,18 @@ function crShopHTML() {
     + '<div class="cr-two"><div><p class="section-label">Raquetes (' + Object.keys(RACKET_STATS).length + ')</p><div class="cr-list">' + rk + '</div></div>'
     + '<div><p class="section-label">Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list" style="max-height:260px">' + st + '</div><p class="section-label" style="margin-top:10px">Equipamentos</p><div class="cr-list" style="max-height:220px">' + gr + '</div></div></div>';
 }
+function crBizHTML() {
+  const tracks = Object.entries(INVEST).map(([k, tr]) => {
+    const lv = crInv(k);
+    const rows = tr.niveis.map((n, i) => {
+      const done = i < lv, next = i === lv, why = next ? n.req() : '';
+      const btn = done ? '<span class="cr-own">feito</span>' : next ? (why ? '<span class="cr-lock" title="' + esc(why) + '">🔒</span>' : '<button class="cta sm" data-inv="' + k + '"' + ($s.CR.money < n.preco ? ' disabled' : '') + '>' + money(n.preco) + '</button>') : '<span class="cr-lock">🔒</span>';
+      return '<div class="cr-row' + (done ? ' me' : '') + '"><span class="cr-ic">' + tr.ic + '</span><div><b>' + n.nome + '</b><small>' + n.desc + '</small>' + (next && why ? '<small><em class="dn">' + esc(why) + '</em></small>' : '') + (!done && !next ? '<small>Liberado depois do nível anterior · ' + money(n.preco) + '</small>' : '') + '</div>' + btn + '</div>';
+    }).join('');
+    return '<p class="section-label">' + tr.nome + ' · nível ' + lv + '/' + tr.niveis.length + '</p><div class="cr-list">' + rows + '</div>';
+  }).join('');
+  return '<p class="cr-note">Investimentos permanentes (não acabam no fim da temporada). Cada nível exige o anterior e conquistas na carreira.</p>' + tracks;
+}
 function crSponsorHTML() {
   const act = $s.CR.sponsors.map(x => '<div class="cr-row me"><span class="cr-ic">🤝</span><div><b>' + esc(x.brand) + '</b><small>' + money(x.weekly) + ' por semana · bônus de ' + money(x.bonus) + ' por título · faltam ' + x.left + ' semanas</small></div></div>').join('');
   const off = $s.CR.spOffers.map((x, i) => '<div class="cr-row"><span class="cr-ic">✉️</span><div><b>' + esc(x.brand) + '</b><small>' + money(x.weekly) + ' por semana durante ' + x.weeks + ' semanas · bônus de ' + money(x.bonus) + ' por título</small></div><div class="cta-row"><button class="cta sm" data-sp-ok="' + i + '"' + ($s.CR.sponsors.length >= 2 ? ' disabled title="Máximo de 2 patrocinadores"' : '') + '>Assinar</button><button class="ghost sm" data-sp-no="' + i + '">Recusar</button></div></div>').join('');
@@ -147,6 +159,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-partner]').forEach(bt => bt.addEventListener('click', () => { crSetPartner(bt.dataset.partner); $s.CR.lastMsg = 'Nova dupla: ' + nameOf(crChar(bt.dataset.partner)) + '.'; renderCareer(); }));
   body.querySelectorAll('[data-drop]').forEach(bt => bt.addEventListener('click', () => { $s.CR.partner = null; $s.CR.chem = 0; saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-buy]').forEach(bt => bt.addEventListener('click', () => { const k = bt.dataset.buy, r = RACKET_STATS[k], price = Math.round(r.preco * (1 - ($s.CR.discount || 0))); if ($s.CR.money >= price) { $s.CR.money -= price; $s.CR.discount = 0; $s.CR.rackets.push(k); $s.CR.racket = k; $s.CR.me.look.racket = k; $s.CR.lastMsg = 'Comprou a ' + r.nome + '.'; saveCareer(); } renderCareer(); }));
+  body.querySelectorAll('[data-inv]').forEach(bt => bt.addEventListener('click', () => { crInvBuy(bt.dataset.inv); renderCareer(); }));
   body.querySelectorAll('[data-hire]').forEach(bt => bt.addEventListener('click', () => { crHire(bt.dataset.hire); renderCareer(); }));
   body.querySelectorAll('[data-ev]').forEach(bt => bt.addEventListener('click', () => { crResolveEvent(+bt.dataset.ev); renderCareer(); }));
   body.querySelectorAll('[data-sp-ok]').forEach(bt => bt.addEventListener('click', () => { const o = $s.CR.spOffers.splice(+bt.dataset.spOk, 1)[0]; if (o && $s.CR.sponsors.length < 2) { $s.CR.sponsors.push(Object.assign(o, { left: o.weeks })); $s.CR.lastMsg = 'Contrato assinado com ' + o.brand + '.'; } saveCareer(); renderCareer(); }));

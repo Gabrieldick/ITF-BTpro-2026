@@ -190,6 +190,8 @@ const RACKET_STYLES = {
   tsunami: { bg: '#06263f', a1: '#18a0fb', pattern: 'waves', label: 'TSUNAMI', carbon: true, edge: '#18a0fb', holes: 'kronos' },
   eclipse: { bg: '#101010', a1: '#c9a24a', pattern: 'rings', label: 'ECLIPSE 3K', labelColor: '#101010', carbon: true, edge: '#c9a24a', holes: 'supercarbon' },
   zenite: { bg: '#f7f7f7', a1: '#e8a317', a2: '#0f2436', pattern: 'chevron', label: 'ZÊNITE', labelColor: '#f7f7f7', band: '#0f2436', edge: '#e8a317', holes: 'supercarbon' },
+  // raquete assinatura (marca pessoal do modo carreira)
+  assinatura: { bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', label: 'SIGNATURE', labelColor: '#0b0b0b', carbon: true, band: '#ff6a00', edge: '#ffd23f', holes: 'supercarbon' },
 };
 Object.entries(RACKET_STYLES).forEach(([k, c]) => { RACKETS[k] = { edge: c.edge, grip: '#141516', throat: c.edge, holes: c.holes, draw: mkRacketDraw(c) }; });
 const RACKET_MATS = {};

@@ -135,6 +135,7 @@ async function crRepoSaves() {
 const crSaveErr = () => saveErr;
 async function crImportUrl(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) return { ok: false, msg: 'Não consegui baixar o save (' + r.status + ').' }; return crImportData(await r.text()); }
 function crSyncChars() {
+  if ($s.CR) crSignature();
   $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat([crMeChar()]) : [];
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
@@ -315,12 +316,14 @@ function crFinishTour() {
   // fase em que caiu: 0 campeão, 1 vice, 2 semi, 3 quartas, 4 oitavas
   let place = 0;
   if (t.champion !== t.me) { const lostAt = t.rounds.findIndex(rd => rd.some(m => (m.a === t.me || m.b === t.me) && m.w !== null && m.w !== t.me)); place = nR - lostAt; }
-  const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round((T.xp[place] || 0) * crXpMul());
+  // títulos e finais rendem bem mais evolução (bônus cresce com o nível do torneio)
+  const xpBonus = place === 0 ? 4 + t.tier * 1.6 : place === 1 ? 1.5 + t.tier * .6 : 0;
+  const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round(((T.xp[place] || 0) + xpBonus) * crXpMul());
   $s.CR.money += prize; $s.CR.pe += xp;
   $s.CR.results.push({ w: absWeek(), pts });
   if (place === 0) { $s.CR.titles[t.tier] = ($s.CR.titles[t.tier] || 0) + 1; $s.CR.maxTier = Math.max($s.CR.maxTier, Math.min(8, t.tier + 1));
     const bon = $s.CR.sponsors.reduce((x, sp) => x + sp.bonus, 0); if (bon) { $s.CR.money += bon; t.sponsorBonus = bon; }
-    crAddFama(3 + t.tier * 2); if (Math.random() < .35) crMaybeSponsor(true); }
+    crAddFama(3 + t.tier * 2 + (crInv('marca') >= 3 ? 2 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
   else if (place === 1) crAddFama(1 + t.tier * .5);
   $s.CR.chem = Math.min(5, $s.CR.chem + 1);
   // quem você venceu pode querer jogar com você
@@ -334,16 +337,64 @@ function crFinishTour() {
   $s.CR.history = $s.CR.history.slice(0, 60);
   t.done = true;
 }
-const crXpMul = () => 1 + crStaffList().reduce((t, x) => t + (x.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0);
+const crXpMul = () => 1 + crStaffList().reduce((t, x) => t + (x.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp();
+// ---------- negócios: investimentos permanentes para o fim da carreira ----------
+// cada linha tem níveis; cada nível exige o anterior e algo da carreira (fama, títulos, ranking)
+const crTitlesAt = t => Object.entries($s.CR.titles || {}).reduce((n, [k, v]) => n + (+k >= t ? v : 0), 0);
+const INVEST = {
+  marca: { nome: 'Marca pessoal', ic: '🏷️', niveis: [
+    { nome: 'Marca própria', preco: 25000, desc: 'Royalties toda semana conforme a sua fama; a fama cai pela metade da velocidade.', req: () => $s.CR.fama >= 35 ? '' : 'Precisa de 35 de fama' },
+    { nome: 'Raquete assinatura', preco: 70000, desc: 'Sua raquete sob medida: melhor que a Zênite e com +2 nos seus três melhores atributos. Royalties em dobro.', req: () => crTitlesAt(5) >= 1 ? '' : 'Precisa de um título de BT100 ou maior' },
+    { nome: 'Linha completa de produtos', preco: 180000, desc: 'Roupas, bolas e acessórios com seu nome: royalties ×3,5 e +2 de fama a cada título.', req: () => $s.CR.fama >= 70 && crTitlesAt(7) >= 1 ? '' : 'Precisa de 70 de fama e um título de BT400 ou maior' },
+  ] },
+  quadra: { nome: 'Quadra de beach', ic: '🏖️', niveis: [
+    { nome: 'Quadra própria', preco: 15000, desc: 'Treinar fica de graça e rende +3 pontos de evolução; aulas rendem 40% mais.', req: () => '' },
+    { nome: 'Arena com iluminação', preco: 45000, desc: 'Aluguel da arena toda semana; treino gasta menos energia (10 em vez de 15).', req: () => crTitlesAt(4) >= 1 ? '' : 'Precisa de um título de BT50 ou maior' },
+  ] },
+  ct: { nome: 'Centro de treinamento (CT)', ic: '🏟️', niveis: [
+    { nome: 'CT', preco: 80000, desc: '+35% de pontos de evolução e +6 de energia por semana.', req: () => (($s.CR.inv || {}).quadra || 0) >= 1 ? '' : 'Precisa da quadra própria' },
+    { nome: 'CT de alto rendimento', preco: 200000, desc: 'Mais +35% de evolução e +2 de potencial (o limite dos seus atributos).', req: () => crTitlesAt(6) >= 2 ? '' : 'Precisa de dois títulos de BT200 ou maiores' },
+    { nome: 'Academia de base', preco: 420000, desc: 'Mais +20% de evolução, +1 de potencial e mensalidades dos alunos toda semana.', req: () => crTitlesAt(8) >= 1 ? '' : 'Precisa de um título do Mundial' },
+  ] },
+};
+const crInv = k => (($s.CR && $s.CR.inv) || {})[k] || 0;
+function crInvXp() { if (!$s.CR) return 0; const c = crInv('ct'); return (c >= 1 ? .35 : 0) + (c >= 2 ? .35 : 0) + (c >= 3 ? .2 : 0); }
+function crInvBuy(k) {
+  const tr = INVEST[k], lv = crInv(k), n = tr && tr.niveis[lv]; if (!n) return;
+  const why = n.req(); if (why) { $s.CR.lastMsg = why + '.'; return; }
+  if ($s.CR.money < n.preco) { $s.CR.lastMsg = 'Dinheiro insuficiente para ' + n.nome + '.'; return; }
+  $s.CR.money -= n.preco; $s.CR.inv = Object.assign({}, $s.CR.inv, { [k]: lv + 1 });
+  if (k === 'ct' && lv + 1 === 2) $s.CR.pot = Math.min(99, $s.CR.pot + 2);
+  if (k === 'ct' && lv + 1 === 3) $s.CR.pot = Math.min(99, $s.CR.pot + 1);
+  if (k === 'marca' && lv + 1 === 2) { crSignature(); if (!$s.CR.rackets.includes('assinatura')) $s.CR.rackets.push('assinatura'); $s.CR.racket = 'assinatura'; $s.CR.me.look.racket = 'assinatura'; }
+  $s.CR.lastMsg = 'Investimento feito: ' + n.nome + '.'; crSyncChars(); saveCareer();
+}
+// raquete assinatura: Zênite + 2 nos três melhores atributos do jogador
+function crSignature() {
+  if (crInv('marca') < 2) return;
+  const b = Object.assign({}, RACKET_STATS.zenite.b);
+  Object.entries($s.CR.me.a).sort((x, y) => y[1] - x[1]).slice(0, 3).forEach(([k]) => { b[k] = (b[k] || 0) + 2; });
+  RACKET_STATS.assinatura = { nome: 'Assinatura ' + $s.CR.me.name, preco: 0, desc: 'Sua raquete sob medida, da sua marca.', b };
+}
+// renda semanal dos investimentos
+function crInvWeek() {
+  let g = 0;
+  const m = crInv('marca'); if (m) g += Math.round(($s.CR.fama || 0) * 12 * (m >= 3 ? 3.5 : m >= 2 ? 2 : 1));
+  if (crInv('quadra') >= 2) g += 350 * (crMaxTier() + 1);
+  if (crInv('ct') >= 3) g += 2500;
+  if (g) $s.CR.money += g;
+  return g;
+}
 // ---------- semana ----------
 function crNextWeek(note) {
   $s.CR.tour = null;
-  $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0));
+  $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0) + (crInv('ct') >= 1 ? 6 : 0));
   crSimWorld();
   $s.CR.week++;
   let msg = note || '';
   const spm = crSponsorWeek(); if (spm) msg += (msg ? ' ' : '') + spm;
-  crAddFama(-.4); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
+  const ivg = crInvWeek(); if (ivg) msg += (msg ? ' ' : '') + 'Negócios renderam ' + money(ivg) + '.';
+  crAddFama(crInv('marca') ? -.2 : -.4); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
   crMaybeSponsor();
   if (Math.random() < .3) { const ev = crRollEvent(); if (ev) msg += (msg ? ' ' : '') + ev; }
   if ($s.CR.week > SEASON_WEEKS) {
@@ -369,10 +420,10 @@ function crNextWeek(note) {
   $s.CR.lastMsg = msg; crSyncChars(); saveCareer();
 }
 function crTrain() {
-  const cost = 80 * (crMaxTier() + 1);
+  const cost = crInv('quadra') ? 0 : 80 * (crMaxTier() + 1);
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
   if ($s.CR.energy < 20) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
-  $s.CR.money -= cost; $s.CR.energy -= 15; const g = Math.round(4 * crXpMul()); $s.CR.pe += g;
+  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 10 : 15; const g = Math.round((4 + (crInv('quadra') ? 3 : 0)) * crXpMul()); $s.CR.pe += g;
   crNextWeek('Semana de treino: +' + g + ' pontos de evolução.');
 }
 function crCoach() { const g = crLessonIncome(); $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5); crNextWeek('Semana dando aulas: +' + money(g) + '.'); }
@@ -409,6 +460,7 @@ function crMigrate() {
   $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0;
   if ($s.CR.staff.tecnico) { delete $s.CR.staff.tecnico; $s.CR.staff.tec2 = true; }
   if ($s.CR.staff.preparador) { delete $s.CR.staff.preparador; $s.CR.staff.prep = true; }
+  $s.CR.inv = $s.CR.inv || {};
   // mundo maior: completa os saves antigos até POOL_N por gênero, com uma temporada de pontos simulada para os novos
   const nM = $s.CR.pool.filter(c => !c.fem).length;
   if (nM < POOL_N) {
@@ -427,7 +479,7 @@ function crHire(id) {
 }
 // ---------- aulas ----------
 // rende conforme o nível, sempre bem menos que o título do seu nível
-const crLessonIncome = () => Math.max(120, Math.round(TIERS[crMaxTier()].prize[0] * .15 / 10) * 10);
+const crLessonIncome = () => Math.round(Math.max(120, Math.round(TIERS[crMaxTier()].prize[0] * .15 / 10) * 10) * (crInv('quadra') ? 1.4 : 1));
 // ---------- fama e patrocínio ----------
 const BRANDS = ['Areia Fina', 'Solar Max Protetor', 'MarAzul Seguros', 'Coco Gelado', 'Tropicália Moda Praia', 'Ondas Telecom', 'Brisa Energéticos', 'Duna Óculos', 'Litoral Bank', 'Salina Isotônico', 'Farol Viagens', 'Arrecife Calçados', 'Maresia Relógios', 'Sol & Sal Cosméticos'];
 function crAddFama(v) { $s.CR.fama = clamp(($s.CR.fama || 0) + v, 0, 100); }
@@ -485,4 +537,4 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
