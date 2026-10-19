@@ -33,7 +33,7 @@ function smashIdealPoint() {
   return null;
 }
 function startMeter(kind, type) {
-  Object.assign(MTR, { active: true, kind, type, t: 0, v: 0, rate: 0, armedTap: false, showT: 0 });
+  Object.assign(MTR, { active: true, kind, type, t: 0, v: 0, rate: 0, tr: null, seen: false, armedTap: false, showT: 0 });
   const half = ZONE[S.settings.diff];
   if (kind === 'smash') {
     // a faixa verde fica parada; a velocidade da barra se ajusta para o verde coincidir com a chegada da bola

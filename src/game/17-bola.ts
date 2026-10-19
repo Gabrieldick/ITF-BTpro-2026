@@ -59,9 +59,13 @@ function step(dt) {
   if (MTR.active) {
     MTR.t += dt;
     if (MTR.kind === 'smash') {
-      const tr = timeToSmash(human);
-      if (tr !== null && MTR.v < MTR.center) MTR.rate = clamp((MTR.center - MTR.v) / Math.max(tr - .03, .04), 1 / 2.2, 1 / .25);
-      else if (!MTR.rate) MTR.rate = 1 / MTR.fill;
+      // a barra chega no verde quando a bola chega no ponto de smash; bola alta = barra lenta
+      let tr = timeToSmash(human);
+      if (tr === null && MTR.tr != null && MTR.tr > dt) tr = MTR.tr - dt; // alcance some por um instante (correndo): mantém a estimativa
+      MTR.tr = tr;
+      if (tr !== null) { MTR.seen = true; if (MTR.v < MTR.center) MTR.rate = clamp((MTR.center - MTR.v) / Math.max(tr - .03, .04), .06, 1 / .25); }
+      else if (MTR.seen) MTR.rate = Math.max(MTR.rate, 1);
+      else MTR.rate = Math.max(0, MTR.center * .55 - MTR.v) * 1.4; // bola ainda fora de alcance: a barra sobe devagar e espera (se a bola já passou, segue até estourar)
       MTR.v += MTR.rate * dt;
     } else MTR.v = MTR.t / MTR.fill;
     const v = MTR.v;
