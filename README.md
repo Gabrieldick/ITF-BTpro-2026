@@ -1,17 +1,17 @@
 # Ponto de Ouro — beach tennis 3D
 
-Jogo de beach tennis 3D feito em HTML + JavaScript com [three.js](https://threejs.org/) (r128). Roda direto no navegador, sem instalar nada.
+Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e [Vite](https://vitejs.dev/). Roda no navegador, no computador e no celular.
 
-## Jogar
+**Jogar online:** https://gabrieldick.github.io/ITF-BTpro-2026/
 
-Abra **`ponto-de-ouro.html`** no navegador (dois cliques). O arquivo já traz embutidos os modelos 3D, as texturas e os sons.
+**Jogar sem internet:** abra `ponto-de-ouro.html` (dois cliques). É o jogo inteiro num arquivo só, com modelos, texturas e sons embutidos.
 
-### Modos
-- **Partida rápida:** simples ou dupla, escolhendo atletas do circuito (com overall, atributos, altura e estilo de jogo).
+## Modos
+- **Partida rápida:** simples ou dupla, escolhendo atletas do circuito (overall, atributos, altura e estilo de jogo).
 - **Campeonato:** chave de 8 duplas (masculino, feminino ou misto) com as duplas reais da temporada ou a sua dupla montada.
-- **Carreira:** crie seu jogador e suba do Amador C ao Mundial: ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
+- **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
 
-### Controles (teclado)
+## Controles (teclado)
 | Tecla | Ação |
 |---|---|
 | WASD / setas | correr |
@@ -23,21 +23,43 @@ Abra **`ponto-de-ouro.html`** no navegador (dois cliques). O arquivo já traz em
 | Espaço | defesa |
 | C | 1ª / 3ª pessoa |
 | − / = | FOV da 1ª pessoa |
-| B / N / V | assistências: seguir a bola / onde a bola cai / mira |
+| B / N / V | assistências: seguir a bola / onde a bola cai / flecha de mira |
 | Esc | pausa |
 
 No celular: joystick e botões na tela.
+
+## Desenvolvimento
+
+Precisa do [Node.js](https://nodejs.org/) 20 ou mais novo.
+
+```
+npm install
+npm run dev            # servidor local com recarga automática
+npm run build          # site em dist/ (o que vai para o GitHub Pages)
+npm run build:single   # ponto-de-ouro.html, o jogo num arquivo só
+npm run typecheck      # verificação do TypeScript
+npm run simular        # joga uma partida simulada no Node e mostra as estatísticas
+```
+
+A cada push na `main`, o GitHub Actions compila e publica o site (`.github/workflows/pages.yml`).
 
 ## Estrutura
 
 | Pasta/arquivo | Conteúdo |
 |---|---|
-| `src/ponto-de-ouro.src.html` | código-fonte do jogo |
-| `build.js` | gera `ponto-de-ouro.html` embutindo modelos, texturas e sons (`node build.js`) |
-| `models/` | modelos 3D originais e convertidos (`*.bin`, texturas `*.jpg`) |
-| `Sounds/` | sons de batida |
-| `ferramentas/` | conversores de modelos, simulador de partidas e histórico de mudanças (veja `ferramentas/LEIA-ME.md`) |
-| `.claude/` | servidor local de teste (`serve.js`) e visualizador de modelos |
+| `index.html` | página do jogo (menus e telas) |
+| `src/main.ts` | entrada: carrega os recursos e inicia o jogo |
+| `src/assets.ts` | lista e carregamento de modelos, texturas e som |
+| `src/state.ts` | estado compartilhado entre módulos |
+| `src/styles.css` | estilos da interface |
+| `src/game/` | o jogo em módulos, na ordem de execução: base, estado, render, cenário, poses, atletas, modelos, áudio, interface, física, mira, controles, campeonato, carreira, IA, bola, animação e laço principal |
+| `public/assets/` | recursos usados pelo jogo (modelos convertidos, texturas, som) |
+| `models/`, `Sounds/` | arquivos originais baixados (fonte dos recursos) |
+| `ferramentas/` | conversores de modelos, simulador de partidas e histórico das mudanças (veja `ferramentas/LEIA-ME.md`) |
+| `scripts/build-single.mjs` | gera o HTML de arquivo único |
+| `legado/` | a versão antiga em arquivo único (antes da divisão em módulos) |
+
+Os módulos em `src/game/` ainda têm `// @ts-nocheck`: compilam como TypeScript, mas a tipagem estrita vai ser ligada aos poucos, módulo por módulo.
 
 ## Créditos dos recursos
 

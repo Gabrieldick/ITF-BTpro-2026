@@ -4,7 +4,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), os = r
 const root = path.join(__dirname, '..');
 const shots = process.env.SHOT_DIR || path.join(os.tmpdir(), 'golden-point-shots');
 fs.mkdirSync(shots, { recursive: true });
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.glb': 'model/gltf-binary', '.json': 'application/json' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.glb': 'model/gltf-binary', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.mp3': 'audio/mpeg', '.bin': 'application/octet-stream', '.svg': 'image/svg+xml' };
 http.createServer((req, res) => {
   if (req.method === 'POST' && req.url.startsWith('/__shot')) {
     const name = (new URL(req.url, 'http://x').searchParams.get('name') || 'shot').replace(/[^\w-]/g, '');

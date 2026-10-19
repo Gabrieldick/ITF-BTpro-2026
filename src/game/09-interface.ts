@@ -1,0 +1,168 @@
+// @ts-nocheck
+// elementos da interface e placar
+import './08-audio';
+import { $s } from '../state';
+import { C, HALF_W, ZONE3, shortOf } from './00-base';
+import { S } from './01-estado';
+import { linesGroup } from './03-cenario';
+import { cpuA, cpuB, human, partner } from './06-modelos';
+import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail } from './07-glb';
+import { applyGfx, sndWhistle } from './08-audio';
+import { handPos } from './11-mira';
+import { MTR, applyCam } from './12-controles';
+import { champMatchEnded } from './13-campeonato';
+import { careerMatchEnded } from './14-carreira';
+import { humanPlan } from './16-ia';
+// ---------- DOM ----------
+const $ = id => document.getElementById(id);
+const el = {
+  menu: $('menu'), pause: $('pause'), over: $('over'), banner: $('banner'), bTitle: $('bTitle'), bSub: $('bSub'),
+  fb: $('fb'), reach: $('reach'), btnCam: $('btnCam'), btnSnd: $('btnSnd'), golden: $('golden'),
+  meter: $('meter'), mFill: document.querySelector('#meter .fill'), mZone: document.querySelector('#meter .zone'), mRes: document.querySelector('#meter .res'), mLbl: document.querySelector('#meter .lbl'),
+  rowP: $('rowP'), rowC: $('rowC'), gP: $('gP'), gC: $('gC'), pP: $('pP'), pC: $('pC'), stick: $('stick'), knob: $('knob'),
+};
+const shotBtns = {};
+document.querySelectorAll('.shot').forEach(b => { shotBtns[b.dataset.shot] = b; });
+const isTouch = () => document.body.classList.contains('touch');
+const dupla = () => S.settings.mode === 'dupla';
+let bannerTimer = 0;
+function banner(title, sub, ms, gold) {
+  el.bTitle.textContent = title; el.bSub.textContent = sub || '';
+  el.bTitle.classList.toggle('gold', !!gold);
+  el.banner.classList.remove('hide');
+  clearTimeout(bannerTimer);
+  if (ms) bannerTimer = setTimeout(() => el.banner.classList.add('hide'), ms);
+}
+function hideBanner() { clearTimeout(bannerTimer); el.banner.classList.add('hide'); }
+let fbTimer = 0;
+function feedback(main, small, kind) {
+  el.fb.innerHTML = ''; el.fb.append(main);
+  if (small) { const s = document.createElement('small'); s.textContent = small; el.fb.append(s); }
+  el.fb.classList.toggle('cpu', kind === 'cpu'); el.fb.classList.toggle('mate', kind === 'mate'); el.fb.classList.add('show');
+  clearTimeout(fbTimer); fbTimer = setTimeout(() => el.fb.classList.remove('show'), 900);
+}
+// ---------- Placar ----------
+const PT = ['0', '15', '30', '40'];
+function renderBoard() {
+  const sc = S.score;
+  const tn = t => $s.teams[t].map(p => p.char ? (dupla() ? shortOf(p.char).slice(0, 4) : shortOf(p.char)) : 'CPU').join('/');
+  $('nmP').textContent = tn(0); $('nmC').textContent = tn(1);
+  el.gP.textContent = sc.games[0]; el.gC.textContent = sc.games[1];
+  el.pP.textContent = sc.tb ? sc.pts[0] : PT[Math.min(3, sc.pts[0])];
+  el.pC.textContent = sc.tb ? sc.pts[1] : PT[Math.min(3, sc.pts[1])];
+  el.rowP.classList.toggle('serving', S.server === 0);
+  el.rowC.classList.toggle('serving', S.server === 1);
+  el.golden.textContent = sc.tb ? 'TIE-BREAK' : 'PONTO DE OURO';
+  el.golden.hidden = !(sc.tb || isGolden());
+}
+const isGolden = () => !S.score.tb && S.score.pts[0] === 3 && S.score.pts[1] === 3;
+function rotateServe() { S.serverIdx[S.server]++; S.server = 1 - S.server; }
+function awardPoint(w) {
+  const sc = S.score, l = 1 - w; S.stats.pts[w]++;
+  if (sc.tb) {
+    sc.pts[w]++; S.tbPlayed++;
+    if (sc.pts[w] >= 7 && sc.pts[w] - sc.pts[l] >= 2) { sc.games[w]++; S.matchWinner = w; return 'match'; }
+    if (S.tbPlayed % 2 === 1) rotateServe();
+    return 'point';
+  }
+  sc.pts[w]++;
+  if (sc.pts[w] >= 4) { // sem vantagem: no 40-40 o próximo ponto decide
+    sc.games[w]++; sc.pts = [0, 0];
+    const N = S.settings.games;
+    rotateServe();
+    if (sc.games[w] >= N && sc.games[w] - sc.games[l] >= 2) { S.matchWinner = w; return 'match'; }
+    if (sc.games[0] === N && sc.games[1] === N) { sc.tb = true; S.tbPlayed = 0; return 'tb'; }
+    return 'game';
+  }
+  return 'point';
+}
+function pointTo(w, reason) {
+  if (S.mode === 'dead') return;
+  S.mode = 'dead'; S.deadT = 2.0;
+  S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
+  const ev = awardPoint(w);
+  renderBoard();
+  sndWhistle(w === 0);
+  landRing.visible = false;
+  const g = S.score.games;
+  const d = dupla();
+  let title = w === 0 ? (d ? 'Ponto de vocês!' : 'Ponto seu!') : 'Ponto da CPU';
+  let sub = reason;
+  if (ev === 'game') { title = w === 0 ? (d ? 'Game de vocês!' : 'Game seu!') : 'Game da CPU'; sub = `${reason} · games ${g[0]}–${g[1]}`; }
+  if (ev === 'tb') { title = 'Tie-break!'; sub = `${g[0]}–${g[1]} nos games. Primeiro a 7 pontos, com 2 de diferença.`; }
+  if (ev === 'match') { title = w === 0 ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set da CPU'; sub = reason; S.deadT = 2.4; }
+  banner(title, sub, 0, ev === 'match' || ev === 'game');
+}
+function setupPoint() {
+  S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; ball.state = 'held'; ball.vel.set(0, 0, 0);
+  S.assign = [null, null]; S.assignId = [-1, -1];
+  $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.var = ''; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.ai.planId = -1; p.ai.reactT = 0; p.ai.letGo = false; p.ai.swung = false; });
+  MTR.active = false; el.meter.hidden = true;
+  humanPlan.id = -1;
+  const st = $s.teams[S.server];
+  S.serverPlayer = st[S.serverIdx[S.server] % st.length];
+  const sp = S.serverPlayer;
+  const sgn = t => t === 0 ? 1 : -1;
+  if (!dupla()) {
+    sp.pos.set(.7 * sgn(sp.team), 0, 8.6 * sgn(sp.team));
+    const r = $s.teams[1 - S.server][0]; r.pos.set(0, 0, (ZONE3 + .3) * sgn(r.team));
+  } else {
+    $s.players.forEach(p => {
+      const s = sgn(p.team);
+      if (p === sp) p.pos.set(p.slot * 1.4, 0, 8.6 * s);
+      else if (p.team === S.server) p.pos.set(p.slot * 1.9, 0, 4.4 * s);
+      else p.pos.set(p.slot * 1.9, 0, (ZONE3 + .3) * s);
+    });
+  }
+  if (sp !== human) S.aiServeT = 1.5;
+  placeHeldBall(); resetTrail(); renderBoard();
+  const gold = isGolden();
+  if (sp === human) {
+    banner(gold ? 'Ponto de ouro' : 'Seu saque', isTouch() ? 'Segure um golpe para lançar a bola e solte na faixa verde.' : 'Segure J forte · K alto · L curto · Espaço seguro e solte na faixa verde.', 0, gold);
+  } else if (sp === partner) {
+    banner(gold ? 'Ponto de ouro' : 'Saque da sua parceira', 'Fique pronto na sua metade da quadra.', 1500, gold);
+  } else {
+    banner(gold ? 'Ponto de ouro' : 'Saque da CPU', 'Prepare-se para devolver sem deixar cair.', 1500, gold);
+  }
+}
+function placeHeldBall() { handPos(S.serverPlayer || human, ball.pos); }
+function configureMode() {
+  const d = dupla();
+  C.halfW = HALF_W[S.settings.mode];
+  linesGroup.simples.visible = !d; linesGroup.dupla.visible = d;
+  $s.players = d ? [human, partner, cpuA, cpuB] : [human, cpuA];
+  $s.teams = d ? [[human, partner], [cpuA, cpuB]] : [[human], [cpuA]];
+  partner.model.group.visible = d; cpuB.model.group.visible = d;
+  const mySide = S.settings.side === 'esquerda' ? -1 : 1;
+  human.slot = d ? mySide : 0; partner.slot = -mySide; cpuA.slot = d ? 1 : 0; cpuB.slot = -1;
+}
+function newMatch() {
+  assignCharacters();
+  configureMode();
+  S.score = { pts: [0, 0], games: [0, 0], tb: false };
+  S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
+  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 };
+  el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
+  document.body.classList.remove('in-menu');
+  clearPrints();
+  applyCam(); applyGfx(); applyRackets(); applyPlayerStyle();
+  setupPoint();
+}
+function showOver() {
+  S.mode = 'over'; hideBanner();
+  const w = S.matchWinner, g = S.score.games;
+  const dn = { facil: 'fácil', medio: 'médio', dificil: 'difícil' }[S.settings.diff];
+  $('overEyebrow').textContent = `Fim de set · ${dupla() ? 'dupla' : 'simples'} · ${dn}`;
+  $('overTitle').textContent = w === 0 ? (dupla() ? 'VOCÊS VENCERAM' : 'VOCÊ VENCEU') : 'A CPU VENCEU';
+  $('overScore').textContent = `${g[0]}–${g[1]}`;
+  $('stPts').textContent = `${S.stats.pts[0]}–${S.stats.pts[1]}`;
+  $('stRally').textContent = S.stats.maxRally;
+  $('stSmash').textContent = S.stats.smashes;
+  const inChamp = !!S.champActive, inCareer = !!S.careerActive;
+  if (inChamp) champMatchEnded(w === 0);
+  if (inCareer) careerMatchEnded(w === 0);
+  $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
+  el.over.hidden = false;
+}
+
+export { $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

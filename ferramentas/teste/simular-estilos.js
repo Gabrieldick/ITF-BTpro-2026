@@ -13,7 +13,7 @@ const listeners={};let now=0;let raf=null;
 const document={getElementById:getEl,querySelectorAll:()=>shots,querySelector:(q)=>{if(!q.startsWith("input"))return getEl(q);const m=q.match(/name=(\w+)/);const v={pick:undefined,players:'3d',racket:'proteo',mode:process.argv[5]||'simples',cam:'3p',diff:diff||'medio',len:'4',gfx:'alto'}[m&&m[1]];return {value:v,checked:true}},createElement:()=>({getContext:()=>dummy,width:0,height:0,append(){},style:{}}),body:mkEl('body'),addEventListener(){},hidden:false};
 const sb={THREE,document,window:null,performance:{now:()=>now},requestAnimationFrame:f=>{raf=f},setTimeout:(f)=>0,clearTimeout(){},innerWidth:1280,innerHeight:800,devicePixelRatio:1,matchMedia:()=>({matches:false}),localStorage:{getItem:()=>null,setItem(){}},addEventListener:(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)},KeyboardEvent:function(){},console,Math,JSON,Object,Array,Set,Float32Array,Symbol,Number};
 sb.window=sb;vm.createContext(sb);
-const m=src.match(/<script>([\s\S]*?)<\/script>/);vm.runInContext(m[1],sb);
+sb.THREE_GLTF={GLTFLoader:dummy}; sb.THREE_SKEL=dummy; vm.runInContext(src,sb);
 const key=k=>{(listeners.keydown||[]).forEach(f=>f({key:k,repeat:false,preventDefault(){}}));(listeners.keyup||[]).forEach(f=>f({key:k}))};
 setTimeout(()=>{getEl('menu').hidden=false;
 // start match: call btnPlay handler -> we can't (stub addEventListener). emulate Enter key on menu

@@ -1,0 +1,25 @@
+{
+  "name": "ponto-de-ouro",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Jogo de beach tennis 3D (three.js)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "node scripts/build-single.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "build:sim": "vite build -c vite.sim.config.ts",
+    "simular": "npm run build:sim && node ferramentas/teste/simular.js ferramentas/teste/build/jogo-sim.js medio bot dupla"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.170.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vite-plugin-singlefile": "2.0.3"
+  }
+}
