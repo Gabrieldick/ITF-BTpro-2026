@@ -96,7 +96,7 @@ function doHit(p, type, q, isServe, mod) {
     if (sweet < .3) contactWord = 'NO ARO'; else if (sweet > .9) contactWord = 'NO MEIO';
     // bater adiantado puxa a bola para a diagonal; atrasado, para a paralela
     const early = fwd - iFwd;
-    if (!over && Math.abs(early) > .3) { mod.aimShift = clamp(-early * 1.3 * (bhSide ? -1 : 1), -1.2, 1.2) * rightS; contactWord = contactWord || (early > 0 ? 'ADIANTADO' : 'ATRASADO'); }
+    if (!over && Math.abs(early) > .3) { const ms = key === 'curta' ? .4 : 1.2; mod.aimShift = clamp(-early * 1.3 * (bhSide ? -1 : 1), -ms, ms) * rightS; contactWord = contactWord || (early > 0 ? 'ADIANTADO' : 'ATRASADO'); }
   }
   const inSpeed = Math.hypot(ball.vel.x, ball.vel.z);
   // devolução de saque pesa menos (o recebedor já está esperando a bola)
@@ -116,17 +116,22 @@ function doHit(p, type, q, isServe, mod) {
     const dq = mod.timing === undefined ? grade : grade * .6 + mod.timing * .4;
     const dk = clamp((dq - .4) / .45, 0, 1);
     // contra pancada, a defesa boa (e às vezes a amarela) pode virar um lob alto para o fundo
-    if ((pressure > .3 || inSpeed > 14) && dq >= .5 && Math.random() < lerp(.3, .55, dk)) {
+    if (S.rally !== 1 && (pressure > .3 || inSpeed > 14) && dq >= .5 && Math.random() < lerp(.3, .55, dk)) { // na devolução de saque, não
       spec.T = rand(1.75, 2.15); spec.depth = [6.3, 7.4]; spec.margin = .5; spec.label = 'DEFESA ALTA';
     } else {
-      spec.T = lerp(1.25, .82, dk) * lerp(1.06, .94, attrK(p, 'def'));
-      spec.margin = lerp(.3, .14, dk);
+      spec.T = lerp(1.25, .78, dk) * lerp(1.06, .94, attrK(p, 'def'));
+      spec.margin = lerp(.3, .07, dk); // bem batida passa rente à rede (abaixo da altura de finalização do jogador da rede)
     }
   }
   let lobLong = 0, finisher = false;
   if (!isServe && key === 'smash' && Math.abs(p.pos.z) < 2.2 && ball.pos.y > 2.0) {
     finisher = true;
     spec.speed *= 1.25; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
+  }
+  // smash do fundo (além de 3,5 m da rede): chega mais lento e menos preciso, para todos
+  if (!isServe && key === 'smash' && !finisher && !mod.volley) {
+    const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
+    if (far > 0) { spec.speed *= 1 - far * .18; spec.noise *= 1 + far * .8; mod.misBoost = (mod.misBoost || 0) + far * (.03 + (1 - attrK(p, 'smash')) * .2); mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .7); }
   }
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
     const lp = clamp(mod.lobPower, 0, 1);
@@ -145,7 +150,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07;
   }
   const dir = p.team === 0 ? -1 : 1;
-  const lim = C.halfW - .35;
+  const lim = C.halfW - (key === 'curta' ? .8 : .35); // curta mira mais para dentro (é toque, não precisa da linha)
   let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim() : aiAim(p), -lim, lim);
   if (mod.aimShift) aim = clamp(aim + mod.aimShift, -lim - .45, lim + .45);
   // variação do golpe conforme o contato
@@ -164,7 +169,7 @@ function doHit(p, type, q, isServe, mod) {
   let curtaK = 0;
   if (key === 'curta' && !pop && !isServe) {
     const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
-    curtaK = clamp((tq - .6) / .35, 0, 1) * lerp(.55, 1, clamp((attrK(p, 'curta') - .6) / .35, 0, 1));
+    curtaK = clamp((tq - .5) / .35, 0, 1) * lerp(.6, 1, clamp((attrK(p, 'curta') - .55) / .4, 0, 1));
     spec.gk = lerp(.95, 1.6, curtaK) * (vr === 'baixa' ? .93 : 1);
     spec.margin = lerp(.14, .07, curtaK);
     if (curtaK > .8 && !finisher) spec.label = 'CURTA MATADORA';

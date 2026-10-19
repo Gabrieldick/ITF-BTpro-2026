@@ -203,11 +203,7 @@ function updateHuman(dt) {
         else mod = { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt) };
         // distância da rede: do fundo o smash chega mais lento, menos preciso e erra mais
         const far = res === 'voleio' ? 0 : clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
-        if (far > 0) {
-          mod.speedMul = (mod.speedMul || 1) * (1 - far * .24); mod.noiseMul = (mod.noiseMul || 1) * (1 + far * 1.1);
-          mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .8); mod.misBoost = (mod.misBoost || 0) + far * (.05 + (1 - skN) * .3);
-          if (far > .5) sw.meter.pos = 'DO FUNDO';
-        }
+        if (far > .5) sw.meter.pos = 'DO FUNDO'; // a perda do smash do fundo é aplicada no golpe, igual para você e para a IA
         // posicionamento: parado embaixo da bola (com ela sobre o ombro direito) rende mais; longe dela, menos
         const ip = sw.meter.ideal;
         if (overhead && ip) {
@@ -294,10 +290,10 @@ function updateAI(p, dt) {
         // bola difícil de verdade: muito rápida (pesa a defesa de cada um) ou que obriga a esticar / correr no limite
         let hardK = 0;
         { const sp = Math.hypot(ball.vel.x, ball.vel.z), pl = p.ai.plan;
-          hardK += clamp((sp - 15) / 8, 0, 1) * lerp(.26, .08, attrK(p, 'def'));
-          if (pl) { const dd = Math.hypot(pl.pt.x - p.pos.x, pl.pt.z - p.pos.z), need = Math.max(0, dd - .9) / (D.speed * Math.max(.05, pl.t - D.react)); hardK += clamp((need - .7) / .4, 0, 1) * .2; if (!pl.ok) hardK += .35; }
+          hardK += clamp((sp - 16) / 8, 0, 1) * lerp(.22, .06, attrK(p, 'def'));
+          if (pl) { const dd = Math.hypot(pl.pt.x - p.pos.x, pl.pt.z - p.pos.z), need = Math.max(0, dd - .9) / (D.speed * Math.max(.05, pl.t - D.react)); hardK += clamp((need - .8) / .4, 0, 1) * .15; if (!pl.ok) hardK += .3; }
           if (S.rally === 1) hardK *= .5; }
-        p.ai.willMiss = Math.random() < hardK + D.miss * (fast ? (S.rally === 1 ? .9 : 2) : 1) + (ball.oppMiss || 0) * (S.rally === 1 ? .5 : 1) + (p.ai.shot === 'smash' ? (1 - attrK(p, 'smash')) * .12 : 0) + (p.ai.shot === 'smash' || (p.ai.plan && p.ai.plan.pt.y >= 2.1) ? clamp(((ball.apex || 0) - 5.5) / 4, 0, 1) * .12 : 0);
+        p.ai.willMiss = Math.random() < hardK + D.miss * (fast ? (S.rally === 1 ? .9 : 1.6) : 1) + (ball.oppMiss || 0) * (S.rally === 1 ? .5 : 1) + (p.ai.shot === 'smash' ? (1 - attrK(p, 'smash')) * .12 : 0) + (p.ai.shot === 'smash' || (p.ai.plan && p.ai.plan.pt.y >= 2.1) ? clamp(((ball.apex || 0) - 5.5) / 4, 0, 1) * .12 : 0);
         p.ai.shot = chooseAIShot(p, p.ai.plan ? p.ai.plan.pt.y : ball.pos.y);
         p.ai.swung = false;
         const land = predictLanding();
