@@ -250,13 +250,26 @@ function homeOf(p) {
   const s = p.team === 0 ? 1 : -1;
   const hz = styleOf(p).home;
   if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz, 3.4, 6.4)];
-  return [p.slot * 1.9 + clamp(ball.pos.x * .25, -.8, .8), s * clamp(4.6 + hz, 3.3, 6.2)];
+  // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
+  // o parceiro também acompanha a posição real do companheiro
+  const fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
+  const center = clamp(fx * .5, -1.7, 1.7), hw = 1.8 - Math.abs(center) * .18;
+  let x = center + p.slot * hw;
+  const mate = $s.teams[p.team].find(o => o !== p);
+  if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
+  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * clamp(4.6 + hz, 3.3, 6.2)];
+}
+// recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio
+function receiveX(p) {
+  const sp = S.serverPlayer; if (!sp || !dupla()) return p.slot * 1.9;
+  const center = clamp(sp.pos.x * .4, -1.2, 1.2), hw = 1.6;
+  return clamp(center + p.slot * hw, -C.halfW + .4, C.halfW - .4);
 }
 function updateAI(p, dt) {
   const D = skillOf(p);
   let [tx, tz] = homeOf(p);
   if (S.mode === 'serve' || S.mode === 'toss') {
-    tx = p.pos.x; tz = p.pos.z;
+    tx = p.team !== S.server && dupla() ? receiveX(p) : p.pos.x; tz = p.pos.z;
     // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
     if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + 1.1);
   }
@@ -314,4 +327,4 @@ function updateAI(p, dt) {
   }
 }
 
-export { aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
+export { receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };

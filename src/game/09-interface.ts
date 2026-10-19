@@ -13,7 +13,7 @@ import { handPos } from './11-mira';
 import { MTR, applyCam } from './12-controles';
 import { champBoardTitle, champMatchEnded } from './13-campeonato';
 import { crBoardTitle, careerMatchEnded } from './14-carreira';
-import { humanPlan } from './16-ia';
+import { humanPlan, receiveX } from './16-ia';
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
 const el = {
@@ -118,11 +118,12 @@ function setupPoint() {
     sp.pos.set(.7 * sgn(sp.team), 0, 8.6 * sgn(sp.team));
     const r = $s.teams[1 - S.server][0]; r.pos.set(0, 0, (ZONE3 + .3) * sgn(r.team));
   } else {
+    sp.pos.set(sp.slot * 1.4, 0, 8.6 * sgn(sp.team)); // sacador primeiro: a recepção se ajeita pela posição dele
     $s.players.forEach(p => {
       const s = sgn(p.team);
       if (p === sp) p.pos.set(p.slot * 1.4, 0, 8.6 * s);
       else if (p.team === S.server) p.pos.set(p.slot * 1.9, 0, 4.4 * s);
-      else p.pos.set(p.slot * 1.9, 0, (ZONE3 + .3) * s);
+      else p.pos.set(receiveX(p), 0, (ZONE3 + .3) * s);
     });
   }
   if (sp !== human) S.aiServeT = 1.5;
