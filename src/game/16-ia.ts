@@ -105,7 +105,8 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   p.vel.x += (vx - p.vel.x) * k; p.vel.z += (vz - p.vel.z) * k;
 }
 function receiving(p) {
-  return p.team !== S.server && (S.mode === 'serve' || S.mode === 'toss' || (S.mode === 'rally' && S.rally < 2));
+  // só até o saque ser batido: depois quem recebe pode avançar (senão a curta de saque é impossível)
+  return p.team !== S.server && (S.mode === 'serve' || S.mode === 'toss');
 }
 function clampPos(p) {
   const lim = C.halfW + 3;

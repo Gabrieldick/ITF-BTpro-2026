@@ -13,7 +13,7 @@ const STEP = 1 / 120;
 const P_SPEED = 4.5;
 const SWING_DUR = 0.4;
 const TOSS_T = 0.72;      // tempo do lançamento até o ponto ideal de contato no saque
-const ZONE3 = 3;          // zona proibida de saque: quem recebe fica atrás dos 3 m até devolver
+const ZONE3 = 3;          // zona de saque: quem recebe fica atrás dos 3 m até o saque ser batido
 const SHORE_Z = -52;      // onde a areia afunda no mar
 const WATERLINE = -49.5;  // onde a água encontra a areia
 
