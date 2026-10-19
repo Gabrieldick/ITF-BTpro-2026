@@ -184,7 +184,7 @@ function updateHuman(dt) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
       const r = doHit(p, ps.type, ps.q, true, ps.mod);
-      feedback(r.label, r.mis ? 'ERROU' : RES_WORD[ps.res], null);
+      feedback(r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
     } else if (!sw.hit && !p.pendingServe && S.mode === 'rally' && contact) {
       let q = hitQuality(p, sw.type), mod = {};
       if (sw.meter) {
@@ -192,8 +192,9 @@ function updateHuman(dt) {
         // atributo: com smash baixo, mesmo o perfeito sai mais fraco e às vezes erra
         const skN = clamp((p.char ? p.char.a.smash : 70) - 50, 0, 45) / 45;
         if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.04, .22, skN), misBoost: (1 - skN) * .1 }; }
-        else if (res === 'cedo') mod = { speedMul: .85 - .3 * amt, misBoost: (1 - skN) * .08 };
-        else mod = { speedMul: 1.08, noiseMul: 1.8, misBoost: .25 + .4 * amt };
+        // fora do verde: amarelo perde pouco, laranja bastante, vermelho erra muito (cedo = fraco, tarde = erra mais)
+        else if (res === 'cedo') mod = { speedMul: lerp(.97, .6, amt), noiseMul: lerp(1.05, 1.8, amt), misBoost: (1 - skN) * .08 + amt * .2 };
+        else mod = { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt) };
         // distância da rede: do fundo o smash chega mais lento, menos preciso e erra mais
         const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
         if (far > 0) {
@@ -218,7 +219,7 @@ function updateHuman(dt) {
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);
       if (sw.type === 'defesa' || r.pressure > .2) defenseFeedback(r);
-      feedback(r.label, r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? RES_WORD[sw.meter.res] + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : ''), null);
+      feedback(r.label, r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : ''), null);
     }
     sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') feedback('SMASH', 'FUROU', null); sw.t = -1; sw.meter = null; }
   }

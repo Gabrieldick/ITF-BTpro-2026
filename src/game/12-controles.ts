@@ -51,7 +51,7 @@ function startMeter(kind, type) {
     // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
     const c = MTR.center, h = MTR.half, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
     el.mZone.style.bottom = '0'; el.mZone.style.height = '100%';
-    el.mZone.style.background = 'linear-gradient(0deg, #e5484d 0%, #e5484d ' + P(c - h - .26) + ', #ff8a1f ' + P(c - h - .13) + ', #ffd23f ' + P(c - h - .035) + ', #4fd18b ' + P(c - h) + ', #4fd18b ' + P(c + h) + ', #ffd23f ' + P(c + h + .03) + ', #ff8a1f ' + P(c + h + .1) + ', #e5484d ' + P(c + h + .2) + ', #e5484d 100%)';
+    el.mZone.style.background = 'linear-gradient(0deg, #e5484d 0%, #e5484d ' + P(c - h - .2) + ', #ff8a1f ' + P(c - h - .1) + ', #ffd23f ' + P(c - h - .035) + ', #4fd18b ' + P(c - h) + ', #4fd18b ' + P(c + h) + ', #ffd23f ' + P(c + h + .035) + ', #ff8a1f ' + P(c + h + .1) + ', #e5484d ' + P(c + h + .2) + ', #e5484d 100%)';
   }
   el.mFill.style.height = '0%';
 }
@@ -97,25 +97,27 @@ function releaseMeter() {
     return;
   }
   const res = Math.abs(diff) <= MTR.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
-  const amt = clamp((Math.abs(diff) - MTR.half) / .3, 0, 1);
+  // amt: 0 na borda do verde (amarelo) até 1 no começo do vermelho; a penalidade segue as cores da faixa
+  const amt = clamp((Math.abs(diff) - MTR.half) / .2, 0, 1);
+  const word = res === 'perfeito' ? RES_WORD[res] : (amt < .2 ? 'UM POUCO ' : amt > .85 ? 'MUITO ' : '') + RES_WORD[res];
   MTR.active = false; MTR.showT = .9;
-  el.meter.className = res; el.mRes.textContent = RES_WORD[res];
+  el.meter.className = res + (res !== 'perfeito' && amt < .2 ? ' quase' : ''); el.mRes.textContent = word;
   el.mFill.style.height = (clamp(v, 0, 1) * 100) + '%';
   if (MTR.kind === 'smash') {
     human.charging = false;
-    const sw = human.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, ideal: MTR.ideal }; sw.hold = 0; sw.var = swingVar('smash', ball.pos.y, human);
+    const sw = human.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: MTR.ideal }; sw.hold = 0; sw.var = swingVar('smash', ball.pos.y, human);
     if (ball.state === 'live' && ball.pos.y > 1.6) startJump(human, .42, .3);
-  } else serveRelease(res, amt);
+  } else serveRelease(res, amt, word);
 }
-function serveRelease(res, amt) {
+function serveRelease(res, amt, word) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
   const svN = clamp(human.char.a.saque - 50, 0, 45) / 45; // atributo de saque
   if (res === 'perfeito') { q = lerp(.85, 1, svN); mod = { speedMul: type === 'smash' ? lerp(.96, 1.1, svN) : 1, oppMissBoost: (type === 'smash' ? .05 : .02) * svN, misBoost: (1 - svN) * (type === 'smash' ? .14 : .05) }; }
-  else if (res === 'cedo') { q = .7 - .25 * amt; mod = { speedMul: .88 - .1 * amt }; }
-  else { q = .5 - .25 * amt; mod = { misBoost: (type === 'smash' ? .3 : .12) + .3 * amt }; }
+  else if (res === 'cedo') { q = lerp(.88, .5, amt); mod = { speedMul: lerp(.97, .78, amt), misBoost: amt * .08 }; }
+  else { q = lerp(.8, .35, amt); mod = { misBoost: lerp(.04, .5, amt) * (type === 'smash' ? 1 : .5) }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)
-  human.pendingServe = { type, q, mod, res };
+  human.pendingServe = { type, q, mod, res, word };
   const sw = human.swing; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = null;
 }
 function pressShot(type) {
