@@ -138,8 +138,10 @@ addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'number')) return;
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  // alguns teclados/programas mandam a repetição automática como aperto novo (sem e.repeat): tecla já segurada não conta de novo
+  const held = keys[k];
   keys[k] = true;
-  if (e.repeat) return;
+  if (e.repeat || held) return;
   if (!el.menu.hidden || !el.over.hidden) { if (k === 'enter' && !el.menu.hidden && !(document.activeElement && document.activeElement.tagName === 'BUTTON')) startFromMenu(); return; }
   if (SHOT_KEYS[k]) pressShot(SHOT_KEYS[k]);
   else if (k === 'c') toggleCam();
