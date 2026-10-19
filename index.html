@@ -17,9 +17,10 @@
 
 <!-- HUD -->
 <div id="board" class="hud" aria-live="polite">
-  <div class="row head"><span></span><span>SET</span><span style="text-align:center">G</span><span style="text-align:center">PTS</span></div>
-  <div class="row" id="rowP"><span class="srv"></span><span class="nm"><span class="dot-p">●</span> <span id="nmP">VOCÊ</span></span><span class="gm" id="gP">0</span><span class="pt" id="pP">0</span></div>
-  <div class="row" id="rowC"><span class="srv"></span><span class="nm"><span class="dot-c">●</span> <span id="nmC">CPU</span></span><span class="gm" id="gC">0</span><span class="pt" id="pC">0</span></div>
+  <div class="row head"><span></span><span></span><span>GAMES</span><span>PTS</span></div>
+  <div class="row" id="rowP"><span class="srv"></span><span class="nm" id="nmP">VOCÊ</span><span class="gm" id="gP">0</span><span class="pt" id="pP">0</span></div>
+  <div class="row" id="rowC"><span class="srv"></span><span class="nm" id="nmC">CPU</span><span class="gm" id="gC">0</span><span class="pt" id="pC">0</span></div>
+  <div id="sbTitle" hidden></div>
   <div id="golden" hidden>PONTO DE OURO</div>
 </div>
 <div id="tr" class="hud">
@@ -175,7 +176,10 @@
     <div id="crNew" style="display:grid;gap:14px">
       <div class="cr-saves-head"><b>Nova carreira</b></div>
       <p class="lede">Crie seu jogador, comece no Amador C e suba até o circuito mundial: ganhe dinheiro, evolua os atributos, compre equipamento e conquiste parceiros melhores vencendo-os.</p>
-      <label class="cr-field">Nome <input id="crName" maxlength="24" placeholder="Seu nome no circuito" autocomplete="off"></label>
+      <div class="cr-two">
+        <label class="cr-field">Nome <input id="crName" maxlength="24" placeholder="Seu nome no circuito" autocomplete="off"></label>
+        <label class="cr-field">Nacionalidade <span class="cr-nat"><span id="crNatFlag"></span><select id="crNat"></select></span></label>
+      </div>
       <div class="cr-two">
         <fieldset class="seg"><legend>Gênero</legend><div class="pills">
           <input type="radio" name="crGen" id="crGm" value="m" checked><label for="crGm">Masculino</label>

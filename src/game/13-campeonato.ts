@@ -98,6 +98,7 @@ function showBracket() {
   $('champMsg').innerHTML = msg;
   $('btnChampPlay').hidden = !mm;
 }
+function champBoardTitle() { if (!CH) return ''; const n = ['QUARTAS', 'SEMIFINAL', 'FINAL'][CH.round] || ''; return 'CAMPEONATO' + (n ? ' – ' + n : ''); }
 function playChampMatch() {
   const mm = myMatch(); if (!mm) return;
   const mine = CH.teams[CH.me], opp = CH.teams[mm.a === CH.me ? mm.b : mm.a];
@@ -136,4 +137,4 @@ $('btnChampNew').addEventListener('click', () => { CH = null; saveChamp(); $('ch
 $('btnChampMenu').addEventListener('click', () => { $('champ').hidden = true; toMenu(); });
 $('btnOverChamp').addEventListener('click', () => { el.over.hidden = true; showBracket(); });
 
-export { champMatchEnded };
+export { champBoardTitle, champMatchEnded };

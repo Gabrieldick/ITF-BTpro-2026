@@ -2,7 +2,8 @@
 // elementos da interface e placar
 import './08-audio';
 import { $s } from '../state';
-import { C, HALF_W, ZONE3, shortOf } from './00-base';
+import { C, HALF_W, ZONE3, nameOf, shortOf } from './00-base';
+import { flagSVG } from '../flags';
 import { S } from './01-estado';
 import { linesGroup } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
@@ -10,8 +11,8 @@ import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, la
 import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam } from './12-controles';
-import { champMatchEnded } from './13-campeonato';
-import { careerMatchEnded } from './14-carreira';
+import { champBoardTitle, champMatchEnded } from './13-campeonato';
+import { crBoardTitle, careerMatchEnded } from './14-carreira';
 import { humanPlan } from './16-ia';
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
@@ -45,8 +46,18 @@ function feedback(main, small, kind) {
 const PT = ['0', '15', '30', '40'];
 function renderBoard() {
   const sc = S.score;
-  const tn = t => $s.teams[t].map(p => p.char ? (dupla() ? shortOf(p.char).slice(0, 4) : shortOf(p.char)) : 'CPU').join('/');
-  $('nmP').textContent = tn(0); $('nmC').textContent = tn(1);
+  // "🏳 M. SPOTO / 🏳 N. GIANOTTI", como nas transmissões
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const pn = p => {
+    if (!p.char) return 'CPU';
+    const w = nameOf(p.char).trim().split(/s+/), sur = shortOf(p.char);
+    return '<span class="pl">' + flagSVG(p.char.pais) + (w.length > 1 ? '<span class="ini">' + esc(w[0][0].toUpperCase()) + '. </span>' : '') + esc(sur) + '</span>';
+  };
+  const tn = t => $s.teams[t].map(pn).join('<span class="sep"> / </span>');
+  const key = tn(0) + '|' + tn(1);
+  if (el.nmKey !== key) { el.nmKey = key; $('nmP').innerHTML = tn(0); $('nmC').innerHTML = tn(1); }
+  const title = S.careerActive ? crBoardTitle() : S.champActive ? champBoardTitle() : '';
+  $('sbTitle').textContent = title; $('sbTitle').hidden = !title;
   el.gP.textContent = sc.games[0]; el.gC.textContent = sc.games[1];
   el.pP.textContent = sc.tb ? sc.pts[0] : PT[Math.min(3, sc.pts[0])];
   el.pC.textContent = sc.tb ? sc.pts[1] : PT[Math.min(3, sc.pts[1])];
