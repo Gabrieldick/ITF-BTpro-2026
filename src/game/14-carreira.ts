@@ -51,12 +51,14 @@ function makeAttrs(target, style, rnd) {
   for (const [k] of ATTRS) a[k] = clamp(a[k], 30, 99);
   return a;
 }
-function genPool(seed) {
-  const rnd = mulberry(seed); const pick = arr => arr[Math.floor(rnd() * arr.length)];
+// ~400 por ranking (contando os astros reais); saves antigos com 150 são completados no crMigrate
+const POOL_N = 380;
+function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
+  const rnd = mulberry(seed + from * 7919); const pick = arr => arr[Math.floor(rnd() * arr.length)];
   const country = () => { let r = rnd(); for (const [c, w] of COUNTRY_W) { if ((r -= w) <= 0) return c; } return 'BRA'; };
-  const out = [], used = new Set();
+  const out = [];
   ['m', 'f'].forEach(g => {
-    for (let i = 0; i < 150; i++) {
+    for (let i = from; i < to; i++) {
       const pais = country(), bank = NAME_BANK[pais];
       let name, tries = 0;
       do { let sur = pick(bank.s); if (g === 'f' && pais === 'RUS') sur += 'a'; name = pick(bank[g]) + ' ' + sur; } while (used.has(name) && ++tries < 20);
@@ -155,9 +157,9 @@ function crRanking() {
 const crRank = () => crRanking().findIndex(r => r.id === 'crme') + 1;
 const npcTier = o => { let t = 0; for (let i = 0; i < 9; i++) if (TIERS[i].ovr[0] + 3 <= o) t = i; return t; };
 // semana dos outros: quem joga ganha pontos conforme a força dentro do nível
-function crSimWorld(rnd) {
+function crSimWorld(rnd, list) {
   rnd = rnd || Math.random;
-  $s.CR.pool.concat(ROSTER).forEach(c => {
+  (list || $s.CR.pool.concat(ROSTER)).forEach(c => {
     const o = crCharOvr(c), t = npcTier(o), T = TIERS[t];
     let p = ($s.CR.npc[c.id] || 0) * (SEASON_WEEKS - 1) / SEASON_WEEKS;
     if (rnd() < .6) {
@@ -214,7 +216,10 @@ function crRankBonus() { const r = crRank(), n = crWorld().length + 1; return r 
 function crWillPartner(c) {
   if ($s.CR.offers.includes(c.id)) return { ok: true, why: 'Convite aceito' };
   const me = crMeOvr(), o = crCharOvr(c), beat = Math.min(2, $s.CR.beat[c.id] || 0);
-  const lim = me + 4 + crRankBonus() + beat * 3;
+  // quem está muito acima no ranking só aceita se você já o venceu (ou se ele mesmo convidar)
+  const myPts = crPts(), pts = Math.round($s.CR.npc[c.id] || 0);
+  if (!beat && pts > Math.max(myPts * 2 + 300, myPts + 600)) return { ok: false, why: 'Muito acima no ranking: só joga com quem o vencer' };
+  const lim = me + 3 + Math.floor(crRankBonus() / 2) + beat * 3;
   if (o <= lim) return { ok: true, why: beat ? 'Respeita você: já perdeu para você' : 'Topa jogar com você' };
   return { ok: false, why: o - lim > 8 ? 'Fora do seu nível por enquanto' : 'Quer alguém com mais ranking ou que já o tenha vencido' };
 }
@@ -241,15 +246,30 @@ function crEnter(opt) {
     lo -= 3; hi += 3;
   }
   field.sort(() => rnd() - .5); field = field.slice(0, need).sort((x, y) => crCharOvr(y) - crCharOvr(x));
+  // de vez em quando um astro de nível mais alto joga um BT10/BT50 com um parceiro bem mais fraco (no máximo a cada 6 semanas)
+  let star = null;
+  if ((opt.tier === 3 || opt.tier === 4) && field.length >= 4 && absWeek() - ($s.CR.lastStar || -99) >= 6 && rnd() < .22) {
+    const cands = crWorld().filter(c => !busy.has(c.id) && crCharOvr(c) >= T.ovr[1] + 5 && crCharOvr(c) <= T.ovr[1] + 14);
+    if (cands.length) {
+      star = cands[Math.floor(rnd() * cands.length)];
+      const n0 = field.length; field = field.filter(c => c.id !== star.id);
+      const weak = field.pop(); // o mais fraco da chave vira o parceiro do astro
+      if (field.length > n0 - 2) field.pop(); // mantém o número de duplas
+      $s.CR.lastStar = absWeek();
+      field.push(star, weak);
+    }
+  }
   const teams = [{ a: 'crme', b: $s.CR.partner, me: true }];
-  for (let i = 0; i + 1 < field.length; i += 2) teams.push({ a: field[i].id, b: field[i + 1].id });
+  const pairs = star ? field.slice(0, -2) : field;
+  for (let i = 0; i + 1 < pairs.length; i += 2) teams.push({ a: pairs[i].id, b: pairs[i + 1].id });
+  if (star) teams.push({ a: star.id, b: field[field.length - 1].id, star: true });
   teams.sort((x, y) => crTeamOvr(y) - crTeamOvr(x));
   const me = teams.findIndex(t => t.me);
   const seedOrder = T.draw === 16 ? SEED16 : SEED8;
-  $s.CR.tour = { tier: opt.tier, name: opt.name, teams, me, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+  $s.CR.tour = { tier: opt.tier, name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
-  $s.CR.lastMsg = ''; saveCareer();
+  $s.CR.lastMsg = star ? 'Surpresa na chave: ' + nameOf(star) + ' (OVR ' + crCharOvr(star) + ') veio jogar este torneio. Se vencer a dupla dele, ele pode querer jogar com você.' : ''; saveCareer();
   return true;
 }
 const crRoundNames = n => n === 4 ? ['Oitavas', 'Quartas', 'Semifinal', 'Final'] : ['Quartas', 'Semifinal', 'Final'];
@@ -306,7 +326,7 @@ function crFinishTour() {
   // quem você venceu pode querer jogar com você
   const offers = [];
   const myPartnerO = $s.CR.partner ? crCharOvr(crChar($s.CR.partner)) : 0;
-  [...new Set(t.beaten)].forEach(id => { const c = crChar(id); if (!c || $s.CR.offers.includes(id) || id === $s.CR.partner) return; const o = crCharOvr(c); if (o > myPartnerO && o <= crMeOvr() + 14 && Math.random() < .4) offers.push(id); });
+  [...new Set(t.beaten)].forEach(id => { const c = crChar(id); if (!c || $s.CR.offers.includes(id) || id === $s.CR.partner) return; const o = crCharOvr(c), star = id === t.star; if (o > myPartnerO && (star ? Math.random() < .5 : o <= crMeOvr() + 14 && Math.random() < .4)) offers.push(id); });
   $s.CR.offers = $s.CR.offers.concat(offers).slice(-4);
   const placeName = place === 0 ? 'Campeão' : place === 1 ? 'Vice-campeão' : place === 2 ? 'Semifinal' : place === 3 ? 'Quartas' : 'Oitavas';
   t.summary = { place, placeName, prize, pts, xp, offers };
@@ -389,6 +409,14 @@ function crMigrate() {
   $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0;
   if ($s.CR.staff.tecnico) { delete $s.CR.staff.tecnico; $s.CR.staff.tec2 = true; }
   if ($s.CR.staff.preparador) { delete $s.CR.staff.preparador; $s.CR.staff.prep = true; }
+  // mundo maior: completa os saves antigos até POOL_N por gênero, com uma temporada de pontos simulada para os novos
+  const nM = $s.CR.pool.filter(c => !c.fem).length;
+  if (nM < POOL_N) {
+    const extra = genPool($s.CR.seed, nM, POOL_N, new Set($s.CR.pool.map(c => c.name)));
+    $s.CR.pool = $s.CR.pool.concat(extra);
+    const r = mulberry($s.CR.seed + 31); for (let i = 0; i < SEASON_WEEKS; i++) crSimWorld(r, extra);
+    saveCareer();
+  }
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);

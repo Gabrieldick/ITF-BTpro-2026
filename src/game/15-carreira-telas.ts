@@ -60,11 +60,13 @@ function crPersonRow(c, extra, btn) {
 function crPartnersHTML() {
   const cur = $s.CR.partner ? crChar($s.CR.partner) : null;
   const myO = crMeOvr();
-  const list = crWorld().filter(c => c.id !== $s.CR.partner).map(c => ({ c, o: crCharOvr(c), w: crWillPartner(c) })).filter(x => x.o >= myO - 12 && x.o <= myO + 22).sort((x, y) => y.o - x.o).slice(0, 40);
+  // primeiro quem aceita (do mais forte ao mais fraco), depois os mais próximos que ainda não aceitam
+  const all = crWorld().filter(c => c.id !== $s.CR.partner).map(c => ({ c, o: crCharOvr(c), w: crWillPartner(c) })).filter(x => x.o >= myO - 15 && x.o <= myO + 22);
+  const list = all.filter(x => x.w.ok).sort((x, y) => y.o - x.o).slice(0, 36).concat(all.filter(x => !x.w.ok).sort((x, y) => x.o - y.o).slice(0, 10));
   const offers = $s.CR.offers.map(crChar).filter(Boolean);
   return '<p class="section-label">Seu parceiro</p>' + (cur ? crPersonRow(cur, 'entrosamento ' + $s.CR.chem + '/5', '<button class="ghost sm" data-drop="1">Desfazer dupla</button>') : '<p class="cr-note">Sem parceiro fixo.</p>')
     + (offers.length ? '<p class="section-label">Convites (de quem você venceu)</p>' + offers.map(c => crPersonRow(c, 'quer jogar com você', '<button class="cta sm" data-partner="' + c.id + '">Aceitar</button>')).join('') : '')
-    + '<p class="section-label">Mercado de parceiros</p><p class="cr-note">Quem aceita depende do seu overall, do seu ranking e de você já ter vencido o jogador. Entrosamento sobe a cada torneio juntos.</p>'
+    + '<p class="section-label">Mercado de parceiros</p><p class="cr-note">Quem aceita depende do seu overall, dos seus pontos no ranking e de você já ter vencido o jogador. Quem está muito acima no ranking só joga com você depois de perder para você. Entrosamento sobe a cada torneio juntos.</p>'
     + '<div class="cr-list">' + list.map(x => crPersonRow(x.c, x.w.why + ' · ' + Math.round($s.CR.npc[x.c.id] || 0) + ' pts', x.w.ok ? '<button class="ghost sm" data-partner="' + x.c.id + '">Formar dupla</button>' : '<span class="cr-lock">🔒</span>')).join('') + '</div>';
 }
 function crShopHTML() {
