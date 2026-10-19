@@ -81,12 +81,14 @@ function assignee(team) {
     const [a, b] = tm;
     if (a.isHuman || b.isHuman) {
       const h = a.isHuman ? a : b, m = a.isHuman ? b : a;
-      const pm = planIntercept(m, skillOf(m).speed, 0);
-      if (!pm) who = h;
-      else {
-        const split = (h.pos.x + m.pos.x) / 2;
-        who = Math.sign(pm.pt.x - split) === Math.sign(m.pos.x - split) ? m : h;
-      }
+      // decide pelo x da bola quando ela chega na linha da dupla (ou onde cai, se cair antes),
+      // não pelo primeiro ponto de interceptação: a bola cruzada passa pelo meio perto da rede e ia para você
+      const split = (h.pos.x + m.pos.x) / 2, zLine = (h.pos.z + m.pos.z) / 2;
+      const land = predictLanding();
+      let bx = land.x;
+      if (Math.abs(ball.vel.z) > .5) { const t = (zLine - ball.pos.z) / ball.vel.z; if (t > 0) { const lx = ball.pos.x + ball.vel.x * t, lt = Math.abs((land.z - ball.pos.z) / ball.vel.z); if (t < lt) bx = lx; } }
+      if (Math.abs(bx - split) < .3) who = Math.abs(bx - m.pos.x) < Math.abs(bx - h.pos.x) ? m : h;
+      else who = Math.sign(bx - split) === Math.sign(m.pos.x - split) ? m : h;
     } else {
       const pa = planIntercept(a, skillOf(a).speed, 0), pb = planIntercept(b, skillOf(b).speed, 0);
       const score = pl => !pl ? 99 : pl.t + (pl.ok ? 0 : 5);
