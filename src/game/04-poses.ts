@@ -83,7 +83,7 @@ const VAR_FX = {
   smash_costas: { label: 'SMASH DE COSTAS', speed: .86, noise: 1.3, gk: 1.25 },
   smash_salto: { label: 'SMASH EM SALTO', speed: 1.05, gk: 1.4, jump: true },
   curta_alta: { label: 'CURTA DE VOLEIO', depth: [.9, 2.0], T: .75 },
-  curta_baixa: { label: 'CURTA POR BAIXO', T: 1.05, gk: 1.05, noise: 1.1 },
+  curta_baixa: { label: 'CURTA POR BAIXO', T: 1.05, gk: 1.4, noise: 1.1 },
   defesa_alta: { label: 'DEFESA ALTA', T: 1.1 },
   defesa_baixa: { label: 'DEFESA RASPANDO', T: 1.35, noise: 1.15 },
 };

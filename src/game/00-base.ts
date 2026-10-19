@@ -21,7 +21,7 @@ const SHOTS = {
   smash:  { label: 'SMASH',  speed: 19,   depth: [4.6, 7.0], margin: .08, noise: .35 },
   drive:  { label: 'DRIVE',  speed: 13.5, depth: [5.0, 7.2], margin: .12, noise: .45 },
   lob:    { label: 'LOB',    T: 2.05,     depth: [6.2, 7.5], margin: .4,  noise: .5 },
-  curta:  { label: 'CURTA',  T: .9,       depth: [1.1, 2.5], margin: .12, noise: .35, lowArc: true },
+  curta:  { label: 'CURTA',  T: .9,       depth: [1.1, 2.5], margin: .07, noise: .35, lowArc: true },
   defesa: { label: 'DEFESA', T: 1.2,      depth: [4.3, 6.4], margin: .3,  noise: .3 },
 };
 const SERVES = {
