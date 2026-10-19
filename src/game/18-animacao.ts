@@ -72,7 +72,8 @@ function animateAthlete(p, dt) {
   // tronco e quadril
   const f = p.team === 0 ? 1 : -1;
   let yawT = clamp(-p.vel.x * f * .05, -.3, .3);
-  if (ball.state === 'live') yawT += clamp(Math.atan2(-sideOf(p), Math.abs(ball.pos.z - p.pos.z) + 1.2) * .45, -.45, .45);
+  // o giro do grupo é no mundo (não espelha): para o canhoto o lado da raquete precisa ser desfeito
+  if (ball.state === 'live') yawT += clamp(Math.atan2(-sideOf(p) * (p.lefty ? -1 : 1), Math.abs(ball.pos.z - p.pos.z) + 1.2) * .45, -.45, .45);
   p.yaw += (yawT - p.yaw) * Math.min(1, dt * 6);
   const prepT = p.debug ? 0 : smashPrep(p, swingU);
   p.prep = (p.prep || 0) + (prepT - (p.prep || 0)) * Math.min(1, dt * (prepT > (p.prep || 0) ? 7 : 12));
