@@ -1,0 +1,49 @@
+<!-- Carreira -->
+<div id="career" class="overlay" hidden>
+  <div class="card" style="width:min(100%,980px)">
+    <div class="cr-top"><div><div class="eyebrow">Modo carreira · do amador ao Mundial</div><h2 class="title" style="font-size:clamp(32px,6vw,50px)">CARREIRA</h2></div><button class="ghost sm" id="crBack" type="button">Menu</button></div>
+    <div id="crNew" style="display:grid;gap:14px">
+      <p class="lede">Crie seu jogador, comece no Amador C e suba até o circuito mundial: ganhe dinheiro, evolua os atributos, compre equipamento e conquiste parceiros melhores vencendo-os.</p>
+      <label class="cr-field">Nome <input id="crName" maxlength="24" placeholder="Seu nome no circuito" autocomplete="off"></label>
+      <div class="cr-two">
+        <fieldset class="seg"><legend>Gênero</legend><div class="pills">
+          <input type="radio" name="crGen" id="crGm" value="m" checked><label for="crGm">Masculino</label>
+          <input type="radio" name="crGen" id="crGf" value="f"><label for="crGf">Feminino</label>
+        </div></fieldset>
+        <fieldset class="seg"><legend>Mão</legend><div class="pills">
+          <input type="radio" name="crHand" id="crHd" value="d" checked><label for="crHd">Destro</label>
+          <input type="radio" name="crHand" id="crHc" value="c"><label for="crHc">Canhoto</label>
+        </div></fieldset>
+      </div>
+      <fieldset class="seg"><legend>Começo</legend><div class="pills">
+        <input type="radio" name="crPerfil" id="crPp" value="promessa" checked><label for="crPp">Promessa · OVR ~52, potencial 94–97, $500</label>
+        <input type="radio" name="crPerfil" id="crPe" value="experiente"><label for="crPe">Experiente · OVR ~60, potencial 86–89, $1.200</label>
+      </div></fieldset>
+      <fieldset class="seg"><legend>Estilo de jogo</legend><div class="pills">
+        <input type="radio" name="crStyle" id="crSa" value="atacante"><label for="crSa">Atacante (smash, força, saque)</label>
+        <input type="radio" name="crStyle" id="crSd" value="defensor"><label for="crSd">Defensor (defesa, velocidade)</label>
+        <input type="radio" name="crStyle" id="crSt" value="tatico"><label for="crSt">Tático (curta, lob)</label>
+        <input type="radio" name="crStyle" id="crSc" value="completo" checked><label for="crSc">Completo</label>
+      </div></fieldset>
+      <div class="cr-two">
+        <label class="cr-field">Altura <input type="range" id="crAlt" min="155" max="205" value="182"> <b id="crAltV">182 cm</b></label>
+        <fieldset class="seg"><legend>Na cabeça</legend><div class="pills">
+          <input type="radio" name="crAcc" id="crAc" value="cap" checked><label for="crAc">Boné</label>
+          <input type="radio" name="crAcc" id="crAv" value="visor"><label for="crAv">Viseira</label>
+          <input type="radio" name="crAcc" id="crAn" value="none"><label for="crAn">Nada</label>
+        </div></fieldset>
+      </div>
+      <div id="crSw" class="cr-sws"></div>
+      <div class="cta-row"><button class="cta" id="crCreate" type="button">Começar carreira</button></div>
+    </div>
+    <div id="crHub" hidden style="display:grid;gap:14px">
+      <div id="crHead" class="cr-head"></div>
+      <div id="crTabs" class="cr-tabs">
+        <button type="button" data-t="agenda">Agenda</button><button type="button" data-t="jogador">Jogador</button><button type="button" data-t="parceiros">Parceiros</button><button type="button" data-t="loja">Loja</button><button type="button" data-t="ranking">Ranking</button><button type="button" data-t="historico">Histórico</button>
+      </div>
+      <p id="crMsg" class="cr-msg" hidden></p>
+      <div id="crBody" style="display:grid;gap:12px"></div>
+    </div>
+  </div>
+</div>
+

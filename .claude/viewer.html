@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Visualizador</title>
+<style>html,body{margin:0;background:#9fb8d0}canvas{display:block}</style></head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+// ferramenta de teste: abre um .glb da pasta models e grava capturas de vários ângulos
+const q = new URLSearchParams(location.search);
+const file = q.get('f');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(900, 900); renderer.outputEncoding = THREE.sRGBEncoding; document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9fb8d0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x886644, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(3, 5, 4); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(35, 1, .01, 5000);
+window.info = null;
+new THREE.GLTFLoader().load('../models/' + file, g => {
+  const root = g.scene; scene.add(root);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const meshes = []; root.traverse(o => { if (o.isMesh) { const b = new THREE.Box3().setFromObject(o); meshes.push({ name: o.name, mat: o.material.name, map: !!o.material.map, min: b.min.toArray().map(v => +v.toFixed(2)), max: b.max.toArray().map(v => +v.toFixed(2)) }); } });
+  window.info = { size: size.toArray().map(v => +v.toFixed(2)), center: c.toArray().map(v => +v.toFixed(2)), meshes };
+  window.shot = async (name, az, el, distK) => {
+    const d = Math.max(size.x, size.y, size.z) * (distK || 1.6);
+    camera.position.set(c.x + Math.sin(az) * Math.cos(el) * d, c.y + Math.sin(el) * d, c.z + Math.cos(az) * Math.cos(el) * d);
+    camera.lookAt(c); camera.near = d / 100; camera.far = d * 10; camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+    await fetch('/__shot?name=' + name, { method: 'POST', body: renderer.domElement.toDataURL('image/png') });
+  };
+}, undefined, e => { window.info = { error: String(e) }; });
+</script>
+</body></html>

@@ -1,0 +1,8 @@
+# arquivos temporários de teste
+.claude/tmp/
+node_modules/
+ferramentas/modelos/node_modules/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
