@@ -90,7 +90,7 @@ function doHit(p, type, q, isServe, mod) {
     const over = key === 'smash', iLat = over ? .25 : bhSide ? -.6 : .7, iFwd = over ? .15 : .25;
     const off = Math.hypot(over ? lat - iLat : Math.abs(lat) - Math.abs(iLat), fwd - iFwd);
     const sweet = 1 - clamp((off - .2) / .75, 0, 1);
-    q *= lerp(.8, 1.03, sweet);
+    q *= key === 'defesa' ? lerp(.88, 1.03, sweet) : lerp(.8, 1.03, sweet); // na defesa (reflexo) a posição pesa menos
     mod.speedMul = (mod.speedMul || 1) * lerp(.88, 1.04, sweet); mod.noiseMul = (mod.noiseMul || 1) * lerp(1.45, .95, sweet);
     if (sweet < .3) contactWord = 'NO ARO'; else if (sweet > .9) contactWord = 'NO MEIO';
     // bater adiantado puxa a bola para a diagonal; atrasado, para a paralela

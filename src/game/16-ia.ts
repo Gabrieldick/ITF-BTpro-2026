@@ -217,7 +217,8 @@ function updateHuman(dt) {
           }
         }
       }
-      if (!sw.meter) mod.timing = 1 - clamp(Math.abs(su - .4) / .4, 0, 1);
+      // timing: o miolo do movimento (15%–60%) é perfeito; cedo/tarde demais perde, mas não zera
+      if (!sw.meter) mod.timing = su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);
       if (sw.type === 'defesa' || r.pressure > .2) defenseFeedback(r);
