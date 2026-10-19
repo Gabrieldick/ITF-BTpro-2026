@@ -46,8 +46,13 @@ function startMeter(kind, type) {
   if (kind === 'serve') MTR.half *= clamp((human.char.a.saque - 45) / 50, .25, 1.15);
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
-  if (kind === 'lob') { el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; }
-  else { el.mZone.style.bottom = ((MTR.center - MTR.half) * 100) + '%'; el.mZone.style.height = (MTR.half * 200) + '%'; }
+  if (kind === 'lob') { el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; el.mZone.style.background = ''; }
+  else {
+    // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
+    const c = MTR.center, h = MTR.half, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
+    el.mZone.style.bottom = '0'; el.mZone.style.height = '100%';
+    el.mZone.style.background = 'linear-gradient(0deg, #e5484d 0%, #e5484d ' + P(c - h - .26) + ', #ff8a1f ' + P(c - h - .13) + ', #ffd23f ' + P(c - h - .035) + ', #4fd18b ' + P(c - h) + ', #4fd18b ' + P(c + h) + ', #ffd23f ' + P(c + h + .03) + ', #ff8a1f ' + P(c + h + .1) + ', #e5484d ' + P(c + h + .2) + ', #e5484d 100%)';
+  }
   el.mFill.style.height = '0%';
 }
 const _ts = new V3();

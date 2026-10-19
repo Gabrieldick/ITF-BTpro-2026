@@ -162,8 +162,10 @@ body.touch #shots kbd, body.touch .chip kbd { display: none; }
 }
 #meter .track { position: absolute; inset: 0; border-radius: 11px; background: rgba(15,36,54,.78); border: 2px solid rgba(251,246,234,.7); overflow: hidden; }
 #meter .zone { position: absolute; left: 0; right: 0; background: #4FD18B; }
-#meter .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 0; border-radius: 7px; background: linear-gradient(0deg, #FFB11F, #fff3c4); }
-#meter.in .fill { background: #ffffff; box-shadow: 0 0 12px #4FD18B; }
+#meter .zone { opacity: .9; }
+/* a barra é translúcida com a ponta branca, para enxergar as cores da faixa embaixo */
+#meter .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 0; border-radius: 7px; background: rgba(255,255,255,.28); border-top: 4px solid #fff; box-shadow: 0 -2px 6px rgba(0,0,0,.45); }
+#meter.in .fill { background: rgba(255,255,255,.4); box-shadow: 0 0 12px #4FD18B, 0 -2px 6px rgba(0,0,0,.35); }
 #meter.lobm .zone { background: #E5484D; }
 #meter.lobm .fill { background: linear-gradient(0deg, #FFD23F, #5FB8FF); }
 #meter.over .fill { background: #E5484D; }
