@@ -8,15 +8,16 @@ import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { $, el, feedback, hideBanner, newMatch } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound } from './12-controles';
-import { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer } from './14-carreira';
+import { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr } from './14-carreira';
 import { playStyleOf } from './16-ia';
 // ---------- telas ----------
 let crTab = 'agenda';
 const money = v => '$' + Math.round(v).toLocaleString('pt-BR');
 function openCareer() { readMenu(); el.menu.hidden = true; $('career').hidden = false; document.body.classList.add('in-menu'); if ($s.CR) { crMigrate(); crSyncChars(); } renderCareer(); }
 function renderCareer() {
-  $('crNew').hidden = !!$s.CR; $('crHub').hidden = !$s.CR;
-  if (!$s.CR) { renderCrNew(); return; }
+  $('crNew').hidden = !!$s.CR; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR;
+  $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
+  if (!$s.CR) { renderSaves(); renderCrNew(); return; }
   const meO = overall($s.CR.me.a), inGame = crMeOvr(), rank = crRank(), pts = crPts();
   $('crHead').innerHTML = '<div class="cr-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><span>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · potencial ' + $s.CR.pot + ' · em jogo ' + inGame + ' · fama ' + Math.round($s.CR.fama || 0) + '</span></div></div>'
     + '<div class="cr-kpis"><div><b>' + rank + 'º</b>ranking (' + pts + ' pts)</div><div><b>' + money($s.CR.money) + '</b>dinheiro</div><div><b>' + $s.CR.pe + '</b>pontos de evolução</div><div><b>T' + $s.CR.season + ' · S' + $s.CR.week + '</b>de ' + SEASON_WEEKS + ' semanas</div></div>'
@@ -24,7 +25,7 @@ function renderCareer() {
   document.querySelectorAll('#crTabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === crTab));
   const busy = $s.CR.tour && !$s.CR.tour.done;
   $('crTabs').hidden = !!$s.CR.tour;
-  $('crMsg').textContent = $s.CR.lastMsg || ''; $('crMsg').hidden = !$s.CR.lastMsg;
+  const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
   if ($s.CR.tour) { body.innerHTML = crTourHTML(); bindTour(); return; }
   body.innerHTML = ({ agenda: crAgendaHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML }[crTab])();
@@ -152,6 +153,47 @@ function bindCareerBody() {
   const rst = $('crReset'); if (rst) rst.addEventListener('click', () => { if (rst.dataset.sure) { $s.CR = null; saveCareer(); crSyncChars(); renderCareer(); } else { rst.dataset.sure = '1'; rst.textContent = 'Clique de novo para confirmar'; } });
   body.querySelectorAll('.cr-rk').forEach(sp => { const r = RACKETS[sp.dataset.r]; if (r) sp.style.background = r.edge; });
 }
+// ---------- saves ----------
+function crDownload(id) {
+  const d = crExportData(id); if (!d) return;
+  const url = URL.createObjectURL(new Blob([d.text], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = d.file; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return d.file;
+}
+function crSaveMsg(t) { const m = $('crSaveMsg'); m.textContent = t || ''; m.hidden = !t; }
+const fmtDate = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : ' · salvo ' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+function renderSaves() {
+  const list = crSlots();
+  $('crSlotList').innerHTML = list.length ? list.map(c => '<div class="cr-slot"><div class="who"><b>' + esc(c.name) + ' · OVR ' + c.ovr + '</b><span>T' + c.season + ' S' + c.week + ' · ' + c.tier + ' · ' + money(c.money) + fmtDate(c.savedAt) + '</span></div>'
+    + '<div class="acts"><button class="cta sm" data-slot-load="' + esc(c.id) + '">Continuar</button><button class="ghost sm" data-slot-exp="' + esc(c.id) + '">Exportar</button><button class="ghost sm" data-slot-del="' + esc(c.id) + '">Apagar</button></div></div>').join('')
+    : '<span class="cr-lbl">Nenhuma carreira salva neste navegador ainda. Crie uma abaixo ou importe um save.</span>';
+  const L = $('crSlotList');
+  L.querySelectorAll('[data-slot-load]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotLoad)) { crTab = 'agenda'; crSaveMsg(''); renderCareer(); } }));
+  L.querySelectorAll('[data-slot-exp]').forEach(b => b.addEventListener('click', () => { const fn = crDownload(b.dataset.slotExp); if (fn) crSaveMsg('Baixado: ' + fn + '. Para abrir em outro lugar, coloque o arquivo na pasta ' + SAVE_DIR + '/ do repositório e use "Carregar do GitHub", ou use "Importar arquivo".'); }));
+  L.querySelectorAll('[data-slot-del]').forEach(b => b.addEventListener('click', () => { if (b.dataset.sure) { crDeleteSlot(b.dataset.slotDel); crSaveMsg('Carreira apagada deste navegador.'); renderCareer(); } else { b.dataset.sure = '1'; b.textContent = 'Confirmar'; } }));
+}
+function crAfterImport(r) {
+  crSaveMsg(r.msg);
+  if (r.ok && crLoadSlot(r.id)) { crTab = 'agenda'; $s.CR.lastMsg = r.msg; crSaveMsg(''); }
+  renderCareer();
+}
+$('crFile').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  file.text().then(t => crAfterImport(crImportData(t)), () => crSaveMsg('Não consegui ler o arquivo.'));
+});
+$('crRepo').addEventListener('click', async () => {
+  const box = $('crRepoList'); box.hidden = false; box.innerHTML = '<span class="cr-lbl">Procurando saves em github.com/' + SAVE_REPO + '/' + SAVE_DIR + ' …</span>';
+  try {
+    const files = await crRepoSaves();
+    box.innerHTML = files.length ? files.map((f, i) => '<div class="cr-slot"><div class="who"><b>' + esc(f.name) + '</b><span>pasta ' + SAVE_DIR + '/ do repositório</span></div><div class="acts"><button class="cta sm" data-repo="' + i + '">Carregar</button></div></div>').join('')
+      : '<span class="cr-lbl">Nenhum save na pasta ' + SAVE_DIR + '/ do repositório ainda.</span>';
+    box.querySelectorAll('[data-repo]').forEach(b => b.addEventListener('click', async () => { b.disabled = true; try { crAfterImport(await crImportUrl(files[+b.dataset.repo].url)); } catch (err) { crSaveMsg('Falha ao baixar: ' + err.message); b.disabled = false; } }));
+  } catch (err) { box.innerHTML = '<span class="cr-lbl">Não consegui acessar o GitHub (' + esc(err.message) + '). Sem internet? Use "Importar arquivo".</span>'; }
+});
+$('crExport').addEventListener('click', () => { saveCareer(); const fn = crDownload(); if (fn) { $s.CR.lastMsg = 'Save baixado: ' + fn + '. Coloque na pasta ' + SAVE_DIR + '/ do repositório e faça o push para abrir em outro lugar.'; renderCareer(); } });
+$('crSwitch').addEventListener('click', () => { saveCareer(); crCloseSlot(); crSaveMsg(''); renderCareer(); });
 // criação
 const crForm = { fem: false, style: 'completo', perfil: 'promessa', skin: SKINS[2], hair: HAIRS[1], acc: 'cap', canhoto: false, alt: 182 };
 function renderCrNew() {

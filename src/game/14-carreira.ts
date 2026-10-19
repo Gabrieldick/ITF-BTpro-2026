@@ -75,9 +75,63 @@ function genPool(seed) {
   return out;
 }
 // ---------- estado ----------
-$s.CR = null;
-try { $s.CR = JSON.parse(localStorage.getItem('pdo-career') || 'null'); } catch (e) { $s.CR = null; }
-const saveCareer = () => { try { localStorage.setItem('pdo-career', JSON.stringify($s.CR)); } catch (e) {} };
+// ---------- saves: várias carreiras no navegador + arquivo .json ----------
+// localStorage 'pdo-careers' = { active: id | null, slots: { id: carreira } }
+const SAVE_KEY = 'pdo-careers', SAVE_FMT = 'ponto-de-ouro/carreira';
+let SAVES = { active: null, slots: {} };
+try { SAVES = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') || SAVES; } catch (e) {}
+if (!SAVES.slots) SAVES = { active: null, slots: {} };
+// save antigo de uma carreira só
+try { const old = JSON.parse(localStorage.getItem('pdo-career') || 'null'); if (old && !Object.keys(SAVES.slots).length) { old.id = old.id || 'c' + old.seed; SAVES.slots[old.id] = old; SAVES.active = old.id; } } catch (e) {}
+$s.CR = SAVES.active && SAVES.slots[SAVES.active] || null;
+let saveErr = '';
+function writeSaves() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVES)); localStorage.removeItem('pdo-career'); saveErr = ''; }
+  catch (e) { saveErr = 'Não foi possível salvar no navegador (espaço cheio?). Exporte a carreira para um arquivo.'; }
+}
+const saveCareer = () => {
+  if ($s.CR) { $s.CR.id = $s.CR.id || 'c' + $s.CR.seed; $s.CR.savedAt = new Date().toISOString(); SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; }
+  else if (SAVES.active) { delete SAVES.slots[SAVES.active]; SAVES.active = null; }
+  writeSaves();
+};
+// lista para a tela de carreiras (mais recente primeiro)
+function crSlots() {
+  return Object.values(SAVES.slots).map(c => ({ id: c.id, name: c.me.name, ovr: overall(c.me.a), season: c.season, week: c.week, tier: TIERS[c.maxTier || 0].curto, money: c.money, savedAt: c.savedAt || '' }))
+    .sort((a, b) => (b.savedAt > a.savedAt ? 1 : -1));
+}
+function crLoadSlot(id) { const c = SAVES.slots[id]; if (!c) return false; $s.CR = c; SAVES.active = id; writeSaves(); crMigrate(); crSyncChars(); return true; }
+// sai da carreira atual sem apagar (volta para a lista)
+function crCloseSlot() { $s.CR = null; SAVES.active = null; writeSaves(); crSyncChars(); }
+function crDeleteSlot(id) { delete SAVES.slots[id]; if (SAVES.active === id) { SAVES.active = null; $s.CR = null; crSyncChars(); } writeSaves(); }
+// arquivo .json com a carreira (para guardar no git e abrir em outro lugar)
+function crExportData(id) {
+  const c = SAVES.slots[id || SAVES.active]; if (!c) return null;
+  const slug = String(c.me.name).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'carreira';
+  return { file: 'carreira-' + slug + '.json', text: JSON.stringify({ formato: SAVE_FMT, versao: 1, salvoEm: c.savedAt || new Date().toISOString(), carreira: c }) };
+}
+// lê um arquivo exportado; devolve { ok, msg, id }
+function crImportData(text) {
+  let o; try { o = JSON.parse(text); } catch (e) { return { ok: false, msg: 'O arquivo não é um JSON válido.' }; }
+  const c = o && o.formato === SAVE_FMT ? o.carreira : o;
+  if (!c || !c.me || !c.me.a || !c.seed || !c.pool || !c.season) return { ok: false, msg: 'Esse arquivo não é um save de carreira do Ponto de Ouro.' };
+  c.id = c.id || 'c' + c.seed;
+  const cur = SAVES.slots[c.id];
+  const replaced = !!cur;
+  if (cur && (cur.season * 100 + cur.week) > (c.season * 100 + c.week) && typeof confirm === 'function'
+    && !confirm('A carreira "' + cur.me.name + '" salva aqui está mais adiantada (T' + cur.season + ' S' + cur.week + ') que a do arquivo (T' + c.season + ' S' + c.week + '). Substituir pela do arquivo?')) return { ok: false, msg: 'Importação cancelada.' };
+  SAVES.slots[c.id] = c; writeSaves();
+  return { ok: true, id: c.id, msg: (replaced ? 'Carreira atualizada: ' : 'Carreira importada: ') + c.me.name + ' (T' + c.season + ' S' + c.week + ').' };
+}
+// saves guardados na pasta saves/ do repositório no GitHub
+const SAVE_REPO = 'Gabrieldick/ITF-BTpro-2026', SAVE_DIR = 'saves';
+async function crRepoSaves() {
+  const r = await fetch('https://api.github.com/repos/' + SAVE_REPO + '/contents/' + SAVE_DIR + '?ref=main', { headers: { Accept: 'application/vnd.github+json' } });
+  if (r.status === 404) return [];
+  if (!r.ok) throw new Error('GitHub respondeu ' + r.status);
+  return (await r.json()).filter(f => f.type === 'file' && /.json$/i.test(f.name)).map(f => ({ name: f.name, url: f.download_url }));
+}
+const crSaveErr = () => saveErr;
+async function crImportUrl(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) return { ok: false, msg: 'Não consegui baixar o save (' + r.status + ').' }; return crImportData(await r.text()); }
 function crSyncChars() {
   $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat([crMeChar()]) : [];
 }
@@ -145,7 +199,7 @@ function crCreate(o) {
   const target = promessa ? 52 : 60;
   const me = { id: 'crme', name: o.name || 'Você', alt: o.alt, pais: 'BRA', estilo: STYLES[o.style].nome, build: o.build || 'atletico', fem: o.fem, canhoto: o.canhoto || undefined,
     a: makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : {}, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
-  $s.CR = { v: 1, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: promessa ? 17 : 22,
+  $s.CR = { v: 1, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: promessa ? 17 : 22,
     money: promessa ? 800 : 1200, pe: 0, energy: 100, season: 1, week: 1, results: [], npc: {}, titles: {}, maxTier: 0,
     partner: null, chem: 0, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
@@ -401,4 +455,4 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer };
+export { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };

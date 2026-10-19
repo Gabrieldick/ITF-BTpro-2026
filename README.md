@@ -11,6 +11,14 @@ Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e
 - **Campeonato:** chave de 8 duplas (masculino, feminino ou misto) com as duplas reais da temporada ou a sua dupla montada.
 - **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
 
+## Saves da carreira
+
+O jogo guarda várias carreiras no navegador (Carreira → **Carreiras**). Para levar uma carreira para outro computador ou celular:
+
+1. Na carreira, clique em **Exportar save** — baixa `carreira-<nome>.json`.
+2. Coloque o arquivo na pasta [`saves/`](saves/) e faça o push (ou suba pelo site do GitHub: *Add file → Upload files*).
+3. No outro lugar, abra o jogo e use **Carreira → Carreiras → Carregar do GitHub**. Sem internet, use **Importar arquivo**.
+
 ## Controles (teclado)
 | Tecla | Ação |
 |---|---|
@@ -55,6 +63,7 @@ A cada push na `main`, o GitHub Actions compila e publica o site (`.github/workf
 | `src/game/` | o jogo em módulos, na ordem de execução: base, estado, render, cenário, poses, atletas, modelos, áudio, interface, física, mira, controles, campeonato, carreira, IA, bola, animação e laço principal |
 | `public/assets/` | recursos usados pelo jogo (modelos convertidos, texturas, som) |
 | `models/`, `Sounds/` | arquivos originais baixados (fonte dos recursos) |
+| `saves/` | saves de carreira exportados (o jogo lê esta pasta pelo GitHub) |
 | `ferramentas/` | conversores de modelos, simulador de partidas e histórico das mudanças (veja `ferramentas/LEIA-ME.md`) |
 | `scripts/build-single.mjs` | gera o HTML de arquivo único |
 | `legado/` | a versão antiga em arquivo único (antes da divisão em módulos) |
