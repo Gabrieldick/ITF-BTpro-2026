@@ -70,8 +70,9 @@ function hitQuality(p, type) {
 function doHit(p, type, q, isServe, mod) {
   mod = mod || {};
   let key = type;
-  if (!isServe && type === 'smash' && ball.pos.y < 1.9) key = 'drive';
+  if (!isServe && type === 'smash' && (ball.pos.y < 1.9 || mod.volley)) key = 'drive';
   let spec = Object.assign({}, isServe ? SERVES[type] : SHOTS[key]);
+  if (mod.volley) spec.label = 'VOLEIO';
   // quanto mais forte a bola que chega, maior a chance de a devolução sair levantada ou para fora
   let pop = false, wild = false, grade = q;
   // bola do lado esquerdo do jogador (fora o smash por cima): backhand
@@ -183,7 +184,7 @@ function doHit(p, type, q, isServe, mod) {
     if (Math.random() < .5) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado)
-  S.lastHit = { p, cat: isServe ? 'saque' : key, hard: !isServe && (inSpeed > 14 || !!ball.finisher || pressure > .35 || q < .45), hitId: S.hitId + 1 };
+  S.lastHit = { p, cat: isServe ? 'saque' : mod.volley ? 'voleio' : key, hard: !isServe && (inSpeed > 14 || !!ball.finisher || pressure > .35 || q < .45), hitId: S.hitId + 1 };
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .22 : 0); ball.finisher = finisher;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;

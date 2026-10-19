@@ -193,12 +193,13 @@ function updateHuman(dt) {
         const { res, amt } = sw.meter;
         // atributo: com smash baixo, mesmo o perfeito sai mais fraco e às vezes erra
         const skN = clamp((p.char ? p.char.a.smash : 70) - 50, 0, 45) / 45;
-        if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.04, .22, skN), misBoost: (1 - skN) * .1 }; }
+        if (res === 'voleio') { q = Math.max(q, lerp(.66, .86, skN)); mod = { speedMul: lerp(1, 1.12, skN), noiseMul: lerp(1.15, .85, skN), volley: true }; }
+        else if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.04, .22, skN), misBoost: (1 - skN) * .1 }; }
         // fora do verde: amarelo perde pouco, laranja bastante, vermelho erra muito (cedo = fraco, tarde = erra mais)
         else if (res === 'cedo') mod = { speedMul: lerp(.97, .6, amt), noiseMul: lerp(1.05, 1.8, amt), misBoost: (1 - skN) * .08 + amt * .2 };
         else mod = { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt) };
         // distância da rede: do fundo o smash chega mais lento, menos preciso e erra mais
-        const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
+        const far = res === 'voleio' ? 0 : clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
         if (far > 0) {
           mod.speedMul = (mod.speedMul || 1) * (1 - far * .24); mod.noiseMul = (mod.noiseMul || 1) * (1 + far * 1.1);
           mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .8); mod.misBoost = (mod.misBoost || 0) + far * (.05 + (1 - skN) * .3);

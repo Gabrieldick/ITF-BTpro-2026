@@ -88,14 +88,14 @@ function awardPoint(w) {
   return 'point';
 }
 // ---------- estatísticas do jogo ----------
-const CAT_NAME = { saque: 'saque', smash: 'smash', drive: 'drive', curta: 'curta', lob: 'lob', defesa: 'defesa' };
-const CAT_WIN = { smash: 'Smash vencedor', drive: 'Drive vencedor', curta: 'Curta vencedora', lob: 'Lob vencedor', defesa: 'Defesa vencedora' };
+const CAT_NAME = { voleio: 'voleio', saque: 'saque', smash: 'smash', drive: 'drive', curta: 'curta', lob: 'lob', defesa: 'defesa' };
+const CAT_WIN = { voleio: 'Voleio vencedor', smash: 'Smash vencedor', drive: 'Drive vencedor', curta: 'Curta vencedora', lob: 'Lob vencedor', defesa: 'Defesa vencedora' };
 const FEM_CAT = { curta: 1, defesa: 1 };
 // "de N. BURMAK" ou "seu"/"sua" quando é você
 const deP = (p, fem) => p && p.isHuman ? (fem ? 'sua' : 'seu') : 'de ' + whoName(p);
 // "Smash vencedor de N. BURMAK" / "Seu smash vencedor"
 const phrase = (noun, p, fem, tail) => (p && p.isHuman ? (fem ? 'Sua ' : 'Seu ') + noun.toLowerCase() : noun + ' de ' + whoName(p)) + (tail || '');
-function statOf(p) { const k = $s.players.indexOf(p); if (!S.pstats) S.pstats = []; if (!S.pstats[k]) S.pstats[k] = { saque: 0, smash: 0, drive: 0, curta: 0, lob: 0, defesa: 0, fe: 0, ue: 0 }; return S.pstats[k]; }
+function statOf(p) { const k = $s.players.indexOf(p); if (!S.pstats) S.pstats = []; if (!S.pstats[k]) S.pstats[k] = { voleio: 0, saque: 0, smash: 0, drive: 0, curta: 0, lob: 0, defesa: 0, fe: 0, ue: 0 }; return S.pstats[k]; }
 function whoName(p) {
   if (!p) return '?';
   if (p.isHuman) return 'você';
@@ -194,7 +194,7 @@ function newMatch() {
 }
 // tabela do fim do jogo: pontos por golpe, erros forçados e não forçados de cada jogador e da dupla
 function renderMatchStats() {
-  const rows = [['Aces', 'saque'], ['Smash', 'smash'], ['Drive', 'drive'], ['Curta', 'curta'], ['Lob', 'lob'], ['Defesa', 'defesa']];
+  const rows = [['Aces', 'saque'], ['Smash', 'smash'], ['Voleio', 'voleio'], ['Drive', 'drive'], ['Curta', 'curta'], ['Lob', 'lob'], ['Defesa', 'defesa']];
   const teams = $s.teams.map(tm => tm.map(p => ({ p, s: statOf(p) })));
   const win = s => rows.reduce((t, r) => t + s[r[1]], 0);
   const val = (s, k) => typeof k === 'function' ? k(s) : s[k];

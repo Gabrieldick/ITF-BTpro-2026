@@ -18,7 +18,7 @@ const keys = {};
 const touch = { x: 0, z: 0, id: null };
 const MTR = { active: false, kind: null, type: null, t: 0, v: 0, rate: 0, fill: .75, center: .78, half: .068, armedTap: false, showT: 0 };
 const ZONE = { facil: .095, medio: .068, dificil: .048 };
-const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE' };
+const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE', voleio: 'VOLEIO' };
 const LOB_MAX = 1.25;
 // bola que vem de um lob alto cai mais rápido: a faixa perfeita do smash fica menor
 function smashZoneScale() { return clamp(1.2 - ((ball.apex || 3.5) - 3.5) * .12, .45, 1.2); }
@@ -82,6 +82,17 @@ function timeToReach(p) {
   }
   return null;
 }
+// altura em que a bola vai chegar ao jogador (quando ela entrar a ~1 m dele)
+function contactY(p) {
+  if (ball.state !== 'live') return ball.pos.y;
+  const pos = ball.pos.clone(), vel = ball.vel.clone(), dt = .01;
+  for (let t = 0; t < 2.5; t += dt) {
+    if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && Math.hypot(pos.x - p.pos.x, pos.z - p.pos.z) <= 1.0) return pos.y;
+    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    if (pos.y < C.ballR) return 0;
+  }
+  return ball.pos.y;
+}
 function cancelMeter() { MTR.active = false; human.charging = false; el.meter.hidden = true; }
 function releaseMeter() {
   if (!MTR.active) return;
@@ -96,17 +107,19 @@ function releaseMeter() {
     const sw = human.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word }; sw.side = sideOf(human); sw.var = '';
     return;
   }
-  const res = Math.abs(diff) <= MTR.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
+  let res = Math.abs(diff) <= MTR.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
   // amt: 0 na borda do verde (amarelo) até 1 no começo do vermelho; a penalidade segue as cores da faixa
   const amt = clamp((Math.abs(diff) - MTR.half) / .2, 0, 1);
-  const word = res === 'perfeito' ? RES_WORD[res] : (amt < .2 ? 'UM POUCO ' : amt > .85 ? 'MUITO ' : '') + RES_WORD[res];
+  // smash pouco carregado numa bola a meia altura é um voleio (golpe curto e rápido), não um smash ruim
+  if (MTR.kind === 'smash' && res === 'cedo' && contactY(human) < 2.05) res = 'voleio';
+  const word = res === 'perfeito' || res === 'voleio' ? RES_WORD[res] : (amt < .2 ? 'UM POUCO ' : amt > .85 ? 'MUITO ' : '') + RES_WORD[res];
   MTR.active = false; MTR.showT = .9;
   el.meter.className = res + (res !== 'perfeito' && amt < .2 ? ' quase' : ''); el.mRes.textContent = word;
   el.mFill.style.height = (clamp(v, 0, 1) * 100) + '%';
   if (MTR.kind === 'smash') {
     human.charging = false;
     const sw = human.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: MTR.ideal }; sw.hold = 0; sw.var = swingVar('smash', ball.pos.y, human);
-    if (ball.state === 'live' && ball.pos.y > 1.6) startJump(human, .42, .3);
+    if (res !== 'voleio' && ball.state === 'live' && ball.pos.y > 1.6) startJump(human, .42, .3);
   } else serveRelease(res, amt, word);
 }
 function serveRelease(res, amt, word) {
