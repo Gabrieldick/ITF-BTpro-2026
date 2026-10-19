@@ -11,7 +11,7 @@ import { ACT, KU, P, READY, SERVE_KEYS, SERVE_U, mirrorPose, newPose, poseAt, sw
 import { ALL, human } from './06-modelos';
 import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, fpArm, fpWrist, landRing, particles, puff, reachRing, stamp, trail, trailGeo, trailPos, updateParticles } from './07-glb';
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
-import { canHit, predictLanding } from './10-fisica';
+import { canHit, predictLanding, reachOf } from './10-fisica';
 import { defRing, updateAimMarker } from './11-mira';
 import { LOB_MAX, MTR } from './12-controles';
 import { assignee } from './16-ia';
@@ -341,6 +341,7 @@ function updateVisuals(dt) {
   const fp = S.settings.cam === '1p';
   reachRing.visible = S.mode !== 'menu' && !fp && S.settings.assistMark;
   reachRing.position.set(human.pos.x, .02, human.pos.z);
+  { const rs = reachOf('defesa', human) / 1.335; reachRing.scale.set(rs, rs, 1); } // anel do tamanho real do alcance da defesa
   const ready = incoming && canHit(human, 'lob');
   const readyDef = incoming && canHit(human, 'defesa');
   const high = ball.pos.y >= 1.9;

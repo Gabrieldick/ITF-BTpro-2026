@@ -29,7 +29,7 @@ function predictLanding() {
   const t = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * y))) / g;
   return new V3(ball.pos.x + ball.vel.x * t, 0, ball.pos.z + ball.vel.z * t);
 }
-function reachOf(type, p) { return type === 'defesa' ? 1.15 + (p ? attrK(p, 'def') : .65) * .25 : 1.28; }
+function reachOf(type, p) { return type === 'defesa' ? 1.24 + (p ? attrK(p, 'def') : .65) * .28 : 1.28; }
 const _rf = new V3();
 // o centro da face da raquete precisa estar perto da bola
 const _sh = new V3();
@@ -183,4 +183,4 @@ function doHit(p, type, q, isServe, mod) {
   return { key, label: spec.label, mis, pop, wild, grade, pressure, backhand: bhSide, contact: contactWord };
 }
 
-export { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach, solveShot };
+export { reachOf, canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach, solveShot };
