@@ -101,7 +101,7 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   const dx = tx - p.pos.x, dz = tz - p.pos.z; const d = Math.hypot(dx, dz);
   let vx = 0, vz = 0;
   if (d > .05) { const s = Math.min(maxSpeed, d * 5); vx = dx / d * s; vz = dz / d * s; }
-  const k = Math.min(1, dt * 7);
+  const k = Math.min(1, dt * 7 * (p.burst > 0 ? 1.7 : 1)); // logo depois do split step a primeira passada é mais explosiva
   p.vel.x += (vx - p.vel.x) * k; p.vel.z += (vz - p.vel.z) * k;
 }
 function receiving(p) {
@@ -158,7 +158,7 @@ function updateHuman(dt) {
   }
   // inércia: trocar de direção custa uma passada; parar é rápido
   const rev = tvx * p.vel.x + tvz * p.vel.z < 0;
-  const k = Math.min(1, dt * (rev ? 5 : len < .1 ? 9 : 7.5));
+  const k = Math.min(1, dt * (rev ? 5 : len < .1 ? 9 : 7.5) * (p.burst > 0 && len > .1 ? 1.7 : 1));
   p.vel.x += (tvx - p.vel.x) * k; p.vel.z += (tvz - p.vel.z) * k;
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);

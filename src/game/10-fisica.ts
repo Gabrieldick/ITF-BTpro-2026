@@ -174,7 +174,7 @@ function doHit(p, type, q, isServe, mod) {
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
   sndHit(power);
   if (key === 'smash') { S.shake = p.isHuman ? .25 : .1; if (p.isHuman) S.stats.smashes++; }
-  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react; o.split = .22; });
+  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react; o.split = .26; });
   p.swing.type = isServe ? 'smash' : type; p.swing.hit = true;
   const hitAt = isServe ? .3 : .45;
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;

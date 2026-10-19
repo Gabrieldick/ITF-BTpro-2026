@@ -44,6 +44,14 @@ function blendPose(dst, src, k) {
 const READY_KEYS = [READY, READY], READY_U = [0, 1];
 const READY_FP = P({ rh: [.26, .42, -.46], rp: [.9, -.6, .3], wx: 1.35, wr: 1.0, lh: [-.06, .3, -.4] });
 const READY_FP_KEYS = [READY_FP, READY_FP];
+// preparação do smash: corpo de lado (ombro da mão livre para a rede), mão livre apontando a bola
+// 1 enquanto se prepara; no golpe o corpo desenrola até o contato
+function smashPrep(p, swingU) {
+  if (p.charging && MTR.type === 'smash') return clamp(MTR.t / .2, 0, 1);
+  if (swingU >= 0 && p.swing.type === 'smash' && ball.pos.y >= 1.7) return clamp(1 - swingU / .45, 0, 1);
+  if (!p.isHuman && S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team && p.swing.t < 0 && p.ai.planId === S.hitId && p.ai.shot === 'smash' && p.ai.plan && p.ai.plan.pt.y >= 1.9 && assignee(p.team) === p) return 1;
+  return 0;
+}
 function animateAthlete(p, dt) {
   const m = p.model; let pose = p.poseT || (p.poseT = newPose());
   const sp = Math.hypot(p.vel.x, p.vel.z), run = clamp(sp / 4.2, 0, 1);
@@ -66,14 +74,20 @@ function animateAthlete(p, dt) {
   let yawT = clamp(-p.vel.x * f * .05, -.3, .3);
   if (ball.state === 'live') yawT += clamp(Math.atan2(-sideOf(p), Math.abs(ball.pos.z - p.pos.z) + 1.2) * .45, -.45, .45);
   p.yaw += (yawT - p.yaw) * Math.min(1, dt * 6);
-  const yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw;
+  const prepT = p.debug ? 0 : smashPrep(p, swingU);
+  p.prep = (p.prep || 0) + (prepT - (p.prep || 0)) * Math.min(1, dt * (prepT > (p.prep || 0) ? 7 : 12));
+  const yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw + p.prep * .95 * (p.lefty ? 1 : -1);
   m.group.rotation.y = yaw;
   if (p.jump > 0) p.jump = Math.max(0, p.jump - dt);
-  if (p.split > 0) p.split = Math.max(0, p.split - dt);
-  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (p.split > 0 ? Math.sin(Math.PI * (1 - p.split / .22)) * .06 : 0);
+  if (p.split > 0) { p.split = Math.max(0, p.split - dt); if (p.split === 0) p.burst = .3; }
+  if (p.burst > 0) p.burst = Math.max(0, p.burst - dt);
+  // split step: pulinho com os dois pés quando o adversário bate, aterrissando abaixado e com as pernas abertas
+  const spU = p.split > 0 ? 1 - p.split / .26 : -1;
+  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .1 : 0);
   m.group.position.set(p.pos.x, jy, p.pos.z);
   if (sp > .25) p.gait += dt * Math.PI * 2 * (1.35 + sp * .3);
-  const crouch = pose.crouch * (1 - run * .35) + (p.split > 0 ? .04 : 0);
+  const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
+  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05;
   const lungeA = Math.abs(pose.lunge), lungeS = Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA, .92 - crouch - .08 * lungeA + run * .025 * Math.cos(2 * p.gait), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
@@ -85,7 +99,8 @@ function animateAthlete(p, dt) {
   const accLean = clamp(p.accF * .022, -.22, .22), accRoll = clamp(p.accR * .018, -.16, .16);
   m.hips.position.x += clamp(-p.accR * .006, -.05, .05);
   m.hips.rotation.set(0, Math.sin(p.gait) * .11 * run, Math.cos(p.gait) * .035 * run);
-  m.spine.rotation.set(-(pose.lean + run * .1) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw - Math.sin(p.gait) * .16 * run, -pose.bend - Math.cos(p.gait) * .03 * run - accRoll);
+  // com o corpo já de lado, o tronco torce menos (senão gira demais)
+  m.spine.rotation.set(-(pose.lean + run * .1) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: pés presos na areia
@@ -97,7 +112,7 @@ function animateAthlete(p, dt) {
   const air = jy > .05;
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1, L = m.legs[i];
-    let fx = s * .17, fz = 0;
+    let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0)), fz = 0;
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     const shuffle = sp > .25 && sp < 4.2 ? Math.abs(lvx) : 0; // deslocamento lateral: passo cruzado vira passo lateral
     const ph = p.gait + (i ? Math.PI * (1 - .45 * shuffle) : 0);
@@ -136,6 +151,10 @@ function animateAthlete(p, dt) {
   m.armR.wrist.rotation.set(pose.wx, pose.wr, 0);
   _c.fromArray(pose.lh); _b.fromArray(pose.lp);
   if (swingU < 0 && !p.charging && run > .3) _c.y += Math.sin(p.gait) * .04 * run;
+  if (p.prep > .05 && ball.state === 'live') { // mão livre aponta a bola
+    _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
+    if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
+  }
   ik2(m.armL.sh, m.armL.el, shL, _c, _b, .285, .27);
   m.armL.wrist.rotation.set(.2, 0, 0);
   // cabeça acompanha a bola
