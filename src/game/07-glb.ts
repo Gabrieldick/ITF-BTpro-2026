@@ -197,21 +197,21 @@ const fpArm = new THREE.Group(); fpArm.position.set(.24, -.34, -.34); fpArm.rota
 fpArm.visible = false;
 // Bola
 const ballTex = canvasTex(256, 128, (x, w, h) => {
-  const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#ffb21a'); gr.addColorStop(1, '#ff9a10'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
-  for (let i = 0; i < 1800; i++) { x.fillStyle = `rgba(255,${rand(170, 230) | 0},${rand(60, 120) | 0},${rand(.1, .3)})`; x.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
-  x.strokeStyle = 'rgba(255,248,230,.95)'; x.lineWidth = 5; x.beginPath();
+  const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#ff7a12'); gr.addColorStop(1, '#ff5a00'); // laranja de bola de beach tennis x.fillStyle = gr; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1800; i++) { x.fillStyle = `rgba(255,${rand(110, 170) | 0},${rand(20, 70) | 0},${rand(.1, .3)})`; x.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
+  x.strokeStyle = 'rgba(255,236,170,.98)'; x.lineWidth = 6; x.beginPath();
   for (let i = 0; i <= w; i++) { const y = h / 2 + Math.sin(i / w * Math.PI * 4) * h * .28; i ? x.lineTo(i, y) : x.moveTo(i, y); }
   x.stroke();
 });
 const ball = { pos: new V3(0, 1, 0), vel: new V3(), state: 'held' };
-const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(.055, 24, 16), mat('#ffffff', { map: ballTex, roughness: .8, emissive: col('#ff8a00'), emissiveIntensity: .12 }));
+const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(.055, 24, 16), mat('#ffffff', { map: ballTex, roughness: .8, emissive: col('#ff4d00'), emissiveIntensity: .32 }));
 scene.add(ballMesh);
 const ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(.3, .3), new THREE.MeshBasicMaterial({ map: SHADOW_TEX, transparent: true, depthWrite: false }));
 ballShadow.rotation.x = -Math.PI / 2; scene.add(ballShadow);
 const TRAIL_N = 14;
 const trailPos = new Float32Array(TRAIL_N * 3);
 const trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
-const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: col('#fff1c4'), transparent: true, opacity: .35 }));
+const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: col('#ffb070'), transparent: true, opacity: .4 }));
 trail.frustumCulled = false; scene.add(trail);
 function resetTrail() { for (let i = 0; i < TRAIL_N; i++) { trailPos[i * 3] = ball.pos.x; trailPos[i * 3 + 1] = ball.pos.y; trailPos[i * 3 + 2] = ball.pos.z; } trailGeo.attributes.position.needsUpdate = true; }
 const RING_MINE = col('#ff5a1f'), RING_MATE = col('#ffc7a8');

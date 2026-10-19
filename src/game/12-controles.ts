@@ -1,7 +1,7 @@
 // @ts-nocheck
 // teclado, toque, barras de força e menus
 import './11-mira';
-import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, nameOf, overall } from './00-base';
+import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall } from './00-base';
 import { S, isMobile } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
@@ -41,8 +41,9 @@ function startMeter(kind, type) {
   }
   else if (kind === 'lob') { MTR.fill = .45; MTR.center = -1; MTR.half = 0; human.charging = true; }
   else { MTR.fill = .9; MTR.center = TOSS_T / .9; MTR.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
-  if (kind === 'smash') MTR.half *= smashZoneScale() * clamp((human.char.a.smash - 35) / 58, .3, 1.1);
-  if (kind === 'serve') MTR.half *= clamp((human.char.a.saque - 35) / 55, .3, 1.15);
+  // faixa verde: menor com atributo baixo e, no smash, longe da rede
+  if (kind === 'smash') MTR.half *= smashZoneScale() * clamp((human.char.a.smash - 45) / 50, .25, 1.1) * (1 - .35 * clamp((Math.abs(human.pos.z) - 3.5) / 3.5, 0, 1));
+  if (kind === 'serve') MTR.half *= clamp((human.char.a.saque - 45) / 50, .25, 1.15);
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
   if (kind === 'lob') { el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; }
@@ -104,7 +105,8 @@ function releaseMeter() {
 function serveRelease(res, amt) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
-  if (res === 'perfeito') { q = 1; mod = { speedMul: type === 'smash' ? 1.1 : 1, oppMissBoost: type === 'smash' ? .05 : .02 }; }
+  const svN = clamp(human.char.a.saque - 50, 0, 45) / 45; // atributo de saque
+  if (res === 'perfeito') { q = lerp(.85, 1, svN); mod = { speedMul: type === 'smash' ? lerp(.96, 1.1, svN) : 1, oppMissBoost: (type === 'smash' ? .05 : .02) * svN, misBoost: (1 - svN) * (type === 'smash' ? .14 : .05) }; }
   else if (res === 'cedo') { q = .7 - .25 * amt; mod = { speedMul: .88 - .1 * amt }; }
   else { q = .5 - .25 * amt; mod = { misBoost: (type === 'smash' ? .3 : .12) + .3 * amt }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)

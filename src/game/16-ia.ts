@@ -189,9 +189,18 @@ function updateHuman(dt) {
       let q = hitQuality(p, sw.type), mod = {};
       if (sw.meter) {
         const { res, amt } = sw.meter;
-        if (res === 'perfeito') { q = Math.max(q, .9); mod = { speedMul: 1.22, noiseMul: .6, oppMissBoost: .22 }; }
-        else if (res === 'cedo') mod = { speedMul: .85 - .3 * amt };
+        // atributo: com smash baixo, mesmo o perfeito sai mais fraco e às vezes erra
+        const skN = clamp((p.char ? p.char.a.smash : 70) - 50, 0, 45) / 45;
+        if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.04, .22, skN), misBoost: (1 - skN) * .1 }; }
+        else if (res === 'cedo') mod = { speedMul: .85 - .3 * amt, misBoost: (1 - skN) * .08 };
         else mod = { speedMul: 1.08, noiseMul: 1.8, misBoost: .25 + .4 * amt };
+        // distância da rede: do fundo o smash chega mais lento, menos preciso e erra mais
+        const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
+        if (far > 0) {
+          mod.speedMul = (mod.speedMul || 1) * (1 - far * .24); mod.noiseMul = (mod.noiseMul || 1) * (1 + far * 1.1);
+          mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .8); mod.misBoost = (mod.misBoost || 0) + far * (.05 + (1 - skN) * .3);
+          if (far > .5) sw.meter.pos = 'DO FUNDO';
+        }
         // posicionamento: parado embaixo da bola (com ela sobre o ombro direito) rende mais; longe dela, menos
         const ip = sw.meter.ideal;
         if (overhead && ip) {
