@@ -218,7 +218,7 @@ function crWillPartner(c) {
   const me = crMeOvr(), o = crCharOvr(c), beat = Math.min(2, $s.CR.beat[c.id] || 0);
   // quem está muito acima no ranking só aceita se você já o venceu (ou se ele mesmo convidar)
   const myPts = crPts(), pts = Math.round($s.CR.npc[c.id] || 0);
-  if (!beat && pts > Math.max(myPts * 2 + 300, myPts + 600)) return { ok: false, why: 'Muito acima no ranking: só joga com quem o vencer' };
+  if (!beat && pts > Math.max(myPts * 1.6 + 150, myPts + 250)) return { ok: false, why: 'Muito acima no ranking: só joga com quem o vencer' };
   const lim = me + 3 + Math.floor(crRankBonus() / 2) + beat * 3;
   if (o <= lim) return { ok: true, why: beat ? 'Respeita você: já perdeu para você' : 'Topa jogar com você' };
   return { ok: false, why: o - lim > 8 ? 'Fora do seu nível por enquanto' : 'Quer alguém com mais ranking ou que já o tenha vencido' };
