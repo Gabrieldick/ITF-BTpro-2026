@@ -144,7 +144,16 @@ function doHit(p, type, q, isServe, mod) {
     if (vfx.jump) startJump(p, .5, .42);
   }
   if (!isServe) p.swing.var = vr;
-  if (!spec.gk) spec.gk = pop ? 1 : isServe ? (type === 'smash' ? 1.12 : 1) : ({ smash: 1.35, drive: 1.18, lob: 1.1, curta: 1.55, defesa: 1 }[key] || 1);
+  if (!spec.gk) spec.gk = pop ? 1 : isServe ? (type === 'smash' ? 1.12 : 1) : ({ smash: 1.35, drive: 1.18, lob: 1.1, curta: 1, defesa: 1 }[key] || 1);
+  // curta: só sai rápida e rente à rede com bom timing/qualidade e atributo de curta alto; as comuns são mais lentas e alcançáveis
+  let curtaK = 0;
+  if (key === 'curta' && !pop && !isServe) {
+    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
+    curtaK = clamp((tq - .6) / .35, 0, 1) * lerp(.55, 1, clamp((attrK(p, 'curta') - .6) / .35, 0, 1));
+    spec.gk = lerp(.95, 1.6, curtaK) * (vr === 'baixa' ? .93 : 1);
+    spec.margin = lerp(.14, .07, curtaK);
+    if (curtaK > .8 && !finisher) spec.label = 'CURTA MATADORA';
+  }
   const err = 1.15 - q;
   const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], humanDepthT()) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
