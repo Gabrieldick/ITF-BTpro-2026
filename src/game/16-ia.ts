@@ -244,7 +244,11 @@ function homeOf(p) {
 function updateAI(p, dt) {
   const D = skillOf(p);
   let [tx, tz] = homeOf(p);
-  if (S.mode === 'serve' || S.mode === 'toss') { tx = p.pos.x; tz = p.pos.z; }
+  if (S.mode === 'serve' || S.mode === 'toss') {
+    tx = p.pos.x; tz = p.pos.z;
+    // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
+    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + 1.1);
+  }
   if (S.serverPlayer === p && ((S.mode === 'toss' && p.tossT > TOSS_T * .74) || p.pendingServe)) {
     tz = p.pos.z + (p.team === 0 ? -1 : 1) * .8;
     if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); }
@@ -256,7 +260,7 @@ function updateAI(p, dt) {
         p.ai.planId = S.hitId;
         p.ai.plan = planIntercept(p, D.speed, 0);
         const fast = Math.hypot(ball.vel.x, ball.vel.z) > 15;
-        p.ai.willMiss = Math.random() < D.miss * (fast ? 2 : 1) + (ball.oppMiss || 0) + (p.ai.shot === 'smash' ? (1 - attrK(p, 'smash')) * .12 : 0) + (p.ai.shot === 'smash' || (p.ai.plan && p.ai.plan.pt.y >= 2.1) ? clamp(((ball.apex || 0) - 5.5) / 4, 0, 1) * .12 : 0);
+        p.ai.willMiss = Math.random() < D.miss * (fast ? (S.rally === 1 ? .9 : 2) : 1) + (ball.oppMiss || 0) * (S.rally === 1 ? .5 : 1) + (p.ai.shot === 'smash' ? (1 - attrK(p, 'smash')) * .12 : 0) + (p.ai.shot === 'smash' || (p.ai.plan && p.ai.plan.pt.y >= 2.1) ? clamp(((ball.apex || 0) - 5.5) / 4, 0, 1) * .12 : 0);
         p.ai.shot = chooseAIShot(p, p.ai.plan ? p.ai.plan.pt.y : ball.pos.y);
         p.ai.swung = false;
         const land = predictLanding();

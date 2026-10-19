@@ -19,7 +19,7 @@ setTimeout(()=>{getEl('menu').hidden=false;
 // start match: call btnPlay handler -> we can't (stub addEventListener). emulate Enter key on menu
 key('Enter');
 const S=sb.__pdo.S,ball=sb.__pdo.ball,H=sb.__pdo.human;
-const meterSeen={};const reasons={};let lastHit=0;const hits={};let lastMode='',rallies=[];let pts=0;let lastBanner='';
+const meterSeen={};const serverLog=[];const reasons={};let lastHit=0;const hits={};let lastMode='',rallies=[];let pts=0;let lastBanner='';
 const kd=k=>(listeners.keydown||[]).forEach(f=>f({key:k,repeat:false,preventDefault(){}}));const ku=k=>(listeners.keyup||[]).forEach(f=>f({key:k}));
 let pend=[];const res={perfeito:0,cedo:0,tarde:0};let lastRes='';
 for(let f=0;f<60*60*20 && S.mode!=='over';f++){
@@ -32,10 +32,10 @@ for(let f=0;f<60*60*20 && S.mode!=='over';f++){
     else if(d<1.5 && ball.pos.z>0.05 && ball.pos.y<2.9){ key(['k','l',' '][Math.floor(Math.random()*3)]); }
   }
   const mr=getEl('meter');
-  if(S.mode==='dead'&&lastMode!=='dead'){ const t=getEl('bTitle').textContent+' / '+getEl('bSub').textContent; reasons[t.replace(/ · games.*/,'')]=(reasons[t.replace(/ · games.*/,'')]||0)+1; rallies.push(S.rally); pts++; }
+  if(S.mode==='dead'&&lastMode!=='dead'){ const t=getEl('bTitle').textContent+' / '+getEl('bSub').textContent; reasons[t.replace(/ · games.*/,'')]=(reasons[t.replace(/ · games.*/,'')]||0)+1; rallies.push(S.rally); pts++; {const P=sb.__pdo;const cp=[P.cpuA,P.cpuB].map(p=>({wm:p.ai.willMiss,sw:p.ai.swung,lg:p.ai.letGo,z:+p.pos.z.toFixed(1),x:+p.pos.x.toFixed(1)}));serverLog.push({srv:S.server, r:S.rally, lt:S.lastTeam, why:t, cp, bx:+ball.pos.x.toFixed(1), bz:+ball.pos.z.toFixed(1)});} }
   if(S.hitId!==lastHit){lastHit=S.hitId;const P=sb.__pdo;let b=null,bd=9;for(const p of [P.human,P.partner,P.cpuA,P.cpuB]){if(p.team!==S.lastTeam)continue;const d=Math.hypot(p.pos.x-ball.pos.x,p.pos.z-ball.pos.z);if(d<bd){bd=d;b=p}}if(b)hits[b.name]=(hits[b.name]||0)+1;}
   lastMode=S.mode;
 }
-console.log(JSON.stringify({meterClasses:meterSeen,hits,mode:S.mode,score:S.score,stats:S.stats,pts,avgRally:(rallies.reduce((a,b)=>a+b,0)/rallies.length).toFixed(2),rallyHist:rallies.slice(0,40).join(','),reasons},null,1));
+console.log(JSON.stringify({serverLog,meterClasses:meterSeen,hits,mode:S.mode,score:S.score,stats:S.stats,pts,avgRally:(rallies.reduce((a,b)=>a+b,0)/rallies.length).toFixed(2),rallyHist:rallies.slice(0,40).join(','),reasons},null,1));
 
 },0);

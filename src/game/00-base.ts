@@ -21,11 +21,11 @@ const SHOTS = {
   smash:  { label: 'SMASH',  speed: 19,   depth: [4.6, 7.0], margin: .08, noise: .35 },
   drive:  { label: 'DRIVE',  speed: 13.5, depth: [5.0, 7.2], margin: .12, noise: .45 },
   lob:    { label: 'LOB',    T: 2.05,     depth: [6.2, 7.5], margin: .4,  noise: .5 },
-  curta:  { label: 'CURTA',  T: .9,       depth: [1.1, 2.5], margin: .18, noise: .35 },
+  curta:  { label: 'CURTA',  T: .9,       depth: [1.1, 2.5], margin: .12, noise: .35, lowArc: true },
   defesa: { label: 'DEFESA', T: 1.2,      depth: [4.3, 6.4], margin: .3,  noise: .3 },
 };
 const SERVES = {
-  smash:  { label: 'SAQUE FORTE',  speed: 16.5, depth: [4.5, 7.3], margin: .06, noise: .55 },
+  smash:  { label: 'SAQUE FORTE',  speed: 15, depth: [4.5, 6.8], margin: .06, noise: .55 },
   lob:    { label: 'SAQUE ALTO',   T: 1.9,      depth: [5.5, 7.4], margin: .5,  noise: .4 },
   curta:  { label: 'SAQUE CURTO',  T: 1.0,      depth: [1.6, 3.0], margin: .2,  noise: .35 },
   defesa: { label: 'SAQUE SEGURO', T: 1.3,      depth: [4.0, 6.0], margin: .3,  noise: .25 },

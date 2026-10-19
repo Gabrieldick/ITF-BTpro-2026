@@ -104,7 +104,7 @@ function releaseMeter() {
 function serveRelease(res, amt) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
-  if (res === 'perfeito') { q = 1; mod = { speedMul: type === 'smash' ? 1.15 : 1, oppMissBoost: type === 'smash' ? .12 : .04 }; }
+  if (res === 'perfeito') { q = 1; mod = { speedMul: type === 'smash' ? 1.1 : 1, oppMissBoost: type === 'smash' ? .05 : .02 }; }
   else if (res === 'cedo') { q = .7 - .25 * amt; mod = { speedMul: .88 - .1 * amt }; }
   else { q = .5 - .25 * amt; mod = { misBoost: (type === 'smash' ? .3 : .12) + .3 * amt }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)

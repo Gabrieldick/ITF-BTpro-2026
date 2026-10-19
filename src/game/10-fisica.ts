@@ -13,7 +13,7 @@ import { sideOf } from './18-animacao';
 // ---------- Física ----------
 function solveShot(p0, tgt, spec) {
   const dx = tgt.x - p0.x, dz = tgt.z - p0.z; const d = Math.hypot(dx, dz);
-  let T = spec.T || Math.max(.28, d / spec.speed);
+  let T = spec.lowArc ? Math.max(.42, d / 9.5) : (spec.T || Math.max(.28, d / spec.speed));
   const v = new V3(), g = G * (spec.gk || 1);
   for (let i = 0; i < 45; i++) {
     v.set(dx / T, (tgt.y - p0.y + .5 * g * T * T) / T, dz / T);
@@ -98,7 +98,8 @@ function doHit(p, type, q, isServe, mod) {
     if (!over && Math.abs(early) > .3) { mod.aimShift = clamp(-early * 1.3 * (bhSide ? -1 : 1), -1.2, 1.2) * rightS; contactWord = contactWord || (early > 0 ? 'ADIANTADO' : 'ATRASADO'); }
   }
   const inSpeed = Math.hypot(ball.vel.x, ball.vel.z);
-  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .35 : 0), 0, 1.3);
+  // devolução de saque pesa menos (o recebedor já está esperando a bola)
+  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .35 : 0), 0, 1.3) * (S.rally === 1 ? .5 : 1);
   if (pressure > 0) {
     const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5, 0, 1);
     grade = qq;
@@ -126,7 +127,7 @@ function doHit(p, type, q, isServe, mod) {
     spec.noise *= lerp(1.6, .65, (isServe ? A.saque : A[ATTR_OF[key]] || A.def) / 100);
     if (!isServe && (key === 'smash' || key === 'drive')) spec.speed *= lerp(.82, 1.12, A.forca / 100);
     if (isServe && spec.speed) spec.speed *= lerp(.88, 1.1, (A.forca + A.saque) / 200);
-    if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .18;
+    if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07;
   }
   const dir = p.team === 0 ? -1 : 1;
   const lim = C.halfW - .35;
@@ -143,7 +144,7 @@ function doHit(p, type, q, isServe, mod) {
     if (vfx.jump) startJump(p, .5, .42);
   }
   if (!isServe) p.swing.var = vr;
-  if (!spec.gk) spec.gk = pop ? 1 : isServe ? (type === 'smash' ? 1.25 : 1) : ({ smash: 1.35, drive: 1.18, lob: 1.1, curta: .8, defesa: 1 }[key] || 1);
+  if (!spec.gk) spec.gk = pop ? 1 : isServe ? (type === 'smash' ? 1.12 : 1) : ({ smash: 1.35, drive: 1.18, lob: 1.1, curta: .8, defesa: 1 }[key] || 1);
   const err = 1.15 - q;
   const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], humanDepthT()) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
