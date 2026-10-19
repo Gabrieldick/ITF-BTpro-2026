@@ -2,7 +2,7 @@
 // inteligência artificial: planejamento, estilos, escolha de golpes
 import './15-carreira-telas';
 import { $s } from '../state';
-import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, bG, clamp, hScale, lerp, rand, shortK, styleOf } from './00-base';
+import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf } from './00-base';
 import { S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -40,15 +40,18 @@ function gapX(team, jitter) {
   }
   return best;
 }
+// o "cérebro" de cada robô vem do próprio overall (reação, erros, qualidade, leitura de jogo);
+// a dificuldade só ajusta os adversários na partida rápida/campeonato (na carreira o nível vem do overall de cada um)
 function charSkill(p) {
-  const brain = p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
-  if (!p.char) return brain;
+  if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
-  const dm = p.team === 1 ? { facil: .9, medio: 1, dificil: 1.06 }[S.settings.diff] : 1;
+  const adj = p.team === 1 && !S.careerActive ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  const k = clamp((overall(a) - 50) / 45 + adj, 0, 1.1); // 50 → 0, 95 → 1
+  const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: (2.9 + a.vel * .022) * dm, react: brain.react * styleOf(p).react, smart: brain.smart, letGo: brain.letGo,
-    miss: brain.miss * lerp(1.7, .45, a.def / 100), err: brain.err * lerp(1.7, .45, tech) * styleOf(p).err,
-    q: [clamp(brain.q[0] - .12 + tech * .16, .25, .95), clamp(brain.q[1] - .08 + tech * .1, .4, 1)],
+    speed: (2.9 + a.vel * .022) * dm, react: lerp(.3, .09, k) * styleOf(p).react, smart: lerp(.3, .92, k), letGo: lerp(.3, .9, k),
+    miss: lerp(.15, .025, k) * lerp(1.3, .7, a.def / 100), err: lerp(.11, .02, k) * lerp(1.3, .75, tech) * styleOf(p).err,
+    q: [clamp(lerp(.42, .78, k), .3, .9), clamp(lerp(.72, 1, k), .5, 1)],
   };
 }
 function aiAim(p) {
