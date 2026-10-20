@@ -60,6 +60,20 @@ const RACKET_STATS = {
   eclipse: { nome: 'Eclipse Carbon 3K', preco: 14000, desc: 'Controle de elite: defesa, curta e lob de outro nível.', b: { def: 5, curta: 5, backhand: 4, lob: 4, vel: 1, smash: 1 } },
   zenite: { nome: 'Zênite Elite', preco: 20000, desc: 'A melhor raquete do mundo: tudo no máximo.', b: { forca: 5, smash: 5, saque: 4, def: 4, curta: 3, lob: 3, backhand: 3, vel: 1 } },
 };
+// visual de cada jogador (penteado, barba, faixa, óculos): derivado do id, sempre o mesmo para a mesma pessoa
+const HAIR_M = ['curto', 'curto', 'raspado', 'careca', 'cacheado', 'topete', 'longo', 'moicano'];
+const HAIR_F = ['rabo', 'rabo', 'coque', 'longo', 'curto', 'tranca', 'cacheado'];
+const LENS = ['#0b0d10', '#0b0d10', '#1d4fd8', '#e8700a', '#7a1fa2', '#0f8a5f'];
+function lookExtras(c) {
+  let h = 2166136261; for (const ch of String(c.id || c.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const r = k => ((h >>> (k * 3)) % 997) / 997;
+  const fem = !!c.fem, L = c.look || {};
+  const x = { hairStyle: fem ? HAIR_F[Math.floor(r(1) * HAIR_F.length)] : HAIR_M[Math.floor(r(1) * HAIR_M.length)] };
+  if (!fem) x.beard = r(2) < .45 ? ['barba', 'cavanhaque', 'bigode', 'barba'][Math.floor(r(3) * 4)] : '';
+  if (!L.cap && !L.visor && r(4) < .35) x.headband = ['#ff5a1f', '#fbf6ea', '#17324d', '#e2364a', '#0b7a83'][Math.floor(r(5) * 5)];
+  if (L.glasses) { x.glassStyle = r(6) < .3 ? 'redondo' : 'sport'; x.lens = LENS[Math.floor(r(7) * LENS.length)]; }
+  return x;
+}
 const GEAR = [
   { id: 'viseira', nome: 'Viseira pro', preco: 150, desc: 'Menos sol no rosto no saque e no smash.', b: { saque: 1, smash: 1 } },
   { id: 'munhequeira', nome: 'Munhequeira e grip premium', preco: 250, desc: 'Empunhadura firme no backhand.', b: { backhand: 2, curta: 1 } },
@@ -67,6 +81,16 @@ const GEAR = [
   { id: 'oculos', nome: 'Óculos esportivos', preco: 350, desc: 'Enxerga a bola contra o sol.', b: { def: 2, lob: 1 } },
   { id: 'joelheira', nome: 'Joelheira de compressão', preco: 600, desc: 'Mais firmeza nas bolas baixas.', b: { def: 1, vel: 1 } },
   { id: 'overgrip', nome: 'Kit overgrip pro', preco: 800, desc: 'Raquete firme no smash.', b: { smash: 1, forca: 1 } },
+  { id: 'faixa', nome: 'Faixa de cabelo pro', preco: 500, desc: 'Suor longe dos olhos no lançamento do saque.', b: { saque: 1 } },
+  { id: 'camisauv', nome: 'Camisa UV de competição', preco: 1200, desc: 'Leve e fresca: menos cansaço nos ralis longos.', b: { vel: 1, def: 1 } },
+  { id: 'tornozeleira', nome: 'Tornozeleira estabilizadora', preco: 2000, desc: 'Apoio firme nas mudanças de direção.', b: { def: 2, vel: 1 } },
+  { id: 'gripcouro', nome: 'Grip de couro sob medida', preco: 2500, desc: 'Toque mais fino nas bolas curtas e no backhand.', b: { backhand: 2, curta: 1 } },
+  { id: 'relogio', nome: 'Relógio com GPS e carga de treino', preco: 3500, desc: 'Controle de carga: pernas mais rápidas.', b: { vel: 2, def: 1 } },
+  { id: 'polarizado', nome: 'Óculos polarizados de elite', preco: 4500, desc: 'Lê a bola contra o sol do meio-dia.', b: { lob: 2, def: 1, smash: 1 } },
+  { id: 'cordas', nome: 'Raquete balanceada em fábrica', preco: 7000, desc: 'Peso e equilíbrio ajustados ao seu braço.', b: { forca: 2, smash: 1, saque: 1 } },
+  { id: 'suplem', nome: 'Plano de suplementação', preco: 9000, desc: 'Recuperação e explosão: um pouco de tudo.', b: { forca: 1, vel: 1, def: 1 } },
+  { id: 'sensor', nome: 'Sensor de golpes com análise em vídeo', preco: 14000, desc: 'Corrige o toque: curtas e lobs mais precisos.', b: { curta: 2, lob: 2, backhand: 1 } },
+  { id: 'biomec', nome: 'Avaliação biomecânica completa', preco: 22000, desc: 'Ajusta o movimento do smash e do saque.', b: { smash: 2, saque: 2, forca: 1 } },
 ];
 // equipe técnica: contrato até o fim da temporada
 const STAFF = [
@@ -188,4 +212,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf };
+export { lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf };

@@ -236,7 +236,7 @@ function renderCrNew() {
 function crStart() {
   const v = n => { const i = document.querySelector('input[name=' + n + ']:checked'); return i ? i.value : null; };
   crForm.fem = v('crGen') === 'f'; crForm.style = v('crStyle') || 'completo'; crForm.perfil = v('crPerfil') || 'promessa'; crForm.acc = v('crAcc') || 'cap'; crForm.canhoto = v('crHand') === 'c';
-  crCreate({ pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
+  crCreate({ hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
   crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo Amador C, ache um parceiro e suba no ranking.'; saveCareer(); renderCareer();
 }
 $('btnCareer').addEventListener('click', openCareer);

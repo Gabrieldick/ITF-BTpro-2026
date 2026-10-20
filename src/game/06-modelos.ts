@@ -419,14 +419,30 @@ function makeAthlete(o) {
     });
   }
   mesh(new THREE.BoxGeometry(.032, .006, .008), mat('#8a4b3c', { roughness: .6 }), hd, 0, .058, -.096);
-  const hair = mesh(new THREE.SphereGeometry(.108, 22, 12, 0, Math.PI * 2, 0, Math.PI * (fem ? .62 : .54)), hairM, hd, 0, .118, .01);
-  hair.scale.set(1, 1.12, 1.1); hair.rotation.x = .28;
+  // penteados
+  const hs = o.hairStyle || (fem ? 'rabo' : 'curto');
+  const capHair = (k, open) => { const h = mesh(new THREE.SphereGeometry(.108 * k, 22, 12, 0, Math.PI * 2, 0, Math.PI * open), hairM, hd, 0, .118, .01); h.scale.set(1, 1.12, 1.1); h.rotation.x = .28; return h; };
+  if (hs !== 'careca') capHair(hs === 'raspado' ? .99 : 1, hs === 'raspado' ? .5 : fem || hs === 'longo' ? .62 : .54);
+  if (hs === 'cacheado') for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, rr = .085; mesh(new THREE.SphereGeometry(.038, 8, 6), hairM, hd, Math.cos(a) * rr, .17 + Math.sin(i * 1.7) * .02, .02 + Math.sin(a) * rr); }
+  if (hs === 'topete') mesh(new THREE.SphereGeometry(.06, 12, 8), hairM, hd, 0, .215, -.045).scale.set(1.3, .8, 1.1);
+  if (hs === 'moicano') mesh(new THREE.BoxGeometry(.03, .06, .2), hairM, hd, 0, .225, .03);
+  if (hs === 'longo') { const lg = new THREE.CylinderGeometry(.1, .08, .2, 16, 1, true, -Math.PI * .62, Math.PI * 1.24); lg.scale(1, 1, 1.1); mesh(lg, hairM, hd, 0, .05, .03).material.side = THREE.DoubleSide; } // aberto na frente (rosto)
   let tail = null;
-  if (fem) {
+  if (hs === 'rabo' || hs === 'tranca') {
     tail = new THREE.Group(); tail.position.set(0, .15, .1); hd.add(tail);
     mesh(new THREE.CylinderGeometry(.018, .018, .02, 10), trimM, tail, 0, -.005, 0);
-    [[.034, -.045, .02], [.03, -.1, .035], [.024, -.155, .04], [.017, -.2, .04]].forEach(([r, y, z]) => mesh(new THREE.SphereGeometry(r, 10, 8), hairM, tail, 0, y, z).scale.set(1, 1.4, 1));
+    const seg = hs === 'tranca' ? [[.026, -.04, .02], [.024, -.085, .03], [.022, -.13, .035], [.02, -.175, .04], [.018, -.22, .04], [.016, -.265, .04]] : [[.034, -.045, .02], [.03, -.1, .035], [.024, -.155, .04], [.017, -.2, .04]];
+    seg.forEach(([r, y, z]) => mesh(new THREE.SphereGeometry(r, 10, 8), hairM, tail, 0, y, z).scale.set(1, hs === 'tranca' ? 1.1 : 1.4, 1));
   }
+  if (hs === 'coque') mesh(new THREE.SphereGeometry(.045, 12, 10), hairM, hd, 0, .2, .085);
+  // barba
+  if (!fem && o.beard) {
+    if (o.beard === 'barba') mesh(new THREE.SphereGeometry(.068, 16, 10), hairM, hd, 0, .058, -.034).scale.set(1.22, .78, .95); // queixo e mandíbula
+    if (o.beard === 'cavanhaque') mesh(new THREE.SphereGeometry(.025, 10, 8), hairM, hd, 0, .035, -.09).scale.set(1.1, 1.2, .8);
+    if (o.beard === 'barba' || o.beard === 'bigode') mesh(new THREE.BoxGeometry(.045, .01, .012), hairM, hd, 0, .068, -.1);
+  }
+  // faixa de cabelo
+  if (o.headband && !o.cap && !o.visor) mesh(new THREE.TorusGeometry(.104, .011, 6, 24), mat(o.headband, { roughness: .8 }), hd, 0, .16, .005).rotation.x = Math.PI / 2 + .25;
   if (o.cap) {
     const capM = mat(o.cap, { roughness: .8 });
     mesh(new THREE.SphereGeometry(.112, 20, 10, 0, Math.PI * 2, 0, Math.PI * .45), capM, hd, 0, .13, 0).scale.set(1, 1.05, 1.1);
@@ -439,7 +455,9 @@ function makeAthlete(o) {
   }
   if (o.glasses) {
     const gGeo = new THREE.TorusGeometry(.1, .014, 6, 24, Math.PI * .9); gGeo.rotateZ(Math.PI * .05); gGeo.rotateX(-Math.PI / 2);
-    const gl = mesh(gGeo, mat('#0b0d10', { roughness: .06, metalness: .7, envMapIntensity: 1.6 }), hd, 0, .118, 0); gl.scale.set(.96, 1.3, 1.08);
+    const lensM = mat(o.lens || '#0b0d10', { roughness: .06, metalness: .7, envMapIntensity: 1.6 });
+    if (o.glassStyle === 'redondo') { [-1, 1].forEach(s => mesh(new THREE.TorusGeometry(.022, .004, 6, 16), lensM, hd, s * .036, .118, -.1)); mesh(new THREE.CylinderGeometry(.03, .03, .006, 12), lensM, hd, 0, .118, -.102).visible = false; [-1, 1].forEach(s => mesh(new THREE.CircleGeometry(.02, 14), lensM, hd, s * .036, .118, -.103).rotation.y = Math.PI); }
+    else { const gl = mesh(gGeo, lensM, hd, 0, .118, 0); gl.scale.set(.96, 1.3, 1.08); }
   }
   const arms = {};
   [-1, 1].forEach(s => {

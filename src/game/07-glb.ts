@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assetBuf } from '../assets';
-import { G, KITS, V3, charById, clamp, effA, hScale, heightOf, nameOf, racketBonus, rand } from './00-base';
+import { G, KITS, V3, charById, clamp, effA, hScale, heightOf, nameOf, racketBonus, rand , lookExtras } from './00-base';
 import { S } from './01-estado';
 import { camera, canvasTex, col, mat, scene } from './02-render';
 import { RACKETS, SHADOW_TEX, capsuleGeo, makeRacket } from './05-atletas';
@@ -165,8 +165,8 @@ function assignCharacters() {
     const c = charById(id);
     // atributos em jogo: base + raquete (a sua vem do menu/carreira; a dos outros, do equipamento de cada um)
     p.char = Object.assign({}, c, { a: effA(c.a, racketBonus(p === human ? S.settings.racket : c.look && c.look.racket)) });
-    const look = Object.assign({}, c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
-    const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (look.skin || '');
+    const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
+    const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
     if (p.lookKey !== lk) { rebuildModel(p, look); p.lookKey = lk; }
     p.playStyle = playStyleOf(c);
     p.skill = p.isHuman ? null : charSkill(p);

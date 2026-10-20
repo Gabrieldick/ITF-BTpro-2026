@@ -53,6 +53,7 @@ svg.flag, .flag-txt { width: 18px; height: 12px; flex: none; border-radius: 2px;
 .flag-txt { display: inline-block; font-size: 7px; line-height: 12px; text-align: center; background: #ddd; color: #333; }
 .cr-nat { display: flex; align-items: center; gap: 8px; }
 .cr-nat svg.flag { width: 30px; height: 20px; }
+.cr-field select#crHairSt, .cr-field select#crBeard { font: 700 16px var(--f-body); color: var(--ink); background: #fff; border: 2px solid #e3d9c4; border-radius: 10px; padding: 8px 10px; text-transform: none; letter-spacing: 0; }
 .cr-nat select { flex: 1; min-width: 0; font: 700 16px var(--f-body); color: var(--ink); background: #fff; border: 2px solid #e3d9c4; border-radius: 10px; padding: 8px 10px; text-transform: none; letter-spacing: 0; }
 #board .head { font-size: 10px; letter-spacing: .12em; color: rgba(251,246,234,.55); padding-bottom: 2px; }
 #board .nm { font-family: var(--f-body); font-weight: 800; font-size: 14px; letter-spacing: .06em; white-space: nowrap; }
