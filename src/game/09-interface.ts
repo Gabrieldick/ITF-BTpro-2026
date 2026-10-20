@@ -2,18 +2,20 @@
 // elementos da interface e placar
 import './08-audio';
 import { $s } from '../state';
-import { C, HALF_W, ZONE3, nameOf, shortOf } from './00-base';
+import { C, HALF_W, ZONE3, clamp, nameOf, shortOf } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
 import { applyArena, cheerArena, confetti, linesGroup, setNetHeight } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail } from './07-glb';
+import { swingVar } from './04-poses';
 import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam } from './12-controles';
 import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
 import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
+import { sideOf } from './18-animacao';
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
 const el = {
@@ -199,13 +201,24 @@ function startDrill(kind, onEnd) {
 function drillNext() {
   const d = S.drill, D = DRILLS[d.kind];
   if (d.n >= D.max) return drillEnd();
-  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.state = 'live'; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; d.lastR = null;
+  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; d.lastR = null;
   human.swing.t = -1; human.charging = false; human.dive = null;
-  const hx = human.pos.x + (Math.random() - .5) * 2.2, hz = human.pos.z + (Math.random() - .5) * 1.2;
+  // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
+  const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[d.kind];
+  if (d.n === 0 || Math.abs(human.pos.x) > C.halfW + .3 || human.pos.z > C.halfL + .3 || human.pos.z < 1) { human.pos.set(0, 0, zone[2]); human.vel.set(0, 0, 0); }
+  const hw = C.halfW - .45;
+  const hx = clamp(human.pos.x + (Math.random() - .5) * 2.2, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
   const g = 9.8;
   if (d.kind === 'curtas') { const T = 1.05; ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (1.0 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T); }
-  if (d.kind === 'defesa') { const T = .55; ball.pos.set((Math.random() - .5) * 2, 2.6, -1.6); ball.vel.set((hx - ball.pos.x) / T, (1.0 - 2.6 + .5 * g * 1.35 * T * T) / T, (hz - ball.pos.z) / T); ball.gk = 1.35; ball.finisher = true; }
+  if (d.kind === 'defesa') { const T = .55; ball.pos.set((Math.random() - .5) * 2, 2.6, -1.6); ball.vel.set((hx - ball.pos.x) / T, (.75 - 2.6 + .5 * g * 1.35 * T * T) / T, (hz - ball.pos.z) / T); ball.gk = 1.35; ball.finisher = true; }
   if (d.kind === 'smash') { const T = 2.1; ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = 6; }
+  // quem lança é o professor: ele fica atrás do ponto de saída, faz o movimento e a bola só sai na hora do contato (16-ia)
+  const coach = $s.teams[1][0], type = { curtas: 'defesa', defesa: 'smash', smash: 'lob' }[d.kind];
+  coach.feed = { pos: ball.pos.clone(), vel: ball.vel.clone(), gk: ball.gk, finisher: ball.finisher, apex: ball.apex };
+  coach.pos.set(ball.pos.x + .5 * (coach.lefty ? -1 : 1), 0, ball.pos.z - .35); coach.vel.set(0, 0, 0);
+  coach.swing.type = type; coach.swing.dur = .7; coach.swing.t = 0; coach.swing.hit = false;
+  coach.swing.side = sideOf(coach, ball.pos); coach.swing.var = swingVar(type, ball.pos.y, coach);
+  S.serverPlayer = coach; ball.state = 'held'; ball.vel.set(0, 0, 0);
   ball.prev = null; resetTrail(); renderBoard();
 }
 function drillResult(w, kind) {

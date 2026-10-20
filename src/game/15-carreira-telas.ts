@@ -60,8 +60,35 @@ function crPlayerHTML() {
     + '<p class="section-label">Partidas</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
     + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option></select></label>'
     + ($s.CR.me.pais === 'BRA' ? '<p class="section-label">Estado (estaduais e seleção estadual)</p><label class="cr-field"><select id="crMeUf" class="cr-sel">' + STATES.map(([k, n]) => '<option value="' + k + '"' + (k === ($s.CR.me.uf || 'SP') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' : '')
+    + crLookHTML()
     + '<p class="section-label">Nacionalidade</p><label class="cr-field"><span class="cr-nat">' + flagSVG($s.CR.me.pais) + '<select id="crMeNat">' + COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === $s.CR.me.pais ? ' selected' : '') + '>' + c.nome + '</option>').join('') + '</select></span></label>'
     + '<div class="cta-row" style="margin-top:10px"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div></div>';
+}
+// aparência do seu jogador: dá para mudar a qualquer momento da carreira (vale a partir da próxima partida)
+const HAIR_ST = [['', 'Automático'], ['curto', 'Curto'], ['raspado', 'Raspado'], ['careca', 'Careca'], ['cacheado', 'Cacheado'], ['topete', 'Topete'], ['moicano', 'Moicano'], ['longo', 'Longo'], ['rabo', 'Rabo de cavalo'], ['coque', 'Coque'], ['tranca', 'Trança']];
+const BEARDS = [['', 'Sem barba'], ['barba', 'Barba'], ['cavanhaque', 'Cavanhaque'], ['bigode', 'Bigode']];
+const ACCS = [['cap', 'Boné'], ['visor', 'Viseira'], ['band', 'Faixa'], ['none', 'Nada']];
+const lookAcc = L => L.cap ? 'cap' : L.visor ? 'visor' : L.headband ? 'band' : 'none';
+function crLookHTML() {
+  const me = $s.CR.me, L = me.look;
+  const sw = (arr, key) => arr.map(c => '<button type="button" class="cr-sw' + (L[key] === c ? ' sel' : '') + '" data-look-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
+  const sel = (id, opts, v) => '<select id="' + id + '" class="cr-sel">' + opts.map(([k, n]) => '<option value="' + k + '"' + (k === (v || '') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+  return '<p class="section-label">Aparência</p><div class="cr-sws"><div><span class="cr-lbl">Pele</span>' + sw(SKINS, 'skin') + '</div><div><span class="cr-lbl">Cabelo</span>' + sw(HAIRS, 'hair') + '</div></div>'
+    + '<div class="cr-look"><label class="cr-field">Corte ' + sel('crLkHair', HAIR_ST, L.hairStyle) + '</label>'
+    + (me.fem ? '' : '<label class="cr-field">Barba ' + sel('crLkBeard', BEARDS, L.beard) + '</label>')
+    + '<label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
+    + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label></div>'
+    + '<p class="cr-note">Vale a partir da próxima partida.</p>';
+}
+function bindLook() {
+  const L = () => $s.CR.me.look, done = () => { crSyncChars(); saveCareer(); renderCareer(); };
+  document.querySelectorAll('[data-look-skin]').forEach(b => b.addEventListener('click', () => { L().skin = b.dataset.lookSkin; done(); }));
+  document.querySelectorAll('[data-look-hair]').forEach(b => b.addEventListener('click', () => { L().hair = b.dataset.lookHair; done(); }));
+  const on = (id, fn) => { const e = $(id); if (e) e.addEventListener('change', () => { fn(e.value); done(); }); };
+  on('crLkHair', v => { if (v) L().hairStyle = v; else delete L().hairStyle; });
+  on('crLkBeard', v => { L().beard = v; });
+  on('crLkAcc', v => { const l = L(); delete l.cap; delete l.visor; delete l.headband; if (v === 'cap') l.cap = '#fbf6ea'; else if (v === 'visor') l.visor = '#fbf6ea'; else if (v === 'band') l.headband = '#ff5a1f'; else l.headband = ''; }); // '' impede a faixa automática
+  on('crLkGlass', v => { L().glasses = !!v; });
 }
 function crPersonRow(c, extra, btn) {
   return '<div class="cr-row"><span class="ovr sm">' + crCharOvr(c) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · ' + (c.id === 'crme' ? c.estilo : 'joga ' + PLAY_STYLES[playStyleOf(c)].nome.toLowerCase()) + ' · ' + Math.round(heightOf(c) * 100) + ' cm' + (c.canhoto ? ' · canhoto' : '') + (extra ? ' · ' + extra : '') + '</small></div>' + (btn || '') + '</div>';
@@ -211,6 +238,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-gear]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gear); if ($s.CR.money >= g.preco) { $s.CR.money -= g.preco; if (g.staff) $s.CR.staff[g.id] = true; else $s.CR.gear.push(g.id); $s.CR.lastMsg = 'Comprou: ' + g.nome + '.'; crSyncChars(); saveCareer(); } renderCareer(); }));
   body.querySelectorAll('input[name=crGames]').forEach(r => r.addEventListener('change', () => { $s.CR.games = +r.value; saveCareer(); }));
   const ms = $('crMeSide'); if (ms) ms.addEventListener('change', () => { $s.CR.side = ms.value; saveCareer(); });
+  if (crTab === 'jogador') bindLook();
   const mu = $('crMeUf'); if (mu) mu.addEventListener('change', () => { $s.CR.me.uf = mu.value; crSyncChars(); saveCareer(); renderCareer(); });
   const mn = $('crMeNat'); if (mn) mn.addEventListener('change', () => { $s.CR.me.pais = mn.value; crSyncChars(); saveCareer(); renderCareer(); });
   const rst = $('crReset'); if (rst) rst.addEventListener('click', () => { if (rst.dataset.sure) { $s.CR = null; saveCareer(); crSyncChars(); renderCareer(); } else { rst.dataset.sure = '1'; rst.textContent = 'Clique de novo para confirmar'; } });

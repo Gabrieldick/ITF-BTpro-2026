@@ -315,7 +315,19 @@ function receiveX(p) {
   return clamp(center + p.slot * hw, -C.halfW + .4, C.halfW - .4);
 }
 function updateAI(p, dt) {
-  if (S.drill && p.team === 1) { p.vel.set(0, 0, 0); return; } // no treino o lançador não rebate
+  if (S.drill && p.team === 1) { // no treino o professor só lança: faz o golpe e solta a bola no contato, não rebate
+    p.vel.set(0, 0, 0);
+    if (p.swing.t >= 0) {
+      p.swing.t += dt;
+      if (p.feed && p.swing.t >= p.swing.dur * .45) {
+        const f = p.feed; p.feed = null; p.swing.hit = true;
+        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.finisher = f.finisher; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
+        p.contact = { x: f.pos.x, y: f.pos.y, z: f.pos.z, u: .45, hitId: S.hitId };
+      }
+      if (p.swing.t >= p.swing.dur) p.swing.t = -1;
+    }
+    return;
+  }
   const D = skillOf(p);
   let [tx, tz] = homeOf(p);
   if (S.mode === 'serve' || S.mode === 'toss') {

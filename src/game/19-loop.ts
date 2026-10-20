@@ -15,9 +15,9 @@ import { applyCam, inPlay, setPaused, syncMenu } from './12-controles';
 import { step } from './17-bola';
 import { READY_FP, updateCamera, updateVisuals } from './18-animacao';
 // ---------- Loop ----------
-let last = performance.now(), acc = 0;
-// medição de fps a cada segundo: abaixo de 57 reduz a resolução; com folga, volta aos poucos
-const FPS = { n: 0, t: 0, good: 0, lockUntil: 0, lastUp: -1e9, el: null, show: false };
+let last = performance.now();
+// medição de fps a cada segundo: 2 s seguidos abaixo de 54 reduz a resolução; com folga, volta aos poucos
+const FPS = { n: 0, t: 0, good: 0, bad: 0, lockUntil: 0, lastUp: -1e9, el: null, show: false };
 function perfTick(now, gap) {
   if (gap > 100) return; // aba escondida/pausa longa
   FPS.n++; FPS.t += gap;
@@ -25,11 +25,17 @@ function perfTick(now, gap) {
   const fps = FPS.n * 1000 / FPS.t; FPS.n = 0; FPS.t = 0;
   const sc = getResScale();
   if (S.settings.autoRes !== false && inPlay()) {
-    if (fps < 57) {
+    if (fps < 54) {
       FPS.good = 0;
-      if (now - FPS.lastUp < 8000) FPS.lockUntil = now + 60000; // subiu e voltou a travar: fica nesta resolução por um minuto
-      if (sc > .55) setResScale(Math.max(.55, sc * .85));
-    } else if (++FPS.good >= 6 && sc < 1 && now > FPS.lockUntil) { FPS.good = 0; FPS.lastUp = now; setResScale(Math.min(1, sc / .9)); }
+      if (++FPS.bad >= 2) {
+        FPS.bad = 0;
+        if (now - FPS.lastUp < 8000) FPS.lockUntil = now + 60000; // subiu e voltou a travar: fica nesta resolução por um minuto
+        if (sc > .55) setResScale(Math.max(.55, sc * .85));
+      }
+    } else {
+      FPS.bad = 0;
+      if (++FPS.good >= 6 && sc < 1 && now > FPS.lockUntil) { FPS.good = 0; FPS.lastUp = now; setResScale(Math.min(1, sc / .9)); }
+    }
   }
   if (FPS.show) {
     if (!FPS.el) { FPS.el = document.createElement('div'); FPS.el.id = 'fpsBox'; document.body.appendChild(FPS.el); }
@@ -91,11 +97,13 @@ function frame(now) {
   requestAnimationFrame(frame);
   perfTick(now, now - last);
   const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (NET.role === 'guest') { acc = 0; if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião
+  if (NET.role === 'guest') { if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião
   else if (!S.paused && inPlay()) {
-    acc += dt;
-    while (acc >= STEP) { step(STEP); acc -= STEP; }
-  } else acc = 0;
+    // o tempo do quadro inteiro dividido em passos iguais (~1/120 s): tudo anda exatamente o tempo que passou,
+    // sem quadros "parados" ou "dobrados" (com passo fixo, telas de 144 Hz alternavam 0 e 1 passo e davam trancos)
+    const n = Math.max(1, Math.round(dt / STEP)), h = dt / n;
+    for (let i = 0; i < n; i++) step(h);
+  }
   if (NET.role === 'host' && NET.hostTick) NET.hostTick(now);
   const tsec = now / 1000;
   seaMat.uniforms.time.value = tsec; sky.material.uniforms.time.value = tsec;

@@ -526,3 +526,6 @@ body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #
 /* textos e controles extras dentro das opções ocupam a linha inteira */
 .seg > p, .seg > label { grid-column: 1 / -1; }
 #fovFp, input[type=range] { accent-color: var(--ui-acc); }
+
+/* aparência na carreira */
+.cr-look { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
