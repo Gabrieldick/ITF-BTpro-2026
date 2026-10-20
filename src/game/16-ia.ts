@@ -105,10 +105,15 @@ function assignee(team) {
       if (Math.abs(bx - split) < .3) who = Math.abs(bx - m.pos.x) < Math.abs(bx - h.pos.x) ? m : h;
       else who = Math.sign(bx - split) === Math.sign(m.pos.x - split) ? m : h;
     } else {
+      // dupla da IA: vai quem está do lado onde a bola chega (na linha da dupla, ou onde cai se cair antes);
+      // o outro só assume se o primeiro não alcança e ele sim (antes a curta cruzada ia para quem estava reto)
       const pa = planIntercept(a, skillOf(a).speed, 0), pb = planIntercept(b, skillOf(b).speed, 0);
-      const score = pl => !pl ? 99 : pl.t + (pl.ok ? 0 : 5);
-      const sa = score(pa), sb = score(pb);
-      who = Math.abs(sa - sb) < .08 ? (Math.sign(ball.pos.x) === Math.sign(a.pos.x) ? a : b) : (sa < sb ? a : b);
+      const split = (a.pos.x + b.pos.x) / 2, zLine = (a.pos.z + b.pos.z) / 2, land = predictLanding();
+      let bx = land.x;
+      if (Math.abs(ball.vel.z) > .5) { const t = (zLine - ball.pos.z) / ball.vel.z, lt = Math.abs((land.z - ball.pos.z) / ball.vel.z); if (t > 0 && t < lt) bx = ball.pos.x + ball.vel.x * t; }
+      const side = Math.abs(bx - split) < .25 ? (Math.abs(bx - a.pos.x) < Math.abs(bx - b.pos.x) ? a : b) : (Math.sign(bx - split) === Math.sign(a.pos.x - split) ? a : b);
+      const other = side === a ? b : a, ps = side === a ? pa : pb, po = side === a ? pb : pa;
+      who = (!ps || !ps.ok) && po && po.ok ? other : side;
     }
   }
   S.assign[team] = who; S.assignId[team] = S.hitId;
