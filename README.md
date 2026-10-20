@@ -10,29 +10,30 @@ Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e
 - **Partida rápida:** simples ou dupla, escolhendo atletas do circuito (overall, atributos, altura e estilo de jogo).
 - **Campeonato:** chave de 8 duplas (masculino, feminino ou misto) com as duplas reais da temporada ou a sua dupla montada.
 - **Treino:** desafios com lançador (curtas no verde, defenda os smashes, smash perfeito).
-- **Online:** jogue com um amigo pela internet, em dupla contra a CPU ou um contra o outro (veja abaixo).
+- **Online:** até 8 pessoas pela internet: 2 contra 2, dupla contra a CPU, 1 contra 1 ou campeonato (veja abaixo).
 - **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ~3.800 atletas fictícios + astros reais, ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
 
-## Jogar online com um amigo
+## Jogar online com amigos
 
-Não precisa de conta nem de servidor: os dois navegadores se conectam direto (WebRTC, pela biblioteca [PeerJS](https://peerjs.com/); o servidor público gratuito do PeerJS só apresenta um navegador ao outro).
+Não precisa de conta nem de servidor: os navegadores se conectam direto (WebRTC, pela biblioteca [PeerJS](https://peerjs.com/); o servidor público gratuito do PeerJS só apresenta um navegador ao outro). Cabem até 8 pessoas por sala.
 
-1. Um de vocês abre o jogo, ajusta no menu os jogadores e a dificuldade e clica em **Online → Criar sala**. Aparece um código de 5 letras (e o botão **Copiar link**).
-2. O outro abre o jogo, clica em **Online**, digita o código e clica em **Entrar na sala** (ou só abre o link copiado).
-3. Quem criou a sala escolhe o modo e clica em **Começar partida**:
-   - **Dupla:** vocês dois no mesmo time contra a CPU (quem entrou joga como a dupla de quem criou).
-   - **Simples · 1 contra 1:** um contra o outro. Cada um vê a própria quadra do lado de baixo.
-4. Quem entrou joga com o personagem marcado como **Você** no menu dele (se não for repetido). Os controles são os mesmos do jogo normal.
+1. Um de vocês abre o jogo, ajusta no menu a dificuldade e o tamanho do set, clica em **Online**, põe o nome e clica em **Criar sala**. Aparece um código de 5 letras (e o botão **Copiar link**).
+2. Os outros abrem o jogo, clicam em **Online**, põem o nome, digitam o código e clicam em **Entrar na sala** (ou só abrem o link copiado).
+3. Na sala, cada um escolhe **Seu personagem** (sem repetir o de outra pessoa).
+4. **Partida:** quem criou escolhe **Dupla (2 × 2)** ou **Simples (1 × 1)**. Cada um clica em **Sentar aqui** no lugar que quiser: Time A ou Time B, direita ou esquerda (o lado é visto por quem está naquele time). Lugar vazio é da CPU (quem criou escolhe o personagem dela) e quem não senta assiste. Dá para fazer 2 contra 2, dupla contra a CPU, 1 contra 1, 1 contra 2 etc.
+5. **Campeonato:** todos da sala entram numa chave de simples (ou de dupla, cada um com um parceiro da CPU), completada com CPU até 2, 4 ou 8. As partidas são uma por vez: quem joga joga, os outros assistem; jogos entre duas CPUs são decididos na hora. A chave fica na sala, para todos, até sair o campeão.
+6. Quem criou clica em **Começar partida** (ou **Jogar a próxima partida**). No fim, **Menu** leva todos de volta para a sala.
 
-Como funciona: quem cria a sala roda a partida inteira (física, CPU e placar), como no jogo normal; o outro manda só as teclas apertadas e recebe o estado da partida cerca de 30 vezes por segundo. No fim da partida, **Jogar de novo** (de quem criou) começa outra; **Menu** volta para a sala. Se a conexão cair, os dois voltam para a tela do online com um aviso; a sala de quem criou continua aberta com o mesmo código.
+Cada um vê a quadra do lado do próprio time (quem está no Time de cima vê tudo espelhado, jogando de baixo como sempre). Quem só assiste vê a partida sem botões de golpe.
 
-Limites do protótipo:
-- A latência pesa para quem entrou: ele vê a bola um pouco atrasada (o chip *Online · NN ms* no canto mostra o tempo de ida e volta). O jogo desconta esse atraso nas barras de força e no tempo do golpe, mas com mais de ~150 ms fica mais difícil.
-- A partida não pausa (Esc só abre o menu por cima). Se quem criou a sala trocar de aba ou minimizar, a partida congela para os dois.
+Como funciona: quem cria a sala roda a partida inteira (física, CPU e placar), como no jogo normal; os outros mandam só as teclas e recebem o estado da partida 60 vezes por segundo (30 com mais de 4 pessoas), por um canal que não espera pacotes perdidos. Para ficar sem atraso perceptível, o seu jogador anda e começa o golpe na hora em que você aperta (e é corrigido aos poucos pelo que o anfitrião calculou); as barras do saque e do lob correm no seu relógio; a barra do smash e o tempo de curta/defesa descontam o atraso da rede. O atraso de desenho se ajusta sozinho à rede (cerca de 20–40 ms numa rede boa). Se a conexão de alguém que está jogando cair, todos voltam para a sala com um aviso; se cair quem criou a sala, os outros voltam para a tela do online.
+
+Limites:
+- Com ida e volta acima de ~150 ms (veja o chip *Online · NN ms* no canto) a bola ainda aparece um pouco atrasada para quem entrou.
+- A partida não pausa (Esc só abre o menu por cima). Se quem criou a sala trocar de aba ou minimizar, a partida congela para todos.
 - Alguns roteadores e redes de empresa/universidade bloqueiam a conexão direta (não há servidor TURN). Se não conectar, tente outra rede (por exemplo, o 4G do celular).
-- Só duas pessoas por sala (2 contra 2 com quatro humanos ainda não existe).
 
-Para testar sozinho, abra o jogo em duas janelas lado a lado (abas escondidas param a animação do navegador).
+Para testar sozinho, abra o jogo em várias janelas lado a lado (abas escondidas param a animação do navegador).
 
 ## Saves da carreira
 

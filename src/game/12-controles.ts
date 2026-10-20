@@ -138,8 +138,9 @@ function cancelMeter(c = localCtl()) {
 function releaseMeter(c = localCtl()) {
   const M = c.m, p = c.p;
   if (!M.active) return;
-  // online: o convidado vê a barra atrasada e o aviso de soltar chega atrasado; desconta esse atraso
-  if (c.remote && c.lag > 0) M.v = Math.max(0, M.v - (M.kind === 'smash' ? M.rate : 1 / M.fill) * c.lag);
+  // online: a barra do smash depende da bola, que o convidado vê atrasada; desconta esse atraso.
+  // (lob e saque só dependem do tempo: o convidado desenha a barra pelo relógio dele e o tempo entre apertar e soltar chega igual)
+  if (c.remote && c.lag > 0 && M.kind === 'smash') M.v = Math.max(0, M.v - M.rate * c.lag);
   const v = M.v, diff = v - M.center;
   if (M.kind === 'lob') {
     const lv = Math.min(v, LOB_MAX);

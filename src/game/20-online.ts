@@ -8,7 +8,7 @@
 // Também dá para fazer um campeonato: chave com todos da sala (completada com CPU), uma partida por vez.
 import './19-loop';
 import { $s } from '../state';
-import { HEIGHTS, NAMES, ROSTER, charById, nameOf, overall, shortOf } from './00-base';
+import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail } from './07-glb';
@@ -17,12 +17,13 @@ import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, render
 import { defenseFlash } from './11-mira';
 import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
+import { sideOf } from './18-animacao';
 
 const PREFIX = 'ponto-de-ouro-sala-';            // prefixo do id no servidor público do PeerJS
 const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O e 1/I, que confundem ao ditar o código
 const PROTO = 2;                                 // versão das mensagens: todos precisam da mesma
-const SEND_MS = 33;                              // estado do anfitrião ~30 vezes por segundo
-const INTERP_MS = 70;                            // o convidado desenha esse tanto no passado, para sempre ter dois estados
+const sendMs = () => ON.guests.length <= 3 ? 16 : 33; // estado do anfitrião 60 vezes por segundo (30 com sala cheia)
+const INTERP_START = 50;                         // atraso de desenho inicial do convidado; depois se ajusta à rede (ms)
 const TIMEOUT_MS = 8000;                         // sem nenhuma mensagem por esse tempo = conexão perdida
 const MAX_GUESTS = 7;                            // 8 pessoas por sala (campeonato); 4 jogam por vez
 const PL = [human, partner, cpuA, cpuB];         // ordem fixa dos jogadores nas mensagens (a do anfitrião)
@@ -38,7 +39,7 @@ const ON = {
   guests: [], gid: 0, self: { id: 'host', name: '', pick: '' }, room: null, outq: [], lastSend: 0, lastL: 0, prevMode: '', match: null, inMatch: false,
   // convidado
   conn: null, rtt: 0, lastRecv: 0, myId: '', L: null, G: null, mirror: false, myIdx: -1, buf: [], evq: [], offs: [], off: null,
-  inKey: '', inT: 0, mySmashes: 0, boardKey: '', mrTimer: 0, seatsKey: '', pickKey: '', champKey: '',
+  fast: null, interp: 0, gap: 0, inSeq: 0, inKey: '', inT: 0, mySmashes: 0, boardKey: '', mrTimer: 0, seatsKey: '', pickKey: '', champKey: '',
 };
 const r3 = x => Math.round(x * 1000) / 1000;
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -95,6 +96,19 @@ function errText(e) {
   return 'Erro na conexão' + (t ? ' (' + t + ')' : '') + '.';
 }
 const sendTo = (conn, m) => { if (conn && conn.open) { try { conn.send(m); } catch (e) {} } };
+// canal rápido: na mesma conexão WebRTC, sem ordem e sem retransmissão (estado da partida e direção).
+// Um pacote perdido não segura os seguintes (no canal normal do PeerJS ele seguraria); o próximo já o substitui.
+function fastChan(conn, onMsg) {
+  try {
+    const dc = conn.peerConnection.createDataChannel('pdo-rapido', { negotiated: true, id: 100, ordered: false, maxRetransmits: 0 });
+    dc.onmessage = e => { try { onMsg(JSON.parse(e.data)); } catch (er) {} };
+    return dc;
+  } catch (e) { return null; }
+}
+function sendFast(dc, conn, m) {
+  if (dc && dc.readyState === 'open') { try { dc.send(JSON.stringify(m)); return; } catch (e) {} }
+  sendTo(conn, m); // canal rápido ainda não abriu (ou o navegador não deixou): vai pelo normal
+}
 const send = m => { if (NET.role === 'guest') sendTo(ON.conn, m); };
 function backupSettings() { if (!ON.backup) ON.backup = JSON.parse(JSON.stringify(S.settings)); }
 
@@ -120,8 +134,8 @@ async function createRoom() {
     fixCpu();
     peer.on('connection', conn => {
       if (ON.guests.length >= MAX_GUESTS) { conn.on('open', () => { conn.send(['full']); setTimeout(() => conn.close(), 400); }); return; }
-      const g = { id: 'g' + (++ON.gid), conn, open: false, name: 'Jogador', pick: '', rtt: 0, lastRecv: performance.now(), ctl: null, plIdx: -1 };
-      conn.on('open', () => { g.open = true; g.lastRecv = performance.now(); });
+      const g = { id: 'g' + (++ON.gid), conn, fast: null, open: false, name: 'Jogador', pick: '', rtt: 0, interp: INTERP_START, inSeq: -1, lastRecv: performance.now(), ctl: null, plIdx: -1 };
+      conn.on('open', () => { g.open = true; g.lastRecv = performance.now(); g.fast = fastChan(conn, d => { g.lastRecv = performance.now(); hostData(g, d); }); });
       conn.on('data', d => { g.lastRecv = performance.now(); hostData(g, d); });
       conn.on('close', () => guestLost(g));
       conn.on('error', () => guestLost(g));
@@ -200,10 +214,15 @@ function hostData(g, d) {
   }
   if (k === 'seat' || k === 'pick') { act(g.id, d); return; }
   if (!c) return;
-  if (k === 'i') { const s = c.p.team === 0 ? 1 : -1; c.ix = (+d[1] || 0) * s; c.iz = (+d[2] || 0) * s; c.assistMove = !!d[3]; return; } // time de cima: a tela dele é espelhada
+  if (k === 'i') {
+    if (d[4] <= g.inSeq) return; g.inSeq = d[4]; // chegou fora de ordem: já há uma mais nova
+    if (d[5] > 0) { g.interp = d[5]; c.lag = lagOf(g); }
+    const s = c.p.team === 0 ? 1 : -1; c.ix = (+d[1] || 0) * s; c.iz = (+d[2] || 0) * s; c.assistMove = !!d[3]; return; // time de cima: a tela dele é espelhada
+  }
   if (k === 's' && inPlay()) { if (d[2]) pressShot(d[1], c); else releaseShot(d[1], c); }
 }
-const lagOf = g => Math.min(.3, (g.rtt + INTERP_MS) / 1000);
+// quanto o convidado vê a bola atrasada: ida e volta + o atraso de desenho dele (para descontar no tempo do golpe)
+const lagOf = g => Math.min(.3, (g.rtt + (g.interp || INTERP_START)) / 1000);
 // alguém saiu ou caiu
 function guestLost(g, text) {
   const i = ON.guests.indexOf(g); if (i < 0) return;
@@ -301,13 +320,13 @@ function hostTick(now) {
   }
   ON.prevMode = S.mode;
   const common = ON.outq.splice(0);
-  const st = now - ON.lastSend >= SEND_MS ? hostState(now) : null;
+  const st = now - ON.lastSend >= sendMs() - 2 ? hostState(now) : null;
   if (st) ON.lastSend = now;
   for (const g of ON.guests) {
     const evs = common.map(e => e[0] === 'cfg' ? ['cfg', hostCfg(g)] : e);
     if (g.ctl && g.ctl.out.length) evs.push(...g.ctl.out.splice(0));
     if (evs.length) sendTo(g.conn, ['e', now, evs]);
-    if (st) { st.mt = meterOf(g.ctl); sendTo(g.conn, ['st', st]); }
+    if (st) { st.mt = meterOf(g.ctl); sendFast(g.fast, g.conn, ['st', st]); }
   }
   if (inPlay() === $('netChip').hidden) chipStatus();
 }
@@ -397,6 +416,7 @@ async function joinRoom() {
       conn.on('open', () => {
         clearTimeout(t); ON.conn = conn; ON.lastRecv = performance.now();
         conn.on('data', guestData);
+        ON.fast = fastChan(conn, guestData);
         conn.on('close', () => { if (ON.conn === conn) leave('A conexão com a sala caiu. Volte a entrar com o código.'); });
         conn.on('error', () => { if (ON.conn === conn) leave('A conexão com a sala caiu. Volte a entrar com o código.'); });
         res();
@@ -416,18 +436,74 @@ async function joinRoom() {
   }
   $('onJoin').disabled = false;
 }
-NET.shot = (type, down) => { if (ON.inMatch && ON.myIdx >= 0 && inPlay()) send(['s', type, down ? 1 : 0]); };
+// golpe apertado/solto: vai na hora para o anfitrião e já começa a animação (e a barra do lob/saque) aqui,
+// sem esperar a volta da rede
+NET.shot = (type, down) => {
+  if (!ON.inMatch || ON.myIdx < 0 || !inPlay()) return;
+  send(['s', type, down ? 1 : 0]);
+  localShot(type, down);
+};
+// previsão local do próprio jogador: golpe, carga e barra que dependem só do tempo
+const LS = { t: -1, type: '', dur: 0, side: 1, until: 0, charge: null, c0: 0, meter: null };
+function localShot(type, down) {
+  const now = performance.now();
+  if (!down) {
+    if (LS.charge === type) { // soltou o smash/lob: o golpe sai daqui mesmo
+      LS.charge = null; LS.type = type; LS.dur = SWING_DUR; LS.t = SWING_DUR * .3; LS.side = sideOf(human);
+      if (type === 'lob' && LS.meter) LS.meter.stop = now;
+    }
+    if (LS.meter && LS.meter.kind === 'serve' && LS.meter.type === type && now - LS.meter.t0 > 150) LS.meter.stop = now;
+    return;
+  }
+  if (S.mode === 'serve' && S.serverPlayer === human && !LS.meter) { // saque: a barra anda pelo tempo, igual no anfitrião
+    LS.meter = { kind: 'serve', type, t0: now, fill: .9 };
+    Object.assign(MTR, { active: true, kind: 'serve', type, t: 0, v: 0, center: TOSS_T / .9, half: MTR.half || .068 }); meterDom(MTR);
+    return;
+  }
+  if (S.mode !== 'rally' || (LS.t >= 0 && LS.t < LS.dur * .8)) return;
+  if (type === 'smash' || type === 'lob') {
+    LS.charge = type; LS.c0 = now; LS.t = -1;
+    if (type === 'lob') { LS.meter = { kind: 'lob', type, t0: now, fill: .45 }; Object.assign(MTR, { active: true, kind: 'lob', type, t: 0, v: 0, center: -1, half: 0 }); meterDom(MTR); }
+    return;
+  }
+  LS.type = type; LS.dur = type === 'curta' ? .5 : SWING_DUR; LS.t = 0; LS.side = sideOf(human);
+}
+function localShotTick(dt, now) {
+  const sw = human.swing;
+  if (LS.t >= 0) { LS.t += dt; if (LS.t >= LS.dur) { LS.t = -1; LS.until = now + ON.rtt + ON.interp + 80; } }
+  if (LS.charge) { human.charging = true; MTR.type = LS.charge; MTR.t = (now - LS.c0) / 1000; sw.t = -1; }
+  else if (LS.t >= 0) { human.charging = false; sw.t = LS.t; sw.type = LS.type; sw.dur = LS.dur; sw.side = LS.side; sw.hit = false; }
+  else if (now < LS.until) { sw.t = -1; human.charging = false; } // o golpe que o anfitrião ainda mostra (atrasado) já foi desenhado aqui
+  // barra do lob e do saque: anda pelo relógio daqui (o anfitrião mede o mesmo tempo entre apertar e soltar)
+  const M = LS.meter;
+  if (M) {
+    const t = ((M.stop || now) - M.t0) / 1000;
+    MTR.active = !M.stop; MTR.kind = M.kind; MTR.type = M.type; MTR.v = t / M.fill; MTR.t = t;
+    // o anfitrião não aceitou o aperto (ou o ponto acabou): sem resultado em tempo, a barra some
+    if ((M.stop && now - M.stop > ON.rtt + ON.interp + 400) || (M.kind === 'serve' && S.mode !== 'serve' && S.mode !== 'toss' && now - M.t0 > 2500) || S.mode === 'dead') {
+      LS.meter = null; if (!MTR.active || M.stop) { MTR.active = false; el.meter.hidden = true; }
+    }
+  }
+}
+function onState(s) {
+  const now = performance.now(), buf = ON.buf, last = buf[buf.length - 1];
+  if (last && s.t <= last.t) return; // canal rápido: chegou depois de um mais novo, já não serve
+  if (last) ON.gap = ON.gap ? ON.gap * .9 + (s.t - last.t) * .1 : s.t - last.t;
+  s.rcv = now;
+  ON.offs.push([now, now - s.t]); while (ON.offs.length && now - ON.offs[0][0] > 3000) ON.offs.shift();
+  const offs = ON.offs.map(o => o[1]).sort((x, y) => x - y);
+  ON.off = offs[0]; // menor atraso visto = relógio do anfitrião + viagem mais rápida
+  // atraso de desenho: intervalo entre estados + variação da rede (quase o pior caso dos últimos 3 s)
+  const jit = offs[Math.floor((offs.length - 1) * .95)] - ON.off;
+  const target = clamp((ON.gap || 33) + jit + 5, 18, 150);
+  ON.interp = !ON.interp ? INTERP_START : target > ON.interp ? ON.interp * .7 + target * .3 : ON.interp * .98 + target * .02;
+  buf.push(s); if (buf.length > 120) buf.shift();
+}
 function guestData(d) {
   if (!Array.isArray(d)) return;
   const k = d[0], now = performance.now();
   ON.lastRecv = now;
-  if (k === 'st') {
-    const s = d[1];
-    ON.offs.push([now, now - s.t]); while (ON.offs.length && now - ON.offs[0][0] > 3000) ON.offs.shift();
-    ON.off = Math.min(...ON.offs.map(o => o[1])); // menor atraso visto = relógio do anfitrião + viagem mais rápida
-    ON.buf.push(s); if (ON.buf.length > 60) ON.buf.shift();
-    return;
-  }
+  if (k === 'st') { onState(d[1]); return; }
   if (k === 'e') { for (const e of d[2]) ON.evq.push({ t: d[1], e }); return; }
   if (k === 'ping') { send(['pong', d[1]]); return; }
   if (k === 'pong') { const r = now - d[1]; ON.rtt = ON.rtt ? ON.rtt * .7 + r * .3 : r; return; }
@@ -465,7 +541,7 @@ function guestStart(cfg) {
   human.mtr = MTR;
   S.careerActive = false; S.champActive = false;
   $('online').hidden = true; document.body.classList.remove('in-replay'); $('replayBar').hidden = true;
-  ON.mySmashes = 0; ON.boardKey = '';
+  ON.mySmashes = 0; ON.boardKey = ''; PR.on = false; Object.assign(LS, { t: -1, until: 0, charge: null, meter: null });
   newMatch(true);
   ON.inMatch = true; chipStatus();
 }
@@ -474,6 +550,7 @@ function guestSetupPoint(i) {
   S.celebrate = null; S.mode = 'serve'; S.serverPlayer = sp; ball.state = 'held';
   $s.players.forEach(p => { p.swing.t = -1; p.swing.meter = null; p.charging = false; p.dive = null; });
   MTR.active = false; el.meter.hidden = true; humanPlan.id = -1;
+  PR.on = false; Object.assign(LS, { t: -1, until: 0, charge: null, meter: null });
   resetTrail(); renderBoard(); serveBanner(sp);
 }
 function guestOver(d) {
@@ -502,24 +579,27 @@ function guestEvent(e) {
   } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); }
   else if (k === 'fb') feedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);
-  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], t: 0, v: 0 }); clearTimeout(ON.mrTimer); meterDom(MTR); }
+  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4] }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
   else if (k === 'mr') {
-    MTR.active = false; human.charging = false;
+    MTR.active = false; human.charging = false; LS.meter = null;
     el.meter.className = e[1]; el.mRes.textContent = e[2]; el.mFill.style.height = e[3] + '%'; el.meter.hidden = false;
     clearTimeout(ON.mrTimer); ON.mrTimer = setTimeout(() => { if (!MTR.active) el.meter.hidden = true; }, 900);
-  } else if (k === 'mh') { MTR.active = false; el.meter.hidden = true; }
+  } else if (k === 'mh') { MTR.active = false; el.meter.hidden = true; LS.meter = null; LS.charge = null; }
   else if (k === 'over') guestOver(e[1]);
 }
 // aplica o estado entre dois quadros do anfitrião (a = anterior, b = seguinte, k de 0 a 1)
-function applyState(a, b, k) {
+// ex: segundos além do último estado (pacote atrasado): bola e jogadores seguem pela velocidade
+function applyState(a, b, k, ex = 0) {
   const L = (x, y) => x + (y - x) * k, m = ON.mirror ? -1 : 1;
   ball.pos.set(L(a.b[0], b.b[0]) * m, L(a.b[1], b.b[1]), L(a.b[2], b.b[2]) * m);
   ball.vel.set(b.b[3] * m, b.b[4], b.b[5] * m);
   ball.state = b.bs; ball.gk = b.gk; ball.apex = b.ap;
+  if (ex > 0 && (b.bs === 'live' || b.bs === 'toss')) { ball.pos.addScaledVector(ball.vel, ex); ball.pos.y = Math.max(C.ballR, ball.pos.y - .5 * bG() * ex * ex); ball.vel.y -= bG() * ex; }
   PL.forEach((_, i) => {
     const p = ON.G[i], pa = a.p[i], pb = b.p[i], sw = p.swing;
     p.pos.set(L(pa[0], pb[0]) * m, 0, L(pa[1], pb[1]) * m);
     p.vel.set(L(pa[2], pb[2]) * m, 0, L(pa[3], pb[3]) * m);
+    if (ex > 0) p.pos.addScaledVector(p.vel, ex);
     const same = pa[5] === pb[5] && pa[4] >= 0 && pb[4] >= pa[4];
     sw.t = same ? L(pa[4], pb[4]) : pb[4]; sw.type = pb[5]; sw.dur = pb[6]; sw.side = pb[7]; sw.var = pb[8]; sw.hit = !!pb[9];
     p.jump = pb[10]; p.jumpDur = pb[11]; p.jumpH = pb[12];
@@ -547,26 +627,57 @@ function applyState(a, b, k) {
   const key = JSON.stringify([S.score, S.server, S.streak && S.streak.n, S.wind.x > 0]);
   if (key !== ON.boardKey) { ON.boardKey = key; renderBoard(); }
 }
+// previsão do próprio jogador: anda na hora com o teclado/joystick (mesma conta de movimento do anfitrião)
+// e vai sendo corrigido pela posição que o anfitrião mandou para o mesmo instante das entradas
+const PR = { on: false, x: 0, z: 0, vx: 0, vz: 0, hist: [] };
+function predictOwn(dt, now, newest, ix, iz) {
+  const p = human, len = Math.hypot(ix, iz), m = ON.mirror ? -1 : 1, hp = newest.p[ON.myIdx];
+  const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');
+  const free = (S.mode === 'rally' || S.mode === 'serve' || S.mode === 'toss') && !serving && hp[15] < 0 && !(S.settings.assistMove && len < .1);
+  if (!free) { PR.on = false; return; } // saque, mergulho, "seguir a bola" e intervalo: fica com a posição do anfitrião
+  if (!PR.on) { Object.assign(PR, { on: true, x: p.pos.x, z: p.pos.z, vx: p.vel.x, vz: p.vel.z, hist: [] }); }
+  const spd = P_SPEED * lerp(.82, 1.12, attrK(p, 'vel')) * (p.charging ? .75 : 1);
+  const tvx = ix * spd, tvz = iz * spd, rev = tvx * PR.vx + tvz * PR.vz < 0;
+  const k = Math.min(1, dt * (rev ? 5 : len < .1 ? 9 : 7.5));
+  PR.vx += (tvx - PR.vx) * k; PR.vz += (tvz - PR.vz) * k;
+  PR.x += PR.vx * dt; PR.z += PR.vz * dt;
+  const lim = C.halfW + 3, recv = S.server !== 0 && (S.mode === 'serve' || S.mode === 'toss');
+  PR.x = clamp(PR.x, -lim, lim); PR.z = clamp(PR.z, recv ? ZONE3 + .05 : .4, 11.5);
+  PR.hist.push({ t: now, x: PR.x, z: PR.z }); while (PR.hist.length && now - PR.hist[0].t > 1500) PR.hist.shift();
+  // o último estado do anfitrião já conta as entradas mandadas até ~1 ida e volta antes de chegar
+  const tRef = newest.rcv - ON.rtt;
+  let h = PR.hist[0]; for (const e of PR.hist) { if (e.t > tRef) break; h = e; }
+  const hx = hp[0] * m, hz = hp[1] * m, ex = hx - h.x, ez = hz - h.z;
+  if (Math.hypot(ex, ez) > 2) { Object.assign(PR, { x: hx, z: hz, hist: [] }); } // longe demais (ponto novo, empurrão): pula para lá
+  else { const c = Math.min(1, dt * 6), cx = ex * c, cz = ez * c; PR.x += cx; PR.z += cz; for (const e of PR.hist) { e.x += cx; e.z += cz; } }
+  p.pos.x = PR.x; p.pos.z = PR.z; p.vel.x = PR.vx; p.vel.z = PR.vz;
+}
+let lastTick = 0;
 function guestTick() {
   if (NET.role !== 'guest') return;
-  const now = performance.now();
-  // entradas: direção a cada mudança (e de tempos em tempos, caso alguma se perca)
-  if (ON.inMatch && ON.myIdx >= 0 && inPlay()) {
-    const [ix, iz] = localInput();
-    human.inputX = ix; human.inputZ = iz; // só para a flecha de mira desenhada aqui
+  const now = performance.now(), dt = Math.min(.05, lastTick ? (now - lastTick) / 1000 : .016); lastTick = now;
+  const playing = ON.inMatch && ON.myIdx >= 0 && inPlay();
+  let ix = 0, iz = 0;
+  // entradas: direção a cada mudança (e 20 vezes por segundo, caso alguma se perca no canal rápido)
+  if (playing) {
+    [ix, iz] = localInput();
+    human.inputX = ix; human.inputZ = iz; // flecha de mira desenhada aqui
     const key = ix.toFixed(2) + ',' + iz.toFixed(2) + ',' + (S.settings.assistMove ? 1 : 0);
-    if (key !== ON.inKey || now - ON.inT > 250) { ON.inKey = key; ON.inT = now; send(['i', +ix.toFixed(3), +iz.toFixed(3), S.settings.assistMove ? 1 : 0]); }
+    if (key !== ON.inKey || now - ON.inT > 50) { ON.inKey = key; ON.inT = now; sendFast(ON.fast, ON.conn, ['i', +ix.toFixed(3), +iz.toFixed(3), S.settings.assistMove ? 1 : 0, ++ON.inSeq, Math.round(ON.interp)]); }
   }
   if (ON.off === null) return;
-  const rt = now - ON.off - INTERP_MS;
+  const rt = now - ON.off - (ON.interp || INTERP_START);
   const buf = ON.buf;
   if (ON.inMatch && buf.length && PLAY_MODES.includes(S.mode)) {
-    let i = buf.findIndex(s => s.t >= rt), a, b, k = 0;
-    if (i === -1) { a = b = buf[buf.length - 1]; } // atrasou: segura o último estado
+    let i = buf.findIndex(s => s.t >= rt), a, b, k = 0, ex = 0;
+    if (i === -1) { a = b = buf[buf.length - 1]; ex = Math.min(.1, (rt - b.t) / 1000); } // atrasou: segue pela velocidade por até 0,1 s
     else if (i === 0) { a = b = buf[0]; }
     else { a = buf[i - 1]; b = buf[i]; k = (rt - a.t) / Math.max(1, b.t - a.t); }
     if (i > 1) buf.splice(0, i - 1);
-    if (PLAY_MODES.includes(b.m)) applyState(a, b, Math.min(1, Math.max(0, k)));
+    if (PLAY_MODES.includes(b.m)) {
+      applyState(a, b, Math.min(1, Math.max(0, k)), ex);
+      if (playing) { predictOwn(dt, now, buf[buf.length - 1], ix, iz); localShotTick(dt, now); }
+    }
   } else if (buf.length > 3) buf.splice(0, buf.length - 3);
   while (ON.evq.length && ON.evq[0].t <= rt) guestEvent(ON.evq.shift().e);
   if (inPlay() === $('netChip').hidden) chipStatus();
@@ -581,7 +692,7 @@ function leave(text) {
   if (was === 'guest') { send(['bye']); const c = ON.conn; setTimeout(() => { try { c && c.close(); } catch (e) {} }, 150); }
   const p = ON.peer; if (p) setTimeout(() => { try { p.destroy(); } catch (e) {} }, 200);
   clearInterval(ON.hb);
-  Object.assign(ON, { peer: null, conn: null, open: false, code: '', rtt: 0, guests: [], room: null, outq: [], match: null, inMatch: false, L: null, G: null, mirror: false, myIdx: -1, buf: [], evq: [], offs: [], off: null, myId: '', seatsKey: '', pickKey: '', champKey: '' });
+  Object.assign(ON, { peer: null, conn: null, open: false, code: '', rtt: 0, guests: [], room: null, outq: [], match: null, inMatch: false, L: null, G: null, mirror: false, myIdx: -1, buf: [], evq: [], offs: [], off: null, myId: '', seatsKey: '', pickKey: '', champKey: '', fast: null, interp: 0, gap: 0 });
   NET.role = null;
   clearRemote(); restoreNames();
   if (ON.backup) { for (const k in ON.backup) S.settings[k] = ON.backup[k]; ON.backup = null; }
