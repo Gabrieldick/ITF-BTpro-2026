@@ -394,3 +394,12 @@ em.dn { color: #c2410c; font-style: normal; font-weight: 800; margin-left: 2px; 
 #tcue.prep i { background: #ffd23f; } #tcue.now i { background: #4fd18b; box-shadow: 0 0 16px #4fd18b; transform: scale(1.25); } #tcue.late i { background: #ffb11f; }
 
 .cr-sel { font: 700 16px var(--f-body); color: var(--ink); background: #fff; border: 2px solid #e3d9c4; border-radius: 10px; padding: 8px 10px; text-transform: none; letter-spacing: 0; }
+
+#sbWeather { margin-top: 4px; font-family: var(--f-body); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-align: center; color: #bfe6ff; }
+#board .row.hot .nm::after { content: '🔥'; margin-left: 4px; }
+
+/* replay dos melhores momentos */
+body.in-replay .hud { display: none !important; }
+#replayBar { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 12px; background: rgba(15,36,54,.82); color: #fff; padding: 8px 14px; border-radius: 12px; font-family: var(--f-body); }
+#replayBar b { color: #ff5a1f; letter-spacing: .12em; }
+#replayBar span { font-size: 14px; font-weight: 700; }

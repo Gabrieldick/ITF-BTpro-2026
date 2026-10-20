@@ -56,7 +56,7 @@ function renderBoard() {
   const tn = t => $s.teams[t].map(pn).join('<span class="sep"> / </span>');
   const key = tn(0) + '|' + tn(1);
   if (el.nmKey !== key) { el.nmKey = key; $('nmP').innerHTML = tn(0); $('nmC').innerHTML = tn(1); }
-  const title = S.careerActive ? crBoardTitle() : S.champActive ? champBoardTitle() : '';
+  const title = S.drill ? DRILLS[S.drill.kind].nome.toUpperCase() + ' · ' + S.drill.ok + '/' + DRILLS[S.drill.kind].goal + ' · BOLA ' + Math.min(S.drill.n + 1, DRILLS[S.drill.kind].max) + '/' + DRILLS[S.drill.kind].max : S.careerActive ? crBoardTitle() : S.champActive ? champBoardTitle() : '';
   $('sbTitle').textContent = title; $('sbTitle').hidden = !title;
   el.gP.textContent = sc.games[0]; el.gC.textContent = sc.games[1];
   el.pP.textContent = sc.tb ? sc.pts[0] : PT[Math.min(3, sc.pts[0])];
@@ -69,7 +69,11 @@ function renderBoard() {
   $('sP').innerHTML = hs.filter(h => h[2] !== 'stb').map(h => '<i class="' + (h[0] > h[1] ? 'w' : '') + '">' + h[0] + '</i>').join('');
   $('sC').innerHTML = hs.filter(h => h[2] !== 'stb').map(h => '<i class="' + (h[1] > h[0] ? 'w' : '') + '">' + h[1] + '</i>').join('');
   $('hSets').textContent = pro && hs.length ? 'SETS' : ''; $('hGames').textContent = sc.stb ? 'S.TIE' : pro ? hs.length + 1 + 'º SET' : 'GAMES';
-  el.golden.hidden = !(sc.tb || isGolden());
+  const dz = decisive();
+  if (dz && !sc.tb) el.golden.textContent = dz;
+  el.golden.hidden = !(sc.tb || isGolden() || dz);
+  el.rowP.classList.toggle('hot', momentum(0) >= .66); el.rowC.classList.toggle('hot', momentum(1) >= .66);
+  const wt = weatherText(); $('sbWeather').textContent = wt; $('sbWeather').hidden = !wt;
 }
 const isGolden = () => !S.score.tb && S.score.pts[0] === 3 && S.score.pts[1] === 3;
 function rotateServe() { S.serverIdx[S.server]++; S.server = 1 - S.server; }
@@ -142,10 +146,93 @@ function creditPoint(w, kind) {
   if (lh.hard) st.fe++; else st.ue++;
   return phrase(lh.hard ? 'Erro forçado' : 'Erro não forçado', lh.p, false, ' (' + CAT_NAME[lh.cat] + ' ' + where + ')');
 }
+// momento: 0 a 1 para o time numa sequência de pontos (a partir do 2º seguido)
+const momentum = t => S.streak && S.streak.team === t ? Math.min(1, (S.streak.n - 1) / 3) : 0;
+// ponto decisivo: ponto de ouro, fim de tie-break, set point ou match point
+function decisive() {
+  const sc = S.score, N = S.settings.games;
+  if (!sc) return '';
+  if (sc.tb) { const tg = sc.stb ? 10 : 7; return Math.max(sc.pts[0], sc.pts[1]) >= tg - 1 ? (sc.stb ? 'MATCH POINT' : 'SET POINT') : ''; }
+  const golden = sc.pts[0] === 3 && sc.pts[1] === 3;
+  for (const t of [0, 1]) {
+    const gp = sc.pts[t] === 3; // próximo ponto fecha o game deste time
+    if ((gp || golden) && sc.games[t] >= N - 1 && sc.games[t] >= sc.games[1 - t]) {
+      const last = S.settings.format !== 'pro' || (sc.sets && sc.sets[t] === 1);
+      return last ? 'MATCH POINT' : 'SET POINT';
+    }
+  }
+  return golden ? 'PONTO DE OURO' : '';
+}
+// clima da partida: vento (m/s, em x/z) e calor
+function setWeather() {
+  let max = 3.5, heat = false;
+  if (S.careerActive && $s.CR && $s.CR.tour) { const t = $s.CR.tour; if (t.wind === undefined) { t.wind = Math.random() * 7; t.windA = Math.random() * Math.PI * 2; t.heat = Math.random() < .3; } S.wind = { x: Math.cos(t.windA) * t.wind, z: Math.sin(t.windA) * t.wind }; S.heat = t.heat; return; }
+  const v = Math.random() * max, a = Math.random() * Math.PI * 2; S.wind = { x: Math.cos(a) * v, z: Math.sin(a) * v }; S.heat = heat;
+}
+function weatherText() {
+  const w = S.wind || { x: 0, z: 0 }, v = Math.hypot(w.x, w.z), kmh = Math.round(v * 3.6);
+  if (kmh < 3 && !S.heat) return '';
+  const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']; // ↑ = na direção do adversário
+  const ang = Math.atan2(w.x, -w.z), idx = ((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8;
+  return (kmh >= 3 ? 'Vento ' + kmh + ' km/h ' + arrows[idx] : '') + (S.heat ? (kmh >= 3 ? ' · ' : '') + 'Calor forte' : '');
+}
+// ---------- treino com desafios ----------
+// curtas: 15 bolas, meta 10 curtas boas (anel verde) · defesa: 10 smashes, meta 5 devolvidos · smash: 10 lobs, meta 5 smashes perfeitos
+const DRILLS = {
+  curtas: { nome: 'Curtas no verde', max: 15, goal: 10, txt: 'curtas boas' },
+  defesa: { nome: 'Defenda os smashes', max: 10, goal: 5, txt: 'defesas' },
+  smash: { nome: 'Smash perfeito', max: 10, goal: 5, txt: 'smashes perfeitos' },
+};
+function startDrill(kind, onEnd) {
+  S.settings.mode = 'simples'; S.settings.format = 'set';
+  newMatch();
+  S.drill = { kind, n: 0, ok: 0, onEnd, lastR: null };
+  drillNext();
+}
+function drillNext() {
+  const d = S.drill, D = DRILLS[d.kind];
+  if (d.n >= D.max) return drillEnd();
+  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.state = 'live'; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; d.lastR = null;
+  human.swing.t = -1; human.charging = false; human.dive = null;
+  const hx = human.pos.x + (Math.random() - .5) * 2.2, hz = human.pos.z + (Math.random() - .5) * 1.2;
+  const g = 9.8;
+  if (d.kind === 'curtas') { const T = 1.05; ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (1.0 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T); }
+  if (d.kind === 'defesa') { const T = .55; ball.pos.set((Math.random() - .5) * 2, 2.6, -1.6); ball.vel.set((hx - ball.pos.x) / T, (1.0 - 2.6 + .5 * g * 1.35 * T * T) / T, (hz - ball.pos.z) / T); ball.gk = 1.35; ball.finisher = true; }
+  if (d.kind === 'smash') { const T = 2.1; ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = 6; }
+  ball.prev = null; resetTrail(); renderBoard();
+}
+function drillResult(w, kind) {
+  const d = S.drill, r = d.lastR; d.n++;
+  let ok = false;
+  if (w === 0 && kind === 'in' && r) {
+    if (d.kind === 'curtas') ok = r.key === 'curta' && !r.pop && r.grade >= .7;
+    if (d.kind === 'defesa') ok = !r.pop;
+    if (d.kind === 'smash') ok = r.key === 'smash' && r.meterRes === 'perfeito';
+  }
+  if (ok) d.ok++;
+  sndWhistle(ok);
+  S.mode = 'dead'; S.deadT = 1.3;
+  banner(ok ? 'Boa!' : 'Não valeu', DRILLS[d.kind].txt + ': ' + d.ok + '/' + DRILLS[d.kind].goal + ' · bola ' + d.n + '/' + DRILLS[d.kind].max, 0, false);
+  renderBoard();
+}
+function drillEnd() {
+  const d = S.drill, D = DRILLS[d.kind]; S.drill = null;
+  S.mode = 'over'; hideBanner();
+  const pass = d.ok >= D.goal;
+  $('overEyebrow').textContent = 'Treino · ' + D.nome; $('overTitle').textContent = pass ? 'DESAFIO CUMPRIDO' : 'QUASE LÁ';
+  $('overScore').textContent = d.ok + '/' + D.goal; $('stTable').innerHTML = '<p class="cr-note">' + d.ok + ' ' + D.txt + ' em ' + D.max + ' bolas.</p>';
+  $('btnOverChamp').hidden = true; $('btnOverCareer').hidden = !d.onEnd; $('btnAgain').hidden = !!d.onEnd;
+  if (d.onEnd) d.onEnd(d.ok, pass);
+  S.lastDrill = d.kind;
+  el.over.hidden = false;
+}
 function pointTo(w, reason, kind) {
   if (S.mode === 'dead') return;
+  if (S.drill) { drillResult(w, kind); return; }
+  S.streak = S.streak && S.streak.team === w ? { team: w, n: S.streak.n + 1 } : { team: w, n: 1 };
   const credit = creditPoint(w, kind);
   if (credit) reason = credit[0].toUpperCase() + credit.slice(1) + '.';
+  S.lastPoint = { w, kind, text: reason, cat: S.lastHit && S.lastHit.cat, rally: S.rally, dive: !!S.hadDive };
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   const ev = awardPoint(w);
@@ -170,7 +257,7 @@ function pointTo(w, reason, kind) {
   banner(title, sub, 0, ev === 'match' || ev === 'game');
 }
 function setupPoint() {
-  S.celebrate = null;
+  S.celebrate = null; S.pressure = decisive(); S.hadDive = false;
   S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; ball.state = 'held'; ball.vel.set(0, 0, 0);
   S.assign = [null, null]; S.assignId = [-1, -1];
   $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.var = ''; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.ai.planId = -1; p.ai.reactT = 0; p.ai.letGo = false; p.ai.swung = false; p.dive = null; });
@@ -235,12 +322,15 @@ function arenaFor() {
   return { size: 0 };
 }
 function newMatch() {
+  S.drill = null;
   applyArena(arenaFor());
   assignCharacters();
   configureMode();
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
-  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.lastHit = null; S.attempt = null;
+  S.highlights = [];
+  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.lastHit = null; S.attempt = null; S.streak = null;
+  setWeather();
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
   document.body.classList.remove('in-menu');
   clearPrints();
@@ -276,7 +366,8 @@ function showOver() {
   if (inChamp) champMatchEnded(w === 0);
   if (inCareer) careerMatchEnded(w === 0);
   $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
+  $('btnReplay').hidden = !(S.highlights && S.highlights.length);
   el.over.hidden = false;
 }
 
-export { scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

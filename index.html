@@ -21,6 +21,7 @@
   <div class="row" id="rowP"><span class="srv"></span><span class="nm" id="nmP">VOCÊ</span><span class="st" id="sP"></span><span class="gm" id="gP">0</span><span class="pt" id="pP">0</span></div>
   <div class="row" id="rowC"><span class="srv"></span><span class="nm" id="nmC">CPU</span><span class="st" id="sC"></span><span class="gm" id="gC">0</span><span class="pt" id="pC">0</span></div>
   <div id="sbTitle" hidden></div>
+  <div id="sbWeather" hidden></div>
   <div id="golden" hidden>PONTO DE OURO</div>
 </div>
 <div id="tr" class="hud">
@@ -31,6 +32,7 @@
 <div id="banner" class="hide"><div id="bTitle"></div><div id="bSub"></div></div>
 <div id="fb"></div>
 <div id="tcue" class="hud" hidden><i></i><span></span></div>
+<div id="replayBar" hidden><b>REPLAY</b><span id="replayTxt"></span><button class="ghost sm" id="replaySkip">Pular ⏭</button></div>
 <div id="tags"></div>
 <div id="reach">NO ALCANCE</div>
 <div id="meter" hidden><div class="track"><div class="zone"></div><div class="fill"></div></div><div class="res"></div><div class="lbl">FORÇA</div></div>
@@ -113,6 +115,7 @@
       <div class="toggles">
         <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
         <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
+        <label class="cr-field" style="margin:4px 0">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
         <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W/S profundidade) <kbd>V</kbd></label>
       </div>
     </div>
@@ -131,6 +134,7 @@
       <button class="cta" id="btnPlay">Jogar</button>
       <button class="ghost" id="btnChamp">Campeonato</button>
       <button class="ghost" id="btnCareer">Carreira</button>
+      <button class="ghost" id="btnDrill">Treino</button>
     </div>
   </div>
 </div>
@@ -229,6 +233,19 @@
   </div>
 </div>
 
+<!-- Treino com desafios -->
+<div id="drillPick" class="overlay" hidden>
+  <div class="card" style="width:min(100%,460px)">
+    <div><div class="eyebrow">Treino com desafios</div><h2 class="title" style="font-size:40px">TREINO</h2></div>
+    <p class="lede">Um lançador manda as bolas. Cumpra a meta para passar no desafio.</p>
+    <div class="cta-row" style="flex-direction:column;align-items:stretch">
+      <button class="cta" data-drill="curtas">Curtas no verde · 10 de 15</button>
+      <button class="cta" data-drill="defesa">Defenda os smashes · 5 de 10</button>
+      <button class="cta" data-drill="smash">Smash perfeito · 5 de 10</button>
+      <button class="ghost" id="drillBack">Voltar</button>
+    </div>
+  </div>
+</div>
 <!-- Pausa -->
 <div id="pause" class="overlay" hidden>
   <div class="card" style="width:min(100%,420px)">
@@ -257,6 +274,7 @@
     <div class="cta-row">
       <button class="cta" id="btnOverChamp" hidden>Ver a chave</button>
       <button class="cta" id="btnOverCareer" hidden>Voltar à carreira</button>
+      <button class="ghost" id="btnReplay" hidden>▶ Melhores momentos</button>
       <button class="cta" id="btnAgain">Jogar de novo</button>
       <button class="ghost" id="btnMenu">Menu</button>
     </div>

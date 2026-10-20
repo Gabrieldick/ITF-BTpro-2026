@@ -20,7 +20,9 @@ function humanAim() {
 // ---------- mira: seta no chão, alvo e arco da trajetória ----------
 const AIM = { ring: null, dot: null, arrow: null, head: null, shaft: null, arc: null, cache: { id: -1, x: 0 } };
 const AIM_COL = { smash: 0xff5a1f, drive: 0xff5a1f, lob: 0x2f9bff, curta: 0xffc21a, defesa: 0x22c76f, preview: 0xffe14d };
-function aimAutoX() { if (AIM.cache.id !== S.hitId) { AIM.cache.id = S.hitId; AIM.cache.x = gapX(0, .3) * .8; } return AIM.cache.x; }
+function aimAutoX() { if (AIM.cache.id !== S.hitId) { AIM.cache.id = S.hitId; const ta = TAC.aim ? TAC.aim(0) : null; AIM.cache.x = ta !== null ? ta : gapX(0, .3) * .8; } return AIM.cache.x; }
+// a tática é registrada depois (o módulo da IA vem mais tarde na cadeia)
+const TAC = { aim: null };
 // W = mais curto (perto da rede), S = mais fundo; sem segurar, meio da faixa
 function humanDepthT() { const iz = human.inputZ || 0; return iz < -.25 ? .08 : iz > .25 ? .92 : .5; }
 function buildAim() {
@@ -94,4 +96,4 @@ function startToss(p, type) {
   hideBanner();
 }
 
-export { defRing, defenseFeedback, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };
+export { TAC, defRing, defenseFeedback, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };

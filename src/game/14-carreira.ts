@@ -182,6 +182,7 @@ function crTierUnlocked(i) {
 function crMaxTier() { let m = 0; for (let i = 0; i < 9; i++) if (crTierUnlocked(i)) m = i; return m; }
 // opções da semana: torneios do seu nível, um abaixo e às vezes um acima para quem já pode
 function crWeekOptions() {
+  if ($s.CR.injury) return [];
   const rnd = mulberry($s.CR.seed + absWeek() * 97);
   const top = crMaxTier(), opts = [];
   const tiers = [top, Math.max(0, top - 1), top > 0 ? Math.max(0, top - 2) : top];
@@ -433,12 +434,19 @@ function crSimOne(m, isMine) {
   m.w = Math.random() < pA ? m.a : m.b;
   const N = isMine ? $s.CR.games : 6; m.score = crScore(N);
 }
+// confrontos diretos: duplas (ou jogadores) que você enfrenta muito viram rivais
+const h2hKey = tm => [tm.a, tm.b].filter(Boolean).sort().join('+');
+function crH2H(tm) { return ($s.CR.h2h || {})[h2hKey(tm)] || { w: 0, l: 0 }; }
+function crRivalOf(tm) { const h = crH2H(tm); return h.w + h.l >= 3 && h.w >= 1 && h.l >= 1; }
 function crAfterMyMatch(won) {
-  const t = $s.CR.tour; $s.CR.energy = Math.max(0, $s.CR.energy - 10);
+  const t = $s.CR.tour; $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
   const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
   $s.CR.pe += Math.round((won ? 1 + t.tier * .3 : .5) * crXpMul());
-  if (won) { [opp.a, opp.b].forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
+  { const wasRival = crRivalOf(opp); $s.CR.h2h = $s.CR.h2h || {}; const k = h2hKey(opp), h = $s.CR.h2h[k] || { w: 0, l: 0, name: crTeamName(opp) }; won ? h.w++ : h.l++; h.name = crTeamName(opp); $s.CR.h2h[k] = h;
+    if (won && wasRival) { const bon = Math.round(crTourT(t).prize[0] * .1 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 2; crAddFama(2); t.log.push('Clássico vencido contra rivais: +' + money(bon) + ', +2 PE, +2 fama'); }
+    else if (!wasRival && crRivalOf(opp)) t.log.push('Nasce uma rivalidade com ' + crTeamName(opp) + ' (' + h.w + '–' + h.l + ')'); }
+  if (won) { [opp.a, opp.b].filter(Boolean).forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
   else t.alive = false;
   t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp));
   crAdvance();
@@ -483,6 +491,7 @@ function crFinishTour() {
   const myPartnerO = $s.CR.partner ? crCharOvr(crChar($s.CR.partner)) : 0;
   if (!nation) [...new Set(t.beaten)].forEach(id => { const c = crChar(id); if (!c || $s.CR.offers.includes(id) || id === $s.CR.partner) return; const o = crCharOvr(c), star = id === t.star; if (o > myPartnerO && (star ? Math.random() < .5 : o <= crMeOvr() + 14 && Math.random() < .4)) offers.push(id); });
   $s.CR.offers = $s.CR.offers.concat(offers).slice(-4);
+  const injMsg = crInjuryRoll(1); if (injMsg) t.moodMsg = (t.moodMsg ? t.moodMsg + ' ' : '') + injMsg;
   const placeName = place === 0 ? 'Campeão' : place === 1 ? 'Vice-campeão' : place === 2 ? 'Semifinal' : place === 3 ? 'Quartas' : 'Oitavas';
   t.summary = { place, placeName, prize, pts, xp, offers };
   $s.CR.history.unshift({ s: $s.CR.season, w: $s.CR.week, name: t.name, tier: T.curto, place: placeName, prize, pts, partner: $s.CR.partner ? nameOf(crChar($s.CR.partner)) : '' });
@@ -544,6 +553,8 @@ function crNextWeek(note) {
   if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') ? .04 : .08);
   if (crLife('imprensa')) crAddFama(1);
   if ($s.CR.boostW > 0) $s.CR.boostW--;
+  if ($s.CR.injury) { $s.CR.injury.weeks -= 1 + ($s.CR.restWeek ? 1 : 0); if ($s.CR.injury.weeks <= 0) { msg += (msg ? ' ' : '') + 'Recuperado da lesão: liberado para competir.'; $s.CR.injury = null; } }
+  $s.CR.restWeek = false;
   crSimWorld();
   $s.CR.week++;
   let msg = note || '';
@@ -580,15 +591,35 @@ function crNextWeek(note) {
   $s.CR.ovrLog.push({ s: $s.CR.season, w: $s.CR.week, o: overall($s.CR.me.a) }); $s.CR.ovrLog = $s.CR.ovrLog.slice(-80);
   $s.CR.lastMsg = msg; crSyncChars(); saveCareer();
 }
+// lesões: competir ou treinar muito cansado pode machucar; o fisioterapeuta encurta a recuperação
+const INJ = ['Distensão na panturrilha', 'Tendinite no ombro', 'Entorse no tornozelo', 'Dor lombar', 'Lesão no punho'];
+function crInjuryRoll(mult) {
+  if ($s.CR.injury) return '';
+  const e = $s.CR.energy, ch = e < 30 ? (30 - e) / 30 * .32 * (mult || 1) : 0;
+  if (Math.random() >= ch) return '';
+  const w = Math.max(1, Math.floor(1 + Math.random() * 4) - ($s.CR.staff.fisio ? 1 : 0));
+  $s.CR.injury = { nome: INJ[Math.floor(Math.random() * INJ.length)], weeks: w };
+  return 'Lesão: ' + $s.CR.injury.nome + ' (' + w + (w > 1 ? ' semanas' : ' semana') + ' parado). Jogar cansado cobrou o preço.';
+}
+// recompensa do treino com desafio (conta como a semana)
+function crDrillReward(ok, pass) {
+  const g = Math.round((ok + (pass ? 4 : 0)) * crXpMul() * .8);
+  $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 10);
+  crNextWeek('Treino com desafio: ' + ok + ' acertos' + (pass ? ' (meta cumprida)' : '') + ', +' + g + ' pontos de evolução.');
+  return g;
+}
 function crTrain() {
+  if ($s.CR.injury) { $s.CR.lastMsg = 'Lesionado: nada de treino pesado. Descanse ou faça fisioterapia.'; return; }
   const cost = crInv('quadra') ? 0 : 80 * (crMaxTier() + 1);
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
   if ($s.CR.energy < 20) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
+  const inj = crInjuryRoll(.5);
   $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 10 : 15; const g = Math.round((4 + (crInv('quadra') ? 3 : 0)) * crXpMul()); $s.CR.pe += g;
-  crNextWeek('Semana de treino: +' + g + ' pontos de evolução.');
+  crNextWeek('Semana de treino: +' + g + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
 function crCoach() { const g = crLessonIncome(); $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5); crNextWeek('Semana dando aulas: +' + money(g) + '.'); }
-function crRest() { $s.CR.energy = Math.min(100, $s.CR.energy + 45 + (crLife('crio') ? 20 : 0)); crNextWeek('Semana de descanso: energia recuperada.'); }
+function crRest() { $s.CR.restWeek = true; return crRest2(); }
+function crRest2() { $s.CR.energy = Math.min(100, $s.CR.energy + 45 + (crLife('crio') ? 20 : 0)); crNextWeek('Semana de descanso: energia recuperada.'); }
 // 60→70 é rápido, 70→80 bem mais lento, 80→90 o mais difícil
 // a reta final é a mais cara: cada ponto acima de 90 custa bem mais
 const crUpCostBase = v => v < 55 ? 1 : v < 62 ? 2 : v < 68 ? 3 : v < 72 ? 4 : v < 76 ? 6 : v < 80 ? 8 : v < 84 ? 12 : v < 88 ? 17 : v < 90 ? 24 : v < 92 ? 36 : v < 94 ? 52 : v < 96 ? 72 : 95;
@@ -728,4 +759,4 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };

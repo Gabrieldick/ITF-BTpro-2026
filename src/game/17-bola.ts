@@ -7,7 +7,7 @@ import { S } from './01-estado';
 import { human } from './06-modelos';
 import { ball, puff } from './07-glb';
 import { sndHit, sndSand } from './08-audio';
-import { el, placeHeldBall, pointTo, setupPoint, showOver } from './09-interface';
+import { drillNext, el, placeHeldBall, pointTo, setupPoint, showOver } from './09-interface';
 import { skillOf, startJump, startToss } from './11-mira';
 import { LOB_MAX, MTR, cancelMeter, releaseMeter, timeToSmash } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
@@ -16,6 +16,7 @@ function updateBall(dt) {
   if (ball.state === 'held') { placeHeldBall(); return; }
   const prev = ball.pos.clone();
   ball.vel.y -= bG() * dt;
+  if (ball.state === 'live' && S.wind) { ball.vel.x += S.wind.x * .07 * dt; ball.vel.z += S.wind.z * .07 * dt; } // vento: bolas lentas e altas desviam mais
   ball.pos.addScaledVector(ball.vel, dt);
   if (ball.state === 'toss') {
     const sp = S.serverPlayer;
@@ -85,7 +86,7 @@ function step(dt) {
   if (S.mode === 'dead' && S.celebrate) celebrateStep(dt);
   if (S.mode === 'dead') {
     S.deadT -= dt;
-    if (S.deadT <= 0) { if (S.matchWinner !== null) showOver(); else setupPoint(); }
+    if (S.deadT <= 0) { if (S.drill) drillNext(); else if (S.matchWinner !== null) showOver(); else setupPoint(); }
   }
 }
 

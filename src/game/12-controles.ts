@@ -45,6 +45,7 @@ function startMeter(kind, type) {
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') MTR.half *= smashZoneScale() * clamp((human.char.a.smash - 45) / 50, .25, 1.1) * (1 - .35 * clamp((Math.abs(human.pos.z) - 3.5) / 3.5, 0, 1));
   if (kind === 'serve') MTR.half *= clamp((human.char.a.saque - 45) / 50, .25, 1.15);
+  { const exp = clamp((overall(human.char.a) - 60) / 35, 0, 1); MTR.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === 0 ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
   if (kind === 'lob') { el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; el.mZone.style.background = ''; }
@@ -93,7 +94,7 @@ function tryDive(type) {
     if (pos.y < C.ballR) break;
     if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && pos.y < 1.1) {
       const dx = pos.x - p.pos.x, dz = pos.z - p.pos.z, d = Math.hypot(dx, dz), r = 1.35;
-      if (d > r * .95 && d < r + 1.25 && t > .12) { p.dive = { t: 0, dur: .9, dx: dx / d, dz: dz / d, spd: Math.min(7, (d - r * .7) / .28) }; return; }
+      if (d > r * .95 && d < r + 1.25 && t > .12) { S.hadDive = true; p.dive = { t: 0, dur: .9, dx: dx / d, dz: dz / d, spd: Math.min(7, (d - r * .7) / .28) }; return; }
     }
   }
 }
@@ -230,13 +231,13 @@ function saveSettings() { try { localStorage.setItem('pdo-settings', JSON.string
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
-  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked;
+  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.tactic = $('tacticSel').value || 'normal';
   saveSettings();
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
   set('mode', S.settings.mode); set('cam', S.settings.cam); set('diff', S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
-  $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false;
+  $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('tacticSel').value = S.settings.tactic || 'normal';
   renderRoster();
 }
 const SLOT_LABEL = { me: 'Você', mate: 'Sua dupla', o1: 'Adversário', o2: 'Adversário 2' };

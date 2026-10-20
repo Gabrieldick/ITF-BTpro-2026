@@ -7,9 +7,9 @@ import { S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball } from './07-glb';
-import { dupla, feedback } from './09-interface';
+import { decisive, dupla, feedback, momentum } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
-import { defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
+import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, keys, touch } from './12-controles';
 import { puff } from './07-glb';
 import { sideOf } from './18-animacao';
@@ -55,8 +55,19 @@ function charSkill(p) {
     q: [clamp(lerp(.42, .78, k), .3, .9), clamp(lerp(.72, 1, k), .5, 1)],
   };
 }
+// tática da sua dupla: 'fraco' = mirar no adversário mais fraco, 'meio' = entre os dois, 'lobs' = mais lobs no fundo
+function tacticAim(team) {
+  const tac = team === 0 ? S.settings.tactic : null, lim = C.halfW - .6;
+  if (!tac || tac === 'normal' || tac === 'lobs') return null;
+  const opp = $s.teams[1 - team]; if (!opp || !opp.length) return null;
+  if (tac === 'meio' && opp.length > 1) return clamp((opp[0].pos.x + opp[1].pos.x) / 2 + rand(-.25, .25), -lim, lim);
+  if (tac === 'fraco') { const w = opp.slice().sort((a, b) => overall(a.char ? a.char.a : {}) - overall(b.char ? b.char.a : {}))[0]; return clamp(w.pos.x + rand(-.4, .4), -lim, lim); }
+  return null;
+}
+TAC.aim = tacticAim;
 function aiAim(p) {
   const st = styleOf(p), lim = C.halfW - .6;
+  { const ta = tacticAim(p.team); if (ta !== null && Math.random() < .7) return ta; }
   if (st.aimBody && Math.random() < st.aimBody) { const opp = $s.teams[1 - p.team].slice().sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (opp) return clamp(opp.pos.x + rand(-.35, .35), -lim, lim); }
   if (st.corners && Math.random() < .8) { const g = gapX(p.team, .2); return Math.sign(g || rand(-1, 1)) * Math.max(Math.abs(g), lim * .75); }
   if (Math.random() < skillOf(p).smart) return gapX(p.team, .5);
@@ -237,6 +248,7 @@ function updateHuman(dt) {
       if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);
+      if (S.drill) S.drill.lastR = Object.assign({}, r, { meterRes: sw.meter ? sw.meter.res : null });
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r);
       // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)
       const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .86 ? 'MATADORA' : r.curtaK >= .5 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
@@ -252,6 +264,7 @@ function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
   if (y >= 2.1 && r < st.high) return 'smash';
   if (y >= 1.45 && y < 2.1 && Math.random() < st.mid) return 'smash'; // drive na meia altura
+  if (p.team === 0 && S.settings.tactic === 'lobs' && y < 2.1 && Math.random() < .45) return 'lob';
   if (oppNearNet(p.team) && Math.random() < clamp(.55 * st.w.lob, .12, .9)) return 'lob';
   if (oppAllDeep(p.team) && Math.random() < clamp(.4 * st.w.curta, .1, .85)) return 'curta';
   if (Math.hypot(ball.vel.x, ball.vel.z) > 14) return Math.random() < st.mid * .5 ? 'smash' : 'defesa';
@@ -288,6 +301,7 @@ function receiveX(p) {
   return clamp(center + p.slot * hw, -C.halfW + .4, C.halfW - .4);
 }
 function updateAI(p, dt) {
+  if (S.drill && p.team === 1) { p.vel.set(0, 0, 0); return; } // no treino o lançador não rebate
   const D = skillOf(p);
   let [tx, tz] = homeOf(p);
   if (S.mode === 'serve' || S.mode === 'toss') {
@@ -312,6 +326,9 @@ function updateAI(p, dt) {
           hardK += clamp((sp - 16) / 8, 0, 1) * lerp(.22, .06, attrK(p, 'def'));
           if (pl) { const dd = Math.hypot(pl.pt.x - p.pos.x, pl.pt.z - p.pos.z), need = Math.max(0, dd - .9) / (D.speed * Math.max(.05, pl.t - D.react)); hardK += clamp((need - .8) / .4, 0, 1) * .15; if (!pl.ok) hardK += .3; }
           if (S.rally === 1) hardK *= .5; }
+        // pressão do ponto decisivo pesa mais em quem tem menos nível; time embalado erra menos
+        const expK = clamp((overall(p.char ? p.char.a : { forca: 70, vel: 70, def: 70, backhand: 70, curta: 70, lob: 70, smash: 70, saque: 70 }) - 60) / 35, 0, 1);
+        hardK += (S.pressure ? (1 - expK) * .06 : 0) - momentum(p.team) * .03;
         p.ai.willMiss = Math.random() < hardK + D.miss * (fast ? (S.rally === 1 ? .9 : 1.6) : 1) + (ball.oppMiss || 0) * (S.rally === 1 ? .5 : 1) + (p.ai.shot === 'smash' ? (1 - attrK(p, 'smash')) * .12 : 0) + (p.ai.shot === 'smash' || (p.ai.plan && p.ai.plan.pt.y >= 2.1) ? clamp(((ball.apex || 0) - 5.5) / 4, 0, 1) * .12 : 0);
         p.ai.shot = chooseAIShot(p, p.ai.plan ? p.ai.plan.pt.y : ball.pos.y);
         p.ai.swung = false;
@@ -331,7 +348,7 @@ function updateAI(p, dt) {
           if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
-            const r = doHit(p, shot, rand(D.q[0], D.q[1]), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) } : {}));
+            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) } : {}));
             feedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
         }
@@ -355,4 +372,4 @@ function updateAI(p, dt) {
   }
 }
 
-export { receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
+export { tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };

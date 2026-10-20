@@ -2,7 +2,7 @@
 // física da bola, trajetórias e o golpe (doHit)
 import './09-interface';
 import { $s } from '../state';
-import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK } from './00-base';
+import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall } from './00-base';
 import { S } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
@@ -185,7 +185,8 @@ function doHit(p, type, q, isServe, mod) {
   if (dir > 0 && tgt.z < .4) tgt.z = .4;
   const v = solveShot(ball.pos, tgt, spec);
   let mis = false;
-  const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err;
+  const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
+  const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err + prs;
   if (unforced || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
     if (Math.random() < .5) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
