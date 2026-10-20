@@ -6,9 +6,9 @@ import { C, bG, clamp, rand } from './00-base';
 import { S } from './01-estado';
 import { human } from './06-modelos';
 import { ball, puff } from './07-glb';
-import { sndSand } from './08-audio';
+import { sndHit, sndSand } from './08-audio';
 import { el, placeHeldBall, pointTo, setupPoint, showOver } from './09-interface';
-import { skillOf, startToss } from './11-mira';
+import { skillOf, startJump, startToss } from './11-mira';
 import { LOB_MAX, MTR, cancelMeter, releaseMeter, timeToSmash } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 // ---------- Bola ----------
@@ -82,10 +82,33 @@ function step(dt) {
     if (S.aiServeT <= 0) startToss(S.serverPlayer, chooseAIServe(S.serverPlayer));
   }
   updateBall(dt);
+  if (S.mode === 'dead' && S.celebrate) celebrateStep(dt);
   if (S.mode === 'dead') {
     S.deadT -= dt;
     if (S.deadT <= 0) { if (S.matchWinner !== null) showOver(); else setupPoint(); }
   }
+}
+
+// comemoração: a dupla vencedora se junta, bate a mão e (no título) se abraça e pula
+function celebrateStep(dt) {
+  const c = S.celebrate; c.t += dt;
+  const tm = $s.teams[c.team]; if (!tm) return;
+  const s = c.team === 0 ? 1 : -1;
+  if (tm.length < 2) { const p = tm[0]; p.vel.set(0, 0, 0); if (c.title && !c.j1 && c.t > .6) { c.j1 = true; startJump(p, .45, .5); } if (c.title && !c.j2 && c.t > 1.6) { c.j2 = true; startJump(p, .45, .5); } return; }
+  const [a, b] = tm, mx = (a.pos.x + b.pos.x) / 2, mz = s * 3.2;
+  if (c.mx === undefined) { c.mx = clamp(mx, -2, 2); }
+  // distância entre os dois: chegando → toque de mão (.75 m) → abraço (.42 m) → separam um pouco e pulam
+  const gap = c.t < 1.1 ? 1.1 : !c.title ? .75 : c.t < 1.7 ? .75 : c.t < 3.4 ? .42 : .9;
+  [a, b].forEach((p, i) => {
+    const side = i === 0 ? -1 : 1, tx = c.mx + side * gap / 2, tz = mz;
+    const dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz), sp = Math.min(3.2, d * 4);
+    p.vel.set(d > .02 ? dx / d * sp : 0, 0, d > .02 ? dz / d * sp : 0);
+    p.pos.x += p.vel.x * dt; p.pos.z += p.vel.z * dt;
+    p.swing.t = -1; p.charging = false;
+  });
+  if (!c.h5 && c.t > 1.1) { c.h5 = true; startJump(a, .25, .18); startJump(b, .25, .18); sndHit(.15); }
+  if (c.title && !c.j1 && c.t > 3.5) { c.j1 = true; startJump(a, .45, .45); startJump(b, .45, .45); }
+  if (c.title && !c.j2 && c.t > 4.2) { c.j2 = true; startJump(a, .45, .45); startJump(b, .45, .45); }
 }
 
 export { step };

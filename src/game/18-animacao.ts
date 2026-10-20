@@ -88,7 +88,11 @@ function animateAthlete(p, dt) {
   const bsp = Math.hypot(ball.vel.x, ball.vel.z);
   const lowT = !busy && ball.state === 'live' && S.lastTeam !== p.team && bsp > 10 && Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) < 8 ? clamp((bsp - 10) / 6, .5, 1) : 0;
   p.lowK = (p.lowK || 0) + (lowT - (p.lowK || 0)) * Math.min(1, dt * 10);
-  const yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep);
+  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep);
+  const cel = S.mode === 'dead' && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
+  const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
+  if (mateC && cel.t > .7) { const fy = Math.atan2(-(mateC.pos.x - p.pos.x), -(mateC.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
+  else p.celYaw = undefined;
   m.group.rotation.y = yaw;
   if (p.jump > 0) p.jump = Math.max(0, p.jump - dt);
   if (p.split > 0) { p.split = Math.max(0, p.split - dt); if (p.split === 0) p.burst = .3; }
@@ -162,11 +166,17 @@ function animateAthlete(p, dt) {
     }
   }
   _b.fromArray(pose.rp);
+  const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
+  if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
+  else if (celPh === 'up') { _c.set(.18, 1.05, -.05); _b.set(.8, 0, .3); }
   ik2(m.armR.sh, m.armR.el, shR, _c, _b, .285, .27);
   m.armR.wrist.rotation.set(pose.wx, pose.wr, 0);
   _c.fromArray(pose.lh); _b.fromArray(pose.lp);
-  if (swingU < 0 && !p.charging && run > .3) _c.y += Math.sin(p.gait) * .04 * run;
-  if (p.prep > .05 && ball.state === 'live') { // mão livre aponta a bola
+  if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
+  else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
+  else if (celPh === 'up') { _c.set(-.18, 1.05, -.05); _b.set(-.8, 0, .3); }
+  if (swingU < 0 && !p.charging && run > .3 && !celPh) _c.y += Math.sin(p.gait) * .04 * run;
+  if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
   }

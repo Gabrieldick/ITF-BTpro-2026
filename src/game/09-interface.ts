@@ -5,14 +5,14 @@ import { $s } from '../state';
 import { C, HALF_W, ZONE3, nameOf, shortOf } from './00-base';
 import { flagSVG } from '../flags';
 import { S } from './01-estado';
-import { applyArena, cheerArena, linesGroup } from './03-cenario';
+import { applyArena, cheerArena, confetti, linesGroup } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail } from './07-glb';
 import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam } from './12-controles';
-import { champBoardTitle, champMatchEnded } from './13-campeonato';
-import { crBoardTitle, careerMatchEnded } from './14-carreira';
+import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
+import { crBoardTitle, crIsFinal, careerMatchEnded } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
@@ -133,10 +133,17 @@ function pointTo(w, reason, kind) {
   let sub = reason;
   if (ev === 'game') { title = w === 0 ? (d ? 'Game de vocês!' : 'Game seu!') : 'Game da CPU'; sub = `${reason} · games ${g[0]}–${g[1]}`; }
   if (ev === 'tb') { title = 'Tie-break!'; sub = `${g[0]}–${g[1]} nos games. Primeiro a 7 pontos, com 2 de diferença.`; }
-  if (ev === 'match') { title = w === 0 ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set da CPU'; sub = reason; S.deadT = 2.4; }
+  if (ev === 'match') { title = w === 0 ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set da CPU'; sub = reason; S.deadT = 2.4;
+    // comemoração do time que venceu: toque de mão; no título, abraço, pulos e confete
+    const isTitle = w === 0 && ((S.careerActive && crIsFinal()) || (S.champActive && champIsFinal()));
+    S.celebrate = { team: w, t: 0, title: isTitle };
+    S.deadT = isTitle ? 5 : d ? 2.8 : 2.4;
+    if (isTitle) { title = d ? 'CAMPEÕES!' : 'CAMPEÃO!'; sub = (S.careerActive ? crBoardTitle().replace(/ – .*/, '') : 'Campeonato') + ' · ' + reason; confetti(); cheerArena(5); }
+  }
   banner(title, sub, 0, ev === 'match' || ev === 'game');
 }
 function setupPoint() {
+  S.celebrate = null;
   S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; ball.state = 'held'; ball.vel.set(0, 0, 0);
   S.assign = [null, null]; S.assignId = [-1, -1];
   $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.var = ''; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.ai.planId = -1; p.ai.reactT = 0; p.ai.letGo = false; p.ai.swung = false; p.dive = null; });

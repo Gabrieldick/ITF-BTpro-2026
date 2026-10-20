@@ -363,10 +363,32 @@ function applyArena(a) {
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
 }
+// confete do título: papéis coloridos caindo sobre a quadra
+const CONF = { mesh: null, items: [], t: 0 };
+function confetti() {
+  if (!CONF.mesh) {
+    CONF.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(.09, .06), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), 360);
+    CONF.mesh.frustumCulled = false; scene.add(CONF.mesh);
+    const c = new THREE.Color(), cols = ['#ff5a1f', '#ffd23f', '#4fd18b', '#2457c5', '#fbf6ea', '#e2364a', '#7fd6db'];
+    for (let i = 0; i < 360; i++) CONF.mesh.setColorAt(i, c.set(cols[i % cols.length]).convertSRGBToLinear());
+  }
+  CONF.items = Array.from({ length: 360 }, () => ({ x: rand(-6, 6), y: rand(5, 11), z: rand(-6, 8), vx: rand(-.4, .4), vy: rand(-1.6, -.8), rx: rand(0, 6), ry: rand(0, 6), w: rand(3, 8) }));
+  CONF.t = 7; CONF.mesh.visible = true;
+}
+function updateConfetti(dt) {
+  if (!CONF.mesh || CONF.t <= 0) return;
+  CONF.t -= dt; if (CONF.t <= 0) { CONF.mesh.visible = false; return; }
+  CONF.items.forEach((o, i) => {
+    o.x += (o.vx + Math.sin(o.rx) * .3) * dt; o.y = Math.max(.02, o.y + o.vy * dt); o.rx += o.w * dt; o.ry += o.w * .7 * dt;
+    _cq.setFromEuler(new THREE.Euler(o.rx, o.ry, 0)); _cm.compose(_cp.set(o.x, o.y, o.z), _cq, _cs); CONF.mesh.setMatrixAt(i, _cm);
+  });
+  CONF.mesh.instanceMatrix.needsUpdate = true;
+}
 // torcida comemora depois do ponto
 function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); }
 const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cs = new V3(1, 1, 1);
 function updateArena(dt) {
+  updateConfetti(dt);
   if (!ARENA.crowd.length || ARENA.cheerT <= 0) return;
   ARENA.cheerT = Math.max(0, ARENA.cheerT - dt);
   const t = performance.now() / 1000, amp = Math.min(1, ARENA.cheerT) * .22;
@@ -381,4 +403,4 @@ function updateArena(dt) {
   });
 }
 
-export { applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
+export { confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
