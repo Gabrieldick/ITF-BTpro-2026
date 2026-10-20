@@ -158,6 +158,8 @@ function crRanking() {
   list.push({ id: 'crme', pts: crPts() });
   return list.sort((x, y) => y.pts - x.pts || (x.id === 'crme' ? 1 : -1));
 }
+// ranking só com os atletas de um estado (mesmos pontos do ranking geral)
+function crStateRanking(uf) { return crRanking().filter(r => { const c = crChar(r.id); return c && c.pais === 'BRA' && crUf(c) === uf; }); }
 const crRank = () => crRanking().findIndex(r => r.id === 'crme') + 1;
 const npcTier = o => { let t = 0; for (let i = 0; i < 9; i++) if (TIERS[i].ovr[0] + 3 <= o) t = i; return t; };
 // semana dos outros: quem joga ganha pontos conforme a força dentro do nível
@@ -192,6 +194,14 @@ function crWeekOptions() {
     const T = TIERS[t]; let city = T.cities[Math.floor(rnd() * T.cities.length)];
     if (seen.has(t + city)) city = T.cities[(T.cities.indexOf(city) + 1) % T.cities.length];
     seen.add(t + city);
+    const uf = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null;
+    if (t < 3 && uf && STATE_INFO[uf]) { // amadores: nas cidades do seu estado
+      const cs = STATE_INFO[uf].cities, pre = ['Copa', 'Open', 'Torneio', 'Desafio', 'Circuito'];
+      city = pre[Math.floor(rnd() * pre.length)] + ' ' + cs[Math.floor(rnd() * cs.length)];
+      if (seen.has(t + city)) city += ' II';
+      seen.add(t + city);
+      opts.push({ tier: t, name: city + ' · ' + T.curto, uf }); return;
+    }
     opts.push({ tier: t, name: t >= 3 && t < 9 ? city : city + (t < 3 ? ' · ' + T.curto : '') });
   });
   const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 4);
@@ -289,6 +299,23 @@ function crLifeBuy(id) {
 const crTravel = T => Math.round(T.travel * (crLife('carro') ? .7 : 1));
 // ---------- estados e seleções ----------
 const STATES = [['SP', 'São Paulo'], ['RJ', 'Rio de Janeiro'], ['SC', 'Santa Catarina'], ['BA', 'Bahia'], ['CE', 'Ceará'], ['PE', 'Pernambuco'], ['RS', 'Rio Grande do Sul'], ['PR', 'Paraná'], ['ES', 'Espírito Santo'], ['RN', 'Rio Grande do Norte'], ['AL', 'Alagoas'], ['PB', 'Paraíba'], ['MG', 'Minas Gerais'], ['DF', 'Distrito Federal']];
+// cidades (praias e quadras) de cada estado para os torneios amadores e estaduais, e as cores da arena (bandeira do estado)
+const STATE_INFO = {
+  SP: { cities: ['Guarujá', 'Santos', 'Ubatuba', 'Ilhabela', 'Maresias', 'São Paulo · Ibirapuera'], pal: { line: '#d6332f', trim: '#111111', sand: '#f7ecd6', seat: '#111111', board: ['#111111', '#ffffff'] } },
+  RJ: { cities: ['Copacabana', 'Ipanema', 'Búzios', 'Niterói', 'Arraial do Cabo', 'Barra da Tijuca'], pal: { line: '#1f4fb8', trim: '#ffffff', sand: '#fffdf8', seat: '#1f4fb8', board: ['#1f4fb8', '#ffffff'] } },
+  SC: { cities: ['Florianópolis', 'Balneário Camboriú', 'Itajaí', 'Bombinhas', 'Garopaba', 'Jurerê'], pal: { line: '#d6332f', trim: '#0a7d3c', sand: '#f3e7cf', seat: '#0a7d3c', board: ['#d6332f', '#ffffff'] } },
+  BA: { cities: ['Salvador', 'Porto Seguro', 'Itacaré', 'Praia do Forte', 'Itapuã'], pal: { line: '#1f4fb8', trim: '#d6332f', sand: '#fffaf0', seat: '#d6332f', board: ['#1f4fb8', '#ffffff'] } },
+  CE: { cities: ['Fortaleza', 'Jericoacoara', 'Canoa Quebrada', 'Cumbuco', 'Iracema'], pal: { line: '#0a7d3c', trim: '#ffd23f', sand: '#fffdf6', seat: '#0a7d3c', board: ['#0a7d3c', '#ffd23f'] } },
+  PE: { cities: ['Recife', 'Porto de Galinhas', 'Olinda', 'Boa Viagem'], pal: { line: '#1f4fb8', trim: '#ffd23f', sand: '#fffaf0', seat: '#d6332f', board: ['#1f4fb8', '#ffd23f'] } },
+  RS: { cities: ['Porto Alegre', 'Torres', 'Capão da Canoa', 'Tramandaí', 'Xangri-lá'], pal: { line: '#0a7d3c', trim: '#d6332f', sand: '#ead8b4', seat: '#0a7d3c', board: ['#0a7d3c', '#ffd23f'] } },
+  PR: { cities: ['Curitiba', 'Matinhos', 'Guaratuba', 'Caiobá', 'Ilha do Mel'], pal: { line: '#0a7d3c', trim: '#1f4fb8', sand: '#efdfbf', seat: '#1f4fb8', board: ['#0a7d3c', '#ffffff'] } },
+  ES: { cities: ['Vitória', 'Vila Velha', 'Guarapari', 'Camburi'], pal: { line: '#1f4fb8', trim: '#e86fa0', sand: '#f8ecd8', seat: '#e86fa0', board: ['#1f4fb8', '#ffffff'] } },
+  RN: { cities: ['Natal', 'Pipa', 'Ponta Negra', 'Genipabu'], pal: { line: '#0a7d3c', trim: '#ffffff', sand: '#fffdf6', seat: '#0a7d3c', board: ['#0a7d3c', '#ffffff'] } },
+  AL: { cities: ['Maceió', 'Maragogi', 'Pajuçara', 'São Miguel dos Milagres'], pal: { line: '#d6332f', trim: '#1f4fb8', sand: '#fffdf8', seat: '#1f4fb8', board: ['#d6332f', '#ffffff'] } },
+  PB: { cities: ['João Pessoa', 'Cabedelo', 'Tambaú', 'Cabo Branco'], pal: { line: '#d6332f', trim: '#111111', sand: '#fffaf0', seat: '#111111', board: ['#d6332f', '#111111'] } },
+  MG: { cities: ['Belo Horizonte', 'Uberlândia', 'Juiz de Fora', 'Lagoa da Pampulha'], pal: { line: '#d6332f', trim: '#ffffff', sand: '#e9d3a8', seat: '#d6332f', board: ['#d6332f', '#ffffff'] } },
+  DF: { cities: ['Brasília', 'Lago Paranoá', 'Taguatinga'], pal: { line: '#0a7d3c', trim: '#ffd23f', sand: '#ead7ae', seat: '#0a7d3c', board: ['#0a7d3c', '#ffd23f'] } },
+};
 const AMERICAS = ['BRA', 'ARG', 'VEN', 'URU', 'CHI', 'PAR', 'COL', 'PER', 'MEX', 'USA', 'CAN', 'ARU'];
 const hashId = id => { let h = 2166136261; for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
 const crUf = c => c.id === 'crme' ? ($s.CR.me.uf || 'SP') : c.pais === 'BRA' ? STATES[hashId(c.id) % STATES.length][0] : null;
@@ -329,7 +356,7 @@ function crCallUp(kind) {
 // calendário dos especiais
 function crSpecialOptions() {
   const w = $s.CR.week, out = [], br = $s.CR.me.pais === 'BRA';
-  if (br && (w === 5 || w === 18)) { const band = Math.min(crMaxTier(), 4); out.push({ special: 'estadual', tier: band, name: 'Estadual ' + ($s.CR.me.uf || 'SP') + ' · ' + TIERS[band].curto }); }
+  if (br && (w === 5 || w === 18)) { const band = Math.min(crMaxTier(), 4); const uf = $s.CR.me.uf || 'SP', cs = (STATE_INFO[uf] || STATE_INFO.SP).cities; out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
   const nat = w === 11 && br ? 'selEst' : w === 15 ? ($s.CR.season % 2 ? (AMERICAS.includes($s.CR.me.pais) ? 'pan' : null) : 'confed') : w === 21 ? 'mundSel' : null;
   if (nat) {
     const cu = crCallUp(nat), S2 = SPECIAL[nat];
@@ -359,7 +386,8 @@ function crEnter(opt) {
   let lo = T.ovr[0] - 2, hi = T.ovr[1] + 2, field = [];
   const need = (T.draw - 1) * 2;
   while (field.length < need && hi < 120) {
-    field = crWorld().filter(c => !busy.has(c.id) && (opt.special !== 'estadual' || crUf(c) === ($s.CR.me.uf || 'SP') || (lo < T.ovr[0] - 6 && c.pais === 'BRA'))).filter(c => { const o = crCharOvr(c); return o >= lo && o <= hi; });
+    const localOnly = opt.special === 'estadual' || !!opt.uf;
+    field = crWorld().filter(c => !busy.has(c.id) && (!localOnly || crUf(c) === (opt.uf || $s.CR.me.uf || 'SP') || (lo < T.ovr[0] - 6 && c.pais === 'BRA') || (!opt.special && lo < T.ovr[0] - 9))).filter(c => { const o = crCharOvr(c); return o >= lo && o <= hi; });
     lo -= 3; hi += 3;
   }
   field.sort(() => rnd() - .5); field = field.slice(0, need).sort((x, y) => crCharOvr(y) - crCharOvr(x));
@@ -383,7 +411,7 @@ function crEnter(opt) {
   teams.sort((x, y) => crTeamOvr(y) - crTeamOvr(x));
   const me = teams.findIndex(t => t.me);
   const seedOrder = T.draw === 16 ? SEED16 : SEED8;
-  $s.CR.tour = { tier: opt.tier, special: opt.special || null, name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+  $s.CR.tour = { tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
   $s.CR.lastMsg = star ? 'Surpresa na chave: ' + nameOf(star) + ' (OVR ' + crCharOvr(star) + ') veio jogar este torneio. Se vencer a dupla dele, ele pode querer jogar com você.' : ''; saveCareer();
@@ -759,4 +787,4 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };

@@ -360,6 +360,7 @@ function applyArena(a) {
   if (a.size >= 2) seats = seats.concat(bleachers(1, W, -1, L, a.size >= 3 ? 8 : 5, a.seat, 'z'));
   if (a.size >= 3) seats = seats.concat(bleachers(-1, 0, -(C.halfL + 5.5), 2 * W - 1, 6, a.seat, 'x'));
   crowd(seats);
+  if (a.size === 0 && a.text) boards(0, -(C.halfL + 3.5), 8, 'x', a.board[0], a.board[1], a.text); // torneio local: uma faixa no fundo
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
 }

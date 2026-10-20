@@ -12,7 +12,7 @@ import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam } from './12-controles';
 import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
-import { crBoardTitle, crIsFinal, careerMatchEnded } from './14-carreira';
+import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
@@ -315,8 +315,9 @@ function arenaFor() {
   if (S.careerActive && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();
     const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
-    const size = t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
-    return Object.assign({ size, text: (t.name || '').toUpperCase().slice(0, 22) }, ARENA_PAL[loc]);
+    const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
+    const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
+    return Object.assign({ size, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO' }, ARENA_PAL.BRA);
   return { size: 0 };
