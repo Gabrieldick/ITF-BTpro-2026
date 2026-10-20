@@ -207,12 +207,23 @@ function drillResult(w, kind) {
   if (w === 0 && kind === 'in' && r) {
     if (d.kind === 'curtas') ok = r.key === 'curta' && !r.pop && r.grade >= .7;
     if (d.kind === 'defesa') ok = !r.pop;
-    if (d.kind === 'smash') ok = r.key === 'smash' && r.meterRes === 'perfeito';
+    if (d.kind === 'smash') ok = r.meterRes === 'perfeito'; // smash perfeito que caiu dentro conta (mesmo se pegou a bola mais baixa)
   }
   if (ok) d.ok++;
+  // por que não contou
+  let why = '';
+  if (!ok) {
+    if (!r) why = 'não chegou na bola';
+    else if (d.kind === 'smash' && r.meterRes && r.meterRes !== 'perfeito') why = 'barra ' + (r.meterRes === 'voleio' ? 'curta demais (virou voleio)' : r.meterRes.toUpperCase());
+    else if (d.kind === 'smash' && !r.meterRes) why = 'use J segurando (barra do smash)';
+    else if (d.kind === 'curtas' && r.key !== 'curta') why = 'não foi curta (use L)';
+    else if (d.kind === 'curtas' && r.grade < .7) why = 'curta LENTA (aperte no sinal verde)';
+    else if (r.pop) why = 'a bola levantou';
+    else why = kind === 'net' ? 'foi na rede' : kind === 'out' ? 'foi fora' : 'não passou';
+  }
   sndWhistle(ok);
   S.mode = 'dead'; S.deadT = 1.3;
-  banner(ok ? 'Boa!' : 'Não valeu', DRILLS[d.kind].txt + ': ' + d.ok + '/' + DRILLS[d.kind].goal + ' · bola ' + d.n + '/' + DRILLS[d.kind].max, 0, false);
+  banner(ok ? 'Boa!' : 'Não valeu: ' + why, DRILLS[d.kind].txt + ': ' + d.ok + '/' + DRILLS[d.kind].goal + ' · bola ' + d.n + '/' + DRILLS[d.kind].max, 0, false);
   renderBoard();
 }
 function drillEnd() {

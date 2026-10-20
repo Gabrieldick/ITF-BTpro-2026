@@ -245,6 +245,7 @@ function updateHuman(dt) {
       }
       // timing: o miolo do movimento (15%–60%) é perfeito; cedo/tarde demais perde, mas não zera
       // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
+      if (sw.meter && !mod.volley) mod.meterSmash = true;
       if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);

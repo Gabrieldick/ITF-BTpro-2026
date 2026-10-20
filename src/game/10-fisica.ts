@@ -72,7 +72,8 @@ function hitQuality(p, type) {
 function doHit(p, type, q, isServe, mod) {
   mod = mod || {};
   let key = type;
-  if (!isServe && type === 'smash' && (ball.pos.y < 1.9 || mod.volley)) key = 'drive';
+  // smash da barra (perfeito/cedo/tarde) continua smash até 1,5 m; o golpe rápido sem barra vira drive abaixo de 1,9 m
+  if (!isServe && type === 'smash' && (ball.pos.y < (mod.meterSmash ? 1.5 : 1.9) || mod.volley)) key = 'drive';
   let spec = Object.assign({}, isServe ? SERVES[type] : SHOTS[key]);
   if (mod.volley) spec.label = 'VOLEIO';
   // quanto mais forte a bola que chega, maior a chance de a devolução sair levantada ou para fora
