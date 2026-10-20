@@ -6,7 +6,7 @@ import { ROSTER } from './00-base';
 const S = {
   mode: 'menu',            // menu | serve | toss | rally | dead | over
   paused: false,
-  settings: { gender: 'mista', pick: { me: 'spot', mate: 'gaspar', o1: 'burmak', o2: 'nobre' }, assistMove: false, assistMoveV2: true, assistMark: true, mode: 'simples', cam: '3p', diff: 'medio', games: 4, assist: true, gfx: 'alto', racket: 'proteo', players: 'desenhado', uniforms: 'uniforme', side: 'direita', fovFp: 72 },
+  settings: { gender: 'mista', pick: { me: 'spot', mate: 'gaspar', o1: 'burmak', o2: 'nobre' }, assistMove: false, assistMoveV2: true, assistMark: true, mode: 'simples', cam: '3p', diff: 'medio', games: 4, assist: true, gfx: 'alto', racket: 'proteo', players: 'desenhado', uniforms: 'uniforme', side: 'direita', fovFp: 72, format: 'set' },
   score: { pts: [0, 0], games: [0, 0], tb: false },
   server: 0, serverIdx: [0, 0], serverPlayer: null, tbPlayed: 0,
   lastTeam: -1, hitId: 0, assign: [null, null], assignId: [-1, -1],
@@ -18,6 +18,7 @@ let savedSettings = null;
 try { savedSettings = JSON.parse(localStorage.getItem('pdo-settings') || 'null'); } catch (e) {}
 if (savedSettings) {
   Object.assign(S.settings, savedSettings);
+  S.settings.format = 'set'; // o formato pro só vale dentro das finais da carreira
   if (savedSettings.assistMove === undefined && savedSettings.assist !== undefined) { S.settings.assistMove = S.settings.assistMark = !!savedSettings.assist; }
   // 'seguir a bola' passou a vir desligado: desliga uma vez nas configurações salvas antes da mudança
   if (!savedSettings.assistMoveV2) { S.settings.assistMove = false; S.settings.assistMoveV2 = true; }

@@ -63,7 +63,12 @@ function renderBoard() {
   el.pC.textContent = sc.tb ? sc.pts[1] : PT[Math.min(3, sc.pts[1])];
   el.rowP.classList.toggle('serving', S.server === 0);
   el.rowC.classList.toggle('serving', S.server === 1);
-  el.golden.textContent = sc.tb ? 'TIE-BREAK' : 'PONTO DE OURO';
+  el.golden.textContent = sc.stb ? 'SUPER TIE-BREAK' : sc.tb ? 'TIE-BREAK' : 'PONTO DE OURO';
+  // sets já jogados (formato pro)
+  const hs = sc.hist || [], pro = S.settings.format === 'pro';
+  $('sP').innerHTML = hs.filter(h => h[2] !== 'stb').map(h => '<i class="' + (h[0] > h[1] ? 'w' : '') + '">' + h[0] + '</i>').join('');
+  $('sC').innerHTML = hs.filter(h => h[2] !== 'stb').map(h => '<i class="' + (h[1] > h[0] ? 'w' : '') + '">' + h[1] + '</i>').join('');
+  $('hSets').textContent = pro && hs.length ? 'SETS' : ''; $('hGames').textContent = sc.stb ? 'S.TIE' : pro ? hs.length + 1 + 'º SET' : 'GAMES';
   el.golden.hidden = !(sc.tb || isGolden());
 }
 const isGolden = () => !S.score.tb && S.score.pts[0] === 3 && S.score.pts[1] === 3;
@@ -72,7 +77,11 @@ function awardPoint(w) {
   const sc = S.score, l = 1 - w; S.stats.pts[w]++;
   if (sc.tb) {
     sc.pts[w]++; S.tbPlayed++;
-    if (sc.pts[w] >= 7 && sc.pts[w] - sc.pts[l] >= 2) { sc.games[w]++; S.matchWinner = w; return 'match'; }
+    const tgt = sc.stb ? 10 : 7; // super tie-break vai a 10
+    if (sc.pts[w] >= tgt && sc.pts[w] - sc.pts[l] >= 2) {
+      if (sc.stb) { sc.hist.push([sc.pts[0], sc.pts[1], 'stb']); sc.stbDone = true; S.matchWinner = w; return 'match'; }
+      sc.games[w]++; return endSet(w);
+    }
     if (S.tbPlayed % 2 === 1) rotateServe();
     return 'point';
   }
@@ -81,11 +90,27 @@ function awardPoint(w) {
     sc.games[w]++; sc.pts = [0, 0];
     const N = S.settings.games;
     rotateServe();
-    if (sc.games[w] >= N && sc.games[w] - sc.games[l] >= 2) { S.matchWinner = w; return 'match'; }
+    if (sc.games[w] >= N && sc.games[w] - sc.games[l] >= 2) return endSet(w);
     if (sc.games[0] === N && sc.games[1] === N) { sc.tb = true; S.tbPlayed = 0; return 'tb'; }
     return 'game';
   }
   return 'point';
+}
+// fim de set: no formato "pro" (finais profissionais) são 2 sets a 6; 1 a 1 vai para o super tie-break
+function endSet(w) {
+  const sc = S.score;
+  if (S.settings.format !== 'pro') { S.matchWinner = w; return 'match'; }
+  sc.sets[w]++; sc.hist.push([sc.games[0], sc.games[1]]);
+  if (sc.sets[w] >= 2) { S.matchWinner = w; return 'match'; }
+  sc.games = [0, 0]; sc.pts = [0, 0]; sc.tb = false;
+  if (sc.sets[0] === 1 && sc.sets[1] === 1) { sc.tb = true; sc.stb = true; S.tbPlayed = 0; return 'stb'; }
+  return 'set';
+}
+// placar final em texto: "6–4 3–6 [10–8]" ou "4–2"
+function scoreText() {
+  const sc = S.score;
+  if (sc.hist && sc.hist.length) return sc.hist.map(([a, b, k]) => k === 'stb' ? '[' + a + '–' + b + ']' : a + '–' + b).join(' ');
+  return sc.games[0] + '–' + sc.games[1];
 }
 // ---------- estatísticas do jogo ----------
 const CAT_NAME = { voleio: 'voleio', saque: 'saque', smash: 'smash', drive: 'drive', curta: 'curta', lob: 'lob', defesa: 'defesa' };
@@ -133,7 +158,9 @@ function pointTo(w, reason, kind) {
   let sub = reason;
   if (ev === 'game') { title = w === 0 ? (d ? 'Game de vocês!' : 'Game seu!') : 'Game da CPU'; sub = `${reason} · games ${g[0]}–${g[1]}`; }
   if (ev === 'tb') { title = 'Tie-break!'; sub = `${g[0]}–${g[1]} nos games. Primeiro a 7 pontos, com 2 de diferença.`; }
-  if (ev === 'match') { title = w === 0 ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set da CPU'; sub = reason; S.deadT = 2.4;
+  if (ev === 'set') { const st = S.score.sets; title = w === 0 ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set da CPU'; sub = `Sets ${st[0]}–${st[1]} · ${scoreText()}`; S.deadT = 2.6; }
+  if (ev === 'stb') { title = 'Super tie-break!'; sub = 'Um set para cada lado. Primeiro a 10 pontos, com 2 de diferença.'; S.deadT = 2.6; }
+  if (ev === 'match') { const pro = S.settings.format === 'pro'; title = w === 0 ? (pro ? (d ? 'Vitória de vocês!' : 'Vitória!') : d ? 'Set de vocês!' : 'Set seu!') : pro ? 'Vitória da CPU' : 'Set da CPU'; sub = pro ? scoreText() + ' · ' + reason : reason; S.deadT = 2.4;
     // comemoração do time que venceu: toque de mão; no título, abraço, pulos e confete
     const isTitle = w === 0 && ((S.careerActive && crIsFinal()) || (S.champActive && champIsFinal()));
     S.celebrate = { team: w, t: 0, title: isTitle };
@@ -211,7 +238,7 @@ function newMatch() {
   applyArena(arenaFor());
   assignCharacters();
   configureMode();
-  S.score = { pts: [0, 0], games: [0, 0], tb: false };
+  S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
   S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.lastHit = null; S.attempt = null;
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
@@ -240,7 +267,7 @@ function showOver() {
   const dn = { facil: 'fácil', medio: 'médio', dificil: 'difícil' }[S.settings.diff];
   $('overEyebrow').textContent = `Fim de set · ${dupla() ? 'dupla' : 'simples'} · ${dn}`;
   $('overTitle').textContent = w === 0 ? (dupla() ? 'VOCÊS VENCERAM' : 'VOCÊ VENCEU') : 'A CPU VENCEU';
-  $('overScore').textContent = `${g[0]}–${g[1]}`;
+  $('overScore').textContent = scoreText();
   $('stPts').textContent = `${S.stats.pts[0]}–${S.stats.pts[1]}`;
   $('stRally').textContent = S.stats.maxRally;
   $('stSmash').textContent = S.stats.smashes;
@@ -252,4 +279,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

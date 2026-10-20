@@ -17,9 +17,9 @@
 
 <!-- HUD -->
 <div id="board" class="hud" aria-live="polite">
-  <div class="row head"><span></span><span></span><span>GAMES</span><span>PTS</span></div>
-  <div class="row" id="rowP"><span class="srv"></span><span class="nm" id="nmP">VOCÊ</span><span class="gm" id="gP">0</span><span class="pt" id="pP">0</span></div>
-  <div class="row" id="rowC"><span class="srv"></span><span class="nm" id="nmC">CPU</span><span class="gm" id="gC">0</span><span class="pt" id="pC">0</span></div>
+  <div class="row head"><span></span><span></span><span id="hSets"></span><span id="hGames">GAMES</span><span>PTS</span></div>
+  <div class="row" id="rowP"><span class="srv"></span><span class="nm" id="nmP">VOCÊ</span><span class="st" id="sP"></span><span class="gm" id="gP">0</span><span class="pt" id="pP">0</span></div>
+  <div class="row" id="rowC"><span class="srv"></span><span class="nm" id="nmC">CPU</span><span class="st" id="sC"></span><span class="gm" id="gC">0</span><span class="pt" id="pC">0</span></div>
   <div id="sbTitle" hidden></div>
   <div id="golden" hidden>PONTO DE OURO</div>
 </div>
@@ -181,6 +181,7 @@
         <label class="cr-field">Nome <input id="crName" maxlength="24" placeholder="Seu nome no circuito" autocomplete="off"></label>
         <label class="cr-field">Nacionalidade <span class="cr-nat"><span id="crNatFlag"></span><select id="crNat"></select></span></label>
       </div>
+      <label class="cr-field" id="crUfWrap">Estado (estaduais e seleção estadual) <select id="crUf" class="cr-sel"></select></label>
       <div class="cr-two">
         <fieldset class="seg"><legend>Gênero</legend><div class="pills">
           <input type="radio" name="crGen" id="crGm" value="m" checked><label for="crGm">Masculino</label>
