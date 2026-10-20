@@ -403,3 +403,10 @@ body.in-replay .hud { display: none !important; }
 #replayBar { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 12px; background: rgba(15,36,54,.82); color: #fff; padding: 8px 14px; border-radius: 12px; font-family: var(--f-body); }
 #replayBar b { color: #ff5a1f; letter-spacing: .12em; }
 #replayBar span { font-size: 14px; font-weight: 700; }
+/* ---------- Online ---------- */
+.on-code { font-family: var(--f-num); font-weight: 700; font-size: 40px; letter-spacing: .18em; color: var(--ink); background: #fff; border: 2px dashed #d9cfba; border-radius: 14px; padding: 6px 16px; }
+.on-code-in { font-family: var(--f-num); font-weight: 700; font-size: 22px; letter-spacing: .2em; text-transform: uppercase; width: 8.5ch; padding: 10px 12px; border: 2px solid #d9cfba; border-radius: 14px; background: #fff; color: var(--ink); }
+.on-code-in:focus { outline: none; border-color: var(--sea); }
+.on-status { margin: 0; font-weight: 800; color: var(--sea); }
+.cr-msg.ok { background: #e3f6ec; border-color: #9fd9b8; }
+#netChip { cursor: default; }

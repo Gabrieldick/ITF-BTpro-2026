@@ -47,7 +47,7 @@ const READY_FP_KEYS = [READY_FP, READY_FP];
 // preparação do smash: corpo de lado (ombro da mão livre para a rede), mão livre apontando a bola
 // 1 enquanto se prepara; no golpe o corpo desenrola até o contato
 function smashPrep(p, swingU) {
-  if (p.charging && MTR.type === 'smash') return clamp(MTR.t / .2, 0, 1);
+  if (p.charging && (p.mtr || MTR).type === 'smash') return clamp((p.mtr || MTR).t / .2, 0, 1);
   if (swingU >= 0 && p.swing.type === 'smash' && ball.pos.y >= 1.7) return clamp(1 - swingU / .45, 0, 1);
   if (!p.isHuman && S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team && p.swing.t < 0 && p.ai.planId === S.hitId && p.ai.shot === 'smash' && p.ai.plan && p.ai.plan.pt.y >= 1.9 && assignee(p.team) === p) return 1;
   return 0;
@@ -60,7 +60,7 @@ function animateAthlete(p, dt) {
     if (p.debug.type === 'serve') poseAt(SERVE_KEYS, SERVE_U, p.debug.u, pose);
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); mirror = p.debug.type === 'defesa' && p.debug.side < 0; }
   } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(SERVE_KEYS, SERVE_U, clamp(p.tossT / TOSS_T, 0, 1), pose);
-  else if (p.charging) poseAt(ACT[MTR.type === 'lob' ? 'lob' : 'smash'], uOf(MTR.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(MTR.t / .18, 0, 1), pose);
+  else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); const ak = swingKey(p); poseAt(ACT[ak], uOf(ak), swingU, pose); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; }
   else poseAt(p === human && fpBodyOn ? READY_FP_KEYS : READY_KEYS, READY_U, 0, pose);
   if (mirror) mirrorPose(pose);

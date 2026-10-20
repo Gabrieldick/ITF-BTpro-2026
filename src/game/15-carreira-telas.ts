@@ -3,7 +3,7 @@
 import './14-carreira';
 import { $s } from '../state';
 import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf } from './00-base';
-import { S } from './01-estado';
+import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { $, el, feedback, hideBanner, newMatch, startDrill } from './09-interface';
@@ -277,6 +277,7 @@ $('rkSel').innerHTML = Object.entries(RACKET_STATS).sort((x, y) => x[1].preco - 
 $('rkSel').addEventListener('change', () => { rkInfo(); readMenu(); });
 function startFromMenu() { ac(); readMenu(); newMatch(); }
 function toMenu() {
+  if (NET.role && NET.onMenu) { NET.onMenu(); return; } // online: volta para a sala, não para o menu
   if (S.careerActive) careerMatchEnded(false); // abandonar conta como derrota
   S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; el.menu.hidden = false;
   document.body.classList.add('in-menu'); hideBanner(); syncMenu();

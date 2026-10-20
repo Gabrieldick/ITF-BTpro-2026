@@ -12,19 +12,20 @@ import { $, hideBanner } from './09-interface';
 import { solveShot } from './10-fisica';
 import { MTR } from './12-controles';
 import { assignee, gapX, humanPlan } from './16-ia';
-function humanAim() {
-  const ix = human.inputX; const lim = C.halfW - .6;
+function humanAim(p = human) {
+  const ix = p.inputX; const lim = C.halfW - .6;
   if (Math.abs(ix) > .25) return clamp(ix, -1, 1) * lim;
-  return aimAutoX(); // sem direção: o maior espaço vazio (fixo por bola, para a mira não tremer)
+  return aimAutoX(p.team); // sem direção: o maior espaço vazio (fixo por bola, para a mira não tremer)
 }
 // ---------- mira: seta no chão, alvo e arco da trajetória ----------
-const AIM = { ring: null, dot: null, arrow: null, head: null, shaft: null, arc: null, cache: { id: -1, x: 0 } };
+const AIM = { ring: null, dot: null, arrow: null, head: null, shaft: null, arc: null, cache: [] };
 const AIM_COL = { smash: 0xff5a1f, drive: 0xff5a1f, lob: 0x2f9bff, curta: 0xffc21a, defesa: 0x22c76f, preview: 0xffe14d };
-function aimAutoX() { if (AIM.cache.id !== S.hitId) { AIM.cache.id = S.hitId; const ta = TAC.aim ? TAC.aim(0) : null; AIM.cache.x = ta !== null ? ta : gapX(0, .3) * .8; } return AIM.cache.x; }
+function aimAutoX(team = 0) { const ch = AIM.cache[team] || (AIM.cache[team] = { id: -1, x: 0 }); if (ch.id !== S.hitId) { ch.id = S.hitId; const ta = TAC.aim ? TAC.aim(team) : null; ch.x = ta !== null ? ta : gapX(team, .3) * .8; } return ch.x; }
 // a tática é registrada depois (o módulo da IA vem mais tarde na cadeia)
 const TAC = { aim: null };
 // W = mais curto (perto da rede), S = mais fundo; sem segurar, meio da faixa
-function humanDepthT() { const iz = human.inputZ || 0; return iz < -.25 ? .08 : iz > .25 ? .92 : .5; }
+// (no time de cima o W também é "para a rede": o z do mundo vem invertido)
+function humanDepthT(p = human) { const iz = (p.inputZ || 0) * (p.team === 0 ? 1 : -1); return iz < -.25 ? .08 : iz > .25 ? .92 : .5; }
 function buildAim() {
   const mk = (geo, op) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); m.renderOrder = 5; scene.add(m); return m; };
   const og = new THREE.RingGeometry(.62, 1.1, 48); og.rotateX(-Math.PI / 2); AIM.outline = mk(og, .35); AIM.outline.material.color.setHex(0x0f2436);
@@ -70,8 +71,12 @@ const DEF_COLORS = { verde: '#4FD18B', amarelo: '#FFD23F', laranja: '#FF8A2A', v
 const defRing = new THREE.Mesh(new THREE.RingGeometry(.35, .5, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
 defRing.rotation.x = -Math.PI / 2; defRing.visible = false; scene.add(defRing);
 $s.defRingT = 0; let defFlashTimer = 0;
-function defenseFeedback(r) {
+function defenseFeedback(r, ctl) {
   const g = r.mis || r.wild ? 'vermelho' : r.pop ? 'laranja' : r.grade < .7 ? 'amarelo' : 'verde';
+  if (ctl && ctl.remote) { ctl.out.push(['def', g]); return; } // online: o anel aparece na tela do convidado
+  defenseFlash(g);
+}
+function defenseFlash(g) {
   const c = DEF_COLORS[g];
   defRing.material.color.set(c); defRing.position.set(human.pos.x, .025, human.pos.z); defRing.visible = true; $s.defRingT = .5;
   const fl = $('defFlash'); fl.style.setProperty('--dfc', c); fl.classList.add('on');
@@ -96,4 +101,4 @@ function startToss(p, type) {
   hideBanner();
 }
 
-export { TAC, defRing, defenseFeedback, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };
+export { TAC, defRing, defenseFeedback, defenseFlash, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };

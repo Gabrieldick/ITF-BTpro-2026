@@ -29,4 +29,8 @@ if (savedSettings) {
 const isMobile = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
 if (isMobile && !(savedSettings && savedSettings.gfx)) S.settings.gfx = 'leve';
 
-export { S, isMobile };
+// modo online: role 'host' (simula tudo) | 'guest' (só manda entradas e desenha o estado recebido) | null.
+// O módulo 20-online preenche os ganchos; os outros módulos só chamam se existirem.
+const NET = { role: null, ev: null, onPoint: null, onSetupPoint: null, onNewMatch: null, onMenu: null, guestTick: null, hostTick: null, shot: null, remote: [] };
+
+export { S, isMobile, NET };

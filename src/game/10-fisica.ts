@@ -3,7 +3,7 @@
 import './09-interface';
 import { $s } from '../state';
 import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall } from './00-base';
-import { S } from './01-estado';
+import { S, NET } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
 import { sndHit } from './08-audio';
@@ -153,7 +153,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   const dir = p.team === 0 ? -1 : 1;
   const lim = C.halfW - (key === 'curta' ? .8 : .35); // curta mira mais para dentro (é toque, não precisa da linha)
-  let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim() : aiAim(p), -lim, lim);
+  let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim(p) : aiAim(p), -lim, lim);
   if (mod.aimShift) aim = clamp(aim + mod.aimShift, -lim - .45, lim + .45);
   // variação do golpe conforme o contato
   const vr = isServe || pop ? '' : swingVar(type, ball.pos.y, p, aim);
@@ -177,7 +177,7 @@ function doHit(p, type, q, isServe, mod) {
     if (curtaK > .86 && !finisher) spec.label = 'CURTA MATADORA';
   }
   const err = 1.15 - q;
-  const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], humanDepthT()) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
+  const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], humanDepthT(p)) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
   if (wild) { tgt.x += (Math.random() < .5 ? -1 : 1) * rand(.8, 2.2); tgt.z += dir * rand(1.2, 3.2); }
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);
@@ -197,8 +197,8 @@ function doHit(p, type, q, isServe, mod) {
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
-  sndHit(power);
-  if (key === 'smash') { S.shake = p.isHuman ? .25 : .1; if (p.isHuman) S.stats.smashes++; }
+  sndHit(power); if (NET.ev) NET.ev('hit', p, power);
+  if (key === 'smash') { const mine = p.isHuman && !p.netHuman; S.shake = mine ? .25 : .1; if (mine) S.stats.smashes++; }
   $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react; o.split = .26; });
   p.swing.type = isServe ? 'smash' : type; p.swing.hit = true;
   const hitAt = isServe ? .3 : .45;

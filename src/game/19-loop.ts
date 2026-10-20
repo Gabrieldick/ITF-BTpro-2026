@@ -3,7 +3,7 @@
 import './18-animacao';
 import * as THREE from 'three';
 import { STEP } from './00-base';
-import { S } from './01-estado';
+import { S, NET } from './01-estado';
 import { camera, renderer, scene } from './02-render';
 import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
@@ -91,10 +91,12 @@ function frame(now) {
   requestAnimationFrame(frame);
   perfTick(now, now - last);
   const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (!S.paused && inPlay()) {
+  if (NET.role === 'guest') { acc = 0; if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião
+  else if (!S.paused && inPlay()) {
     acc += dt;
     while (acc >= STEP) { step(STEP); acc -= STEP; }
   } else acc = 0;
+  if (NET.role === 'host' && NET.hostTick) NET.hostTick(now);
   const tsec = now / 1000;
   seaMat.uniforms.time.value = tsec; sky.material.uniforms.time.value = tsec;
   if (S.mode === 'replay' && RP.list) replayTick(dt);

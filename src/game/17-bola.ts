@@ -3,13 +3,13 @@
 import './16-ia';
 import { $s } from '../state';
 import { C, bG, clamp, rand } from './00-base';
-import { S } from './01-estado';
+import { S, NET } from './01-estado';
 import { human } from './06-modelos';
 import { ball, puff } from './07-glb';
 import { sndHit, sndSand } from './08-audio';
 import { drillNext, el, placeHeldBall, pointTo, setupPoint, showOver } from './09-interface';
 import { skillOf, startJump, startToss } from './11-mira';
-import { LOB_MAX, MTR, cancelMeter, releaseMeter, timeToSmash } from './12-controles';
+import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 // ---------- Bola ----------
 function updateBall(dt) {
@@ -44,7 +44,7 @@ function updateBall(dt) {
       const x = ball.pos.x, z = ball.pos.z;
       const inB = Math.abs(x) <= C.halfW + C.ballR && Math.abs(z) <= C.halfL + C.ballR;
       const owner = z > 0 ? 0 : 1;
-      sndSand(); puff(x, z, 16, 1);
+      sndSand(); puff(x, z, 16, 1); if (NET.ev) NET.ev('sand', x, z);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;
       if (inB) pointTo(1 - owner, owner === 0 ? 'A bola tocou a areia do seu lado.' : 'A bola tocou a areia do lado da CPU.', 'in');
       else pointTo(1 - S.lastTeam, S.rally <= 1 ? 'Saque fora.' : 'Bola fora.', 'out');
@@ -57,28 +57,13 @@ function updateBall(dt) {
 }
 function step(dt) {
   if (S.mode === 'toss' && S.serverPlayer) S.serverPlayer.tossT += dt;
-  if (MTR.active) {
-    MTR.t += dt;
-    if (MTR.kind === 'smash') {
-      // a barra chega no verde quando a bola chega no ponto de smash; bola alta = barra lenta
-      let tr = timeToSmash(human);
-      if (tr === null && MTR.tr != null && MTR.tr > dt) tr = MTR.tr - dt; // alcance some por um instante (correndo): mantém a estimativa
-      MTR.tr = tr;
-      if (tr !== null) { MTR.seen = true; if (MTR.v < MTR.center) MTR.rate = clamp((MTR.center - MTR.v) / Math.max(tr - .03, .04), .06, 1 / .25); }
-      else if (MTR.seen) MTR.rate = Math.max(MTR.rate, 1);
-      else MTR.rate = Math.max(0, MTR.center * .55 - MTR.v) * 1.4; // bola ainda fora de alcance: a barra sobe devagar e espera (se a bola já passou, segue até estourar)
-      MTR.v += MTR.rate * dt;
-    } else MTR.v = MTR.t / MTR.fill;
-    const v = MTR.v;
-    if ((MTR.kind === 'smash' || MTR.kind === 'lob') && S.mode !== 'rally') cancelMeter();
-    else if (MTR.kind === 'smash' && v >= 1.15) releaseMeter();
-    else if (MTR.kind === 'lob' && v >= LOB_MAX) releaseMeter();
-    else if (MTR.kind === 'serve' && S.mode !== 'toss') cancelMeter();
-    else if (MTR.kind === 'serve' && ball.vel.y < 0 && ball.pos.y < 1.75) releaseMeter();
-  } else if (MTR.showT > 0) { MTR.showT -= dt; if (MTR.showT <= 0) el.meter.hidden = true; }
+  // jogadores humanos: o local e, no online, os do convidado (NET.remote)
+  meterStep(localCtl(), dt);
+  for (const c of NET.remote) meterStep(c, dt);
   updateHuman(dt);
+  for (const c of NET.remote) updateHuman(dt, c);
   for (const p of $s.players) if (!p.isHuman) updateAI(p, dt);
-  if (S.mode === 'serve' && S.serverPlayer !== human) {
+  if (S.mode === 'serve' && !S.serverPlayer.isHuman) {
     S.aiServeT -= dt;
     if (S.aiServeT <= 0) startToss(S.serverPlayer, chooseAIServe(S.serverPlayer));
   }
