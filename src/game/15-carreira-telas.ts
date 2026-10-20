@@ -58,6 +58,7 @@ function crPlayerHTML() {
   return '<div class="cr-two"><div><p class="section-label">Atributos (gaste pontos de evolução)</p><div class="bars cr-bars">' + rows + '</div><p class="cr-note">Limite pelo potencial: ' + crCap() + '. Em verde/vermelho: efeito da raquete e dos equipamentos.</p></div>'
     + '<div><p class="section-label">Evolução do overall</p><p class="cr-note">' + log + '</p><p class="section-label">Títulos</p><p class="cr-note">' + (Object.keys($s.CR.titles).length ? Object.entries($s.CR.titles).map(([t, n]) => TIERS[t].curto + ' ×' + n).join(' · ') : 'Nenhum ainda.') + '</p>'
     + '<p class="section-label">Partidas</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
+    + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option></select></label>'
     + ($s.CR.me.pais === 'BRA' ? '<p class="section-label">Estado (estaduais e seleção estadual)</p><label class="cr-field"><select id="crMeUf" class="cr-sel">' + STATES.map(([k, n]) => '<option value="' + k + '"' + (k === ($s.CR.me.uf || 'SP') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' : '')
     + '<p class="section-label">Nacionalidade</p><label class="cr-field"><span class="cr-nat">' + flagSVG($s.CR.me.pais) + '<select id="crMeNat">' + COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === $s.CR.me.pais ? ' selected' : '') + '>' + c.nome + '</option>').join('') + '</select></span></label>'
     + '<div class="cta-row" style="margin-top:10px"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div></div>';
@@ -168,6 +169,7 @@ function crTourHTML() {
     const sty = id => PLAY_STYLES[playStyleOf(crChar(id))].nome.toLowerCase();
     const h = crH2H(opp), riv = crRivalOf(opp);
     msg = (riv ? '<p class="cr-msg">🔥 Clássico! Confronto direto: ' + h.w + '–' + h.l + '. Vencer rende bônus.</p>' : h.w + h.l ? '<p class="cr-note">Confronto direto: ' + h.w + '–' + h.l + '</p>' : '')
+      + (t.singles ? '' : '<p class="cr-note">Seu lado na dupla: <select id="crSide" class="cr-sel"><option value="esquerda">Esquerda</option><option value="direita">Direita</option></select></p>')
       + '<p class="cr-note">Tática: <select id="crTactic" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></p>'
       + '<p class="lede">' + names[t.round] + ': ' + (t.singles ? 'você' : 'vocês') + ' contra <b>' + crTeamName(opp) + '</b> (OVR ' + crTeamOvr(opp) + '): ' + esc(shortOf(crChar(opp.a))) + ' é ' + sty(opp.a) + (opp.b ? ', ' + esc(shortOf(crChar(opp.b))) + ' é ' + sty(opp.b) + '. Sua dupla: OVR ' : '. Você: OVR ') + crTeamOvr(t.teams[t.me]) + '.</p>';
   }
@@ -183,6 +185,7 @@ function bindTour() {
   };
   ['crPlay', 'crSim', 'crDone'].forEach(b);
   const ts = $('crTactic'); if (ts) ts.value = S.settings.tactic || 'normal';
+  const sd = $('crSide'); if (sd) { sd.value = $s.CR.side || 'direita'; sd.addEventListener('change', () => { $s.CR.side = sd.value; saveCareer(); }); }
 }
 function bindCareerBody() {
   const body = $('crBody');
@@ -207,6 +210,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-equip]').forEach(bt => bt.addEventListener('click', () => { $s.CR.racket = bt.dataset.equip; $s.CR.me.look.racket = $s.CR.racket; saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-gear]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gear); if ($s.CR.money >= g.preco) { $s.CR.money -= g.preco; if (g.staff) $s.CR.staff[g.id] = true; else $s.CR.gear.push(g.id); $s.CR.lastMsg = 'Comprou: ' + g.nome + '.'; crSyncChars(); saveCareer(); } renderCareer(); }));
   body.querySelectorAll('input[name=crGames]').forEach(r => r.addEventListener('change', () => { $s.CR.games = +r.value; saveCareer(); }));
+  const ms = $('crMeSide'); if (ms) ms.addEventListener('change', () => { $s.CR.side = ms.value; saveCareer(); });
   const mu = $('crMeUf'); if (mu) mu.addEventListener('change', () => { $s.CR.me.uf = mu.value; crSyncChars(); saveCareer(); renderCareer(); });
   const mn = $('crMeNat'); if (mn) mn.addEventListener('change', () => { $s.CR.me.pais = mn.value; crSyncChars(); saveCareer(); renderCareer(); });
   const rst = $('crReset'); if (rst) rst.addEventListener('click', () => { if (rst.dataset.sure) { $s.CR = null; saveCareer(); crSyncChars(); renderCareer(); } else { rst.dataset.sure = '1'; rst.textContent = 'Clique de novo para confirmar'; } });
@@ -292,9 +296,21 @@ function toMenu() {
   if (NET.role && NET.onMenu) { NET.onMenu(); return; } // online: volta para a sala, não para o menu
   if (S.careerActive) careerMatchEnded(false); // abandonar conta como derrota
   S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; el.menu.hidden = false;
-  document.body.classList.add('in-menu'); hideBanner(); syncMenu();
+  document.body.classList.add('in-menu'); hideBanner(); syncMenu(); menuStep('home');
 }
-$('btnPlay').addEventListener('click', startFromMenu);
+// menu em passos: início (blocos) → partida rápida 1 (elenco e modalidade) → 2 (jogadores) → 3 (ajustes) → começar
+function menuStep(st) {
+  const m = $('menu'); m.dataset.step = st;
+  m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });
+  readMenu(); syncMenu();
+  const dupla = S.settings.mode === 'dupla';
+  const side = m.querySelector('input[name=side]'), tac = $('tacticSel');
+  if (side) side.closest('fieldset').hidden = !dupla;
+  if (tac) tac.closest('label').hidden = !dupla;
+  m.scrollTop = 0;
+}
+document.querySelectorAll('#menu [data-goto]').forEach(b => b.addEventListener('click', () => { ac(); menuStep(b.dataset.goto); }));
+$('btnStart').addEventListener('click', startFromMenu);
 // treino com desafios (menu): sem recompensa, só para praticar
 let drillFromCareer = null;
 $('btnDrill').addEventListener('click', () => { drillFromCareer = null; el.menu.hidden = true; $('drillPick').hidden = false; });

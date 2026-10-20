@@ -404,10 +404,10 @@ body.in-replay .hud { display: none !important; }
 #replayBar b { color: #ff5a1f; letter-spacing: .12em; }
 #replayBar span { font-size: 14px; font-weight: 700; }
 /* ---------- Online ---------- */
-.on-code { font-family: var(--f-num); font-weight: 700; font-size: 40px; letter-spacing: .18em; color: var(--ink); background: #fff; border: 2px dashed #d9cfba; border-radius: 14px; padding: 6px 16px; }
+.on-code { font-family: var(--f-num); font-weight: 700; font-size: 40px; letter-spacing: .18em; color: var(--ink); background: rgba(0,0,0,.25); border: 1px dashed var(--ui-line); border-radius: 4px; padding: 6px 16px; }
 .on-code-in { font-family: var(--f-num); font-weight: 700; font-size: 22px; letter-spacing: .2em; text-transform: uppercase; width: 8.5ch; padding: 10px 12px; border: 2px solid #d9cfba; border-radius: 14px; background: #fff; color: var(--ink); }
 .on-code-in:focus { outline: none; border-color: var(--sea); }
-.on-status { margin: 0; font-weight: 800; color: var(--sea); }
+.on-status { margin: 0; font-weight: 800; color: var(--ui-acc2); }
 .cr-msg.ok { background: #e3f6ec; border-color: #9fd9b8; }
 #netChip { cursor: default; }
 /* quem só assiste a partida online: sem botões de golpe, joystick e barra */
@@ -415,24 +415,114 @@ body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #
 .on-members { display: grid; gap: 6px; }
 .on-member { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; }
 .on-member b { font-weight: 800; }
-.on-member small { color: #5b6b78; }
+.on-member small { color: var(--ui-sub); }
 .on-seats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .on-team { display: grid; gap: 8px; align-content: start; }
-.on-team h4 { margin: 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
-.on-team.tB h4 { color: var(--sea); }
-.on-team.tA h4 { color: #c2410c; }
-.on-seat { border: 2px solid #d9cfba; border-radius: 14px; padding: 8px 10px; display: grid; gap: 6px; background: #fff; }
-.on-seat.mine { border-color: var(--ink); }
+.on-team h4 { margin: 0; font-family: var(--f-ui); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.on-team.tB h4 { color: var(--ui-acc); }
+.on-team.tA h4 { color: #ff8a3d; }
+.on-seat { border: 1px solid var(--ui-line); border-radius: 14px; padding: 8px 10px; display: grid; gap: 6px; background: var(--ui-tile); }
+.on-seat.mine { border-color: var(--ui-acc); background: rgba(51,195,255,.12); }
 .on-seat .who { font-weight: 800; }
-.on-seat .who.cpu { color: #5b6b78; font-weight: 600; }
-.on-seat small { color: #5b6b78; font-size: 12px; }
+.on-seat .who.cpu { color: var(--ui-sub); font-weight: 600; }
+.on-seat small { color: var(--ui-sub); font-size: 12px; }
 .on-seat select { width: 100%; }
 .on-bracket { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .on-bracket .rd { display: grid; gap: 8px; align-content: start; min-width: 150px; }
-.on-bracket h5 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #5b6b78; }
-.on-bracket .m { border: 1.5px solid #d9cfba; border-radius: 10px; padding: 4px 8px; font-size: 13px; background: #fff; }
-.on-bracket .m.next { border-color: #ff5a1f; }
+.on-bracket h5 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ui-sub); }
+.on-bracket .m { border: 1px solid var(--ui-line); border-radius: 10px; padding: 4px 8px; font-size: 13px; background: var(--ui-tile); }
+.on-bracket .m.next { border-color: var(--ui-acc2); }
 .on-bracket .m div { display: flex; justify-content: space-between; gap: 6px; }
 .on-bracket .m .w { font-weight: 800; }
 .on-bracket .m .l { opacity: .55; }
 @media (max-width: 520px) { .on-seats { grid-template-columns: 1fr; } }
+
+/* =====================================================================
+   Tema ITF-BT Pro 2026: menus azul-escuro, tipografia condensada em caixa alta,
+   blocos retos com destaque ciano (estilo dos menus do FIFA 16)
+   ===================================================================== */
+:root {
+  --ui-bg: #071330; --ui-bg2: #0b1d45; --ui-card: #0c1f47; --ui-tile: rgba(255,255,255,.06); --ui-tile2: rgba(255,255,255,.1);
+  --ui-line: rgba(110,170,255,.22); --ui-text: #eaf2ff; --ui-sub: #9fb4d8; --ui-acc: #33c3ff; --ui-acc2: #b6ff3b; --ui-warn: #ffcf4a;
+  --f-ui: 'Barlow Condensed', 'Arial Narrow', 'Segoe UI', sans-serif; --f-ui-body: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+}
+.overlay { background: radial-gradient(ellipse at 70% 0%, rgba(30,90,200,.35), transparent 60%), linear-gradient(135deg, rgba(3,10,28,.93), rgba(6,22,58,.9)); }
+.card {
+  background: linear-gradient(160deg, var(--ui-bg2) 0%, var(--ui-card) 45%, var(--ui-bg) 100%); color: var(--ui-text);
+  border-radius: 6px; border: 1px solid var(--ui-line); box-shadow: 0 30px 90px rgba(0,0,0,.65); position: relative; overflow: hidden;
+  font-family: var(--f-ui-body);
+}
+.card::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--ui-acc), #1e6bff 55%, var(--ui-acc2)); }
+.eyebrow { font-family: var(--f-ui); font-size: 13px; letter-spacing: .18em; color: var(--ui-acc); font-weight: 700; }
+.title { font-family: var(--f-ui); font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: .01em; color: #fff; }
+.title span { color: var(--ui-acc); text-shadow: none; }
+.lede, .cr-note, .keys, .shotlist p, .stats, .rules { color: var(--ui-sub); }
+.rules li::before { background: var(--ui-acc); box-shadow: none; border-radius: 2px; transform: skewX(-12deg) translateY(1px); }
+.section-label, .seg legend, .cr-field, .cr-lbl, .pick-h .who, .bracket h4 { font-family: var(--f-ui); color: var(--ui-acc); letter-spacing: .14em; }
+.champion, .cr-id b, .cr-card b, .stats b, .cr-kpis b, .big-score, .cr-field b { color: #fff; }
+/* botões: blocos retos, caixa alta */
+.cta { background: linear-gradient(90deg, #1e8bff, var(--ui-acc)); color: #041232; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255,255,255,.15) inset, 0 6px 20px rgba(30,140,255,.35);
+  font-family: var(--f-ui); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.cta:hover { filter: brightness(1.1); } .cta:active { transform: translateY(1px); box-shadow: 0 2px 10px rgba(30,140,255,.35); }
+.ghost { background: var(--ui-tile); color: var(--ui-text); border: 1px solid var(--ui-line); border-radius: 3px; font-family: var(--f-ui); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.ghost:hover { background: var(--ui-acc); color: #041232; border-color: var(--ui-acc); }
+.cta.sm, .ghost.sm { border-radius: 3px; font-size: 13px; }
+/* menu principal: blocos grandes */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tile { min-height: 84px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; text-align: left; padding: 10px 14px; font-size: 22px; line-height: 1; transition: transform .12s, background .12s; }
+.tile small { font-family: var(--f-ui-body); font-size: 11px; font-weight: 600; letter-spacing: .08em; opacity: .75; margin-bottom: 6px; text-transform: uppercase; }
+.tile:hover { transform: translateY(-2px); }
+.tile-main { grid-column: span 2; grid-row: span 2; min-height: 176px; font-size: 40px; background: linear-gradient(135deg, #1e8bff, var(--ui-acc) 70%, var(--ui-acc2)); }
+@media (max-width: 560px) { .tiles { grid-template-columns: repeat(2, 1fr); } .tile-main { min-height: 120px; } }
+/* seleções em pílulas: viram segmentos retos */
+.seg label { background: var(--ui-tile); border: 1px solid var(--ui-line); border-radius: 3px; color: var(--ui-text); font-family: var(--f-ui); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.seg input:checked + label { background: var(--ui-acc); border-color: var(--ui-acc); color: #041232; }
+.chk { color: var(--ui-text); } .chk input { accent-color: var(--ui-acc); }
+/* cartões, listas, linhas */
+.pick, .teamlist button, .bracket .m, .cr-row, .cr-card, .cr-kpis div, .cr-slot, .on-seat, .cr-tabs button {
+  background: var(--ui-tile); border: 1px solid var(--ui-line); border-radius: 4px; color: var(--ui-text);
+}
+.cr-row.me, .on-seat.me, .bracket .m.mine, .teamlist button.sel { border-color: var(--ui-acc); background: rgba(51,195,255,.12); box-shadow: none; }
+.cr-card.gold { border-color: var(--ui-warn); box-shadow: 0 0 0 1px var(--ui-warn) inset; }
+.cr-row small, .cr-id span, .cr-kpis div, .pick .meta, .teamlist button small, .cr-pos, .bracket .tm b, .cr-card { color: var(--ui-sub); }
+.cr-tabs button { font-family: var(--f-ui); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 7px 14px; }
+.cr-tabs button.sel { background: var(--ui-acc); color: #041232; border-color: var(--ui-acc); }
+.cr-msg { background: rgba(51,195,255,.12); border: 1px solid rgba(51,195,255,.4); color: var(--ui-text); border-radius: 4px; }
+.cr-ladder span { background: var(--ui-tile); color: var(--ui-sub); border-radius: 2px; font-family: var(--f-ui); }
+.cr-ladder span.on { background: #1e6bff; color: #fff; } .cr-ladder span.won { background: var(--ui-warn); color: #041232; }
+.ovr { background: linear-gradient(160deg, #1e8bff, #0a2a66); color: #fff; border-radius: 4px; font-family: var(--f-ui); font-weight: 800; }
+.ovr small { color: #cfe6ff; }
+.bar { background: rgba(255,255,255,.1); } .bar i { background: var(--ui-acc); } .bar i.hi { background: var(--ui-acc2); } .bar i.lo { background: #ff8a3d; }
+.bars { color: var(--ui-sub); }
+.cr-own { color: var(--ui-acc2); } em.up { color: var(--ui-acc2); } em.dn { color: #ff8a6b; }
+.bracket .tm.me { color: var(--ui-acc); }
+/* campos */
+.cr-field input[type=text], .cr-field input:not([type]), .cr-sel, .cr-nat select, .psel, .pick .pnm, .palt, .on-code-in, #crHairSt, #crBeard, #tacticSel {
+  background: rgba(0,0,0,.25) !important; color: var(--ui-text) !important; border: 1px solid var(--ui-line) !important; border-radius: 3px !important;
+}
+.cr-sel option, .psel option, select option { background: #0b1d45; color: #eaf2ff; }
+.arw { background: var(--ui-tile); color: var(--ui-text); border: 1px solid var(--ui-line); border-radius: 3px; }
+.shotlist kbd, .keys kbd { background: rgba(255,255,255,.12); color: var(--ui-text); }
+.cr-sw { border-color: #0b1d45; box-shadow: 0 0 0 1.5px var(--ui-line); } .cr-sw.sel { box-shadow: 0 0 0 3px var(--ui-acc); }
+.cr-rk { border-color: #fff; }
+/* tabela de estatísticas e fim de jogo */
+.mstats { color: var(--ui-text); } .mstats th { border-bottom-color: var(--ui-line); } .mstats td:first-child { color: var(--ui-sub); }
+.mstats .tt { background: rgba(51,195,255,.1); } .mstats tr.sum td { border-top-color: var(--ui-line); }
+.mstats th.t0 { color: #ff8a3d; } .mstats th.t1 { color: var(--ui-acc); }
+.on-code { font-family: var(--f-ui) !important; color: var(--ui-acc) !important; }
+.cr-saves { border-bottom-color: var(--ui-line); }
+/* placar e HUD com o mesmo acabamento */
+#board { background: linear-gradient(160deg, rgba(11,29,69,.92), rgba(5,14,36,.92)); border: 1px solid var(--ui-line); border-radius: 4px; }
+#board .nm, #board .head { font-family: var(--f-ui); }
+#board .pt { background: var(--ui-acc); color: #041232; border-radius: 2px; }
+#sbTitle { background: linear-gradient(90deg, #1e6bff, #0b1d45); border-radius: 2px; font-family: var(--f-ui); letter-spacing: .14em; }
+.chip { border-radius: 3px; font-family: var(--f-ui); text-transform: uppercase; letter-spacing: .06em; }
+#loading { background: linear-gradient(135deg, #030a1c, #0b1d45); font-family: var(--f-ui); font-style: italic; letter-spacing: .1em; }
+
+/* passos do menu: espaço entre as opções e os botões Voltar/Próximo */
+#menu section[data-step] { display: grid; gap: 16px; }
+#menu .step-nav { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--ui-line); }
+
+/* textos e controles extras dentro das opções ocupam a linha inteira */
+.seg > p, .seg > label { grid-column: 1 / -1; }
+#fovFp, input[type=range] { accent-color: var(--ui-acc); }

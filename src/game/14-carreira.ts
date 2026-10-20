@@ -118,7 +118,7 @@ function crExportData(id) {
 function crImportData(text) {
   let o; try { o = JSON.parse(text); } catch (e) { return { ok: false, msg: 'O arquivo não é um JSON válido.' }; }
   const c = o && o.formato === SAVE_FMT ? o.carreira : o;
-  if (!c || !c.me || !c.me.a || !c.seed || !c.pool || !c.season) return { ok: false, msg: 'Esse arquivo não é um save de carreira do Ponto de Ouro.' };
+  if (!c || !c.me || !c.me.a || !c.seed || !c.pool || !c.season) return { ok: false, msg: 'Esse arquivo não é um save de carreira do ITF-BT Pro 2026.' };
   c.id = c.id || 'c' + c.seed;
   const cur = SAVES.slots[c.id];
   const replaced = !!cur;
@@ -669,7 +669,8 @@ function crUpgrade(k) { const v = $s.CR.me.a[k], c = crUpCost(v, k); if ($s.CR.p
 function crPlayMatch() {
   const mm = crMyMatch(); if (!mm) return;
   const t = $s.CR.tour, opp = t.teams[mm.a === t.me ? mm.b : mm.a];
-  $s.CR.prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, diff: S.settings.diff, racket: S.settings.racket, games: S.settings.games, format: S.settings.format };
+  $s.CR.prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, diff: S.settings.diff, racket: S.settings.racket, games: S.settings.games, format: S.settings.format, side: S.settings.side };
+  S.settings.side = $s.CR.side || 'direita'; // seu lado na dupla (escolhido na carreira; padrão: direita)
   const proFinal = crIsFinal() && crTourT(t).pro; // finais de torneios profissionais: 2 sets a 6 + super tie-break
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = proFinal ? 6 : $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
@@ -681,7 +682,7 @@ function careerMatchEnded(won) {
   S.careerActive = false;
   const mm = crMyMatch();
   const sTxt = scoreText(), g = S.score.games, hasSets = (S.score.hist || []).length > 0;
-  if ($s.CR.prev) { Object.assign(S.settings, { pick: $s.CR.prev.pick, mode: $s.CR.prev.mode, diff: $s.CR.prev.diff, racket: $s.CR.prev.racket, games: $s.CR.prev.games, format: $s.CR.prev.format || 'set' }); $s.CR.prev = null; }
+  if ($s.CR.prev) { Object.assign(S.settings, { pick: $s.CR.prev.pick, mode: $s.CR.prev.mode, diff: $s.CR.prev.diff, racket: $s.CR.prev.racket, games: $s.CR.prev.games, format: $s.CR.prev.format || 'set', side: $s.CR.prev.side || S.settings.side }); $s.CR.prev = null; }
   if (!mm) return;
   mm.w = won ? $s.CR.tour.me : (mm.a === $s.CR.tour.me ? mm.b : mm.a);
   mm.score = hasSets ? sTxt : g[0] + g[1] ? Math.max(g[0], g[1]) + '–' + Math.min(g[0], g[1]) : 'W.O.';

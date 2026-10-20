@@ -1,4 +1,4 @@
-# Ponto de Ouro — beach tennis 3D
+# ITF-BT Pro 2026 — beach tennis 3D
 
 Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e [Vite](https://vitejs.dev/). Roda no navegador, no computador e no celular.
 

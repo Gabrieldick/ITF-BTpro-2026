@@ -244,7 +244,7 @@ addEventListener('keydown', e => {
   const held = keys[k];
   keys[k] = true;
   if (e.repeat || held) return;
-  if (!el.menu.hidden || !el.over.hidden) { if (k === 'enter' && !el.menu.hidden && !(document.activeElement && document.activeElement.tagName === 'BUTTON')) startFromMenu(); return; }
+  if (!el.menu.hidden || !el.over.hidden) { if (k === 'enter' && !el.menu.hidden && el.menu.dataset.step === 'q3' && !(document.activeElement && document.activeElement.tagName === 'BUTTON')) startFromMenu(); return; }
   if (SHOT_KEYS[k]) pressShot(SHOT_KEYS[k]);
   else if (k === 'c') toggleCam();
   else if (k === 'p' || k === 'escape') togglePause();

@@ -3,11 +3,11 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta charset="utf-8">
-<title>Ponto de Ouro</title>
+<title>ITF-BT Pro 2026</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Azeret+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Azeret+Mono:wght@500;700&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@500;600;700&display=swap">
 </head>
 <body>
 <div id="game"></div>
@@ -46,12 +46,108 @@
 <div id="stick" class="hud" hidden><div id="knob"></div></div>
 
 <!-- Menu -->
-<div id="menu" class="overlay">
+<div id="menu" class="overlay" data-step="home">
   <div class="card">
     <div>
-      <div class="eyebrow">Beach tennis · simples 16 × 4,5 m · dupla 16 × 8 m · rede 1,70 m</div>
-      <h1 class="title">PONTO DE <span>OURO</span></h1>
+      <div class="eyebrow">Beach tennis · simples 16 × 4,5 m · dupla 16 × 8 m · rede 1,80 m (pro masc.) / 1,70 m</div>
+      <h1 class="title">ITF-BT <span>PRO 2026</span></h1>
     </div>
+
+    <!-- início: só os modos (blocos) -->
+    <section data-step="home">
+    <div class="cta-row tiles">
+      <button class="cta tile tile-main" id="btnPlay" data-goto="q1"><small>Partida rápida</small>Jogar</button>
+      <button class="ghost tile" id="btnCareer"><small>Do amador ao Mundial</small>Carreira</button>
+      <button class="ghost tile" id="btnChamp"><small>Chave de 8 duplas</small>Campeonato</button>
+      <button class="ghost tile" id="btnOnline"><small>Com amigos</small>Online</button>
+      <button class="ghost tile" id="btnDrill"><small>Desafios</small>Treino</button>
+    </div>
+      <div class="cta-row" style="margin-top:8px"><button class="ghost sm" data-goto="help">Como jogar</button><button class="ghost sm" data-goto="cfg">Configurações</button></div>
+    </section>
+    <!-- partida rápida, passo 1: elenco e modalidade -->
+    <section data-step="q1" hidden>
+      <div class="eyebrow">Partida rápida · 1 de 3</div>
+      <p class="section-label">Escolha o elenco e a modalidade</p>
+      <div class="opts">
+      <fieldset class="seg" style="margin-bottom:10px"><legend>Elenco</legend><div class="pills">
+        <input type="radio" name="gender" id="gMix" value="mista" checked><label for="gMix">Misto</label>
+        <input type="radio" name="gender" id="gMasc" value="masc"><label for="gMasc">Masculino</label>
+        <input type="radio" name="gender" id="gFem" value="fem"><label for="gFem">Feminino</label>
+      </div></fieldset>
+      <fieldset class="seg"><legend>Modalidade</legend><div class="pills">
+        <input type="radio" name="mode" id="modS" value="simples" checked><label for="modS">Simples · 1×1</label>
+        <input type="radio" name="mode" id="modD" value="dupla"><label for="modD">Dupla · 2×2</label>
+      </div></fieldset>
+      </div>
+      <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button><button class="cta" data-goto="q2">Próximo</button></div>
+    </section>
+    <!-- passo 2: jogadores -->
+    <section data-step="q2" hidden>
+      <div class="eyebrow">Partida rápida · 2 de 3</div>
+      <p class="section-label">Jogadores · overall de 0 a 100</p>
+      <div class="roster" id="roster">
+        <div class="pick" data-slot="me"></div>
+        <div class="pick" data-slot="mate"></div>
+        <div class="pick" data-slot="o1"></div>
+        <div class="pick" data-slot="o2"></div>
+      </div>
+      <div class="cta-row step-nav"><button class="ghost" data-goto="q1">Voltar</button><button class="cta" data-goto="q3">Próximo</button></div>
+    </section>
+    <!-- passo 3: as outras escolhas -->
+    <section data-step="q3" hidden>
+      <div class="eyebrow">Partida rápida · 3 de 3</div>
+      <p class="section-label">Ajustes da partida</p>
+      <div class="opts">
+      <fieldset class="seg"><legend>Seu lado na dupla</legend><div class="pills">
+        <input type="radio" name="side" id="sideL" value="esquerda"><label for="sideL">Esquerda</label>
+        <input type="radio" name="side" id="sideR" value="direita" checked><label for="sideR">Direita</label>
+      </div></fieldset>
+      <fieldset class="seg"><legend>Dificuldade</legend><div class="pills">
+        <input type="radio" name="diff" id="dif1" value="facil"><label for="dif1">Fácil</label>
+        <input type="radio" name="diff" id="dif2" value="medio" checked><label for="dif2">Médio</label>
+        <input type="radio" name="diff" id="dif3" value="dificil"><label for="dif3">Difícil</label>
+      </div></fieldset>
+      <fieldset class="seg"><legend>Partida</legend><div class="pills">
+        <input type="radio" name="len" id="len4" value="4" checked><label for="len4">Set curto · 4 games</label>
+        <input type="radio" name="len" id="len6" value="6"><label for="len6">Set · 6 games</label>
+      </div></fieldset>
+      <fieldset class="seg"><legend>Raquete</legend><select class="psel" id="rkSel" aria-label="Raquete"></select><p id="rkInfo" style="margin:.4rem 0 0;font-size:.78rem;color:#5b6b78"></p></fieldset>
+      <fieldset class="seg"><legend>Câmera</legend><div class="pills">
+        <input type="radio" name="cam" id="cam3" value="3p" checked><label for="cam3">3ª pessoa</label>
+        <input type="radio" name="cam" id="cam1" value="1p"><label for="cam1">1ª pessoa</label>
+      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">FOV da 1ª pessoa <input type="range" id="fovFp" min="55" max="110" step="1" value="72" style="flex:1"> <span id="fovFpV">72°</span></label></fieldset>
+      <div class="toggles">
+        <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
+        <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
+        <label class="cr-field" style="margin:4px 0">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
+        <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W/S profundidade) <kbd>V</kbd></label>
+      </div>
+      </div>
+      <div class="cta-row step-nav"><button class="ghost" data-goto="q2">Voltar</button><button class="cta" id="btnStart">Começar partida</button></div>
+    </section>
+    <!-- configurações gerais -->
+    <section data-step="cfg" hidden>
+      <div class="eyebrow">Configurações</div>
+      <div class="opts">
+      <fieldset class="seg"><legend>Gráficos</legend><div class="pills">
+        <input type="radio" name="gfx" id="gfxH" value="alto" checked><label for="gfxH">Alto</label>
+        <input type="radio" name="gfx" id="gfxL" value="leve"><label for="gfxL">Leve · celular</label>
+      </div></fieldset>
+      <fieldset class="seg" id="fsPlayers"><legend>Jogadores</legend><div class="pills">
+        <input type="radio" name="players" id="pl3d" value="3d"><label for="pl3d">Modelo 3D</label>
+        <input type="radio" name="players" id="plDraw" value="desenhado" checked><label for="plDraw">Desenhado</label>
+        <input type="radio" name="players" id="plCarol" value="carol"><label for="plCarol">Modelos realistas</label>
+      </div><p class="credit" style="margin:.4rem 0 0;font-size:.72rem;opacity:.7">Modelos realistas: jogadoras com a “Carol Tennis Player Girl” de agra_aoe (CC BY 4.0, Sketchfab); jogadores com um modelo escaneado de tenista.</p></fieldset>
+      <fieldset class="seg"><legend>Roupa</legend><div class="pills">
+        <input type="radio" name="uniforms" id="uniOn" value="uniforme"><label for="uniOn">Uniforme 3D</label>
+        <input type="radio" name="uniforms" id="uniOff" value="simples" checked><label for="uniOff">Simples</label>
+      </div></fieldset>
+      </div>
+      <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button></div>
+    </section>
+    <!-- como jogar -->
+    <section data-step="help" hidden>
+      <div class="eyebrow">Como jogar</div>
     <p class="lede">Simples contra a CPU ou dupla com um parceiro ou parceira controlado pelo computador. Corra até a bola e escolha o golpe antes que ela caia.</p>
     <ul class="rules">
       <li>A bola não pode tocar a areia. Tudo é voleio.</li>
@@ -63,64 +159,6 @@
     </ul>
 
     <div>
-      <p class="section-label">Jogadores · overall de 0 a 100</p>
-      <fieldset class="seg" style="margin-bottom:10px"><legend>Elenco</legend><div class="pills">
-        <input type="radio" name="gender" id="gMix" value="mista" checked><label for="gMix">Misto</label>
-        <input type="radio" name="gender" id="gMasc" value="masc"><label for="gMasc">Masculino</label>
-        <input type="radio" name="gender" id="gFem" value="fem"><label for="gFem">Feminino</label>
-      </div></fieldset>
-      <div class="roster" id="roster">
-        <div class="pick" data-slot="me"></div>
-        <div class="pick" data-slot="mate"></div>
-        <div class="pick" data-slot="o1"></div>
-        <div class="pick" data-slot="o2"></div>
-      </div>
-    </div>
-    <div class="opts">
-      <fieldset class="seg"><legend>Modalidade</legend><div class="pills">
-        <input type="radio" name="mode" id="modS" value="simples" checked><label for="modS">Simples · 1×1</label>
-        <input type="radio" name="mode" id="modD" value="dupla"><label for="modD">Dupla · 2×2</label>
-      </div></fieldset>
-      <fieldset class="seg"><legend>Seu lado na dupla</legend><div class="pills">
-        <input type="radio" name="side" id="sideR" value="direita" checked><label for="sideR">Direita</label>
-        <input type="radio" name="side" id="sideL" value="esquerda"><label for="sideL">Esquerda</label>
-      </div></fieldset>
-      <fieldset class="seg"><legend>Câmera</legend><div class="pills">
-        <input type="radio" name="cam" id="cam3" value="3p" checked><label for="cam3">3ª pessoa</label>
-        <input type="radio" name="cam" id="cam1" value="1p"><label for="cam1">1ª pessoa</label>
-      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">FOV da 1ª pessoa <input type="range" id="fovFp" min="55" max="110" step="1" value="72" style="flex:1"> <span id="fovFpV">72°</span></label></fieldset>
-      <fieldset class="seg"><legend>Dificuldade</legend><div class="pills">
-        <input type="radio" name="diff" id="dif1" value="facil"><label for="dif1">Fácil</label>
-        <input type="radio" name="diff" id="dif2" value="medio" checked><label for="dif2">Médio</label>
-        <input type="radio" name="diff" id="dif3" value="dificil"><label for="dif3">Difícil</label>
-      </div></fieldset>
-      <fieldset class="seg"><legend>Partida</legend><div class="pills">
-        <input type="radio" name="len" id="len4" value="4" checked><label for="len4">Set curto · 4 games</label>
-        <input type="radio" name="len" id="len6" value="6"><label for="len6">Set · 6 games</label>
-      </div></fieldset>
-      <fieldset class="seg"><legend>Gráficos</legend><div class="pills">
-        <input type="radio" name="gfx" id="gfxH" value="alto" checked><label for="gfxH">Alto</label>
-        <input type="radio" name="gfx" id="gfxL" value="leve"><label for="gfxL">Leve · celular</label>
-      </div></fieldset>
-      <fieldset class="seg" id="fsPlayers"><legend>Jogadores</legend><div class="pills">
-        <input type="radio" name="players" id="pl3d" value="3d"><label for="pl3d">Modelo 3D</label>
-        <input type="radio" name="players" id="plDraw" value="desenhado" checked><label for="plDraw">Desenhado</label>
-        <input type="radio" name="players" id="plCarol" value="carol"><label for="plCarol">Modelos realistas</label>
-      </div><p class="credit" style="margin:.4rem 0 0;font-size:.72rem;opacity:.7">Modelos realistas: jogadoras com a “Carol Tennis Player Girl” de agra_aoe (CC BY 4.0, Sketchfab); jogadores com um modelo escaneado de tenista.</p></fieldset>
-      <fieldset class="seg"><legend>Roupa</legend><div class="pills">
-        <input type="radio" name="uniforms" id="uniOn" value="uniforme" checked><label for="uniOn">Uniforme 3D</label>
-        <input type="radio" name="uniforms" id="uniOff" value="simples"><label for="uniOff">Simples</label>
-      </div></fieldset>
-      <fieldset class="seg"><legend>Raquete</legend><select class="psel" id="rkSel" aria-label="Raquete"></select><p id="rkInfo" style="margin:.4rem 0 0;font-size:.78rem;color:#5b6b78"></p></fieldset>
-      <div class="toggles">
-        <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
-        <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
-        <label class="cr-field" style="margin:4px 0">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
-        <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W/S profundidade) <kbd>V</kbd></label>
-      </div>
-    </div>
-
-    <div>
       <p class="section-label">Golpes</p>
       <div class="shotlist">
         <div><i style="background:#FF5A1F"></i><b>Smash <kbd>J</kbd></b><p>Segure para armar e solte na faixa verde. Bola alta vira pancada para baixo; bola baixa vira um drive arriscado.</p></div>
@@ -130,13 +168,8 @@
       </div>
     </div>
     <p class="keys">Saque: segure qualquer golpe para jogar a bola para cima e solte na faixa verde. <kbd>WASD</kbd>/setas correr · <kbd>1</kbd>–<kbd>4</kbd> também batem · <kbd>C</kbd> troca a câmera · <kbd>B</kbd>/<kbd>N</kbd> assistências · <kbd>Esc</kbd> pausa · <kbd>M</kbd> som. No celular, use o joystick e os botões.</p>
-    <div class="cta-row">
-      <button class="cta" id="btnPlay">Jogar</button>
-      <button class="ghost" id="btnChamp">Campeonato</button>
-      <button class="ghost" id="btnCareer">Carreira</button>
-      <button class="ghost" id="btnDrill">Treino</button>
-      <button class="ghost" id="btnOnline">Online</button>
-    </div>
+      <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button></div>
+    </section>
   </div>
 </div>
 

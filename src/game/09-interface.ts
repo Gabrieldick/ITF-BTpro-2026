@@ -5,7 +5,7 @@ import { $s } from '../state';
 import { C, HALF_W, ZONE3, nameOf, shortOf } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
-import { applyArena, cheerArena, confetti, linesGroup } from './03-cenario';
+import { applyArena, cheerArena, confetti, linesGroup, setNetHeight } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail } from './07-glb';
 import { applyGfx, sndWhistle } from './08-audio';
@@ -365,6 +365,11 @@ function newMatch(guest) {
   applyArena(arenaFor());
   assignCharacters();
   configureMode();
+  { // rede: 1,80 m só no profissional masculino (carreira: BT10 para cima); feminino, misto e amador: 1,70 m
+    const allMale = $s.players.every(p => !p.char || !p.char.fem);
+    const pro = S.careerActive && $s.CR && $s.CR.tour ? $s.CR.tour.tier >= 3 && !($s.CR.tour.special === 'estadual' && $s.CR.tour.tier < 3) : true;
+    setNetHeight(allMale && pro ? 1.8 : 1.7);
+  }
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
   S.highlights = [];
