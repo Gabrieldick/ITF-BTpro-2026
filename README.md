@@ -10,7 +10,7 @@ Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e
 - **Partida rápida:** simples ou dupla, escolhendo atletas do circuito (overall, atributos, altura e estilo de jogo).
 - **Campeonato:** chave de 8 duplas (masculino, feminino ou misto) com as duplas reais da temporada ou a sua dupla montada.
 - **Treino:** desafios com lançador (curtas no verde, defenda os smashes, smash perfeito).
-- **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
+- **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ~3.800 atletas fictícios + astros reais, ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
 
 ## Saves da carreira
 

@@ -8,6 +8,7 @@ import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
 import { money } from './15-carreira-telas';
 import { countryName } from '../flags';
+import LZString from 'lz-string';
 // ================= MODO CARREIRA =================
 // circuito em escada (amador -> ITF -> Sand Series -> Mundial), ranking de 26 semanas, dinheiro, evolução e parceiros
 const TIERS = [
@@ -53,7 +54,7 @@ function makeAttrs(target, style, rnd) {
   return a;
 }
 // ~400 por ranking (contando os astros reais); saves antigos com 150 são completados no crMigrate
-const POOL_N = 380;
+const POOL_N = 1900; // ~1.900 por gênero (+ astros reais): ~60 atletas por estado
 function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
   const rnd = mulberry(seed + from * 7919); const pick = arr => arr[Math.floor(rnd() * arr.length)];
   const country = () => { let r = rnd(); for (const [c, w] of COUNTRY_W) { if ((r -= w) <= 0) return c; } return 'BRA'; };
@@ -82,14 +83,15 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
 // localStorage 'pdo-careers' = { active: id | null, slots: { id: carreira } }
 const SAVE_KEY = 'pdo-careers', SAVE_FMT = 'ponto-de-ouro/carreira';
 let SAVES = { active: null, slots: {} };
-try { SAVES = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') || SAVES; } catch (e) {}
+const readSaves = raw => !raw ? null : raw.startsWith('LZ:') ? JSON.parse(LZString.decompressFromUTF16(raw.slice(3)) || 'null') : JSON.parse(raw);
+try { SAVES = readSaves(localStorage.getItem(SAVE_KEY)) || SAVES; } catch (e) {}
 if (!SAVES.slots) SAVES = { active: null, slots: {} };
 // save antigo de uma carreira só
 try { const old = JSON.parse(localStorage.getItem('pdo-career') || 'null'); if (old && !Object.keys(SAVES.slots).length) { old.id = old.id || 'c' + old.seed; SAVES.slots[old.id] = old; SAVES.active = old.id; } } catch (e) {}
 $s.CR = SAVES.active && SAVES.slots[SAVES.active] || null;
 let saveErr = '';
 function writeSaves() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVES)); localStorage.removeItem('pdo-career'); saveErr = ''; }
+  try { localStorage.setItem(SAVE_KEY, 'LZ:' + LZString.compressToUTF16(JSON.stringify(SAVES))); localStorage.removeItem('pdo-career'); saveErr = ''; }
   catch (e) { saveErr = 'Não foi possível salvar no navegador (espaço cheio?). Exporte a carreira para um arquivo.'; }
 }
 const saveCareer = () => {
@@ -150,13 +152,22 @@ const crMeOvr = () => overall(effA($s.CR.me.a, crGearBonus(), racketBonus($s.CR.
 const crCharOvr = c => c.id === 'crme' ? crMeOvr() : overall(effA(c.a, racketBonus(c.look && c.look.racket)));
 // mundo do seu gênero (fictícios + astros reais)
 const crWorld = () => $s.CR.pool.filter(c => !!c.fem === !!$s.CR.me.fem).concat(ROSTER.filter(c => !!c.fem === !!$s.CR.me.fem));
-const crChar = id => id === 'crme' ? crMeChar() : ($s.CR.pool.find(c => c.id === id) || ROSTER.find(c => c.id === id));
+const POOL_IDX = { pool: null, len: 0, map: null };
+function poolGet(id) {
+  if (POOL_IDX.pool !== $s.CR.pool || POOL_IDX.len !== $s.CR.pool.length) { POOL_IDX.pool = $s.CR.pool; POOL_IDX.len = $s.CR.pool.length; POOL_IDX.map = new Map($s.CR.pool.map(c => [c.id, c])); }
+  return POOL_IDX.map.get(id);
+}
+const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || ROSTER.find(c => c.id === id));
 const absWeek = () => ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
 const crPts = () => $s.CR.results.filter(r => r.w > absWeek() - SEASON_WEEKS).reduce((t, r) => t + r.pts, 0);
+const RK = { key: '', list: null };
 function crRanking() {
+  const key = [$s.CR.id, $s.CR.season, $s.CR.week, $s.CR.results.length, $s.CR.pool.length, $s.CR.me.fem ? 1 : 0, RK.gen || 0].join('|');
+  if (RK.key === key && RK.list) return RK.list;
   const list = crWorld().map(c => ({ id: c.id, pts: Math.round($s.CR.npc[c.id] || 0) }));
   list.push({ id: 'crme', pts: crPts() });
-  return list.sort((x, y) => y.pts - x.pts || (x.id === 'crme' ? 1 : -1));
+  RK.key = key; RK.list = list.sort((x, y) => y.pts - x.pts || (x.id === 'crme' ? 1 : -1));
+  return RK.list;
 }
 // ranking só com os atletas de um estado (mesmos pontos do ranking geral)
 function crStateRanking(uf) { return crRanking().filter(r => { const c = crChar(r.id); return c && c.pais === 'BRA' && crUf(c) === uf; }); }
@@ -164,7 +175,7 @@ const crRank = () => crRanking().findIndex(r => r.id === 'crme') + 1;
 const npcTier = o => { let t = 0; for (let i = 0; i < 9; i++) if (TIERS[i].ovr[0] + 3 <= o) t = i; return t; };
 // semana dos outros: quem joga ganha pontos conforme a força dentro do nível
 function crSimWorld(rnd, list) {
-  rnd = rnd || Math.random;
+  rnd = rnd || Math.random; RK.gen = (RK.gen || 0) + 1;
   (list || $s.CR.pool.concat(ROSTER)).forEach(c => {
     const o = crCharOvr(c), t = npcTier(o), T = TIERS[t];
     let p = ($s.CR.npc[c.id] || 0) * (SEASON_WEEKS - 1) / SEASON_WEEKS;
