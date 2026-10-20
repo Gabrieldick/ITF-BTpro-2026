@@ -105,10 +105,20 @@ function animateAthlete(p, dt) {
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
   const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1;
+  // bola longe do corpo no golpe: o jogador se estica (passo em afundo para o lado dela, tronco inclinado, mais baixo se a bola é baixa)
+  let reachK = 0, reachS = 1, reachLow = 0;
+  if (swingU >= 0 && swingU < .8 && ball.state === 'live' && p.swing.type !== 'smash') {
+    const tgt = p.swing.hit && p.contact ? p.contact : ball.pos;
+    _e.set(tgt.x, tgt.y, tgt.z); m.group.worldToLocal(_e);
+    const lat = Math.hypot(_e.x, _e.z);
+    reachK = clamp((lat - .5) / .5, 0, 1) * clamp(1 - Math.abs(swingU - .45) / .5, 0, 1);
+    reachS = Math.sign(_e.x) || 1; reachLow = clamp((.9 - _e.y) / .6, 0, 1);
+  }
+  p.reachK = (p.reachK || 0) + (reachK - (p.reachK || 0)) * Math.min(1, dt * 14);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
-  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05 + diveK * .42 + p.lowK * .11 * (1 - run * .5) + defLow;
-  const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95), lungeS = Math.sign(pose.lunge) || 1;
-  m.hips.position.set(lungeS * .2 * lungeA, .92 - crouch - .08 * lungeA + run * .025 * Math.cos(2 * p.gait), -.05 * lungeA);
+  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
+  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22, .92 - crouch - .08 * lungeA + run * .025 * Math.cos(2 * p.gait), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
   if (!p.prevVel) p.prevVel = new V3();
   const acx = dt > 0 ? (p.vel.x - p.prevVel.x) / dt : 0, acz = dt > 0 ? (p.vel.z - p.prevVel.z) / dt : 0; p.prevVel.copy(p.vel);
@@ -119,7 +129,7 @@ function animateAthlete(p, dt) {
   m.hips.position.x += clamp(-p.accR * .006, -.05, .05);
   m.hips.rotation.set(0, Math.sin(p.gait) * .11 * run, Math.cos(p.gait) * .035 * run);
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
-  m.spine.rotation.set(-(pose.lean + run * .1 + diveK * .75) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll);
+  m.spine.rotation.set(-(pose.lean + run * .1 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: pés presos na areia
@@ -159,10 +169,14 @@ function animateAthlete(p, dt) {
   const shR = m.armR.sh.position, shL = m.armL.sh.position;
   _c.fromArray(pose.rh);
   if (swingU >= 0 && ball.state !== 'held') {
-    const w = clamp(1 - Math.abs(swingU - .45) / .2, 0, 1) * (p.swing.type === 'smash' ? 1 : p.swing.type === 'defesa' ? .9 : .75);
+    // antes do contato a raquete vai buscando a bola; depois, fica no ponto onde bateu e acompanha o movimento
+    const hitDone = p.swing.hit && p.contact && p.contact.hitId === S.hitId;
+    const cu = hitDone ? p.contact.u : .45;
+    const w = hitDone ? clamp(1 - (swingU - cu) / .22, 0, 1) : clamp(1 - Math.abs(swingU - cu) / .3, 0, 1);
     if (w > 0) {
-      _e.copy(ball.pos); m.spine.worldToLocal(_e);
-      if (_e.distanceTo(shR) < 1.5) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, w); }
+      if (hitDone) _e.set(p.contact.x, p.contact.y, p.contact.z); else _e.copy(ball.pos);
+      m.spine.worldToLocal(_e);
+      if (_e.distanceTo(shR) < 2.2) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1)); }
     }
   }
   _b.fromArray(pose.rp);

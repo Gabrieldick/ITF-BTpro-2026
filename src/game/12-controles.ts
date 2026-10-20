@@ -88,6 +88,10 @@ function timeToReach(p) {
 function tryDive(type) {
   const p = human;
   if (ball.state !== 'live' || S.lastTeam === p.team || canHit(p, type)) return;
+  // se a bola vai passar ao alcance normal em algum momento, não precisa mergulhar
+  { const q = ball.pos.clone(), w = ball.vel.clone();
+    for (let t = 0; t < 1.2; t += .01) { w.y -= bG() * .01; q.addScaledVector(w, .01); if (q.y < C.ballR) break;
+      if ((p.team === 0 ? q.z > .05 : q.z < -.05) && q.y >= .12 && q.y <= 2.4 && Math.hypot(q.x - p.pos.x, q.z - p.pos.z) <= 1.3) return; } }
   const pos = ball.pos.clone(), vel = ball.vel.clone(), dt = .01;
   for (let t = 0; t < .7; t += dt) {
     vel.y -= bG() * dt; pos.addScaledVector(vel, dt);

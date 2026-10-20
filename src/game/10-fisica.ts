@@ -187,7 +187,8 @@ function doHit(p, type, q, isServe, mod) {
   const v = solveShot(ball.pos, tgt, spec);
   let mis = false;
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
-  const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err + prs;
+  const riskK = { smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1; // golpes arriscados erram mais
+  const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err * riskK + prs;
   if (unforced || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
     if (Math.random() < .5) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
@@ -204,6 +205,7 @@ function doHit(p, type, q, isServe, mod) {
   p.swing.type = isServe ? 'smash' : type; p.swing.hit = true;
   const hitAt = isServe ? .3 : .45;
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;
+  p.contact = { x: ball.pos.x, y: ball.pos.y, z: ball.pos.z, u: p.swing.t / p.swing.dur, hitId: S.hitId }; // a animação leva a raquete até aqui
   if (key === 'smash' && ball.pos.y > 2.2) startJump(p, .38, .3);
   if (pressure <= 0 && mod.timing !== undefined) grade = q * .6 + mod.timing * .4;
   if (key === 'curta' && !pop) grade = clamp(.7 + (curtaK - .5) * .6, .05, 1); // cor do anel da curta: verde a partir de uma curta BOA
