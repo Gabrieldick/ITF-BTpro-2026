@@ -170,11 +170,11 @@ function doHit(p, type, q, isServe, mod) {
   // curta: só sai rápida e rente à rede com bom timing/qualidade e atributo de curta alto; as comuns são mais lentas e alcançáveis
   let curtaK = 0;
   if (key === 'curta' && !pop && !isServe) {
-    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
-    curtaK = clamp((tq - .5) / .35, 0, 1) * lerp(.6, 1, clamp((attrK(p, 'curta') - .55) / .4, 0, 1));
+    const tq = mod.timing === undefined ? q : q * .4 + mod.timing * .6; // o toque na hora certa (anel verde) é o que mais conta
+    curtaK = clamp((tq - .45) / .4, 0, 1) * lerp(.65, 1, clamp((attrK(p, 'curta') - .55) / .4, 0, 1));
     spec.gk = lerp(.95, 1.6, curtaK) * (vr === 'baixa' ? .93 : 1);
     spec.margin = lerp(.14, .07, curtaK);
-    if (curtaK > .8 && !finisher) spec.label = 'CURTA MATADORA';
+    if (curtaK > .86 && !finisher) spec.label = 'CURTA MATADORA';
   }
   const err = 1.15 - q;
   const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], humanDepthT()) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
@@ -204,7 +204,7 @@ function doHit(p, type, q, isServe, mod) {
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;
   if (key === 'smash' && ball.pos.y > 2.2) startJump(p, .38, .3);
   if (pressure <= 0 && mod.timing !== undefined) grade = q * .6 + mod.timing * .4;
-  if (key === 'curta' && !pop) grade = Math.max(.05, curtaK); // a cor do anel da curta mostra o quão boa ela saiu
+  if (key === 'curta' && !pop) grade = clamp(.7 + (curtaK - .5) * .6, .05, 1); // cor do anel da curta: verde a partir de uma curta BOA
   return { key, label: spec.label, mis, pop, wild, grade, pressure, backhand: bhSide, contact: contactWord, curtaK };
 }
 

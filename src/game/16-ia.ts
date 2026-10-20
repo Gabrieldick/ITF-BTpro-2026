@@ -230,7 +230,7 @@ function updateHuman(dt) {
       const r = doHit(p, sw.type, q, false, mod);
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r);
       // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)
-      const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .8 ? 'MATADORA' : r.curtaK > .45 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
+      const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .86 ? 'MATADORA' : r.curtaK >= .5 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
       feedback(r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
     }
     sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { feedback('SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
