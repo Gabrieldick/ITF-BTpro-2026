@@ -492,3 +492,11 @@ body.in-replay .hud { display: none !important; }
 #sbTitle { background: linear-gradient(90deg, #1e6bff, #0b1d45); border-radius: 2px; font-family: var(--f-ui); letter-spacing: .14em; }
 .chip { border-radius: 3px; font-family: var(--f-ui); text-transform: uppercase; letter-spacing: .06em; }
 #loading { background: linear-gradient(135deg, #030a1c, #0b1d45); font-family: var(--f-ui); font-style: italic; letter-spacing: .1em; }
+
+/* passos do menu: espaço entre as opções e os botões Voltar/Próximo */
+#menu section[data-step] { display: grid; gap: 16px; }
+#menu .step-nav { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--ui-line); }
+
+/* textos e controles extras dentro das opções ocupam a linha inteira */
+.seg > p, .seg > label { grid-column: 1 / -1; }
+#fovFp, input[type=range] { accent-color: var(--ui-acc); }

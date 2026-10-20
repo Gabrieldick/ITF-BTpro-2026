@@ -58,7 +58,7 @@ function crPlayerHTML() {
   return '<div class="cr-two"><div><p class="section-label">Atributos (gaste pontos de evolução)</p><div class="bars cr-bars">' + rows + '</div><p class="cr-note">Limite pelo potencial: ' + crCap() + '. Em verde/vermelho: efeito da raquete e dos equipamentos.</p></div>'
     + '<div><p class="section-label">Evolução do overall</p><p class="cr-note">' + log + '</p><p class="section-label">Títulos</p><p class="cr-note">' + (Object.keys($s.CR.titles).length ? Object.entries($s.CR.titles).map(([t, n]) => TIERS[t].curto + ' ×' + n).join(' · ') : 'Nenhum ainda.') + '</p>'
     + '<p class="section-label">Partidas</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
-    + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option></select></label>'
+    + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option></select></label>'
     + ($s.CR.me.pais === 'BRA' ? '<p class="section-label">Estado (estaduais e seleção estadual)</p><label class="cr-field"><select id="crMeUf" class="cr-sel">' + STATES.map(([k, n]) => '<option value="' + k + '"' + (k === ($s.CR.me.uf || 'SP') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' : '')
     + '<p class="section-label">Nacionalidade</p><label class="cr-field"><span class="cr-nat">' + flagSVG($s.CR.me.pais) + '<select id="crMeNat">' + COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === $s.CR.me.pais ? ' selected' : '') + '>' + c.nome + '</option>').join('') + '</select></span></label>'
     + '<div class="cta-row" style="margin-top:10px"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div></div>';
@@ -169,7 +169,7 @@ function crTourHTML() {
     const sty = id => PLAY_STYLES[playStyleOf(crChar(id))].nome.toLowerCase();
     const h = crH2H(opp), riv = crRivalOf(opp);
     msg = (riv ? '<p class="cr-msg">🔥 Clássico! Confronto direto: ' + h.w + '–' + h.l + '. Vencer rende bônus.</p>' : h.w + h.l ? '<p class="cr-note">Confronto direto: ' + h.w + '–' + h.l + '</p>' : '')
-      + (t.singles ? '' : '<p class="cr-note">Seu lado na dupla: <select id="crSide" class="cr-sel"><option value="direita">Direita</option><option value="esquerda">Esquerda</option></select></p>')
+      + (t.singles ? '' : '<p class="cr-note">Seu lado na dupla: <select id="crSide" class="cr-sel"><option value="esquerda">Esquerda</option><option value="direita">Direita</option></select></p>')
       + '<p class="cr-note">Tática: <select id="crTactic" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></p>'
       + '<p class="lede">' + names[t.round] + ': ' + (t.singles ? 'você' : 'vocês') + ' contra <b>' + crTeamName(opp) + '</b> (OVR ' + crTeamOvr(opp) + '): ' + esc(shortOf(crChar(opp.a))) + ' é ' + sty(opp.a) + (opp.b ? ', ' + esc(shortOf(crChar(opp.b))) + ' é ' + sty(opp.b) + '. Sua dupla: OVR ' : '. Você: OVR ') + crTeamOvr(t.teams[t.me]) + '.</p>';
   }
@@ -185,7 +185,7 @@ function bindTour() {
   };
   ['crPlay', 'crSim', 'crDone'].forEach(b);
   const ts = $('crTactic'); if (ts) ts.value = S.settings.tactic || 'normal';
-  const sd = $('crSide'); if (sd) { sd.value = $s.CR.side || S.settings.side || 'direita'; sd.addEventListener('change', () => { $s.CR.side = sd.value; saveCareer(); }); }
+  const sd = $('crSide'); if (sd) { sd.value = $s.CR.side || 'direita'; sd.addEventListener('change', () => { $s.CR.side = sd.value; saveCareer(); }); }
 }
 function bindCareerBody() {
   const body = $('crBody');

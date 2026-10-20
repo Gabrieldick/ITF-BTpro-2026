@@ -670,7 +670,7 @@ function crPlayMatch() {
   const mm = crMyMatch(); if (!mm) return;
   const t = $s.CR.tour, opp = t.teams[mm.a === t.me ? mm.b : mm.a];
   $s.CR.prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, diff: S.settings.diff, racket: S.settings.racket, games: S.settings.games, format: S.settings.format, side: S.settings.side };
-  S.settings.side = $s.CR.side || S.settings.side || 'direita'; // seu lado na dupla (escolhido na carreira)
+  S.settings.side = $s.CR.side || 'direita'; // seu lado na dupla (escolhido na carreira; padrão: direita)
   const proFinal = crIsFinal() && crTourT(t).pro; // finais de torneios profissionais: 2 sets a 6 + super tie-break
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = proFinal ? 6 : $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
