@@ -126,6 +126,14 @@ function clampPos(p) {
     }
   }
 }
+// janela ideal do aperto: 0,05 a 0,30 s antes da bola entrar no alcance (sinal verde)
+const pressTiming = t => t < .05 ? lerp(.45, 1, clamp(t / .05, 0, 1)) : t <= .3 ? 1 : lerp(1, .4, clamp((t - .3) / .3, 0, 1));
+// a raquete espera a bola chegar mais perto do corpo, em vez de bater na ponta do alcance
+function waitCloser(p, su, dt) {
+  if (su > .7) return false;
+  const d = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z), dn = Math.hypot(ball.pos.x + ball.vel.x * dt - p.pos.x, ball.pos.z + ball.vel.z * dt - p.pos.z);
+  return d > .78 && dn < d - .002 && ball.pos.y > .2; // ainda vindo e longe: espera
+}
 function updateHuman(dt) {
   const p = human; let ix = 0, iz = 0;
   if (keys.a || keys.arrowleft) ix -= 1; if (keys.d || keys.arrowright) ix += 1;
@@ -191,7 +199,7 @@ function updateHuman(dt) {
     }
     const contact = fire || (overhead
       ? (su >= .29 && su <= .75 && (sw.meter ? smashReach(p) : racketNearBall(p, .42)))
-      : (sw.t <= sw.dur * (sw.meter || sw.lob ? .9 : .8) && canHit(p, sw.type)));
+      : (sw.t <= sw.dur * (sw.meter || sw.lob ? .9 : .8) && canHit(p, sw.type) && !(p.isHuman && waitCloser(p, su, dt))));
     if (p.pendingServe && su >= .45) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
@@ -225,7 +233,8 @@ function updateHuman(dt) {
         }
       }
       // timing: o miolo do movimento (15%–60%) é perfeito; cedo/tarde demais perde, mas não zera
-      if (!sw.meter) mod.timing = su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
+      // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
+      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r);
@@ -233,6 +242,7 @@ function updateHuman(dt) {
       const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .86 ? 'MATADORA' : r.curtaK >= .5 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
       feedback(r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
     }
+    if (p.isHuman && !sw.hit && !sw.meter && sw.t > sw.dur * .55 && sw.t < sw.dur * .8 && canHit(p, sw.type) && waitCloser(p, su, dt)) sw.t -= dt * .8; // segura a raquete armada
     sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { feedback('SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
   }
 }

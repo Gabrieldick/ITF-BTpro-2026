@@ -365,7 +365,7 @@ function updateVisuals(dt) {
     const pulse = 1 + Math.sin(performance.now() / 90) * .12; landRing.scale.set(pulse, pulse, 1);
   } else landRing.visible = false;
   const fp = S.settings.cam === '1p';
-  reachRing.visible = S.mode !== 'menu' && !fp && S.settings.assistMark;
+  reachRing.visible = S.mode !== 'menu' && !fp;
   reachRing.position.set(human.pos.x, .02, human.pos.z);
   { const rs = reachOf('defesa', human) / 1.335; reachRing.scale.set(rs, rs, 1); } // anel do tamanho real do alcance da defesa
   const ready = incoming && canHit(human, 'lob');
@@ -375,7 +375,8 @@ function updateVisuals(dt) {
   const ttr = incoming && human.swing.t < 0 && !human.charging && ball.pos.y < 2.2 ? timeToReach(human) : null;
   const cue = readyDef ? 0xffb11f : ttr !== null && ttr >= .05 && ttr <= .28 ? 0x4fd18b : ttr !== null && ttr <= .5 ? 0xffd23f : 0xffffff;
   reachRing.material.color.setHex(cue);
-  reachRing.material.opacity = cue === 0xffffff ? .18 : .65;
+  { const tc = document.getElementById('tcue'); if (tc) { const k = cue === 0x4fd18b ? 'now' : cue === 0xffd23f ? 'prep' : cue === 0xffb11f && ttr !== null ? 'late' : ''; tc.hidden = !k || ball.pos.y > 2.2; if (k && tc.className !== k) { tc.className = 'hud ' + k; const sp = tc.querySelector && tc.querySelector('span'); if (sp) sp.textContent = k === 'now' ? 'AGORA' : k === 'prep' ? 'PREPARA' : 'ATRASADO'; } } }
+  reachRing.material.opacity = cue === 0xffffff ? (S.settings.assistMark ? .18 : 0) : .65;
   placeMeter(fp);
   updateTags(fp);
   if (ball.state === 'held') placeHeldBall();

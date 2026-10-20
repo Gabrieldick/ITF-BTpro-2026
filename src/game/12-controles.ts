@@ -161,6 +161,7 @@ function pressShot(type) {
     if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type); return; }
     if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !human.dive) tryDive(type);
     sw.t = 0; sw.type = type; sw.dur = type === 'curta' ? .5 : SWING_DUR; sw.hit = false; sw.meter = null; sw.lob = null;
+    sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== human.team ? timeToReach(human) : null; // para o timing: quanto faltava a bola chegar
     sw.side = sideOf(human, humanPlan.id === S.hitId && humanPlan.plan ? humanPlan.plan.pt : null);
     sw.var = swingVar(type, humanPlan.id === S.hitId && humanPlan.plan ? humanPlan.plan.pt.y : ball.pos.y, human);
   }

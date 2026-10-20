@@ -385,3 +385,8 @@ em.dn { color: #c2410c; font-style: normal; font-weight: 800; margin-left: 2px; 
 .mstats tr.sum td { border-top: 1.5px solid #e3d9c4; font-weight: 800; }
 .mstats tr.err td:not(:first-child) { color: #b4232a; }
 .mstats td { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+
+/* sinal de timing para curta/defesa: amarelo = prepara, verde = agora, laranja = atrasado */
+#tcue { left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; pointer-events: none; font: 800 14px var(--f-body); letter-spacing: .1em; color: #fff; text-shadow: 0 1px 2px #000; }
+#tcue i { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px rgba(0,0,0,.4); }
+#tcue.prep i { background: #ffd23f; } #tcue.now i { background: #4fd18b; box-shadow: 0 0 16px #4fd18b; transform: scale(1.25); } #tcue.late i { background: #ffb11f; }
