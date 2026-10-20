@@ -296,9 +296,21 @@ function toMenu() {
   if (NET.role && NET.onMenu) { NET.onMenu(); return; } // online: volta para a sala, não para o menu
   if (S.careerActive) careerMatchEnded(false); // abandonar conta como derrota
   S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; el.menu.hidden = false;
-  document.body.classList.add('in-menu'); hideBanner(); syncMenu();
+  document.body.classList.add('in-menu'); hideBanner(); syncMenu(); menuStep('home');
 }
-$('btnPlay').addEventListener('click', startFromMenu);
+// menu em passos: início (blocos) → partida rápida 1 (elenco e modalidade) → 2 (jogadores) → 3 (ajustes) → começar
+function menuStep(st) {
+  const m = $('menu'); m.dataset.step = st;
+  m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });
+  readMenu(); syncMenu();
+  const dupla = S.settings.mode === 'dupla';
+  const side = m.querySelector('input[name=side]'), tac = $('tacticSel');
+  if (side) side.closest('fieldset').hidden = !dupla;
+  if (tac) tac.closest('label').hidden = !dupla;
+  m.scrollTop = 0;
+}
+document.querySelectorAll('#menu [data-goto]').forEach(b => b.addEventListener('click', () => { ac(); menuStep(b.dataset.goto); }));
+$('btnStart').addEventListener('click', startFromMenu);
 // treino com desafios (menu): sem recompensa, só para praticar
 let drillFromCareer = null;
 $('btnDrill').addEventListener('click', () => { drillFromCareer = null; el.menu.hidden = true; $('drillPick').hidden = false; });

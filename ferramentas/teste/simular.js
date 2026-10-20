@@ -15,7 +15,7 @@ const sb={THREE,document,window:null,performance:{now:()=>now},requestAnimationF
 sb.window=sb;vm.createContext(sb);
 sb.THREE_GLTF={GLTFLoader:dummy}; sb.THREE_SKEL=dummy; vm.runInContext(src,sb);
 const key=k=>{(listeners.keydown||[]).forEach(f=>f({key:k,repeat:false,preventDefault(){}}));(listeners.keyup||[]).forEach(f=>f({key:k}))};
-setTimeout(()=>{getEl('menu').hidden=false;
+setTimeout(()=>{getEl('menu').hidden=false; getEl('menu').dataset.step='q3';
 // start match: call btnPlay handler -> we can't (stub addEventListener). emulate Enter key on menu
 key('Enter');
 const S=sb.__pdo.S,ball=sb.__pdo.ball,H=sb.__pdo.human;
