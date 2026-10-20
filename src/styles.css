@@ -410,3 +410,29 @@ body.in-replay .hud { display: none !important; }
 .on-status { margin: 0; font-weight: 800; color: var(--sea); }
 .cr-msg.ok { background: #e3f6ec; border-color: #9fd9b8; }
 #netChip { cursor: default; }
+/* quem só assiste a partida online: sem botões de golpe, joystick e barra */
+body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #meter, body.spectate #reach, body.spectate #tcue { display: none !important; }
+.on-members { display: grid; gap: 6px; }
+.on-member { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; }
+.on-member b { font-weight: 800; }
+.on-member small { color: #5b6b78; }
+.on-seats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.on-team { display: grid; gap: 8px; align-content: start; }
+.on-team h4 { margin: 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.on-team.tB h4 { color: var(--sea); }
+.on-team.tA h4 { color: #c2410c; }
+.on-seat { border: 2px solid #d9cfba; border-radius: 14px; padding: 8px 10px; display: grid; gap: 6px; background: #fff; }
+.on-seat.mine { border-color: var(--ink); }
+.on-seat .who { font-weight: 800; }
+.on-seat .who.cpu { color: #5b6b78; font-weight: 600; }
+.on-seat small { color: #5b6b78; font-size: 12px; }
+.on-seat select { width: 100%; }
+.on-bracket { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.on-bracket .rd { display: grid; gap: 8px; align-content: start; min-width: 150px; }
+.on-bracket h5 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #5b6b78; }
+.on-bracket .m { border: 1.5px solid #d9cfba; border-radius: 10px; padding: 4px 8px; font-size: 13px; background: #fff; }
+.on-bracket .m.next { border-color: #ff5a1f; }
+.on-bracket .m div { display: flex; justify-content: space-between; gap: 6px; }
+.on-bracket .m .w { font-weight: 800; }
+.on-bracket .m .l { opacity: .55; }
+@media (max-width: 520px) { .on-seats { grid-template-columns: 1fr; } }

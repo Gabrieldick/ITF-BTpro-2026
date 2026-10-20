@@ -44,7 +44,7 @@ const _aimTgt = new V3(), _aimSt = new V3(), _aimM = new THREE.Matrix4();
 function updateAimMarker() {
   if (!AIM.ring) buildAim();
   const sw = human.swing, active = human.charging || (sw.t >= 0 && !sw.hit);
-  const show = S.settings.aimArrow !== false && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === 1 && (active || assignee(0) === human);
+  const show = !S.spectate && S.settings.aimArrow !== false && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === 1 && (active || assignee(0) === human);
   // só a flecha no chão, saindo dos pés do jogador (alvo, anel e arco ficavam poluídos demais)
   [AIM.ring, AIM.outline, AIM.dot, AIM.arc].forEach(o => { o.visible = false; });
   AIM.arrow.visible = show;

@@ -58,9 +58,10 @@ function updateBall(dt) {
 function step(dt) {
   if (S.mode === 'toss' && S.serverPlayer) S.serverPlayer.tossT += dt;
   // jogadores humanos: o local e, no online, os do convidado (NET.remote)
-  meterStep(localCtl(), dt);
+  const localOn = human.isHuman && !human.netHuman; // online: o boneco "human" pode ser de um convidado ou da CPU
+  if (localOn) meterStep(localCtl(), dt);
   for (const c of NET.remote) meterStep(c, dt);
-  updateHuman(dt);
+  if (localOn) updateHuman(dt);
   for (const c of NET.remote) updateHuman(dt, c);
   for (const p of $s.players) if (!p.isHuman) updateAI(p, dt);
   if (S.mode === 'serve' && !S.serverPlayer.isHuman) {

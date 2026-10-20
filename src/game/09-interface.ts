@@ -124,8 +124,10 @@ const FEM_CAT = { curta: 1, defesa: 1 };
 // "você" nos textos só fora do online (lá o texto do anfitrião também aparece para o convidado)
 const isMe = p => !!p && p.isHuman && !p.netHuman && !NET.role;
 // o time de cima: "da CPU" ou, no online 1×1, "de N. FULANO"
-const oppHuman = () => ($s.teams[1] || []).find(p => p.netHuman);
-const oppOf = () => { const o = oppHuman(); return o ? 'de ' + whoName(o) : 'da CPU'; };
+// nomes do time ("N. BURMAK e J. GASPAR"); no online, time com gente de verdade aparece pelo nome, não "CPU"
+const teamNames = t => ($s.teams[t] || []).map(whoName).join(' e ');
+const teamHuman = t => ($s.teams[t] || []).some(p => p.netHuman);
+const oppOf = () => teamHuman(1) ? 'de ' + teamNames(1) : 'da CPU';
 const deP = (p, fem) => isMe(p) ? (fem ? 'sua' : 'seu') : 'de ' + whoName(p);
 // "Smash vencedor de N. BURMAK" / "Seu smash vencedor"
 const phrase = (noun, p, fem, tail) => (isMe(p) ? (fem ? 'Sua ' : 'Seu ') + noun.toLowerCase() : noun + ' de ' + whoName(p)) + (tail || '');
@@ -267,17 +269,19 @@ function pointTo(w, reason, kind) {
 // o convidado do online chama direto com o vencedor já convertido para o lado dele
 function pointShow(w, ev, reason, isTitle) {
   renderBoard();
-  sndWhistle(w === 0); cheerArena(ev === 'match' ? 3 : ev === 'game' ? 2 : 1.2);
+  // quem só assiste (online) vê o nome de quem fez o ponto, nunca "seu"
+  const mine = w === 0 && !S.spectate;
+  sndWhistle(mine); cheerArena(ev === 'match' ? 3 : ev === 'game' ? 2 : 1.2);
   landRing.visible = false;
   const g = S.score.games;
-  const d = dupla(), of = oppOf();
-  let title = w === 0 ? (d ? 'Ponto de vocês!' : 'Ponto seu!') : 'Ponto ' + of;
+  const d = dupla(), of = S.spectate ? 'de ' + teamNames(w) : oppOf();
+  let title = mine ? (d ? 'Ponto de vocês!' : 'Ponto seu!') : 'Ponto ' + of;
   let sub = reason;
-  if (ev === 'game') { title = w === 0 ? (d ? 'Game de vocês!' : 'Game seu!') : 'Game ' + of; sub = `${reason} · games ${g[0]}–${g[1]}`; }
+  if (ev === 'game') { title = mine ? (d ? 'Game de vocês!' : 'Game seu!') : 'Game ' + of; sub = `${reason} · games ${g[0]}–${g[1]}`; }
   if (ev === 'tb') { title = 'Tie-break!'; sub = `${g[0]}–${g[1]} nos games. Primeiro a 7 pontos, com 2 de diferença.`; }
-  if (ev === 'set') { const st = S.score.sets; title = w === 0 ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set ' + of; sub = `Sets ${st[0]}–${st[1]} · ${scoreText()}`; }
+  if (ev === 'set') { const st = S.score.sets; title = mine ? (d ? 'Set de vocês!' : 'Set seu!') : 'Set ' + of; sub = `Sets ${st[0]}–${st[1]} · ${scoreText()}`; }
   if (ev === 'stb') { title = 'Super tie-break!'; sub = 'Um set para cada lado. Primeiro a 10 pontos, com 2 de diferença.'; }
-  if (ev === 'match') { const pro = S.settings.format === 'pro'; title = w === 0 ? (pro ? (d ? 'Vitória de vocês!' : 'Vitória!') : d ? 'Set de vocês!' : 'Set seu!') : pro ? 'Vitória ' + of : 'Set ' + of; sub = pro ? scoreText() + ' · ' + reason : reason;
+  if (ev === 'match') { const pro = S.settings.format === 'pro'; title = mine ? (pro ? (d ? 'Vitória de vocês!' : 'Vitória!') : d ? 'Set de vocês!' : 'Set seu!') : pro ? 'Vitória ' + of : 'Set ' + of; sub = pro ? scoreText() + ' · ' + reason : reason;
     if (isTitle) { title = d ? 'CAMPEÕES!' : 'CAMPEÃO!'; sub = (S.careerActive ? crBoardTitle().replace(/ – .*/, '') : 'Campeonato') + ' · ' + reason; confetti(); cheerArena(5); }
   }
   banner(title, sub, 0, ev === 'match' || ev === 'game');
@@ -314,6 +318,7 @@ function setupPoint() {
 // aviso de quem saca (o convidado do online chama com o sacador do lado dele)
 function serveBanner(sp) {
   const gold = isGolden();
+  if (S.spectate) { banner(gold ? 'Ponto de ouro' : 'Saque de ' + whoName(sp), '', 1500, gold); return; }
   if (sp === human) {
     banner(gold ? 'Ponto de ouro' : 'Seu saque', isTouch() ? 'Segure um golpe para lançar a bola e solte na faixa verde.' : 'Segure J forte · K alto · L curto · Espaço seguro e solte na faixa verde.', 0, gold);
   } else if (sp.team === 0) {
@@ -381,7 +386,7 @@ function renderMatchStats() {
   const val = (s, k) => typeof k === 'function' ? k(s) : s[k];
   const sum = (tm, k) => tm.reduce((t, x) => t + val(x.s, k), 0);
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const head = teams.map((tm, ti) => tm.map(x => '<th class="t' + ti + '">' + flagSVG(x.p.char && x.p.char.pais) + ' ' + esc(x.p === human ? 'VOCÊ' : x.p.char ? shortOf(x.p.char) : 'CPU') + '</th>').join('') + (tm.length > 1 ? '<th class="tt t' + ti + '">DUPLA</th>' : '')).join('');
+  const head = teams.map((tm, ti) => tm.map(x => '<th class="t' + ti + '">' + flagSVG(x.p.char && x.p.char.pais) + ' ' + esc(x.p === human && !S.spectate ? 'VOCÊ' : x.p.char ? shortOf(x.p.char) : 'CPU') + '</th>').join('') + (tm.length > 1 ? '<th class="tt t' + ti + '">DUPLA</th>' : '')).join('');
   const line = (lbl, k, cls) => '<tr class="' + (cls || '') + '"><td>' + lbl + '</td>' + teams.map(tm => tm.map(x => '<td>' + val(x.s, k) + '</td>').join('') + (tm.length > 1 ? '<td class="tt">' + sum(tm, k) + '</td>' : '')).join('') + '</tr>';
   $('stTable').innerHTML = '<table class="mstats"><thead><tr><th></th>' + head + '</tr></thead><tbody>'
     + rows.map(r => line(r[0], r[1])).join('') + line('Pontos vencedores', win, 'sum')
@@ -392,7 +397,8 @@ function showOver() {
   const w = S.matchWinner, g = S.score.games;
   const dn = { facil: 'fácil', medio: 'médio', dificil: 'difícil' }[S.settings.diff];
   $('overEyebrow').textContent = `Fim de set · ${dupla() ? 'dupla' : 'simples'} · ${dn}`;
-  $('overTitle').textContent = w === 0 ? (dupla() ? 'VOCÊS VENCERAM' : 'VOCÊ VENCEU') : oppHuman() ? whoName(oppHuman()).toUpperCase() + ' VENCEU' : 'A CPU VENCEU';
+  const wonBy = t => teamNames(t).toUpperCase() + ($s.teams[t].length > 1 ? ' VENCERAM' : ' VENCEU');
+  $('overTitle').textContent = S.spectate ? wonBy(w) : w === 0 ? (dupla() ? 'VOCÊS VENCERAM' : 'VOCÊ VENCEU') : teamHuman(1) ? wonBy(1) : 'A CPU VENCEU';
   $('overScore').textContent = scoreText();
   $('stPts').textContent = `${S.stats.pts[0]}–${S.stats.pts[1]}`;
   $('stRally').textContent = S.stats.maxRally;

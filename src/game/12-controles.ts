@@ -180,7 +180,7 @@ function pressShot(type, c) {
     ac();
     const b = shotBtns[type]; if (b) b.classList.add('press');
     if (NET.role === 'guest') { if (NET.shot) NET.shot(type, true); return; } // convidado: o anfitrião é quem bate
-    if (S.paused) return;
+    if (S.paused || S.spectate) return;
     c = localCtl();
   }
   const M = c.m, p = c.p, plan = c.plan;
@@ -203,6 +203,7 @@ function releaseShot(type, c) {
   if (!c) {
     const b = shotBtns[type]; if (b) b.classList.remove('press');
     if (NET.role === 'guest') { if (NET.shot) NET.shot(type, false); return; }
+    if (S.spectate) return;
     c = localCtl();
   }
   const M = c.m;
