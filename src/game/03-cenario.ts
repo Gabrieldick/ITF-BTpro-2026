@@ -186,6 +186,8 @@ band.position.set(0, C.netH - .035, 0); band.castShadow = true; scene.add(band);
 const padMat = mat('#1f4fb8', { roughness: .7 });
 const band2 = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .035, .01), mat('#1f4fb8'));
 band2.position.set(0, C.netH - 1.0, 0); scene.add(band2);
+// altura da rede da partida: 1,80 m no profissional masculino, 1,70 m no feminino, misto e amador
+function setNetHeight(h) { C.netH = h; net.position.y = h - .5; band.position.y = h - .035; band2.position.y = h - 1.0; }
 [-1, 1].forEach(s => {
   const px = s * (C.netHalf + .12);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(.045, .05, 1.95, 16), mat('#e9edf0', { roughness: .25, metalness: .7 }));
@@ -345,7 +347,7 @@ function boards(x0, z0, len, along, c1, c2, text) {
   b.position.set(x0, .35, z0); ARENA.group.add(b);
 }
 function applyArena(a) {
-  a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#17324d', '#ffd23f'], text: 'PONTO DE OURO' }, a || {});
+  a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#0b1d3f', '#33c3ff'], text: 'ITF-BT PRO 2026' }, a || {});
   const key = JSON.stringify(a); if (key === ARENA.key) return; ARENA.key = key;
   tapeMat.color.copy(col(a.line)); padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
   const bc = bandTex.image.getContext('2d'); drawBand(a.trim)(bc, bandTex.image.width, bandTex.image.height); bandTex.needsUpdate = true;
@@ -404,4 +406,4 @@ function updateArena(dt) {
   });
 }
 
-export { confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
+export { setNetHeight, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
