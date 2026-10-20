@@ -10,7 +10,7 @@ import { ball } from './07-glb';
 import { decisive, dupla, feedback, momentum } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
-import { RES_WORD, keys, touch } from './12-controles';
+import { RES_WORD, ctlFeedback, keys, localCtl, touch } from './12-controles';
 import { puff } from './07-glb';
 import { sideOf } from './18-animacao';
 // estilo de cada personagem: pela descrição real, pelo estilo da carreira ou pelos atributos
@@ -150,14 +150,22 @@ function waitCloser(p, su, dt) {
   const d = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z), dn = Math.hypot(ball.pos.x + ball.vel.x * dt - p.pos.x, ball.pos.z + ball.vel.z * dt - p.pos.z);
   return d > .78 && dn < d - .002 && ball.pos.y > .2; // ainda vindo e longe: espera
 }
-function updateHuman(dt) {
-  const p = human; let ix = 0, iz = 0;
+// direção do teclado/joystick local (-1..1), no referencial de quem olha do próprio fundo de quadra
+function localInput() {
+  let ix = 0, iz = 0;
   if (keys.a || keys.arrowleft) ix -= 1; if (keys.d || keys.arrowright) ix += 1;
   if (keys.w || keys.arrowup) iz -= 1; if (keys.s || keys.arrowdown) iz += 1;
   ix += touch.x; iz += touch.z;
   const len = Math.hypot(ix, iz); if (len > 1) { ix /= len; iz /= len; }
+  return [ix, iz];
+}
+// c: controle do jogador (o local por padrão; no online, também o do convidado, que pode estar no time de cima)
+function updateHuman(dt, c = localCtl()) {
+  const p = c.p, humanPlan = c.plan, s = p.team === 0 ? 1 : -1, opp = 1 - p.team;
+  const [ix, iz] = c.remote ? [c.ix, c.iz] : localInput();
+  const len = Math.hypot(ix, iz);
   p.inputX = ix; p.inputZ = iz;
-  const lowBall = ball.state === 'live' && S.lastTeam === 1 && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
+  const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
   const spd = P_SPEED * lerp(.82, 1.12, attrK(p, 'vel')) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1);
   let tvx = ix * spd, tvz = iz * spd;
   if (p.dive) {
@@ -166,28 +174,28 @@ function updateHuman(dt) {
     else { tvx = 0; tvz = 0; p.vel.x *= .6; p.vel.z *= .6; if (!p.dive.landed) { p.dive.landed = true; puff(p.pos.x, p.pos.z, 14, .9); } }
     if (p.dive.t >= p.dive.dur) p.dive = null;
   }
-  const serving = S.serverPlayer === human && (S.mode === 'serve' || S.mode === 'toss');
+  const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');
   if (serving) {
     tvz = 0; if (S.mode === 'toss') tvx = 0;
-    if (S.mode === 'toss' && p.tossT > TOSS_T * .74) { tvz = -2.6; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } }
+    if (S.mode === 'toss' && p.tossT > TOSS_T * .74) { tvz = -2.6 * s; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } }
   }
-  if (p.pendingServe) { tvx = 0; tvz = -2.6; }
-  if (S.settings.assistMove && len < .1 && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === 1 && assignee(0) === human) {
+  if (p.pendingServe) { tvx = 0; tvz = -2.6 * s; }
+  if ((c.remote ? c.assistMove : S.settings.assistMove) && len < .1 && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === opp && assignee(p.team) === p) {
     if (humanPlan.id !== S.hitId) { humanPlan.plan = planIntercept(p, P_SPEED * .6, 0); humanPlan.id = S.hitId; }
     if (humanPlan.plan) {
-      const tx = humanPlan.plan.pt.x - .35, tz = humanPlan.plan.pt.z;
+      const tx = humanPlan.plan.pt.x - .35 * s, tz = humanPlan.plan.pt.z;
       const dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz);
-      if (d > .12) { const s = Math.min(P_SPEED * .6, d * 4); tvx = dx / d * s; tvz = dz / d * s; }
+      if (d > .12) { const v = Math.min(P_SPEED * .6, d * 4); tvx = dx / d * v; tvz = dz / d * v; }
     }
   }
   // passo até o ponto de contato enquanto arma o golpe (encaixe, estilo FIFA/2K)
   const sw0 = p.swing;
-  if (sw0.t >= 0 && !sw0.hit && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === 1) {
+  if (sw0.t >= 0 && !sw0.hit && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === opp) {
     if (humanPlan.id !== S.hitId) { humanPlan.plan = planIntercept(p, P_SPEED * .6, 0); humanPlan.id = S.hitId; }
     const pl = humanPlan.plan;
     if (pl) {
-      const rightS = p.lefty ? -1 : 1, over = sw0.type === 'smash' && pl.pt.y >= 1.9, back = !over && sw0.side < -.15;
-      const ix2 = pl.pt.x - rightS * (over ? .25 : back ? -.6 : .7), iz2 = pl.pt.z + (over ? .15 : .25);
+      const rightS = (p.lefty ? -1 : 1) * s, over = sw0.type === 'smash' && pl.pt.y >= 1.9, back = !over && sw0.side < -.15;
+      const ix2 = pl.pt.x - rightS * (over ? .25 : back ? -.6 : .7), iz2 = pl.pt.z + (over ? .15 : .25) * s;
       const dx = ix2 - p.pos.x, dz = iz2 - p.pos.z, dd = Math.hypot(dx, dz);
       if (dd > .05 && dd < .8) { const a = Math.min(1.8, dd * 5); tvx += dx / dd * a; tvz += dz / dd * a; }
     }
@@ -198,7 +206,7 @@ function updateHuman(dt) {
   p.vel.x += (tvx - p.vel.x) * k; p.vel.z += (tvz - p.vel.z) * k;
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);
-  if (serving && S.mode === 'serve') { p.pos.z = 8.6; p.pos.x = clamp(p.pos.x, -C.halfW + .1, C.halfW - .1); }
+  if (serving && S.mode === 'serve') { p.pos.z = 8.6 * s; p.pos.x = clamp(p.pos.x, -C.halfW + .1, C.halfW - .1); }
   const sw = p.swing;
   if (sw.t >= 0) {
     const su = sw.t / sw.dur;
@@ -210,7 +218,7 @@ function updateHuman(dt) {
         sw.hold -= dt; sw.t = sw.dur * .3 - dt;
         const passed = ball.state !== 'live' || (p.team === 0 ? ball.pos.z > p.pos.z + .8 : ball.pos.z < p.pos.z - .8);
         if (passed) sw.hold = 0;
-        if (sw.hold <= 0) { sw.hold = 0; sw.hit = true; feedback('SMASH', 'FORA DO ALCANCE', null); }
+        if (sw.hold <= 0) { sw.hold = 0; sw.hit = true; ctlFeedback(c, 'SMASH', 'FORA DO ALCANCE', null); }
       }
     }
     const contact = fire || (overhead
@@ -220,7 +228,7 @@ function updateHuman(dt) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
       const r = doHit(p, ps.type, ps.q, true, ps.mod);
-      feedback(r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
+      ctlFeedback(c, r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
     } else if (!sw.hit && !p.pendingServe && S.mode === 'rally' && contact) {
       let q = hitQuality(p, sw.type), mod = {};
       if (sw.meter) {
@@ -255,13 +263,13 @@ function updateHuman(dt) {
       if (sw.lob) mod.lobPower = sw.lob.power;
       const r = doHit(p, sw.type, q, false, mod);
       if (S.drill) S.drill.lastR = Object.assign({}, r, { meterRes: sw.meter ? sw.meter.res : null });
-      if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r);
+      if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r, c);
       // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)
       const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .86 ? 'MATADORA' : r.curtaK >= .5 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
-      feedback(r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
+      ctlFeedback(c, r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
     }
     if (p.isHuman && !sw.hit && !sw.meter && sw.t > sw.dur * .55 && sw.t < sw.dur * .8 && canHit(p, sw.type) && waitCloser(p, su, dt)) sw.t -= dt * .8; // segura a raquete armada
-    sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { feedback('SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
+    sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { ctlFeedback(c, 'SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
   }
 }
 function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z) < 3.2); }
@@ -380,4 +388,4 @@ function updateAI(p, dt) {
   }
 }
 
-export { tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
+export { localInput, tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };

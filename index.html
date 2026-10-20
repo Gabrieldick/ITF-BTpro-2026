@@ -135,6 +135,7 @@
       <button class="ghost" id="btnChamp">Campeonato</button>
       <button class="ghost" id="btnCareer">Carreira</button>
       <button class="ghost" id="btnDrill">Treino</button>
+      <button class="ghost" id="btnOnline">Online</button>
     </div>
   </div>
 </div>
@@ -246,6 +247,35 @@
     </div>
   </div>
 </div>
+<!-- Online -->
+<div id="online" class="overlay" hidden>
+  <div class="card" style="width:min(100%,520px)">
+    <div><div class="eyebrow">Jogue com um amigo pela internet</div><h2 class="title" style="font-size:44px">ONLINE</h2></div>
+    <p id="onMsg" class="cr-msg" hidden></p>
+    <div id="onStart" style="display:grid;gap:14px">
+      <p class="lede">Um de vocês cria a sala e passa o código; o outro entra com ele. Quem cria a sala roda a partida e escolhe o modo. Os jogadores e a dificuldade vêm do menu principal de quem criou; quem entra joga com o personagem marcado como “Você” no menu dele.</p>
+      <div class="cta-row"><button class="cta" id="onCreate">Criar sala</button></div>
+      <div class="cta-row"><input id="onCode" class="on-code-in" maxlength="5" placeholder="CÓDIGO" autocomplete="off" spellcheck="false" aria-label="Código da sala"><button class="cta" id="onJoin">Entrar na sala</button></div>
+      <div class="cta-row"><button class="ghost" id="onBack">Voltar</button></div>
+    </div>
+    <div id="onHost" hidden style="display:grid;gap:14px">
+      <div><p class="section-label">Código da sala</p><div class="cta-row"><div class="on-code" id="onCodeShow">-----</div><button class="ghost sm" id="onCopy">Copiar link</button></div></div>
+      <p id="onHostStatus" class="on-status">Esperando seu amigo entrar com o código…</p>
+      <fieldset class="seg"><legend>Modo</legend><div class="pills">
+        <input type="radio" name="onMode" id="onModeC" value="coop" checked><label for="onModeC">Dupla · vocês dois contra a CPU</label>
+        <input type="radio" name="onMode" id="onMode1" value="1x1"><label for="onMode1">Simples · 1 contra 1</label>
+      </div></fieldset>
+      <div class="cta-row"><button class="cta" id="onPlay" disabled>Começar partida</button><button class="ghost" id="onLeaveH">Fechar sala</button></div>
+    </div>
+    <div id="onGuest" hidden style="display:grid;gap:14px">
+      <p id="onGuestStatus" class="on-status">Conectado.</p>
+      <p class="lede">Esperando quem criou a sala começar a partida.</p>
+      <div class="cta-row"><button class="ghost" id="onLeaveG">Sair da sala</button></div>
+    </div>
+    <p class="keys">Conexão direta entre os navegadores (WebRTC). Alguns roteadores e redes de empresa bloqueiam; se não conectar, tente outra rede.</p>
+  </div>
+</div>
+
 <!-- Pausa -->
 <div id="pause" class="overlay" hidden>
   <div class="card" style="width:min(100%,420px)">

@@ -7,5 +7,5 @@ import { preloadAssets } from './assets';
 THREE.ColorManagement.enabled = false;
 
 // Carrega modelos, texturas e som antes de montar a cena; depois executa os módulos do jogo,
-// na mesma ordem do arquivo original (cada módulo importa o anterior).
-preloadAssets().then(() => import('./game/19-loop'));
+// na mesma ordem do arquivo original (cada módulo importa o anterior; o último é o do modo online).
+preloadAssets().then(() => import('./game/20-online'));

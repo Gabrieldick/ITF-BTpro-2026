@@ -10,7 +10,29 @@ Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e
 - **Partida rápida:** simples ou dupla, escolhendo atletas do circuito (overall, atributos, altura e estilo de jogo).
 - **Campeonato:** chave de 8 duplas (masculino, feminino ou misto) com as duplas reais da temporada ou a sua dupla montada.
 - **Treino:** desafios com lançador (curtas no verde, defenda os smashes, smash perfeito).
+- **Online:** jogue com um amigo pela internet, em dupla contra a CPU ou um contra o outro (veja abaixo).
 - **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ~3.800 atletas fictícios + astros reais, ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
+
+## Jogar online com um amigo
+
+Não precisa de conta nem de servidor: os dois navegadores se conectam direto (WebRTC, pela biblioteca [PeerJS](https://peerjs.com/); o servidor público gratuito do PeerJS só apresenta um navegador ao outro).
+
+1. Um de vocês abre o jogo, ajusta no menu os jogadores e a dificuldade e clica em **Online → Criar sala**. Aparece um código de 5 letras (e o botão **Copiar link**).
+2. O outro abre o jogo, clica em **Online**, digita o código e clica em **Entrar na sala** (ou só abre o link copiado).
+3. Quem criou a sala escolhe o modo e clica em **Começar partida**:
+   - **Dupla:** vocês dois no mesmo time contra a CPU (quem entrou joga como a dupla de quem criou).
+   - **Simples · 1 contra 1:** um contra o outro. Cada um vê a própria quadra do lado de baixo.
+4. Quem entrou joga com o personagem marcado como **Você** no menu dele (se não for repetido). Os controles são os mesmos do jogo normal.
+
+Como funciona: quem cria a sala roda a partida inteira (física, CPU e placar), como no jogo normal; o outro manda só as teclas apertadas e recebe o estado da partida cerca de 30 vezes por segundo. No fim da partida, **Jogar de novo** (de quem criou) começa outra; **Menu** volta para a sala. Se a conexão cair, os dois voltam para a tela do online com um aviso; a sala de quem criou continua aberta com o mesmo código.
+
+Limites do protótipo:
+- A latência pesa para quem entrou: ele vê a bola um pouco atrasada (o chip *Online · NN ms* no canto mostra o tempo de ida e volta). O jogo desconta esse atraso nas barras de força e no tempo do golpe, mas com mais de ~150 ms fica mais difícil.
+- A partida não pausa (Esc só abre o menu por cima). Se quem criou a sala trocar de aba ou minimizar, a partida congela para os dois.
+- Alguns roteadores e redes de empresa/universidade bloqueiam a conexão direta (não há servidor TURN). Se não conectar, tente outra rede (por exemplo, o 4G do celular).
+- Só duas pessoas por sala (2 contra 2 com quatro humanos ainda não existe).
+
+Para testar sozinho, abra o jogo em duas janelas lado a lado (abas escondidas param a animação do navegador).
 
 ## Saves da carreira
 
@@ -63,7 +85,7 @@ A cada push na `main`, o GitHub Actions compila e publica o site (`.github/workf
 | `src/assets.ts` | lista e carregamento de modelos, texturas e som |
 | `src/state.ts` | estado compartilhado entre módulos |
 | `src/styles.css` | estilos da interface |
-| `src/game/` | o jogo em módulos, na ordem de execução: base, estado, render, cenário, poses, atletas, modelos, áudio, interface, física, mira, controles, campeonato, carreira, IA, bola, animação e laço principal |
+| `src/game/` | o jogo em módulos, na ordem de execução: base, estado, render, cenário, poses, atletas, modelos, áudio, interface, física, mira, controles, campeonato, carreira, IA, bola, animação, laço principal e modo online (`20-online.ts`) |
 | `public/assets/` | recursos usados pelo jogo (modelos convertidos, texturas, som) |
 | `models/`, `Sounds/` | arquivos originais baixados (fonte dos recursos) |
 | `saves/` | saves de carreira exportados (o jogo lê esta pasta pelo GitHub) |

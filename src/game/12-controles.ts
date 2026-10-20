@@ -3,7 +3,7 @@
 import './11-mira';
 import { canHit } from './10-fisica';
 import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall } from './00-base';
-import { S, isMobile } from './01-estado';
+import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -17,7 +17,15 @@ import { sideOf } from './18-animacao';
 // ---------- Controles ----------
 const keys = {};
 const touch = { x: 0, z: 0, id: null };
-const MTR = { active: false, kind: null, type: null, t: 0, v: 0, rate: 0, fill: .75, center: .78, half: .068, armedTap: false, showT: 0 };
+const newMeter = () => ({ active: false, kind: null, type: null, t: 0, v: 0, rate: 0, fill: .75, center: .78, half: .068, armedTap: false, showT: 0 });
+const MTR = newMeter();
+human.mtr = MTR;
+// controle de um jogador humano: o local (teclado/toque, barra na tela) ou um remoto do modo online
+// (entradas chegam pela rede; barra e mensagens vão para a fila "out" e são enviadas ao convidado)
+let LOCAL = null;
+const localCtl = () => LOCAL || (LOCAL = { p: human, m: MTR, plan: humanPlan, remote: false });
+function makeRemoteCtl(p) { const m = newMeter(); p.mtr = m; return { p, m, plan: { id: -1, plan: null }, remote: true, ix: 0, iz: 0, assistMove: false, lag: 0, out: [] }; }
+function ctlFeedback(c, main, small, kind) { if (c && c.remote) c.out.push(['fb', main, small || null, kind || null]); else feedback(main, small, kind); }
 const ZONE = { facil: .095, medio: .068, dificil: .048 };
 const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE', voleio: 'VOLEIO' };
 const LOB_MAX = 1.25;
@@ -33,29 +41,40 @@ function smashIdealPoint() {
   }
   return null;
 }
-function startMeter(kind, type) {
-  Object.assign(MTR, { active: true, kind, type, t: 0, v: 0, rate: 0, tr: null, seen: false, armedTap: false, showT: 0 });
+function startMeter(kind, type, c = localCtl()) {
+  const M = c.m, p = c.p;
+  Object.assign(M, { active: true, kind, type, t: 0, v: 0, rate: 0, tr: null, seen: false, armedTap: false, showT: 0 });
   const half = ZONE[S.settings.diff];
   if (kind === 'smash') {
     // a faixa verde fica parada; a velocidade da barra se ajusta para o verde coincidir com a chegada da bola
-    MTR.fill = .75; MTR.half = half; MTR.center = .78; human.charging = true; MTR.ideal = smashIdealPoint();
+    M.fill = .75; M.half = half; M.center = .78; p.charging = true; M.ideal = smashIdealPoint();
   }
-  else if (kind === 'lob') { MTR.fill = .45; MTR.center = -1; MTR.half = 0; human.charging = true; }
-  else { MTR.fill = .9; MTR.center = TOSS_T / .9; MTR.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
+  else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; p.charging = true; }
+  else { M.fill = .9; M.center = TOSS_T / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
-  if (kind === 'smash') MTR.half *= smashZoneScale() * clamp((human.char.a.smash - 45) / 50, .25, 1.1) * (1 - .35 * clamp((Math.abs(human.pos.z) - 3.5) / 3.5, 0, 1));
-  if (kind === 'serve') MTR.half *= clamp((human.char.a.saque - 45) / 50, .25, 1.15);
-  { const exp = clamp((overall(human.char.a) - 60) / 35, 0, 1); MTR.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === 0 ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
+  if (kind === 'smash') M.half *= smashZoneScale() * clamp((p.char.a.smash - 45) / 50, .25, 1.1) * (1 - .35 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
+  if (kind === 'serve') M.half *= clamp((p.char.a.saque - 45) / 50, .25, 1.15);
+  { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
+  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half]); else meterDom(M);
+}
+// desenha a barra recém-armada (local, ou do convidado com os dados vindos do anfitrião)
+function meterDom(M) {
+  const kind = M.kind;
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
   if (kind === 'lob') { el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; el.mZone.style.background = ''; }
   else {
     // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
-    const c = MTR.center, h = MTR.half, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
+    const c = M.center, h = M.half, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
     el.mZone.style.bottom = '0'; el.mZone.style.height = '100%';
     el.mZone.style.background = 'linear-gradient(0deg, #e5484d 0%, #e5484d ' + P(c - h - .2) + ', #ff8a1f ' + P(c - h - .1) + ', #ffd23f ' + P(c - h - .035) + ', #4fd18b ' + P(c - h) + ', #4fd18b ' + P(c + h) + ', #ffd23f ' + P(c + h + .035) + ', #ff8a1f ' + P(c + h + .1) + ', #e5484d ' + P(c + h + .2) + ', #e5484d 100%)';
   }
   el.mFill.style.height = '0%';
+}
+// resultado da barra (palavra e cor); no remoto vai para o convidado
+function meterResult(c, cls, word, fillPct) {
+  if (c.remote) { c.out.push(['mr', cls, word, fillPct]); return; }
+  el.meter.className = cls; el.mRes.textContent = word; el.mFill.style.height = fillPct + '%';
 }
 const _ts = new V3();
 function timeToSmash(p) {
@@ -85,8 +104,7 @@ function timeToReach(p) {
   return null;
 }
 // mergulho: bola baixa que vai cair um pouco além do alcance → o jogador se joga nela
-function tryDive(type) {
-  const p = human;
+function tryDive(type, p = human) {
   if (ball.state !== 'live' || S.lastTeam === p.team || canHit(p, type)) return;
   // se a bola vai passar ao alcance normal em algum momento, não precisa mergulhar
   { const q = ball.pos.clone(), w = ball.vel.clone();
@@ -113,36 +131,40 @@ function contactY(p) {
   }
   return ball.pos.y;
 }
-function cancelMeter() { MTR.active = false; human.charging = false; el.meter.hidden = true; }
-function releaseMeter() {
-  if (!MTR.active) return;
-  const v = MTR.v, diff = v - MTR.center;
-  if (MTR.kind === 'lob') {
+function cancelMeter(c = localCtl()) {
+  c.m.active = false; c.p.charging = false;
+  if (c.remote) c.out.push(['mh']); else el.meter.hidden = true;
+}
+function releaseMeter(c = localCtl()) {
+  const M = c.m, p = c.p;
+  if (!M.active) return;
+  // online: o convidado vê a barra atrasada e o aviso de soltar chega atrasado; desconta esse atraso
+  if (c.remote && c.lag > 0) M.v = Math.max(0, M.v - (M.kind === 'smash' ? M.rate : 1 / M.fill) * c.lag);
+  const v = M.v, diff = v - M.center;
+  if (M.kind === 'lob') {
     const lv = Math.min(v, LOB_MAX);
     const word = lv < .35 ? 'BAIXO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
-    MTR.active = false; MTR.showT = .9;
-    el.meter.className = 'lobm ' + (lv < .35 ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde');
-    el.mRes.textContent = word; el.mFill.style.height = (lv / LOB_MAX * 100) + '%';
-    human.charging = false;
-    const sw = human.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word }; sw.side = sideOf(human); sw.var = '';
+    M.active = false; M.showT = .9;
+    meterResult(c, 'lobm ' + (lv < .35 ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LOB_MAX * 100);
+    p.charging = false;
+    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word }; sw.side = sideOf(p); sw.var = '';
     return;
   }
-  let res = Math.abs(diff) <= MTR.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
+  let res = Math.abs(diff) <= M.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
   // amt: 0 na borda do verde (amarelo) até 1 no começo do vermelho; a penalidade segue as cores da faixa
-  const amt = clamp((Math.abs(diff) - MTR.half) / .2, 0, 1);
+  const amt = clamp((Math.abs(diff) - M.half) / .2, 0, 1);
   // smash pouco carregado numa bola a meia altura é um voleio (golpe curto e rápido), não um smash ruim
-  if (MTR.kind === 'smash' && res === 'cedo' && contactY(human) < 2.05) res = 'voleio';
+  if (M.kind === 'smash' && res === 'cedo' && contactY(p) < 2.05) res = 'voleio';
   const word = res === 'perfeito' || res === 'voleio' ? RES_WORD[res] : (amt < .2 ? 'UM POUCO ' : amt > .85 ? 'MUITO ' : '') + RES_WORD[res];
-  MTR.active = false; MTR.showT = .9;
-  el.meter.className = res + (res !== 'perfeito' && amt < .2 ? ' quase' : ''); el.mRes.textContent = word;
-  el.mFill.style.height = (clamp(v, 0, 1) * 100) + '%';
-  if (MTR.kind === 'smash') {
-    human.charging = false;
-    const sw = human.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: MTR.ideal }; sw.hold = 0; sw.var = swingVar('smash', ball.pos.y, human);
-    if (res !== 'voleio' && ball.state === 'live' && ball.pos.y > 1.6) startJump(human, .42, .3);
-  } else serveRelease(res, amt, word);
+  M.active = false; M.showT = .9;
+  meterResult(c, res + (res !== 'perfeito' && amt < .2 ? ' quase' : ''), word, clamp(v, 0, 1) * 100);
+  if (M.kind === 'smash') {
+    p.charging = false;
+    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: M.ideal }; sw.hold = 0; sw.var = swingVar('smash', ball.pos.y, p);
+    if (res !== 'voleio' && ball.state === 'live' && ball.pos.y > 1.6) startJump(p, .42, .3);
+  } else serveRelease(res, amt, word, p);
 }
-function serveRelease(res, amt, word) {
+function serveRelease(res, amt, word, human) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
   const svN = clamp(human.char.a.saque - 50, 0, 45) / 45; // atributo de saque
@@ -153,29 +175,63 @@ function serveRelease(res, amt, word) {
   human.pendingServe = { type, q, mod, res, word };
   const sw = human.swing; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = null;
 }
-function pressShot(type) {
-  ac();
-  const b = shotBtns[type]; if (b) b.classList.add('press');
-  if (S.paused) return;
-  if (MTR.active && MTR.kind === 'serve' && MTR.armedTap) { releaseMeter(); return; }
-  if (S.mode === 'serve' && S.serverPlayer === human) { startToss(human, type); startMeter('serve', type); return; }
+function pressShot(type, c) {
+  if (!c) {
+    ac();
+    const b = shotBtns[type]; if (b) b.classList.add('press');
+    if (NET.role === 'guest') { if (NET.shot) NET.shot(type, true); return; } // convidado: o anfitrião é quem bate
+    if (S.paused) return;
+    c = localCtl();
+  }
+  const M = c.m, p = c.p, plan = c.plan;
+  if (M.active && M.kind === 'serve' && M.armedTap) { releaseMeter(c); return; }
+  if (S.mode === 'serve' && S.serverPlayer === p) { startToss(p, type); startMeter('serve', type, c); return; }
   if (S.mode === 'rally' || S.mode === 'toss') {
-    if (MTR.active && (MTR.kind === 'smash' || MTR.kind === 'lob')) cancelMeter();
-    const sw = human.swing;
+    if (M.active && (M.kind === 'smash' || M.kind === 'lob')) cancelMeter(c);
+    const sw = p.swing;
     if (sw.t >= 0 && sw.t < sw.dur * .8) return;
-    if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type); return; }
-    if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !human.dive) tryDive(type);
+    if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
+    if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !p.dive) tryDive(type, p);
     sw.t = 0; sw.type = type; sw.dur = type === 'curta' ? .5 : SWING_DUR; sw.hit = false; sw.meter = null; sw.lob = null;
-    sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== human.team ? timeToReach(human) : null; // para o timing: quanto faltava a bola chegar
-    sw.side = sideOf(human, humanPlan.id === S.hitId && humanPlan.plan ? humanPlan.plan.pt : null);
-    sw.var = swingVar(type, humanPlan.id === S.hitId && humanPlan.plan ? humanPlan.plan.pt.y : ball.pos.y, human);
+    sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team ? timeToReach(p) : null; // para o timing: quanto faltava a bola chegar
+    if (sw.pressT !== null && c.remote) sw.pressT += c.lag; // o convidado apertou vendo a bola um pouco atrasada
+    sw.side = sideOf(p, plan.id === S.hitId && plan.plan ? plan.plan.pt : null);
+    sw.var = swingVar(type, plan.id === S.hitId && plan.plan ? plan.plan.pt.y : ball.pos.y, p);
   }
 }
-function releaseShot(type) {
-  const b = shotBtns[type]; if (b) b.classList.remove('press');
-  if (!MTR.active) return;
-  if (MTR.kind === 'serve') { if (MTR.t < .15) { MTR.armedTap = true; return; } releaseMeter(); }
-  else if (type === MTR.type) releaseMeter();
+function releaseShot(type, c) {
+  if (!c) {
+    const b = shotBtns[type]; if (b) b.classList.remove('press');
+    if (NET.role === 'guest') { if (NET.shot) NET.shot(type, false); return; }
+    c = localCtl();
+  }
+  const M = c.m;
+  if (!M.active) return;
+  if (M.kind === 'serve') { if (M.t < .15) { M.armedTap = true; return; } releaseMeter(c); }
+  else if (type === M.type) releaseMeter(c);
+}
+// barra de força andando a cada passo da simulação (de cada jogador humano)
+function meterStep(c, dt) {
+  const M = c.m;
+  if (M.active) {
+    M.t += dt;
+    if (M.kind === 'smash') {
+      // a barra chega no verde quando a bola chega no ponto de smash; bola alta = barra lenta
+      let tr = timeToSmash(c.p);
+      if (tr === null && M.tr != null && M.tr > dt) tr = M.tr - dt; // alcance some por um instante (correndo): mantém a estimativa
+      M.tr = tr;
+      if (tr !== null) { M.seen = true; if (M.v < M.center) M.rate = clamp((M.center - M.v) / Math.max(tr - .03, .04), .06, 1 / .25); }
+      else if (M.seen) M.rate = Math.max(M.rate, 1);
+      else M.rate = Math.max(0, M.center * .55 - M.v) * 1.4; // bola ainda fora de alcance: a barra sobe devagar e espera (se a bola já passou, segue até estourar)
+      M.v += M.rate * dt;
+    } else M.v = M.t / M.fill;
+    const v = M.v;
+    if ((M.kind === 'smash' || M.kind === 'lob') && S.mode !== 'rally') cancelMeter(c);
+    else if (M.kind === 'smash' && v >= 1.15) releaseMeter(c);
+    else if (M.kind === 'lob' && v >= LOB_MAX) releaseMeter(c);
+    else if (M.kind === 'serve' && S.mode !== 'toss') cancelMeter(c);
+    else if (M.kind === 'serve' && ball.vel.y < 0 && ball.pos.y < 1.75) releaseMeter(c);
+  } else if (!c.remote && M.showT > 0) { M.showT -= dt; if (M.showT <= 0) el.meter.hidden = true; }
 }
 const SHOT_KEYS = { j: 'smash', '1': 'smash', k: 'lob', '2': 'lob', l: 'curta', '3': 'curta', ' ': 'defesa', '4': 'defesa' };
 addEventListener('keydown', e => {
@@ -197,8 +253,8 @@ addEventListener('keydown', e => {
   else if (k === 'v') { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
 });
 addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (SHOT_KEYS[k]) releaseShot(SHOT_KEYS[k]); });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPlay()) setPaused(true); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay()) setPaused(true); });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPlay() && !NET.role) setPaused(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay() && !NET.role) setPaused(true); });
 const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
 Object.entries(shotBtns).forEach(([type, b]) => {
   b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) {} pressShot(type); });
@@ -229,9 +285,11 @@ function toggleSound() {
   S.muted = !S.muted; el.btnSnd.firstChild.textContent = S.muted ? 'Som desligado' : 'Som ligado';
   if (surf) surf.g.gain.value = 0;
 }
-function setPaused(v) { if (!inPlay() && v) return; S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
-function togglePause() { if (!inPlay()) return; setPaused(!S.paused); }
-function saveSettings() { try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); } catch (e) {} }
+// online: a partida não para (o outro jogador continua); a pausa só abre o menu por cima
+function setPaused(v) { if (!inPlay() && v) return; if (NET.role) { S.paused = false; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } return; } S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
+function togglePause() { if (!inPlay()) return; setPaused(NET.role ? el.pause.hidden : !S.paused); }
+function saveSettings() { if (NET.role) return; // online: as escolhas da sala não sobrescrevem as suas
+  try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); } catch (e) {} }
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
@@ -289,4 +347,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
