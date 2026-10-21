@@ -222,6 +222,17 @@ function doHit(p, type, q, isServe, mod) {
       if (t <= 0 || y >= H || spec.gk >= 3.2) break;
       spec.gk *= 1.06;
     }
+  } else if (finisher && !pop && !wild) {
+    // finalização: em vez de subir a bola para passar a rede (e perder a velocidade), bate com efeito para baixo:
+    // a bola passa a rede e despenca (gravidade maior), até ~2,8× — só quando a linha reta não passaria
+    const d = Math.hypot(tgt.x - ball.pos.x, tgt.z - ball.pos.z), T0 = Math.max(.28, d / spec.speed), tn = Math.abs(ball.pos.z) / (d / T0);
+    let gk = spec.gk || 1.35;
+    for (let i = 0; i < 24 && gk < 2.8; i++) {
+      const vy = (tgt.y - ball.pos.y + .5 * G * gk * T0 * T0) / T0, yn = ball.pos.y + vy * tn - .5 * G * gk * tn * tn;
+      if (yn >= C.netH + C.ballR + (spec.margin || .1)) break;
+      gk *= 1.07;
+    }
+    spec.gk = Math.min(gk, 2.8); v = solveShot(ball.pos, tgt, spec);
   } else v = solveShot(ball.pos, tgt, spec);
   let mis = false;
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
