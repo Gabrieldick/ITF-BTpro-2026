@@ -13,7 +13,7 @@ import { $, dupla, el, feedback, isTouch, shotBtns } from './09-interface';
 import { startJump, startToss } from './11-mira';
 import { adjustFov, rkInfo, startFromMenu, syncAssistButtons, toggleAssist } from './15-carreira-telas';
 import { humanPlan, playStyleOf } from './16-ia';
-import { sideOf } from './18-animacao';
+import { CAM3, sideOf } from './18-animacao';
 // ---------- Controles ----------
 const keys = {};
 const touch = { x: 0, z: 0, id: null };
@@ -249,7 +249,7 @@ addEventListener('keydown', e => {
   else if (k === 'c') toggleCam();
   else if (k === 'p' || k === 'escape') togglePause();
   else if (k === 'm') toggleSound();
-  else if (k === '-' || k === '=' || k === '+') adjustFov(k === '-' ? -5 : 5);
+  else if (k === '-' || k === '=' || k === '+') { if (S.settings.cam === '1p') adjustFov(k === '-' ? -5 : 5); else adjustCamDist(k === '-' ? -10 : 10); }
   else if (k === 'b') toggleAssist('assistMove');
   else if (k === 'n') toggleAssist('assistMark');
   else if (k === 'v') { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
@@ -278,11 +278,28 @@ if (isMobile) enableTouch();
 addEventListener('touchstart', () => { if (!isTouch()) enableTouch(); }, { passive: true, once: true });
 function applyCam() {
   const fp = S.settings.cam === '1p';
-  el.btnCam.firstChild.textContent = fp ? '1ª pessoa' : '3ª pessoa';
+  el.btnCam.firstChild.textContent = fp ? '1ª pessoa' : '3ª · ' + (CAM3[S.settings.cam3] || CAM3.padrao).nome;
   camera.fov = fp ? (S.settings.fovFp || 72) : (dupla() ? 58 : 55); camera.updateProjectionMatrix();
   const r = $('fovFp'); if (r) { r.value = S.settings.fovFp || 72; $('fovFpV').textContent = r.value + '°'; }
+  const cd = $('camDist'); if (cd) { cd.value = S.settings.camDist || 100; $('camDistV').textContent = cd.value + '%'; }
 }
-function toggleCam() { S.settings.cam = S.settings.cam === '1p' ? '3p' : '1p'; applyCam(); saveSettings(); }
+// C (e o botão) passa por: 3ª padrão → 3ª alta → 3ª perto → 1ª pessoa → ...
+const CAM_ORDER = ['padrao', 'alta', 'perto', '1p'];
+function toggleCam() {
+  const cur = S.settings.cam === '1p' ? '1p' : (CAM3[S.settings.cam3] ? S.settings.cam3 : 'padrao');
+  const nx = CAM_ORDER[(CAM_ORDER.indexOf(cur) + 1) % CAM_ORDER.length];
+  if (nx === '1p') S.settings.cam = '1p'; else { S.settings.cam = '3p'; S.settings.cam3 = nx; }
+  applyCam(); saveSettings(); syncCamMenu();
+  feedback('CÂMERA', nx === '1p' ? '1ª PESSOA' : '3ª PESSOA · ' + CAM3[nx].nome.toUpperCase(), null);
+}
+function adjustCamDist(d) {
+  S.settings.camDist = clamp((S.settings.camDist || 100) + d, 60, 170); saveSettings(); applyCam();
+  feedback('DISTÂNCIA ' + S.settings.camDist + '%', '3ª PESSOA', null);
+}
+function syncCamMenu() {
+  const a = document.querySelector('input[name=cam][value="' + S.settings.cam + '"]'); if (a) a.checked = true;
+  const b = document.querySelector('input[name=cam3][value="' + (S.settings.cam3 || 'padrao') + '"]'); if (b) b.checked = true;
+}
 function toggleSound() {
   S.muted = !S.muted; el.btnSnd.firstChild.textContent = S.muted ? 'Som desligado' : 'Som ligado';
   if (surf) surf.g.gain.value = 0;
@@ -294,13 +311,13 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
   try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); } catch (e) {} }
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
-  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
+  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.tactic = $('tacticSel').value || 'normal';
   saveSettings();
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
-  set('mode', S.settings.mode); set('cam', S.settings.cam); set('diff', S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
+  set('mode', S.settings.mode); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
   $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('tacticSel').value = S.settings.tactic || 'normal';
   renderRoster();
 }

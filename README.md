@@ -53,8 +53,8 @@ O jogo guarda várias carreiras no navegador (Carreira → **Carreiras**). Para 
 | K (segurar) | lob, com barra de força |
 | L | curta |
 | Espaço | defesa |
-| C | 1ª / 3ª pessoa |
-| − / = | FOV da 1ª pessoa |
+| C | troca a câmera: 3ª pessoa padrão, alta (TV), perto, 1ª pessoa |
+| − / = | distância da câmera na 3ª pessoa; FOV na 1ª pessoa |
 | B / N / V | assistências: seguir a bola / onde a bola cai / flecha de mira |
 | F | mostra o contador de FPS e a resolução |
 | L ou Espaço numa bola baixa fora do alcance | mergulho |

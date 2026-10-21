@@ -364,6 +364,7 @@ function adjustFov(d) {
   S.settings.fovFp = clamp((S.settings.fovFp || 72) + d, 55, 110); saveSettings(); applyCam();
   feedback('FOV ' + S.settings.fovFp + '°', S.settings.cam === '1p' ? '1ª PESSOA' : 'VALE NA 1ª PESSOA', null);
 }
+$('camDist').addEventListener('input', e => { S.settings.camDist = +e.target.value; $('camDistV').textContent = e.target.value + '%'; saveSettings(); });
 $('fovFp').addEventListener('input', e => { S.settings.fovFp = +e.target.value; $('fovFpV').textContent = e.target.value + '°'; saveSettings(); applyCam(); });
 function toggleAssist(k) {
   S.settings[k] = !S.settings[k]; saveSettings(); syncAssistButtons();

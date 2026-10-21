@@ -254,6 +254,13 @@ function setFpBody(on) {
   (m.fpHide || []).forEach(o => { o.visible = !on; });
 }
 const _eye = new V3();
+// ângulos da 3ª pessoa ([simples, dupla]): altura, recuo, quanto segue o jogador de lado, para onde olha.
+// zf: quanto a câmera acompanha a profundidade do jogador (1 = colada nele; menos = mais fixa, como na TV)
+const CAM3 = {
+  padrao: { nome: 'Padrão', h: [3.4, 3.7], back: [5.8, 6.4], fx: [.75, .55], lx: [.35, .2], ly: 1.0, lz: -6.5, zf: 1 },
+  alta: { nome: 'Alta (TV)', h: [6.4, 7.0], back: [7.6, 8.4], fx: [.4, .3], lx: [.15, .1], ly: .2, lz: -5.5, zf: .55 },
+  perto: { nome: 'Perto', h: [2.6, 2.75], back: [3.9, 4.3], fx: [.9, .85], lx: [.5, .4], ly: .85, lz: -6, zf: 1 },
+};
 function updateCamera(dt) {
   const k = 1 - Math.exp(-dt * 7);
   const fp = S.settings.cam === '1p' && S.mode !== 'menu';
@@ -269,9 +276,10 @@ function updateCamera(dt) {
     tmpA.set(Math.sin(S.orbit) * 12, 3.2 + Math.sin(S.orbit * .7) * 1.2, Math.cos(S.orbit) * 12);
     camPos.lerp(tmpA, .04); tmpB.set(0, 1.2, 0); camLook.lerp(tmpB, .04);
   } else if (!fp) {
-    const d = dupla();
-    tmpA.set(human.pos.x * (d ? .55 : .75), d ? 3.7 : 3.4, human.pos.z + (d ? 6.4 : 5.8)); camPos.lerp(tmpA, k);
-    tmpB.set(human.pos.x * (d ? .2 : .35), 1.0, human.pos.z - 6.5); camLook.lerp(tmpB, k);
+    const d = dupla() ? 1 : 0, V = CAM3[S.settings.cam3] || CAM3.padrao, dk = (S.settings.camDist || 100) / 100;
+    const bz = lerp(6, human.pos.z, V.zf); // profundidade que a câmera acompanha
+    tmpA.set(human.pos.x * V.fx[d], V.ly + (V.h[d] - V.ly) * dk, bz + V.back[d] * dk); camPos.lerp(tmpA, k);
+    tmpB.set(human.pos.x * V.lx[d], V.ly, bz + V.lz); camLook.lerp(tmpB, k);
   } else {
     const bob = Math.abs(Math.sin(human.gait)) * .025 * Math.min(1, Math.hypot(human.vel.x, human.vel.z) / 4);
     if (fpBodyOn) { human.model.headG.localToWorld(_eye.set(-.04, .11, -.06)); camPos.copy(_eye); }
@@ -406,4 +414,4 @@ function updateVisuals(dt) {
   el.reach.textContent = showMate ? 'BOLA DA PARCEIRA' : ready && high ? 'BOLA ALTA · SMASH' : ready ? 'NO ALCANCE' : 'SÓ DEFESA ALCANÇA';
 }
 
-export { READY_FP, sideOf, updateCamera, updateVisuals };
+export { CAM3, READY_FP, sideOf, updateCamera, updateVisuals };

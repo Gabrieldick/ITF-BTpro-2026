@@ -193,6 +193,7 @@ function act(mid, m) {
     room.cpu[m[1]] = m[2];
   }
   if (mid === 'host' && m[0] === 'kind' && !room.playing) room.kind = m[1] === 'champ' ? 'champ' : 'match';
+  if (mid === 'host' && m[0] === 'games' && !room.playing) { S.settings.games = +m[1] === 6 ? 6 : 4; const r = document.querySelector('input[name=len][value="' + S.settings.games + '"]'); if (r) r.checked = true; } // duração escolhida na sala (o menu em passos não passa pela escolha de games)
   if (mid === 'host' && m[0] === 'mode' && !room.playing && !(room.champ && room.champ.champion === null)) room.mode = m[1] === 'simples' ? 'simples' : 'dupla';
   fixCpu(); broadcast();
 }
@@ -728,6 +729,7 @@ function renderRoom(force) {
   document.querySelectorAll('input[name=onKind]').forEach(r => { r.checked = r.value === L.kind; r.disabled = !host || L.playing; });
   const champRunning = L.champ && L.champ.champion === null;
   document.querySelectorAll('input[name=onMode]').forEach(r => { r.checked = r.value === L.mode; r.disabled = !host || L.playing || (L.kind === 'champ' && champRunning); });
+  document.querySelectorAll('input[name=onGames]').forEach(r => { r.checked = +r.value === L.games; r.disabled = !host || L.playing; });
   $('onMatch').hidden = L.kind !== 'match'; $('onChamp').hidden = L.kind !== 'champ';
   if (L.kind === 'match') renderSeats(L, me, host, force); else renderChamp(L, me, host, force);
   const play = $('onPlay');
@@ -788,6 +790,7 @@ $('onCode').addEventListener('input', e => { e.target.value = e.target.value.toU
 $('onPick').addEventListener('change', e => doAct(['pick', e.target.value]));
 document.querySelectorAll('input[name=onKind]').forEach(r => r.addEventListener('change', () => doAct(['kind', r.value])));
 document.querySelectorAll('input[name=onMode]').forEach(r => r.addEventListener('change', () => doAct(['mode', r.value])));
+document.querySelectorAll('input[name=onGames]').forEach(r => r.addEventListener('change', () => doAct(['games', r.value])));
 $('onPlay').addEventListener('click', () => { ac(); if (NET.role === 'host') hostPlay(); });
 $('onLeave').addEventListener('click', () => { leave(''); closeOnline(); });
 $('onCopy').addEventListener('click', () => {

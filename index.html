@@ -115,7 +115,12 @@
       <fieldset class="seg"><legend>Câmera</legend><div class="pills">
         <input type="radio" name="cam" id="cam3" value="3p" checked><label for="cam3">3ª pessoa</label>
         <input type="radio" name="cam" id="cam1" value="1p"><label for="cam1">1ª pessoa</label>
-      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">FOV da 1ª pessoa <input type="range" id="fovFp" min="55" max="110" step="1" value="72" style="flex:1"> <span id="fovFpV">72°</span></label></fieldset>
+      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">FOV da 1ª pessoa <input type="range" id="fovFp" min="55" max="110" step="1" value="72" style="flex:1"> <span id="fovFpV">72°</span></label>
+        <p class="cam3-lbl">Ângulo da 3ª pessoa <kbd>C</kbd> troca</p><div class="pills">
+        <input type="radio" name="cam3" id="c3pad" value="padrao" checked><label for="c3pad">Padrão</label>
+        <input type="radio" name="cam3" id="c3alt" value="alta"><label for="c3alt">Alta (TV)</label>
+        <input type="radio" name="cam3" id="c3per" value="perto"><label for="c3per">Perto</label>
+      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">Distância da 3ª pessoa <input type="range" id="camDist" min="60" max="170" step="5" value="100" style="flex:1"> <span id="camDistV">100%</span> <kbd>−</kbd><kbd>+</kbd></label></fieldset>
       <div class="toggles">
         <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
         <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
@@ -167,7 +172,7 @@
         <div><i style="background:#4FD18B"></i><b>Defesa <kbd>Espaço</kbd></b><p>Mais alcance e controle contra bolas rápidas. Devolve no meio da quadra.</p></div>
       </div>
     </div>
-    <p class="keys">Saque: segure qualquer golpe para jogar a bola para cima e solte na faixa verde. <kbd>WASD</kbd>/setas correr · <kbd>1</kbd>–<kbd>4</kbd> também batem · <kbd>C</kbd> troca a câmera · <kbd>B</kbd>/<kbd>N</kbd> assistências · <kbd>Esc</kbd> pausa · <kbd>M</kbd> som. No celular, use o joystick e os botões.</p>
+    <p class="keys">Saque: segure qualquer golpe para jogar a bola para cima e solte na faixa verde. <kbd>WASD</kbd>/setas correr · <kbd>1</kbd>–<kbd>4</kbd> também batem · <kbd>C</kbd> troca a câmera (padrão, alta, perto, 1ª pessoa) · <kbd>−</kbd>/<kbd>+</kbd> distância da câmera (FOV na 1ª pessoa) · <kbd>B</kbd>/<kbd>N</kbd> assistências · <kbd>Esc</kbd> pausa · <kbd>M</kbd> som. No celular, use o joystick e os botões.</p>
       <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button></div>
     </section>
   </div>
@@ -304,6 +309,10 @@
       <fieldset class="seg"><legend>Modalidade</legend><div class="pills">
         <input type="radio" name="onMode" id="onModeD" value="dupla" checked><label for="onModeD">Dupla · 2 × 2</label>
         <input type="radio" name="onMode" id="onModeS" value="simples"><label for="onModeS">Simples · 1 × 1</label>
+      </div></fieldset>
+      <fieldset class="seg"><legend>Duração</legend><div class="pills">
+        <input type="radio" name="onGames" id="onGames4" value="4" checked><label for="onGames4">Set curto · 4 games</label>
+        <input type="radio" name="onGames" id="onGames6" value="6"><label for="onGames6">Set · 6 games</label>
       </div></fieldset>
       <div id="onMatch" style="display:grid;gap:8px">
         <p class="keys">Clique em <b>Sentar aqui</b> no lugar que quiser. Lugar vazio é da CPU; quem não sentar assiste.</p>

@@ -529,3 +529,4 @@ body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #
 
 /* aparência na carreira */
 .cr-look { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.cam3-lbl { margin: .6rem 0 .3rem; font-size: .85rem; }
