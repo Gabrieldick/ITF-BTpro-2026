@@ -40,7 +40,7 @@ function hideBanner() { clearTimeout(bannerTimer); el.banner.classList.add('hide
 let fbTimer = 0;
 // texto dos golpes (o seu e os da CPU): pode ser completo, discreto ou desligado nas configurações
 function shotFeedback(main, small, kind) {
-  const m = S.settings.shotText || 'completo';
+  const m = S.settings.shotText || 'discreto';
   if (m === 'off') return;
   feedback(main, small, kind, m === 'discreto');
 }

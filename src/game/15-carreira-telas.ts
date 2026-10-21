@@ -8,7 +8,7 @@ import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { $, el, feedback, hideBanner, newMatch, startDrill } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound } from './12-controles';
-import { crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -316,19 +316,36 @@ $('crRepo').addEventListener('click', async () => {
 $('crExport').addEventListener('click', () => { saveCareer(); const fn = crDownload(); if (fn) { $s.CR.lastMsg = 'Save baixado: ' + fn + '. Coloque na pasta ' + SAVE_DIR + '/ do repositório e faça o push para abrir em outro lugar.'; renderCareer(); } });
 $('crSwitch').addEventListener('click', () => { saveCareer(); crCloseSlot(); crSaveMsg(''); renderCareer(); });
 // criação
-const crForm = { fem: false, style: 'completo', perfil: 'promessa', skin: SKINS[2], hair: HAIRS[1], acc: 'cap', canhoto: false, alt: 182 };
+const crForm = { fem: false, style: 'completo', perfil: 'promessa', skin: SKINS[2], hair: HAIRS[1], acc: 'cap', canhoto: false, alt: 182, attrs: null, key: '' };
+// atributos na criação: o estilo distribui os pontos; dá para mexer com − e + (o total não passa o do estilo)
+const crRadio = n => { const i = document.querySelector('input[name=' + n + ']:checked'); return i ? i.value : null; };
+function renderCrAttrs(reset) {
+  const box = $('crAttrs'); if (!box) return;
+  const style = crRadio('crStyle') || 'completo', perfil = crRadio('crPerfil') || 'promessa', start = +($('crStart') ? $('crStart').value : 0) || 0;
+  const target = crStartTarget(perfil, start), key = style + '|' + target, base = crPresetAttrs(target, style);
+  if (reset || !crForm.attrs || crForm.key !== key) { crForm.attrs = Object.assign({}, base); crForm.key = key; }
+  const sum = a => ATTRS.reduce((t, [k]) => t + a[k], 0), free = sum(base) - sum(crForm.attrs), lo = Math.max(30, target - 15), hi = target + 15;
+  box.innerHTML = '<div class="cra-head"><b>Overall ' + overall(crForm.attrs) + '</b><span>' + (free > 0 ? free + (free > 1 ? ' pontos livres' : ' ponto livre') : 'todos os pontos usados') + '</span><button type="button" class="ghost sm" id="craReset">Voltar ao estilo</button></div>'
+    + ATTRS.map(([k, nm]) => { const v = crForm.attrs[k], d = v - base[k];
+      return '<div class="cra-row"><span>' + nm + '</span><button type="button" class="ghost sm" data-cra="' + k + '" data-d="-1"' + (v <= lo ? ' disabled' : '') + '>−</button><span class="cra-bar"><i style="width:' + Math.round((v - 30) / 69 * 100) + '%"></i></span><b>' + v + (d ? '<small class="' + (d > 0 ? 'up' : 'dn') + '">' + (d > 0 ? '+' : '') + d + '</small>' : '') + '</b><button type="button" class="ghost sm" data-cra="' + k + '" data-d="1"' + (v >= hi || free <= 0 ? ' disabled' : '') + '>+</button></div>'; }).join('');
+  box.querySelectorAll('[data-cra]').forEach(b => b.addEventListener('click', () => { crForm.attrs[b.dataset.cra] += +b.dataset.d; renderCrAttrs(); }));
+  $('craReset').addEventListener('click', () => renderCrAttrs(true));
+}
+document.querySelectorAll('input[name=crStyle], input[name=crPerfil]').forEach(r => r.addEventListener('change', () => renderCrAttrs(true)));
+if ($('crStart')) $('crStart').addEventListener('change', () => renderCrAttrs(true));
 function renderCrNew() {
   const sw = (arr, key) => arr.map(c => '<button type="button" class="cr-sw' + (crForm[key] === c ? ' sel' : '') + '" data-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   $('crSw').innerHTML = '<div><span class="cr-lbl">Pele</span>' + sw(SKINS, 'skin') + '</div><div><span class="cr-lbl">Cabelo</span>' + sw(HAIRS, 'hair') + '</div>';
   $('crSw').querySelectorAll('[data-skin]').forEach(b => b.addEventListener('click', () => { crForm.skin = b.dataset.skin; renderCrNew(); }));
   $('crSw').querySelectorAll('[data-hair]').forEach(b => b.addEventListener('click', () => { crForm.hair = b.dataset.hair; renderCrNew(); }));
   $('crAltV').textContent = crForm.alt + ' cm';
+  renderCrAttrs();
 }
 function crStart() {
   const v = n => { const i = document.querySelector('input[name=' + n + ']:checked'); return i ? i.value : null; };
   crForm.fem = v('crGen') === 'f'; crForm.style = v('crStyle') || 'completo'; crForm.perfil = v('crPerfil') || 'promessa'; crForm.acc = v('crAcc') || 'cap'; crForm.canhoto = v('crHand') === 'c';
-  crCreate({ uf: $('crUf') ? $('crUf').value : 'SP', hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, start: +($('crStart') ? $('crStart').value : 0) || 0, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
-  crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo Amador C, ache um parceiro e suba no ranking.'; saveCareer(); renderCareer();
+  crCreate({ uf: $('crUf') ? $('crUf').value : 'SP', hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, attrs: crForm.attrs, start: +($('crStart') ? $('crStart').value : 0) || 0, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
+  crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo ' + TIERS[$s.CR.startTier || 0].nome + ', ache um parceiro e suba no ranking.'; saveCareer(); renderCareer();
 }
 $('btnCareer').addEventListener('click', openCareer);
 $('crBack').addEventListener('click', () => { $('career').hidden = true; toMenu(); });
@@ -388,12 +405,12 @@ $('btnAsMove').addEventListener('click', () => toggleAssist('assistMove'));
 $('btnAsMark').addEventListener('click', () => toggleAssist('assistMark'));
 // nome do golpe na tela: completo → discreto → desligado
 const SHOT_TXT = { completo: 'completo', discreto: 'discreto', off: 'desligado' };
-$('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT), cur = S.settings.shotText || 'completo'; S.settings.shotText = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); syncAssistButtons(); });
+$('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT), cur = S.settings.shotText || 'discreto'; S.settings.shotText = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); syncAssistButtons(); });
 $('shotTextSel').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
 function syncAssistButtons() {
   $('btnAsMove').textContent = 'Seguir a bola: ' + (S.settings.assistMove ? 'ligado' : 'desligado');
   $('btnAsMark').textContent = 'Onde a bola cai: ' + (S.settings.assistMark ? 'ligado' : 'desligado');
-  $('btnShotTxt').textContent = 'Nome do golpe: ' + SHOT_TXT[S.settings.shotText || 'completo'];
+  $('btnShotTxt').textContent = 'Nome do golpe: ' + SHOT_TXT[S.settings.shotText || 'discreto'];
 }
 function adjustFov(d) {
   S.settings.fovFp = clamp((S.settings.fovFp || 72) + d, 55, 110); saveSettings(); applyCam();

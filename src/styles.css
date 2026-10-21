@@ -610,3 +610,13 @@ body.in-replay #meter, body.in-replay #tags, body.in-replay #reach, body.in-repl
 .cr-form { display: block; font-style: normal; font-size: 9px; line-height: 1; letter-spacing: -.05em; }
 .cr-form.up { color: #4fd18b; }
 .cr-form.dn { color: #ff7a5c; }
+/* criação: distribuição dos atributos */
+.cr-attrs { display: grid; gap: 4px; }
+.cra-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.cra-head b { font-size: 16px; } .cra-head span { opacity: .75; font-size: 13px; flex: 1; }
+.cra-row { display: grid; grid-template-columns: 90px 30px 1fr 56px 30px; align-items: center; gap: 6px; font-size: 13px; }
+.cra-row .ghost.sm { padding: 2px 0; min-width: 28px; }
+.cra-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+.cra-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd23f, #4fd18b); }
+.cra-row b { text-align: right; font-family: var(--f-num); } .cra-row b small { font-size: 10px; margin-left: 3px; }
+.cra-row b small.up { color: #4fd18b; } .cra-row b small.dn { color: #ff7a5c; }
