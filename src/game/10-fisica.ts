@@ -229,11 +229,12 @@ function doHit(p, type, q, isServe, mod) {
       if (t <= 0 || y >= H || spec.gk >= 3.2) break;
       spec.gk *= 1.06;
     }
-  } else if (!pop && !wild && spec.speed && (finisher || topK > 0 || (isServe && mod.perfect && type === 'smash'))) {
+  } else if (!pop && !wild && spec.speed && (finisher || topK > 0 || (isServe && type === 'smash'))) {
     // em vez de subir a bola para passar a rede (e perder a velocidade), bate com efeito para baixo: a bola passa a rede e
     // despenca (gravidade maior), só quando a linha reta não passaria. Finalização até 2,8×; smash do meio/fundo de quem tem
     // força e smash bons até ~2,4× (mais com a barra perfeita); saque por cima perfeito conforme o atributo de saque
-    const gkMax = finisher ? 2.8 : isServe ? lerp(1.3, 2.1, attrK(p, 'saque')) : lerp(1.5, 2.4, topK);
+    // saque por cima: sempre com algum efeito (rasante); o perfeito com mais. Só o muito fraco (speedMul baixo) sobe
+    const gkMax = finisher ? 2.8 : isServe ? (mod.perfect ? lerp(1.3, 2.1, attrK(p, 'saque')) : (mod.speedMul || 1) < .8 ? 1.15 : lerp(1.25, 1.7, attrK(p, 'saque'))) : lerp(1.5, 2.4, topK);
     const d = Math.hypot(tgt.x - ball.pos.x, tgt.z - ball.pos.z), T0 = Math.max(.28, d / spec.speed), tn = Math.abs(ball.pos.z) / (d / T0);
     if (isServe) spec.margin = Math.max(spec.margin || 0, .2); // saque rápido com efeito: folga sobre a rede (vento não derruba)
     let gk = spec.gk || 1.35;

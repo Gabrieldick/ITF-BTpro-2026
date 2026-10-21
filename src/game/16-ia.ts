@@ -289,6 +289,8 @@ function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z
 function oppAllDeep(team) { return $s.teams[1 - team].every(o => Math.abs(o.pos.z) > 6.2); }
 function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
+  // devolução de saque: smash só se o saque subiu muito (saque muito ruim)
+  if (S.rally === 1 && (ball.apex || 0) < 3.35 && y >= 1.45) return Math.random() < .5 ? 'defesa' : 'lob';
   if (y >= 2.1 && r < st.high) return 'smash';
   if (y >= 1.45 && y < 2.1 && Math.random() < st.mid) return 'smash'; // drive na meia altura
   if (p.team === 0 && S.settings.tactic === 'lobs' && y < 2.1 && Math.random() < .45) return 'lob';
