@@ -2,7 +2,7 @@
 // teclado, toque, barras de força e menus
 import './11-mira';
 import { canHit } from './10-fisica';
-import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall } from './00-base';
+import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN } from './00-base';
 import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
@@ -53,10 +53,12 @@ function startMeter(kind, type, c = localCtl()) {
   else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; p.charging = true; }
   else { M.fill = .9; M.center = TOSS_T / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
-  if (kind === 'smash') M.half *= smashZoneScale() * clamp((p.char.a.smash - 45) / 50, .25, 1.1) * (1 - .35 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
-  if (kind === 'serve') M.half *= clamp((p.char.a.saque - 45) / 50, .25, 1.15) * (type === 'smash' ? .75 : 1); // saque por cima: perfeito mais difícil (e mais forte)
+  if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .35 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
+  if (kind === 'serve') M.half *= clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .75 : 1); // saque por cima: perfeito mais difícil (e mais forte)
+  // tolerância em volta do verde (amarelo/laranja): com atributo baixo fica estreita, errar por pouco já custa caro
+  M.pw = .2 * lerp(.45, 1.1, Math.pow(attrN(kind === 'smash' ? p.char.a.smash : p.char.a.saque), 1.5));
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
-  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half]); else meterDom(M);
+  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw]); else meterDom(M);
 }
 // desenha a barra recém-armada (local, ou do convidado com os dados vindos do anfitrião)
 function meterDom(M) {
@@ -69,9 +71,9 @@ function meterDom(M) {
   }
   else {
     // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
-    const c = M.center, h = M.half, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
+    const c = M.center, h = M.half, w = M.pw || .2, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
     el.mZone.style.bottom = '0'; el.mZone.style.height = '100%';
-    el.mZone.style.background = 'linear-gradient(0deg, #e5484d 0%, #e5484d ' + P(c - h - .2) + ', #ff8a1f ' + P(c - h - .1) + ', #ffd23f ' + P(c - h - .035) + ', #4fd18b ' + P(c - h) + ', #4fd18b ' + P(c + h) + ', #ffd23f ' + P(c + h + .035) + ', #ff8a1f ' + P(c + h + .1) + ', #e5484d ' + P(c + h + .2) + ', #e5484d 100%)';
+    el.mZone.style.background = 'linear-gradient(0deg, #e5484d 0%, #e5484d ' + P(c - h - w) + ', #ff8a1f ' + P(c - h - w / 2) + ', #ffd23f ' + P(c - h - w * .175) + ', #4fd18b ' + P(c - h) + ', #4fd18b ' + P(c + h) + ', #ffd23f ' + P(c + h + w * .175) + ', #ff8a1f ' + P(c + h + w / 2) + ', #e5484d ' + P(c + h + w) + ', #e5484d 100%)';
   }
   el.mFill.style.height = '0%';
 }
@@ -159,7 +161,7 @@ function releaseMeter(c = localCtl()) {
   }
   let res = Math.abs(diff) <= M.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
   // amt: 0 na borda do verde (amarelo) até 1 no começo do vermelho; a penalidade segue as cores da faixa
-  const amt = clamp((Math.abs(diff) - M.half) / .2, 0, 1);
+  const amt = clamp((Math.abs(diff) - M.half) / (M.pw || .2), 0, 1);
   // smash pouco carregado numa bola a meia altura é um voleio (golpe curto e rápido), não um smash ruim
   if (M.kind === 'smash' && res === 'cedo' && contactY(p) < 2.05) res = 'voleio';
   const word = res === 'perfeito' || res === 'voleio' ? RES_WORD[res] : (amt < .2 ? 'UM POUCO ' : amt > .85 ? 'MUITO ' : '') + RES_WORD[res];
@@ -174,7 +176,7 @@ function releaseMeter(c = localCtl()) {
 function serveRelease(res, amt, word, human) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
-  const svN = clamp(human.char.a.saque - 50, 0, 45) / 45; // atributo de saque
+  const svN = Math.min(1, attrN(human.char.a.saque)); // atributo de saque
   // perfeito: bem mais força e precisão (no saque por cima a faixa é menor)
   if (res === 'perfeito') { q = lerp(.88, 1, svN); mod = { speedMul: type === 'smash' ? lerp(1.02, 1.2, svN) : 1, noiseMul: lerp(.85, .55, svN), oppMissBoost: (type === 'smash' ? .1 : .03) * svN, misBoost: (1 - svN) * (type === 'smash' ? .08 : .04), perfect: true }; }
   else if (res === 'cedo') { q = lerp(.88, .5, amt); mod = { speedMul: lerp(.97, .78, amt), misBoost: amt * .08 }; }

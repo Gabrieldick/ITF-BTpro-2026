@@ -2,7 +2,7 @@
 // física da bola, trajetórias e o golpe (doHit)
 import './09-interface';
 import { $s } from '../state';
-import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK } from './00-base';
+import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN } from './00-base';
 import { S, NET } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
@@ -174,8 +174,10 @@ function doHit(p, type, q, isServe, mod) {
   spec.noise *= mod.noiseMul || 1;
   if (p.char) {
     const A = p.char.a;
-    spec.noise *= lerp(1.6, .65, (isServe ? A.saque : A[ATTR_OF[key]] || A.def) / 100);
-    if (!isServe && (key === 'smash' || key === 'drive')) spec.speed *= finisher ? lerp(.94, 1.12, A.forca / 100) : lerp(.82, 1.12, A.forca / 100); // na finalização a força pesa menos
+    // atributos pesam na faixa que existe no jogo (35 a 95): 50 → bem impreciso, 75 → normal, 95 → muito preciso
+    spec.noise *= lerp(1.5, .55, attrN(isServe ? A.saque : A[ATTR_OF[key]] || A.def));
+    const fk = attrN(A.forca);
+    if (!isServe && (key === 'smash' || key === 'drive')) spec.speed *= finisher ? lerp(.92, 1.12, fk) : lerp(.8, 1.15, fk); // na finalização a força pesa menos
     if (isServe && spec.speed) spec.speed *= lerp(.88, 1.1, (A.forca + A.saque) / 200);
     if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07;
   }

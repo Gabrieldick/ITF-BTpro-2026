@@ -47,11 +47,12 @@ function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
   const adj = p.team === 1 && !S.careerActive ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
-  const k = clamp((overall(a) - 50) / 45 + adj, 0, 1.1); // 50 → 0, 95 → 1
+  // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
+  const k = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)) + adj, 0, 1.1);
   const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
     speed: (2.9 + a.vel * .022) * dm, react: lerp(.3, .09, k) * styleOf(p).react, smart: lerp(.3, .92, k), letGo: lerp(.3, .9, k),
-    miss: lerp(.15, .025, k) * lerp(1.3, .7, a.def / 100), err: lerp(.2, .022, Math.pow(k, .85)) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
+    miss: lerp(.15, .018, k) * lerp(1.3, .7, a.def / 100), err: lerp(.2, .015, Math.pow(k, .8)) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, k), .3, .9), clamp(lerp(.72, 1, k), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, k)), // nível baixo: golpes mais fracos (não mais bolas furadas)
     netK: lerp(.8, .45, Math.min(1, k)), // erro de nível baixo vai mais na rede que para fora
@@ -237,7 +238,7 @@ function updateHuman(dt, c = localCtl()) {
       if (sw.meter) {
         const { res, amt } = sw.meter;
         // atributo: com smash baixo, mesmo o perfeito sai mais fraco e às vezes erra
-        const skN = clamp((p.char ? p.char.a.smash : 70) - 50, 0, 45) / 45;
+        const skN = Math.min(1, attrK(p, 'smash'));
         if (res === 'voleio') { q = Math.max(q, lerp(.66, .86, skN)); mod = { speedMul: lerp(1, 1.12, skN), noiseMul: lerp(1.15, .85, skN), volley: true }; }
         else if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true }; }
         // fora do verde: amarelo perde pouco, laranja bastante, vermelho erra muito (cedo = fraco, tarde = erra mais)

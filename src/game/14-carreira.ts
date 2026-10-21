@@ -12,13 +12,13 @@ import LZString from 'lz-string';
 // ================= MODO CARREIRA =================
 // circuito em escada (amador -> ITF -> Sand Series -> Mundial), ranking de 26 semanas, dinheiro, evolução e parceiros
 const TIERS = [
-  { id: 'C', nome: 'Amador Categoria C', curto: 'AMADOR C', ovr: [44, 58], draw: 8, fee: 30, travel: 0, prize: [400, 200, 90, 40], pts: [3, 2, 1, 0], xp: [3, 2, 2, 1], diff: 'facil', req: 0, cities: ['Copa Praia do Forte', 'Open Itapuã', 'Desafio Guarujá', 'Torneio da Pajuçara', 'Copa Jurerê', 'Open Ponta Negra'] },
-  { id: 'B', nome: 'Amador Categoria B', curto: 'AMADOR B', ovr: [50, 64], draw: 8, fee: 60, travel: 0, prize: [900, 450, 180, 90], pts: [5, 3, 2, 1], xp: [4, 3, 2, 1], diff: 'facil', req: 10, cities: ['Open Balneário Camboriú', 'Copa Ipanema', 'Torneio Porto de Galinhas', 'Open Maresias', 'Copa Iracema'] },
-  { id: 'A', nome: 'Amador Categoria A', curto: 'AMADOR A', ovr: [56, 69], draw: 8, fee: 120, travel: 60, prize: [1800, 900, 350, 180], pts: [8, 5, 3, 1], xp: [5, 4, 3, 1], diff: 'medio', req: 25, cities: ['Open Florianópolis', 'Copa Salvador', 'Open Búzios', 'Torneio Natal', 'Copa Vitória'] },
-  { id: 'BT10', nome: 'ITF BT10', curto: 'BT10', ovr: [61, 74], draw: 8, fee: 200, travel: 250, prize: [3500, 1700, 700, 250], pts: [10, 7, 4, 2], xp: [6, 5, 3, 2], diff: 'medio', req: 45, cities: ['BT10 Fortaleza', 'BT10 Aruba', 'BT10 Maceió', 'BT10 Cascais', 'BT10 Valência'] },
-  { id: 'BT50', nome: 'ITF BT50', curto: 'BT50', ovr: [66, 78], draw: 16, fee: 350, travel: 500, prize: [7000, 3500, 1600, 700, 200], pts: [50, 35, 22, 12, 5], xp: [8, 6, 4, 3, 1], diff: 'medio', req: 80, cities: ['BT50 Cervia', 'BT50 Barcelona', 'BT50 João Pessoa', 'BT50 Lignano', 'BT50 Montpellier'] },
-  { id: 'BT100', nome: 'ITF BT100', curto: 'BT100', ovr: [70, 82], draw: 16, fee: 500, travel: 800, prize: [14000, 7000, 3200, 1300, 400], pts: [100, 70, 45, 25, 10], xp: [9, 7, 5, 3, 2], diff: 'medio', req: 250, cities: ['BT100 Copacabana', 'BT100 Riccione', 'BT100 Aruba', 'BT100 Gran Canaria'] },
-  { id: 'BT200', nome: 'ITF BT200', curto: 'BT200', ovr: [74, 86], draw: 16, fee: 800, travel: 1200, prize: [28000, 14000, 6500, 2600, 800], pts: [210, 150, 95, 50, 20], xp: [11, 8, 6, 4, 2], diff: 'dificil', req: 600, cities: ['BT200 Rio de Janeiro', 'BT200 Ravenna', 'BT200 Terracina', 'BT200 Fortaleza'] },
+  { id: 'C', nome: 'Amador Categoria C', curto: 'AMADOR C', ovr: [35, 50], draw: 8, fee: 30, travel: 0, prize: [400, 200, 90, 40], pts: [3, 2, 1, 0], xp: [3, 2, 2, 1], diff: 'facil', req: 0, cities: ['Copa Praia do Forte', 'Open Itapuã', 'Desafio Guarujá', 'Torneio da Pajuçara', 'Copa Jurerê', 'Open Ponta Negra'] },
+  { id: 'B', nome: 'Amador Categoria B', curto: 'AMADOR B', ovr: [42, 57], draw: 8, fee: 60, travel: 0, prize: [900, 450, 180, 90], pts: [5, 3, 2, 1], xp: [4, 3, 2, 1], diff: 'facil', req: 10, cities: ['Open Balneário Camboriú', 'Copa Ipanema', 'Torneio Porto de Galinhas', 'Open Maresias', 'Copa Iracema'] },
+  { id: 'A', nome: 'Amador Categoria A', curto: 'AMADOR A', ovr: [49, 63], draw: 8, fee: 120, travel: 60, prize: [1800, 900, 350, 180], pts: [8, 5, 3, 1], xp: [5, 4, 3, 1], diff: 'medio', req: 25, cities: ['Open Florianópolis', 'Copa Salvador', 'Open Búzios', 'Torneio Natal', 'Copa Vitória'] },
+  { id: 'BT10', nome: 'ITF BT10', curto: 'BT10', ovr: [56, 70], draw: 8, fee: 200, travel: 250, prize: [3500, 1700, 700, 250], pts: [10, 7, 4, 2], xp: [6, 5, 3, 2], diff: 'medio', req: 45, cities: ['BT10 Fortaleza', 'BT10 Aruba', 'BT10 Maceió', 'BT10 Cascais', 'BT10 Valência'] },
+  { id: 'BT50', nome: 'ITF BT50', curto: 'BT50', ovr: [62, 76], draw: 16, fee: 350, travel: 500, prize: [7000, 3500, 1600, 700, 200], pts: [50, 35, 22, 12, 5], xp: [8, 6, 4, 3, 1], diff: 'medio', req: 80, cities: ['BT50 Cervia', 'BT50 Barcelona', 'BT50 João Pessoa', 'BT50 Lignano', 'BT50 Montpellier'] },
+  { id: 'BT100', nome: 'ITF BT100', curto: 'BT100', ovr: [68, 81], draw: 16, fee: 500, travel: 800, prize: [14000, 7000, 3200, 1300, 400], pts: [100, 70, 45, 25, 10], xp: [9, 7, 5, 3, 2], diff: 'medio', req: 250, cities: ['BT100 Copacabana', 'BT100 Riccione', 'BT100 Aruba', 'BT100 Gran Canaria'] },
+  { id: 'BT200', nome: 'ITF BT200', curto: 'BT200', ovr: [73, 86], draw: 16, fee: 800, travel: 1200, prize: [28000, 14000, 6500, 2600, 800], pts: [210, 150, 95, 50, 20], xp: [11, 8, 6, 4, 2], diff: 'dificil', req: 600, cities: ['BT200 Rio de Janeiro', 'BT200 Ravenna', 'BT200 Terracina', 'BT200 Fortaleza'] },
   { id: 'BT400', nome: 'ITF BT400', curto: 'BT400', ovr: [78, 90], draw: 16, fee: 1200, travel: 1800, prize: [50000, 25000, 12000, 5000, 1500], pts: [450, 320, 200, 110, 45], xp: [13, 10, 7, 4, 2], diff: 'dificil', req: 1300, cities: ['BT400 Aruba', 'BT400 Ravenna', 'BT400 Copacabana', 'BT400 Cervia'] },
   { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [750, 530, 340, 180, 75], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba'] },
   { id: 'WC', nome: 'Campeonato Mundial ITF', curto: 'MUNDIAL', ovr: [84, 99], draw: 16, fee: 0, travel: 3000, prize: [150000, 75000, 36000, 15000, 5000], pts: [1000, 700, 450, 250, 100], xp: [20, 14, 10, 6, 3], diff: 'dificil', req: 1e9, cities: ['Mundial de Matosinhos'] },
@@ -96,7 +96,7 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
       do { let sur = pick(bank.s); if (g === 'f' && pais === 'RUS') sur += 'a'; name = pick(bank[g]) + ' ' + sur; } while (used.has(name) && ++tries < 20);
       used.add(name);
       // muitos jogadores fracos e poucos fortes (amadores até o topo do circuito)
-      const ovr = Math.round(44 + 42 * Math.pow(rnd(), 1.25));
+      const ovr = Math.round(35 + 51 * Math.pow(rnd(), 1.25)); // de ~35 (amador C) a ~86
       const style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']);
       const fem = g === 'f';
       const look = { skin: pick(SKINS), hair: pick(HAIRS), num: String(10 + Math.floor(rnd() * 89)) };
@@ -322,14 +322,18 @@ function crCreate(o) {
   const seed = Math.floor(Math.random() * 1e9);
   const rnd = mulberry(seed + 7);
   const promessa = o.perfil === 'promessa';
-  const target = promessa ? 52 : 60;
+  // categoria inicial (padrão: Amador C): o overall começa no meio da faixa dela (promessa um pouco abaixo, experiente acima)
+  const st = clamp(Math.round(o.start || 0), 0, 6), T0 = TIERS[st], mid = (T0.ovr[0] + T0.ovr[1]) / 2;
+  const target = Math.round(promessa ? mid - 2 : mid + 3);
   const me = { id: 'crme', uf: (o.pais || 'BRA') === 'BRA' ? o.uf || 'SP' : undefined, name: o.name || 'Você', alt: o.alt, pais: o.pais || 'BRA', estilo: STYLES[o.style].nome, build: o.build || 'atletico', fem: o.fem, canhoto: o.canhoto || undefined,
     a: makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : o.acc === 'band' ? { headband: '#ff5a1f' } : {}, o.hairStyle ? { hairStyle: o.hairStyle } : {}, !o.fem && o.beard ? { beard: o.beard } : { beard: '' }, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
-  $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: promessa ? 17 : 22,
-    money: promessa ? 800 : 1200, pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, titles: {}, maxTier: 0,
+  $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: (promessa ? 17 : 22) + Math.round(st * .8),
+    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, titles: {}, maxTier: st, startTier: st,
     partner: null, chem: 0, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
+  if (st >= 2) { const rk = st >= 5 ? 'proteo' : st >= 3 ? 'coral' : 'mare'; $s.CR.rackets.push(rk); $s.CR.racket = rk; } // começando mais alto, já tem uma raquete melhor
+  me.look.racket = $s.CR.racket;
   $s.CR.v = 2; $s.CR.potCur = Math.min($s.CR.pot, overall(me.a) + 6);
   crMigrate();
   crSimYear(11);
@@ -844,7 +848,7 @@ function crNextWeek(note) {
       if (c.age > 34) { // aposentou: entra um novato no lugar
         const bank = NAME_BANK[c.pais] || NAME_BANK.BRA; let sur = bank.s[Math.floor(rnd() * bank.s.length)]; if (c.fem && c.pais === 'RUS') sur += 'a';
         c.name = bank[c.fem ? 'f' : 'm'][Math.floor(rnd() * bank[c.fem ? 'f' : 'm'].length)] + ' ' + sur; c.age = 18;
-        c.a = makeAttrs(Math.round(44 + rnd() * 14), ['atacante', 'defensor', 'tatico', 'completo'][Math.floor(rnd() * 4)], rnd); if ($s.CR.npcR) delete $s.CR.npcR[c.id]; return;
+        c.a = makeAttrs(Math.round(35 + rnd() * 15), ['atacante', 'defensor', 'tatico', 'completo'][Math.floor(rnd() * 4)], rnd); if ($s.CR.npcR) delete $s.CR.npcR[c.id]; return;
       }
       const o = overall(c.a), d = (c.age < 23 ? 1.6 : c.age < 28 ? .6 : c.age > 31 ? -1.3 : 0) * (o > 84 && c.age < 31 ? .3 : 1);
       const ch = Math.round(d + gaussR(rnd) * 1.1); for (const [k] of ATTRS) c.a[k] = clamp(c.a[k] + ch, 30, 93);
@@ -906,7 +910,8 @@ function crNextDay(note) {
 }
 // 60→70 é rápido, 70→80 bem mais lento, 80→90 o mais difícil
 // a reta final é a mais cara: cada ponto acima de 90 custa bem mais
-const crUpCostBase = v => v < 55 ? 1 : v < 62 ? 2 : v < 68 ? 3 : v < 72 ? 4 : v < 76 ? 6 : v < 80 ? 8 : v < 84 ? 12 : v < 88 ? 17 : v < 90 ? 24 : v < 92 ? 36 : v < 94 ? 52 : v < 96 ? 72 : 95;
+// custo de +1 num atributo: começa barato (amador) e fica bem caro perto do topo; um pouco mais lento que antes
+const crUpCostBase = v => v < 45 ? 1 : v < 55 ? 2 : v < 62 ? 3 : v < 68 ? 4 : v < 72 ? 5 : v < 76 ? 7 : v < 80 ? 10 : v < 84 ? 14 : v < 88 ? 20 : v < 90 ? 28 : v < 92 ? 40 : v < 94 ? 56 : v < 96 ? 78 : 100;
 const crUpCost = (v, k) => Math.max(1, Math.round(crUpCostBase(v) * (crStaffList().some(x => x.cheap && x.cheap.includes(k)) ? .75 : 1)));
 // potencial atual: teto do overall (não adianta ter pontos de evolução acima dele). Só sobe jogando bem:
 // cada partida dá potencial conforme a nota (0–10) e o nível do torneio, até o potencial máximo do atleta
@@ -1084,4 +1089,4 @@ function crResolveEvent(i) {
 
 export { crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };
