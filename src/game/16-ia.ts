@@ -93,6 +93,12 @@ function planIntercept(p, speed, react) {
 const humanPlan = { id: -1, plan: null };
 // qual dos dois do time vai na bola
 function assignee(team) {
+  // você armando o smash perto da bola: a parceira deixa (mesmo que a bola fosse dela, ex.: no meio)
+  const tmH = $s.teams[team];
+  if (tmH && tmH.length > 1 && ball.state === 'live' && S.lastTeam !== team) {
+    const h = tmH.find(o => o.isHuman && !o.netHuman);
+    if (h && (h.charging || (h.swing.t >= 0 && h.swing.type === 'smash' && !h.swing.hit)) && Math.hypot(ball.pos.x - h.pos.x, ball.pos.z - h.pos.z) < 3.5) return h;
+  }
   if (S.assignId[team] === S.hitId) return S.assign[team];
   const tm = $s.teams[team]; let who = tm[0];
   if (tm.length > 1) {
