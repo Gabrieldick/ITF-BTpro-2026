@@ -178,7 +178,7 @@ function serveRelease(res, amt, word, human) {
   const type = S.serveType; let q, mod;
   const svN = Math.min(1, attrN(human.char.a.saque)); // atributo de saque
   // perfeito: bem mais força e precisão (no saque por cima a faixa é menor)
-  if (res === 'perfeito') { q = lerp(.88, 1, svN); mod = { speedMul: type === 'smash' ? lerp(1.02, 1.2, svN) : 1, noiseMul: lerp(.85, .55, svN), oppMissBoost: (type === 'smash' ? .1 : .03) * svN, misBoost: type === 'smash' ? lerp(.1, .065, svN) : .03, perfect: true }; } // perfeito por cima ainda erra ~1 em 10–15
+  if (res === 'perfeito') { q = lerp(.88, 1, svN); mod = { speedMul: type === 'smash' ? lerp(1.02, 1.2, svN) : 1, noiseMul: lerp(.85, .55, svN), oppMissBoost: (type === 'smash' ? .1 : .03) * svN, misBoost: type === 'smash' ? lerp(.06, .035, svN) : .02, perfect: true }; } // perfeito por cima ainda erra de vez em quando (~1 em 17–28)
   // fora do perfeito o saque perde bastante: cedo sai fraco, tarde sai impreciso e erra mais
   else if (res === 'cedo') { q = lerp(.8, .45, amt); mod = { speedMul: lerp(.9, .66, amt), noiseMul: lerp(1.1, 1.4, amt), misBoost: amt * .1 }; }
   else { q = lerp(.72, .32, amt); mod = { speedMul: lerp(.93, .8, amt), noiseMul: lerp(1.25, 1.8, amt), misBoost: lerp(.06, .5, amt) * (type === 'smash' ? 1 : .5) }; }
