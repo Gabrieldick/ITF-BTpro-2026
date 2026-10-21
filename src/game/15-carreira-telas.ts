@@ -8,7 +8,7 @@ import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { $, el, feedback, hideBanner, newMatch, startDrill } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound } from './12-controles';
-import { HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -20,15 +20,15 @@ function renderCareer() {
   $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
   const meO = overall($s.CR.me.a), inGame = crMeOvr(), rank = crRank(), pts = crPts();
-  $('crHead').innerHTML = '<div class="cr-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><span>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · potencial ' + $s.CR.pot + ' · em jogo ' + inGame + ' · fama ' + Math.round($s.CR.fama || 0) + '</span></div></div>'
-    + '<div class="cr-kpis"><div><b>' + rank + 'º</b>ranking (' + pts + ' pts)</div><div><b>' + money($s.CR.money) + '</b>dinheiro</div><div><b>' + $s.CR.pe + '</b>pontos de evolução</div><div><b>T' + $s.CR.season + ' · S' + $s.CR.week + '</b>de ' + SEASON_WEEKS + ' semanas</div></div>'
+  $('crHead').innerHTML = '<div class="cr-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><span>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · potencial ' + crCap() + ' (máx. ' + $s.CR.pot + ') · em jogo ' + inGame + ' · fama ' + Math.round($s.CR.fama || 0) + '</span></div></div>'
+    + '<div class="cr-kpis"><div><b>' + rank + 'º</b>ranking (' + pts + ' pts)</div><div><b>' + money($s.CR.money) + '</b>dinheiro</div><div><b>' + Math.floor($s.CR.pe) + '</b>pontos de evolução</div><div><b>' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day, true) + '</b>temporada ' + $s.CR.season + ' · semana ' + $s.CR.week + '/' + SEASON_WEEKS + '</div></div>'
     + '<div class="cr-energy"><span>Energia</span><span class="bar"><i class="' + ($s.CR.energy < 40 ? 'lo' : $s.CR.energy > 75 ? 'hi' : '') + '" style="width:' + $s.CR.energy + '%"></i></span><b>' + $s.CR.energy + '</b></div>';
   document.querySelectorAll('#crTabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === crTab));
   const busy = $s.CR.tour && !$s.CR.tour.done;
-  $('crTabs').hidden = !!$s.CR.tour;
+  $('crTabs').hidden = !!($s.CR.tour && !$s.CR.tour.pending);
   const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
-  if ($s.CR.tour) { body.innerHTML = crTourHTML(); bindTour(); return; }
+  if ($s.CR.tour && !$s.CR.tour.pending) { body.innerHTML = crTourHTML(); bindTour(); return; }
   body.innerHTML = ({ agenda: crAgendaHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML }[crTab])();
   bindCareerBody();
 }
@@ -39,23 +39,42 @@ function crAgendaHTML() {
   const injC = $s.CR.injury ? '<div class="cr-card"><div class="eyebrow">Lesionado</div><b>' + esc($s.CR.injury.nome) + '</b><span>Faltam ' + $s.CR.injury.weeks + ' semana(s). Sem torneios nem treino pesado; descansar acelera a volta.' + ($s.CR.staff.fisio ? '' : ' Um fisioterapeuta (Loja) encurta lesões futuras.') + '</span></div>' : '';
   const goal = $s.CR.goal ? '<div class="cr-card' + (crGoalDone($s.CR.goal) ? ' gold' : '') + '"><div class="eyebrow">Meta da temporada</div><b>' + esc($s.CR.goal.txt) + '</b><span>' + (crGoalDone($s.CR.goal) ? 'Cumprida por enquanto ✔ — vale no fim da temporada' : 'Ainda não cumprida') + ' · prêmio ' + money($s.CR.goal.money) + ' e ' + $s.CR.goal.pe + ' pontos de evolução</span></div>'
     : '<div class="cr-card gold"><div class="eyebrow">Escolha a meta da temporada</div><span>Cumprida até o fim da temporada, dá dinheiro, evolução e fama.</span><div class="cta-row" style="margin-top:6px">' + crGoalOptions().map((o, i) => '<button class="ghost sm" data-goal="' + i + '" title="' + money(o.money) + ' · +' + o.pe + ' PE">' + esc(o.txt) + '</button>').join('') + '</div></div>';
-  const ladder = TIERS.map((T, i) => '<span class="' + (crTierUnlocked(i) || (i === 9 && $s.CR.week === SEASON_WEEKS && crRank() <= 16) ? 'on' : '') + ($s.CR.titles[i] ? ' won' : '') + '" title="' + esc(T.nome) + (i && i < 9 ? ' · libera com ' + T.req + ' pts ou título no nível abaixo' : i === 9 ? ' · última semana, top 16' : '') + '">' + T.curto + ($s.CR.titles[i] ? ' 🏆' + $s.CR.titles[i] : '') + '</span>').join('');
-  return '<div class="cr-ladder">' + ladder + '</div>'
-    + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · entrosamento ' + '★'.repeat($s.CR.chem) + '☆'.repeat(5 - $s.CR.chem) + ' · humor: ' + crMoodWord() : '') + '</p>'
-    + goal + injC + '<div class="cr-cards">' + opts.map((o, i) => {
-      if (o.special && o.special !== 'estadual') return '<div class="cr-card gold"><div class="eyebrow">Seleção · convocação</div><b>' + esc(o.name) + '</b>' + (o.notCalled ? '<span>Você não foi convocado. ' + esc(o.info) + '</span>' : '<span>Você foi convocado! Joga ao lado de ' + esc(nameOf(crChar(o.mate))) + '. Sem inscrição nem viagem; não conta para o ranking, mas dá fama, evolução e prêmio.</span><button class="cta sm" data-enter="' + i + '">Defender a seleção</button>') + '</div>';
+  const ladder = TIERS.map((T, i) => '<span class="' + (crTierUnlocked(i) || (i === 9 && crRank() <= 16) ? 'on' : '') + ($s.CR.titles[i] ? ' won' : '') + '" title="' + esc(T.nome) + (i && i < 9 ? ' · libera com ' + T.req + ' pts ou título no nível abaixo' : i === 9 ? ' · semana 51, top 16' : '') + '">' + T.curto + ($s.CR.titles[i] ? ' 🏆' + $s.CR.titles[i] : '') + '</span>').join('');
+  const reg = $s.CR.tour && $s.CR.tour.pending ? $s.CR.tour : null, d = $s.CR.day, wlog = $s.CR.wlog || {};
+  // a semana: 7 dias, com o que foi feito em cada um e o torneio no fim de semana
+  const regDays = reg ? (crTourT(reg).pro ? [6, 7] : [6]) : [];
+  const week = DAY_NAMES.map((n, i) => { const k = i + 1, dt = crDate($s.CR.season, $s.CR.week, k);
+    const what = wlog[k] || (regDays.includes(k) ? 'Torneio' : k === d ? 'Hoje' : '');
+    return '<div class="cr-day' + (k === d ? ' today' : k < d ? ' past' : '') + (regDays.includes(k) ? ' tour' : '') + '"><b>' + n + '</b><small>' + dt.getDate() + '/' + (dt.getMonth() + 1) + '</small><span>' + esc(what) + '</span></div>'; }).join('');
+  const T0 = TIERS[crMaxTier()];
+  const acts = '<p class="section-label">Hoje · ' + DAY_FULL[d - 1] + '</p><div class="cr-cards">'
+    + '<div class="cr-card"><div class="eyebrow">Treino físico e técnico</div><b>Treinar</b><span>+' + (Math.round((.9 + (crInv('quadra') ? .6 : 0)) * crXpMul() * 10) / 10).toString().replace('.', ',') + ' ponto de evolução · −6 energia</span><span>Custo: ' + money(crInv('quadra') ? 0 : 20 * (crMaxTier() + 1)) + '</span><button class="ghost sm" id="crTrain"' + ($s.CR.injury ? ' disabled' : '') + '>Treinar hoje</button></div>'
+    + '<div class="cr-card"><div class="eyebrow">Treino com desafio</div><b>Treinar na quadra</b><span>Curtas, defesa ou smash: evolução por acerto; cumprindo a meta, +0,2 de potencial · −5 energia</span><button class="ghost sm" id="crDrill"' + ($s.CR.injury ? ' disabled' : '') + '>Escolher desafio</button></div>'
+    + '<div class="cr-card"><div class="eyebrow">Renda extra</div><b>Dar aulas</b><span>+' + money(Math.round(crLessonIncome() * .3 / 10) * 10) + ' · −2 energia</span><button class="ghost sm" id="crCoach">Dar aulas hoje</button></div>'
+    + '<div class="cr-card"><div class="eyebrow">Recuperação</div><b>Descansar</b><span>+14 de energia' + (crLife('crio') ? ' (+6 da crioterapia)' : '') + '. 3 dias de descanso na semana aceleram a volta de lesão.</span><div class="cta-row"><button class="ghost sm" id="crRest">Descansar hoje</button><button class="ghost sm" id="crRestUntil">' + (reg ? 'Descansar até o torneio' : 'Descansar até o fim da semana') + '</button></div></div></div>';
+  const regC = reg ? '<div class="cr-card gold"><div class="eyebrow">Inscrito · ' + (crTourT(reg).pro ? 'sábado e domingo' : 'sábado') + '</div><b>' + esc(reg.name) + '</b><span>' + (crTourT(reg).pro ? 'Sábado: primeiras rodadas. Domingo: semifinal e final (se chegar lá).' : 'Todas as rodadas no sábado.') + '</span></div>' : '';
+  // inscrições da semana: até sexta
+  const open = !reg && d <= 5;
+  const tours = !reg ? '<p class="section-label">Torneios desta semana' + (open ? ' · inscrições até sexta' : ' · inscrições encerradas') + '</p>' + (open ? '<div class="cr-cards">' + opts.map((o, i) => {
+      const when = '<span class="cr-when">' + crDateTxt($s.CR.season, $s.CR.week, 6) + (o.days > 1 ? ' e ' + crDateTxt($s.CR.season, $s.CR.week, 7) : '') + '</span>';
+      if (o.special && o.special !== 'estadual') return '<div class="cr-card gold"><div class="eyebrow">Seleção · convocação</div><b>' + esc(o.name) + '</b>' + when + (o.notCalled ? '<span>Você não foi convocado. ' + esc(o.info) + '</span>' : '<span>Você foi convocado! Joga ao lado de ' + esc(nameOf(crChar(o.mate))) + '. Sem inscrição nem viagem; não conta para o ranking, mas dá fama, evolução e prêmio.</span><button class="cta sm" data-enter="' + i + '">Defender a seleção</button>') + '</div>';
       const T = TIERS[o.tier]; const cost = o.special === 'estadual' || o.singles ? Math.round(T.fee * .5) + (o.singles ? crTravel(T) : 0) : (o.wild ? 0 : T.fee) + crTravel(T);
-      if (o.singles) return '<div class="cr-card"><div class="eyebrow">Simples · chave de 8</div><b>' + esc(o.name) + '</b><span>Sem parceiro: só você. Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + '</span><span>Campeão: ' + money(Math.round(T.prize[0] * .5)) + ' · não conta para o ranking de duplas</span><span>Custo: ' + money(cost) + '</span><button class="ghost sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>'; return '<div class="cr-card' + (o.tier === 9 ? ' gold' : '') + '"><div class="eyebrow">' + T.nome + ' · chave de ' + T.draw + '</div><b>' + esc(o.name) + '</b><span>Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + '</span><span>Campeão: ' + money(T.prize[0]) + ' · ' + T.pts[0] + ' pts</span><span>Custo: ' + money(cost) + (T.travel ? ' (inscrição ' + money(T.fee) + ' + viagem ' + money(T.travel) + ')' : '') + '</span><button class="cta sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>'; }).join('')
-    + '<div class="cr-card"><div class="eyebrow">Semana de treino</div><b>Treinar</b><span>+' + Math.round(4 * crXpMul()) + ' pontos de evolução · −15 energia</span><span>Custo: ' + money(80 * (crMaxTier() + 1)) + '</span><button class="ghost sm" id="crTrain">Treinar</button></div>'
-    + '<div class="cr-card"><div class="eyebrow">Treino com desafio</div><b>Treinar na quadra</b><span>Cumpra um desafio (curtas, defesa ou smash): +1 ponto de evolução por acerto e bônus ao cumprir a meta · −10 energia</span><button class="ghost sm" id="crDrill"' + ($s.CR.injury ? ' disabled' : '') + '>Escolher desafio</button></div>'
-    + '<div class="cr-card"><div class="eyebrow">Renda extra</div><b>Dar aulas</b><span>+' + money(crLessonIncome()) + ' · −5 energia · sem evolução</span><span>Rende mais conforme você sobe de nível.</span><button class="ghost sm" id="crCoach">Dar aulas</button></div>'
-    + '<div class="cr-card"><div class="eyebrow">Semana livre</div><b>Descansar</b><span>+45 de energia. Jogador cansado rende menos.</span><button class="ghost sm" id="crRest">Descansar</button></div></div>';
+      if (o.singles) return '<div class="cr-card"><div class="eyebrow">Simples · chave de 8</div><b>' + esc(o.name) + '</b>' + when + '<span>Sem parceiro: só você. Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + '</span><span>Campeão: ' + money(Math.round(T.prize[0] * .5)) + ' · não conta para o ranking de duplas</span><span>Custo: ' + money(cost) + '</span><button class="ghost sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>';
+      return '<div class="cr-card' + (o.tier === 9 ? ' gold' : '') + '"><div class="eyebrow">' + T.nome + ' · chave de ' + T.draw + '</div><b>' + esc(o.name) + '</b>' + when + '<span>Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + '</span><span>Campeão: ' + money(T.prize[0]) + ' · ' + (o.special === 'estadual' ? Math.round(T.pts[0] * .5) : T.pts[0]) + ' pts</span><span>Custo: ' + money(cost) + (T.travel ? ' (inscrição ' + money(T.fee) + ' + viagem ' + money(T.travel) + ')' : '') + '</span><button class="cta sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>';
+    }).join('') + '</div>' : '<p class="cr-note">' + (wlog[6] === 'Torneio' ? 'Torneio do fim de semana encerrado.' : 'Fim de semana sem torneio: aproveite para treinar ou descansar.') + ' Na segunda abrem as inscrições da próxima semana.</p>') : '';
+  // próximos torneios do seu nível no calendário
+  const up = crUpcoming(8);
+  const cal = up.length ? '<p class="section-label">Próximos torneios profissionais</p>' + (crMaxTier() < 3 ? '<p class="cr-note">O ITF BT10 libera com ' + TIERS[3].req + ' pontos no ranking ou com um título no Amador A.</p>' : '') + '<div class="cr-list">' + up.map(x => '<div class="cr-row' + (x.o.locked ? ' dim' : '') + '"><span class="cr-pos">S' + x.w + '</span><div><b>' + esc(x.o.name) + '</b><small>' + x.date + (x.o.tier !== undefined && !x.o.special ? ' · ' + TIERS[x.o.tier].nome + ' · campeão ' + TIERS[x.o.tier].pts[0] + ' pts' : '') + '</small></div></div>').join('') + '</div>' : '';
+  return '<div class="cr-ladder">' + ladder + '</div>'
+    + '<div class="cr-week">' + week + '</div>'
+    + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · entrosamento ' + '★'.repeat($s.CR.chem) + '☆'.repeat(5 - $s.CR.chem) + ' · humor: ' + crMoodWord() : '') + '</p>'
+    + goal + injC + regC + acts + tours + cal;
 }
 function crPlayerHTML() {
   const gear = crGearBonus(), rk = racketBonus($s.CR.racket);
-  const rows = ATTRS.map(([k, lbl]) => { const v = $s.CR.me.a[k], c = crUpCost(v, k), extra = (gear[k] || 0) + (rk[k] || 0); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 60 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + (extra ? '<em class="' + (extra > 0 ? 'up' : 'dn') + '">' + (extra > 0 ? '+' : '') + extra + '</em>' : '') + '</b><button class="arw" data-up="' + k + '"' + ($s.CR.pe < c || v >= crCap() ? ' disabled' : '') + ' title="Custa ' + c + ' ponto(s)">+' + c + '</button>'; }).join('');
+  const rows = ATTRS.map(([k, lbl]) => { const v = $s.CR.me.a[k], c = crUpCost(v, k), extra = (gear[k] || 0) + (rk[k] || 0); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 60 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + (extra ? '<em class="' + (extra > 0 ? 'up' : 'dn') + '">' + (extra > 0 ? '+' : '') + extra + '</em>' : '') + '</b><button class="arw" data-up="' + k + '"' + ($s.CR.pe < c || v >= crCap() ? ' disabled' : '') + (v >= crCap() ? ' title="No limite do potencial atual: jogue bem para subir"' : '') + ' title="Custa ' + c + ' ponto(s)">+' + c + '</button>'; }).join('');
   const log = $s.CR.ovrLog.filter((x, i, a) => i === 0 || x.o !== a[i - 1].o).slice(-12).map(x => 'T' + x.s + 'S' + x.w + ': ' + x.o).join(' → ');
-  return '<div class="cr-two"><div><p class="section-label">Atributos (gaste pontos de evolução)</p><div class="bars cr-bars">' + rows + '</div><p class="cr-note">Limite pelo potencial: ' + crCap() + '. Em verde/vermelho: efeito da raquete e dos equipamentos.</p></div>'
+  return '<div class="cr-two"><div><p class="section-label">Atributos (gaste pontos de evolução)</p><div class="bars cr-bars">' + rows + '</div><p class="cr-note">Potencial atual: <b>' + crCap() + '</b> (máximo ' + $s.CR.pot + '). Nenhum atributo passa do potencial atual, mesmo com pontos de evolução sobrando. Ele sobe com a sua <b>nota</b> em cada partida (defesas boas, smashes e curtas certos sobem; erros descem) e um pouco ao cumprir desafios na quadra.' + (crAvgRating() !== null ? ' Média das últimas notas: <b>' + crAvgRating().toFixed(1).replace('.', ',') + '</b>.' : '') + ' Em verde/vermelho: efeito da raquete e dos equipamentos.</p></div>'
     + '<div><p class="section-label">Evolução do overall</p><p class="cr-note">' + log + '</p><p class="section-label">Títulos</p><p class="cr-note">' + (Object.keys($s.CR.titles).length ? Object.entries($s.CR.titles).map(([t, n]) => TIERS[t].curto + ' ×' + n).join(' · ') : 'Nenhum ainda.') + '</p>'
     + '<p class="section-label">Partidas</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
     + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option></select></label>'
@@ -107,7 +126,7 @@ function crPartnersHTML() {
   return '<p class="section-label">Seu parceiro</p>' + (cur ? crPersonRow(cur, 'entrosamento ' + $s.CR.chem + '/5', '<button class="ghost sm" data-drop="1">Desfazer dupla</button>') + acts : '<p class="cr-note">Sem parceiro fixo.</p>')
     + (offers.length ? '<p class="section-label">Convites (de quem você venceu)</p>' + offers.map(c => crPersonRow(c, 'quer jogar com você', '<button class="cta sm" data-partner="' + c.id + '">Aceitar</button>')).join('') : '')
     + '<p class="section-label">Mercado de parceiros</p><p class="cr-note">Quem aceita depende do seu overall, dos seus pontos no ranking e de você já ter vencido o jogador. Quem está muito acima no ranking só joga com você depois de perder para você. Entrosamento sobe a cada torneio juntos.</p>'
-    + '<div class="cr-list">' + list.map(x => crPersonRow(x.c, x.w.why + ' · ' + Math.round($s.CR.npc[x.c.id] || 0) + ' pts', x.w.ok ? '<button class="ghost sm" data-partner="' + x.c.id + '">Formar dupla</button>' : '<span class="cr-lock">🔒</span>')).join('') + '</div>';
+    + '<div class="cr-list">' + list.map(x => crPersonRow(x.c, x.w.why + ' · ' + npcPts(x.c.id) + ' pts', x.w.ok ? '<button class="ghost sm" data-partner="' + x.c.id + '">Formar dupla</button>' : '<span class="cr-lock">🔒</span>')).join('') + '</div>';
 }
 function crShopHTML() {
   const disc = $s.CR.discount || 0;
@@ -166,7 +185,7 @@ function crRankingHTML() {
 function crRankingGeral() {
   const r = crRanking(), me = r.findIndex(x => x.id === 'crme');
   const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
-  return '<p class="section-label">Ranking ' + ($s.CR.me.fem ? 'feminino' : 'masculino') + ' (pontos das últimas ' + SEASON_WEEKS + ' semanas)</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · OVR ' + crCharOvr(c) + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
+  return '<p class="section-label">Ranking ' + ($s.CR.me.fem ? 'feminino' : 'masculino') + ' (' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · OVR ' + crCharOvr(c) + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
 }
 function crRivalsHTML() {
   const l = Object.values($s.CR.h2h || {}).filter(h => h.w + h.l >= 3 && h.w && h.l).sort((a, b) => (b.w + b.l) - (a.w + a.l)).slice(0, 8);
@@ -200,7 +219,9 @@ function crTourHTML() {
       + '<p class="cr-note">Tática: <select id="crTactic" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></p>'
       + '<p class="lede">' + names[t.round] + ': ' + (t.singles ? 'você' : 'vocês') + ' contra <b>' + crTeamName(opp) + '</b> (OVR ' + crTeamOvr(opp) + '): ' + esc(shortOf(crChar(opp.a))) + ' é ' + sty(opp.a) + (opp.b ? ', ' + esc(shortOf(crChar(opp.b))) + ' é ' + sty(opp.b) + '. Sua dupla: OVR ' : '. Você: OVR ') + crTeamOvr(t.teams[t.me]) + '.</p>';
   }
-  return '<div class="eyebrow">' + (t.special ? esc(T.nome) : t.singles ? esc(t.name) + ' · ' + esc(TIERS[t.tier].nome) : esc(T.nome) + ' · ' + esc(t.name)) + (crIsFinalT(t) && T.pro ? ' · final em 2 sets + super tie-break' : '') + '</div>' + br + msg
+  const dayTxt = '<p class="cr-note"><b>Dia ' + (t.day || 1) + ' · ' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day) + '</b>' + (T.pro && !t.done ? (t.day === 2 ? ' · semifinal e final hoje' : ' · semifinal e final no domingo') : '') + '</p>';
+  if (t.night && !t.done) return '<div class="eyebrow">' + esc(t.name) + '</div>' + br + '<div class="cr-sum"><b>Fim do sábado: ' + (t.singles ? 'você está' : 'vocês estão') + ' na semifinal!</b><span>Amanhã (domingo) tem semifinal e, vencendo, a final. A noite de descanso recuperou 12 de energia.</span><span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div><div class="cta-row"><button class="cta" id="crSunday">Ir para o domingo</button></div>';
+  return dayTxt + '<div class="eyebrow">' + (t.special ? esc(T.nome) : t.singles ? esc(t.name) + ' · ' + esc(TIERS[t.tier].nome) : esc(T.nome) + ' · ' + esc(t.name)) + (crIsFinalT(t) && T.pro ? ' · final em 2 sets + super tie-break' : '') + '</div>' + br + msg
     + '<div class="cta-row">' + (t.done ? '<button class="cta" id="crDone">Continuar</button>' : mm ? '<button class="cta" id="crPlay">Jogar partida</button><button class="ghost" id="crSim">Simular partida</button>' : '') + '</div>';
 }
 function bindTour() {
@@ -208,9 +229,11 @@ function bindTour() {
   const fn = {
     crPlay: () => { const ts = $('crTactic'); if (ts) { S.settings.tactic = ts.value; saveSettings(); } crPlayMatch(); },
     crSim: () => { crPlaySim(); renderCareer(); },
-    crDone: () => { crNextWeek(); crTab = 'agenda'; renderCareer(); },
+    // acabou no sábado: o domingo fica livre; acabou no domingo: vira a semana
+    crDone: () => { if ($s.CR.day < 7) { $s.CR.tour = null; crNextDay(); } else crNextWeek(); crTab = 'agenda'; renderCareer(); },
+    crSunday: () => { $s.CR.tour.night = false; saveCareer(); renderCareer(); },
   };
-  ['crPlay', 'crSim', 'crDone'].forEach(b);
+  ['crPlay', 'crSim', 'crDone', 'crSunday'].forEach(b);
   const ts = $('crTactic'); if (ts) ts.value = S.settings.tactic || 'normal';
   const sd = $('crSide'); if (sd) { sd.value = $s.CR.side || 'direita'; sd.addEventListener('change', () => { $s.CR.side = sd.value; saveCareer(); }); }
 }
@@ -219,6 +242,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-enter]').forEach(bt => bt.addEventListener('click', () => { const o = crWeekOptions()[+bt.dataset.enter]; if (o && crEnter(o)) crSyncChars(); renderCareer(); }));
   const tr = $('crTrain'); if (tr) tr.addEventListener('click', () => { crTrain(); renderCareer(); });
   const rs = $('crRest'); if (rs) rs.addEventListener('click', () => { crRest(); renderCareer(); });
+  const ru = $('crRestUntil'); if (ru) ru.addEventListener('click', () => { crRestUntil(); renderCareer(); });
   const dr = $('crDrill'); if (dr) dr.addEventListener('click', openDrillFromCareer);
   const co = $('crCoach'); if (co) co.addEventListener('click', () => { crCoach(); renderCareer(); });
   body.querySelectorAll('[data-up]').forEach(bt => bt.addEventListener('click', () => { crUpgrade(bt.dataset.up); renderCareer(); }));
@@ -347,7 +371,7 @@ document.querySelectorAll('[data-drill]').forEach(b => b.addEventListener('click
   $('drillPick').hidden = true; ac(); readMenu();
   const cr = drillFromCareer; S.careerDrill = !!cr;
   if (cr) { const prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode }; S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.careerActive = false;
-    startDrill(b.dataset.drill, (ok, pass) => { Object.assign(S.settings, prev); const g = crDrillReward(ok, pass); $('stTable').innerHTML += '<p class="cr-note">Carreira: +' + g + ' pontos de evolução.</p>'; }); }
+    startDrill(b.dataset.drill, (ok, pass) => { Object.assign(S.settings, prev); const g = crDrillReward(ok, pass); $('stTable').innerHTML += '<p class="cr-note">Carreira: +' + g + ' pontos de evolução' + (pass ? ' e +0,2 de potencial' : '') + '.</p>'; }); }
   else startDrill(b.dataset.drill, null);
 }));
 $('btnAgain').addEventListener('click', e => { if (S.lastDrill && $('overEyebrow').textContent.startsWith('Treino')) { e.stopImmediatePropagation(); el.over.hidden = true; startDrill(S.lastDrill, null); } }, true);

@@ -141,18 +141,51 @@ function whoName(p) {
   const w = nameOf(p.char).trim().split(/\s+/);
   return (w.length > 1 ? w[0][0].toUpperCase() + '. ' : '') + shortOf(p.char);
 }
+// nota da partida: o que o SEU jogador fez de bom (defesas, smashes, curtas certos, winners) e de ruim (erros por golpe)
+const PERF_TXT = { defBoa: 'defesas boas', defLevantou: 'defesas que levantaram', curtaTop: 'curtas matadoras', curtaBoa: 'curtas boas', curtaLenta: 'curtas lentas',
+  smashPerf: 'smashes perfeitos', smashRuim: 'smashes fora do tempo', lobChutado: 'lobs chutados perfeitos', finaliz: 'finalizações', winner: 'pontos vencedores',
+  furou: 'bolas furadas', erroF: 'erros forçados', e_curta: 'erros de curta', e_lob: 'erros de lob', e_smash: 'erros de smash', e_defesa: 'erros de defesa',
+  e_drive: 'erros de drive', e_voleio: 'erros de voleio', e_saque: 'saques errados' };
+const WIN_V = { smash: .6, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .5, saque: .5 };
+const ERR_V = { curta: -.7, lob: -.6, smash: -.6, defesa: -.5, drive: -.5, voleio: -.5, saque: -.5 };
+const perfOn = p => !!p && p === human && !p.netHuman && !S.spectate && !NET.role && !S.drill && !!S.perf;
+function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; }
+// golpe dado pelo seu jogador (chamado na hora da batida)
+function perfShot(p, sw, r) {
+  if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
+  if (sw.type === 'defesa' && r.pressure > .25) { if (r.pop) perfAdd(p, -.15, 'defLevantou'); else if (!r.wild) perfAdd(p, .35, 'defBoa'); }
+  if (sw.type === 'curta' && !r.pop && !r.wild) { if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); else perfAdd(p, -.12, 'curtaLenta'); }
+  if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.2, 'smashRuim'); }
+  if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
+  if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
+}
+function matchRating(won) {
+  if (!S.perf || S.spectate || NET.role) return null;
+  // saldo de pontos pesa também (sozinho na simples mais que na dupla): perder de lavada não dá nota média
+  const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
+  const r = 6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + (won ? .3 : -.3) + bal * (dupla() ? 1 : 1.5);
+  return Math.round(clamp(r, 1, 10) * 10) / 10;
+}
+function prependStats(html) { const st = $('stTable'); st.innerHTML = html + (st.innerHTML || ''); }
+function perfSummary() {
+  const ev = S.perf.ev, good = [], bad = [];
+  for (const [k, n] of Object.entries(ev)) { const key = k.startsWith('w_') ? 'winner' : k; (/^(e_|furou|erroF|defLevantou|curtaLenta|smashRuim)/.test(k) ? bad : good).push([key, n]); }
+  const merge = l => { const m = {}; l.forEach(([k, n]) => { m[k] = (m[k] || 0) + n; }); return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => n + ' ' + PERF_TXT[k]); };
+  return { good: merge(good), bad: merge(bad) };
+}
 // de quem foi o ponto: vencedor de quem bateu por último, ou erro (forçado / não forçado) de quem errou
 function creditPoint(w, kind) {
   const lh = S.lastHit, at = S.attempt;
   if (kind === 'in') {
-    if (at && at.hitId === S.hitId && at.p.team !== w) { const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++; return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p); }
-    if (lh && lh.p.team === w) { statOf(lh.p)[lh.cat]++; return lh.cat === 'saque' ? phrase('Ace', lh.p) : phrase(CAT_WIN[lh.cat], lh.p, FEM_CAT[lh.cat]); }
+    if (at && at.hitId === S.hitId && at.p.team !== w) { const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++; perfAdd(at.p, at.hard ? -.2 : -.45, at.hard ? 'erroF' : 'furou'); return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p); }
+    if (lh && lh.p.team === w) { statOf(lh.p)[lh.cat]++; perfAdd(lh.p, WIN_V[lh.cat] || .5, 'w_' + lh.cat); return lh.cat === 'saque' ? phrase('Ace', lh.p) : phrase(CAT_WIN[lh.cat], lh.p, FEM_CAT[lh.cat]); }
     return '';
   }
   if (!lh || lh.p.team === w) return '';
   const st = statOf(lh.p), where = kind === 'net' ? 'na rede' : 'fora';
-  if (lh.cat === 'saque') { st.ue++; return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
+  if (lh.cat === 'saque') { st.ue++; perfAdd(lh.p, ERR_V.saque, 'e_saque'); return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
   if (lh.hard) st.fe++; else st.ue++;
+  if (lh.hard) perfAdd(lh.p, -.2, 'erroF'); else perfAdd(lh.p, ERR_V[lh.cat] || -.5, 'e_' + lh.cat);
   return phrase(lh.hard ? 'Erro forçado' : 'Erro não forçado', lh.p, false, ' (' + CAT_NAME[lh.cat] + ' ' + where + ')');
 }
 // momento: 0 a 1 para o time numa sequência de pontos (a partir do 2º seguido)
@@ -260,6 +293,7 @@ function drillEnd() {
 function pointTo(w, reason, kind) {
   if (S.mode === 'dead') return;
   if (S.drill) { drillResult(w, kind); return; }
+  if (S.perf) S.perf.n++;
   S.streak = S.streak && S.streak.team === w ? { team: w, n: S.streak.n + 1 } : { team: w, n: 1 };
   const credit = creditPoint(w, kind);
   if (credit) reason = credit[0].toUpperCase() + credit.slice(1) + '.';
@@ -386,7 +420,7 @@ function newMatch(guest) {
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
   S.highlights = [];
-  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.lastHit = null; S.attempt = null; S.streak = null;
+  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.perf = { sum: 0, n: 0, ev: {} }; S.lastHit = null; S.attempt = null; S.streak = null;
   if (!guest) setWeather();
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
   document.body.classList.remove('in-menu');
@@ -422,12 +456,19 @@ function showOver() {
   $('stRally').textContent = S.stats.maxRally;
   $('stSmash').textContent = S.stats.smashes;
   renderMatchStats();
+  // nota do seu jogador
+  const rating = matchRating(w === 0);
+  if (rating !== null) {
+    const sm = perfSummary(), esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    prependStats('<div class="perf-box"><div class="perf-n' + (rating >= 7.5 ? ' hi' : rating < 5.5 ? ' lo' : '') + '">' + rating.toFixed(1).replace('.', ',') + '<small>SUA NOTA</small></div><div><b>' + (sm.good.length ? esc(sm.good.join(' · ')) : 'Pouca participação nos pontos') + '</b>' + (sm.bad.length ? '<span>' + esc(sm.bad.join(' · ')) + '</span>' : '') + '</div></div>');
+  }
   const inChamp = !!S.champActive, inCareer = !!S.careerActive;
   if (inChamp) champMatchEnded(w === 0);
-  if (inCareer) careerMatchEnded(w === 0);
+  if (inCareer) careerMatchEnded(w === 0, rating === null ? undefined : rating);
+  if (inCareer && rating !== null && $s.CR && $s.CR.tour && $s.CR.tour.log) { const last = $s.CR.tour.log[$s.CR.tour.log.length - 1] || ''; const m = last.match(/potencial \+[0-9,]+/); if (m) prependStats('<p class="cr-note perf-pot">Carreira: ' + m[0] + ' (o potencial é o teto dos seus atributos)</p>'); }
   $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
   $('btnReplay').hidden = !(S.highlights && S.highlights.length);
   el.over.hidden = false;
 }
 
-export { pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

@@ -7,7 +7,7 @@ import { S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball } from './07-glb';
-import { decisive, dupla, feedback, momentum } from './09-interface';
+import { decisive, dupla, feedback, momentum, perfShot } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, ctlFeedback, keys, localCtl, touch } from './12-controles';
@@ -127,8 +127,9 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   p.vel.x += (vx - p.vel.x) * k; p.vel.z += (vz - p.vel.z) * k;
 }
 function receiving(p) {
-  // só até o saque ser batido: depois quem recebe pode avançar (senão a curta de saque é impossível)
-  return p.team !== S.server && (S.mode === 'serve' || S.mode === 'toss');
+  // até o saque ser batido ninguém passa da linha dos 3 m, só o sacador: a dupla que recebe e também o parceiro de quem saca.
+  // Depois do saque todos podem avançar (senão a curta de saque seria impossível)
+  return p !== S.serverPlayer && (S.mode === 'serve' || S.mode === 'toss');
 }
 function clampPos(p) {
   const lim = C.halfW + 3;
@@ -262,6 +263,7 @@ function updateHuman(dt, c = localCtl()) {
       if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
+      perfShot(p, sw, r);
       if (S.drill) S.drill.lastR = Object.assign({}, r, { meterRes: sw.meter ? sw.meter.res : null });
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r, c);
       // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)

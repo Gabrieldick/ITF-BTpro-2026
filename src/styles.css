@@ -536,3 +536,27 @@ body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #
 /* faixa do lob chutado perfeito (começo da barra do lob) */
 #meter .kz { position: absolute; left: 0; right: 0; background: #4FD18B; opacity: .9; display: none; }
 #meter.lobm .kz { display: block; }
+
+/* carreira: semana em dias */
+.cr-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 10px 0 12px; }
+.cr-day { display: grid; gap: 2px; padding: 6px 4px; border-radius: 8px; border: 1px solid var(--ui-line, #2a4a7a); text-align: center; font-size: .78rem; min-width: 0; }
+.cr-day b { text-transform: uppercase; letter-spacing: .06em; font-size: .72rem; }
+.cr-day small { opacity: .7; }
+.cr-day span { font-size: .7rem; min-height: 1.1em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-day.past { opacity: .55; }
+.cr-day.today { border-color: var(--ui-acc, #4fb8ff); box-shadow: 0 0 0 2px var(--ui-acc, #4fb8ff) inset; }
+.cr-day.tour { background: rgba(255, 210, 63, .14); }
+.cr-when { font-size: .78rem; opacity: .85; }
+.cr-row.dim { opacity: .55; }
+/* nota da partida */
+.perf-box { display: flex; gap: 12px; align-items: center; margin: 0 0 10px; padding: 10px; border-radius: 10px; border: 1px solid var(--ui-line, #2a4a7a); }
+.perf-box > div:last-child { display: grid; gap: 3px; font-size: .85rem; }
+.perf-box span { opacity: .8; }
+.perf-n { display: grid; place-items: center; min-width: 64px; font-size: 1.9rem; font-weight: 800; line-height: 1; color: #ffd23f; }
+.perf-n small { font-size: .55rem; letter-spacing: .1em; opacity: .8; margin-top: 4px; color: inherit; }
+.perf-n.hi { color: #4fd18b; } .perf-n.lo { color: #ff7a5c; }
+/* resumo do torneio (campeão, prêmio, convites) no tema azul-escuro */
+.cr-sum { background: linear-gradient(180deg, rgba(255,207,74,.16), rgba(255,207,74,.05)), var(--ui-card); border-color: var(--ui-warn); color: var(--ui-text); }
+.cr-sum .champion { color: var(--ui-warn); font-size: 24px; }
+.cr-sum span { color: var(--ui-text); }
+.cr-sum .cr-note { color: var(--ui-sub); }

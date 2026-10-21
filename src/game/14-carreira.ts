@@ -12,18 +12,48 @@ import LZString from 'lz-string';
 // ================= MODO CARREIRA =================
 // circuito em escada (amador -> ITF -> Sand Series -> Mundial), ranking de 26 semanas, dinheiro, evolução e parceiros
 const TIERS = [
-  { id: 'C', nome: 'Amador Categoria C', curto: 'AMADOR C', ovr: [44, 58], draw: 8, fee: 30, travel: 0, prize: [400, 200, 90, 40], pts: [25, 16, 9, 4], xp: [3, 2, 2, 1], diff: 'facil', req: 0, cities: ['Copa Praia do Forte', 'Open Itapuã', 'Desafio Guarujá', 'Torneio da Pajuçara', 'Copa Jurerê', 'Open Ponta Negra'] },
-  { id: 'B', nome: 'Amador Categoria B', curto: 'AMADOR B', ovr: [50, 64], draw: 8, fee: 60, travel: 0, prize: [900, 450, 180, 90], pts: [45, 30, 18, 8], xp: [4, 3, 2, 1], diff: 'facil', req: 60, cities: ['Open Balneário Camboriú', 'Copa Ipanema', 'Torneio Porto de Galinhas', 'Open Maresias', 'Copa Iracema'] },
-  { id: 'A', nome: 'Amador Categoria A', curto: 'AMADOR A', ovr: [56, 69], draw: 8, fee: 120, travel: 60, prize: [1800, 900, 350, 180], pts: [75, 50, 30, 14], xp: [5, 4, 3, 1], diff: 'medio', req: 160, cities: ['Open Florianópolis', 'Copa Salvador', 'Open Búzios', 'Torneio Natal', 'Copa Vitória'] },
-  { id: 'BT10', nome: 'ITF BT10', curto: 'BT10', ovr: [61, 74], draw: 8, fee: 200, travel: 250, prize: [3500, 1700, 700, 250], pts: [120, 80, 50, 20], xp: [6, 5, 3, 2], diff: 'medio', req: 320, cities: ['BT10 Fortaleza', 'BT10 Aruba', 'BT10 Maceió', 'BT10 Cascais', 'BT10 Valência'] },
-  { id: 'BT50', nome: 'ITF BT50', curto: 'BT50', ovr: [66, 78], draw: 16, fee: 350, travel: 500, prize: [7000, 3500, 1600, 700, 200], pts: [200, 140, 90, 50, 18], xp: [8, 6, 4, 3, 1], diff: 'medio', req: 600, cities: ['BT50 Cervia', 'BT50 Barcelona', 'BT50 João Pessoa', 'BT50 Lignano', 'BT50 Montpellier'] },
-  { id: 'BT100', nome: 'ITF BT100', curto: 'BT100', ovr: [70, 82], draw: 16, fee: 500, travel: 800, prize: [14000, 7000, 3200, 1300, 400], pts: [350, 240, 150, 80, 30], xp: [9, 7, 5, 3, 2], diff: 'medio', req: 1000, cities: ['BT100 Copacabana', 'BT100 Riccione', 'BT100 Aruba', 'BT100 Gran Canaria'] },
-  { id: 'BT200', nome: 'ITF BT200', curto: 'BT200', ovr: [74, 86], draw: 16, fee: 800, travel: 1200, prize: [28000, 14000, 6500, 2600, 800], pts: [550, 380, 240, 130, 50], xp: [11, 8, 6, 4, 2], diff: 'dificil', req: 1600, cities: ['BT200 Rio de Janeiro', 'BT200 Ravenna', 'BT200 Terracina', 'BT200 Fortaleza'] },
-  { id: 'BT400', nome: 'ITF BT400', curto: 'BT400', ovr: [78, 90], draw: 16, fee: 1200, travel: 1800, prize: [50000, 25000, 12000, 5000, 1500], pts: [850, 600, 380, 200, 80], xp: [13, 10, 7, 4, 2], diff: 'dificil', req: 2500, cities: ['BT400 Aruba', 'BT400 Ravenna', 'BT400 Copacabana', 'BT400 Cervia'] },
-  { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [1300, 900, 580, 300, 120], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 3800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba'] },
-  { id: 'WC', nome: 'Campeonato Mundial ITF', curto: 'MUNDIAL', ovr: [84, 99], draw: 16, fee: 0, travel: 3000, prize: [150000, 75000, 36000, 15000, 5000], pts: [2000, 1400, 900, 500, 200], xp: [20, 14, 10, 6, 3], diff: 'dificil', req: 1e9, cities: ['Mundial de Matosinhos'] },
+  { id: 'C', nome: 'Amador Categoria C', curto: 'AMADOR C', ovr: [44, 58], draw: 8, fee: 30, travel: 0, prize: [400, 200, 90, 40], pts: [3, 2, 1, 0], xp: [3, 2, 2, 1], diff: 'facil', req: 0, cities: ['Copa Praia do Forte', 'Open Itapuã', 'Desafio Guarujá', 'Torneio da Pajuçara', 'Copa Jurerê', 'Open Ponta Negra'] },
+  { id: 'B', nome: 'Amador Categoria B', curto: 'AMADOR B', ovr: [50, 64], draw: 8, fee: 60, travel: 0, prize: [900, 450, 180, 90], pts: [5, 3, 2, 1], xp: [4, 3, 2, 1], diff: 'facil', req: 10, cities: ['Open Balneário Camboriú', 'Copa Ipanema', 'Torneio Porto de Galinhas', 'Open Maresias', 'Copa Iracema'] },
+  { id: 'A', nome: 'Amador Categoria A', curto: 'AMADOR A', ovr: [56, 69], draw: 8, fee: 120, travel: 60, prize: [1800, 900, 350, 180], pts: [8, 5, 3, 1], xp: [5, 4, 3, 1], diff: 'medio', req: 25, cities: ['Open Florianópolis', 'Copa Salvador', 'Open Búzios', 'Torneio Natal', 'Copa Vitória'] },
+  { id: 'BT10', nome: 'ITF BT10', curto: 'BT10', ovr: [61, 74], draw: 8, fee: 200, travel: 250, prize: [3500, 1700, 700, 250], pts: [10, 7, 4, 2], xp: [6, 5, 3, 2], diff: 'medio', req: 45, cities: ['BT10 Fortaleza', 'BT10 Aruba', 'BT10 Maceió', 'BT10 Cascais', 'BT10 Valência'] },
+  { id: 'BT50', nome: 'ITF BT50', curto: 'BT50', ovr: [66, 78], draw: 16, fee: 350, travel: 500, prize: [7000, 3500, 1600, 700, 200], pts: [50, 35, 22, 12, 5], xp: [8, 6, 4, 3, 1], diff: 'medio', req: 80, cities: ['BT50 Cervia', 'BT50 Barcelona', 'BT50 João Pessoa', 'BT50 Lignano', 'BT50 Montpellier'] },
+  { id: 'BT100', nome: 'ITF BT100', curto: 'BT100', ovr: [70, 82], draw: 16, fee: 500, travel: 800, prize: [14000, 7000, 3200, 1300, 400], pts: [100, 70, 45, 25, 10], xp: [9, 7, 5, 3, 2], diff: 'medio', req: 250, cities: ['BT100 Copacabana', 'BT100 Riccione', 'BT100 Aruba', 'BT100 Gran Canaria'] },
+  { id: 'BT200', nome: 'ITF BT200', curto: 'BT200', ovr: [74, 86], draw: 16, fee: 800, travel: 1200, prize: [28000, 14000, 6500, 2600, 800], pts: [210, 150, 95, 50, 20], xp: [11, 8, 6, 4, 2], diff: 'dificil', req: 600, cities: ['BT200 Rio de Janeiro', 'BT200 Ravenna', 'BT200 Terracina', 'BT200 Fortaleza'] },
+  { id: 'BT400', nome: 'ITF BT400', curto: 'BT400', ovr: [78, 90], draw: 16, fee: 1200, travel: 1800, prize: [50000, 25000, 12000, 5000, 1500], pts: [450, 320, 200, 110, 45], xp: [13, 10, 7, 4, 2], diff: 'dificil', req: 1300, cities: ['BT400 Aruba', 'BT400 Ravenna', 'BT400 Copacabana', 'BT400 Cervia'] },
+  { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [750, 530, 340, 180, 75], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba'] },
+  { id: 'WC', nome: 'Campeonato Mundial ITF', curto: 'MUNDIAL', ovr: [84, 99], draw: 16, fee: 0, travel: 3000, prize: [150000, 75000, 36000, 15000, 5000], pts: [1000, 700, 450, 250, 100], xp: [20, 14, 10, 6, 3], diff: 'dificil', req: 1e9, cities: ['Mundial de Matosinhos'] },
 ];
-const SEASON_WEEKS = 26;
+const SEASON_WEEKS = 52; // a temporada é um ano: 52 semanas de 7 dias
+const RANK_BEST = 10;    // o ranking soma os 10 melhores resultados das últimas 52 semanas
+// ---------- calendário: dias, datas e torneios do ano ----------
+const DAY_NAMES = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+const DAY_FULL = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+// data real: a temporada 1 é 2026; a semana 1 começa na primeira segunda-feira de janeiro
+function crDate(season, week, day) {
+  const Y = 2025 + season, j1 = new Date(Y, 0, 1).getDay(), mon = 1 + (8 - j1) % 7;
+  return new Date(Y, 0, mon + (week - 1) * 7 + (day - 1));
+}
+const crDateTxt = (season, week, day, withYear) => { const d = crDate(season, week, day); return DAY_NAMES[day - 1] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + (withYear ? ' ' + d.getFullYear() : ''); };
+// quantas semanas do ano têm torneio de cada nível profissional (os amadores têm toda semana)
+const CAL_N = { 3: 44, 4: 36, 5: 28, 6: 22, 7: 15, 8: 7 };
+const CALC = { key: '', cal: null };
+function crSeasonCal(season) {
+  const key = $s.CR.seed + ':' + season;
+  if (CALC.key === key) return CALC.cal;
+  const rnd = mulberry($s.CR.seed + season * 7919), cal = {};
+  for (let w = 1; w <= SEASON_WEEKS; w++) cal[w] = [];
+  for (const [t, n] of Object.entries(CAL_N)) {
+    const ws = []; for (let w = 1; w <= 49; w++) ws.push(w); // semanas 50–52: Mundial e fim de ano
+    for (let i = ws.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ws[i], ws[j]] = [ws[j], ws[i]]; }
+    ws.slice(0, n).forEach(w => cal[w].push(+t));
+  }
+  cal[51].push(9); // Mundial (top 16 do ranking)
+  CALC.key = key; CALC.cal = cal;
+  return cal;
+}
+// 10 melhores resultados
+const bestN = arr => arr.sort((a, b) => b - a).slice(0, RANK_BEST).reduce((t, v) => t + v, 0);
 // ---------- mundo fictício ----------
 function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const NAME_BANK = {
@@ -80,23 +110,40 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
 }
 // ---------- estado ----------
 // ---------- saves: várias carreiras no navegador + arquivo .json ----------
-// localStorage 'pdo-careers' = { active: id | null, slots: { id: carreira } }
-const SAVE_KEY = 'pdo-careers', SAVE_FMT = 'ponto-de-ouro/carreira';
+// localStorage: 'pdo-careers' = índice { v: 2, active, ids }; cada carreira na sua chave 'pdo-career-<id>' (comprimida).
+// Só a carreira que mudou é regravada, e um pouco depois da última ação (os dias passam rápido sem travar).
+// Formato antigo: 'pdo-careers' = todas as carreiras juntas num texto só (convertido na primeira gravação).
+const SAVE_KEY = 'pdo-careers', SAVE_FMT = 'ponto-de-ouro/carreira', SLOT_KEY = id => 'pdo-career-' + id;
 let SAVES = { active: null, slots: {} };
-const readSaves = raw => !raw ? null : raw.startsWith('LZ:') ? JSON.parse(LZString.decompressFromUTF16(raw.slice(3)) || 'null') : JSON.parse(raw);
-try { SAVES = readSaves(localStorage.getItem(SAVE_KEY)) || SAVES; } catch (e) {}
+const DIRTY = new Set(); let saveT = 0;
+const unpack = raw => !raw ? null : raw.startsWith('LZ:') ? JSON.parse(LZString.decompressFromUTF16(raw.slice(3)) || 'null') : JSON.parse(raw);
+try {
+  const idx = unpack(localStorage.getItem(SAVE_KEY));
+  if (idx && idx.v === 2 && Array.isArray(idx.ids)) {
+    SAVES.active = idx.active || null;
+    idx.ids.forEach(id => { try { const c = unpack(localStorage.getItem(SLOT_KEY(id))); if (c) SAVES.slots[id] = c; } catch (e) {} });
+  } else if (idx && idx.slots) { SAVES = idx; Object.keys(SAVES.slots).forEach(id => DIRTY.add(id)); } // antigo: regrava separado
+} catch (e) {}
 if (!SAVES.slots) SAVES = { active: null, slots: {} };
 // save antigo de uma carreira só
 try { const old = JSON.parse(localStorage.getItem('pdo-career') || 'null'); if (old && !Object.keys(SAVES.slots).length) { old.id = old.id || 'c' + old.seed; SAVES.slots[old.id] = old; SAVES.active = old.id; } } catch (e) {}
 $s.CR = SAVES.active && SAVES.slots[SAVES.active] || null;
 let saveErr = '';
-function writeSaves() {
-  try { localStorage.setItem(SAVE_KEY, 'LZ:' + LZString.compressToUTF16(JSON.stringify(SAVES))); localStorage.removeItem('pdo-career'); saveErr = ''; }
-  catch (e) { saveErr = 'Não foi possível salvar no navegador (espaço cheio?). Exporte a carreira para um arquivo.'; }
+// grava já: o índice e as carreiras que mudaram
+function flushSaves() {
+  clearTimeout(saveT); saveT = 0;
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 2, active: SAVES.active, ids: Object.keys(SAVES.slots) }));
+    DIRTY.forEach(id => { const c = SAVES.slots[id]; if (c) localStorage.setItem(SLOT_KEY(id), 'LZ:' + LZString.compressToUTF16(JSON.stringify(c))); else localStorage.removeItem(SLOT_KEY(id)); });
+    DIRTY.clear(); localStorage.removeItem('pdo-career'); saveErr = '';
+  } catch (e) { saveErr = 'Não foi possível salvar no navegador (espaço cheio?). Exporte a carreira para um arquivo.'; }
 }
+// grava o índice já (barato) e as carreiras um pouco depois da última mudança
+function writeSaves() { clearTimeout(saveT); saveT = setTimeout(flushSaves, 700); }
+if (typeof window !== 'undefined') { addEventListener('pagehide', flushSaves); addEventListener('beforeunload', flushSaves); document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) flushSaves(); }); }
 const saveCareer = () => {
-  if ($s.CR) { $s.CR.id = $s.CR.id || 'c' + $s.CR.seed; $s.CR.savedAt = new Date().toISOString(); SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; }
-  else if (SAVES.active) { delete SAVES.slots[SAVES.active]; SAVES.active = null; }
+  if ($s.CR) { $s.CR.id = $s.CR.id || 'c' + $s.CR.seed; $s.CR.savedAt = new Date().toISOString(); SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; DIRTY.add($s.CR.id); }
+  else if (SAVES.active) { DIRTY.add(SAVES.active); delete SAVES.slots[SAVES.active]; SAVES.active = null; }
   writeSaves();
 };
 // lista para a tela de carreiras (mais recente primeiro)
@@ -107,7 +154,7 @@ function crSlots() {
 function crLoadSlot(id) { const c = SAVES.slots[id]; if (!c) return false; $s.CR = c; SAVES.active = id; writeSaves(); crMigrate(); crSyncChars(); return true; }
 // sai da carreira atual sem apagar (volta para a lista)
 function crCloseSlot() { $s.CR = null; SAVES.active = null; writeSaves(); crSyncChars(); }
-function crDeleteSlot(id) { delete SAVES.slots[id]; if (SAVES.active === id) { SAVES.active = null; $s.CR = null; crSyncChars(); } writeSaves(); }
+function crDeleteSlot(id) { delete SAVES.slots[id]; DIRTY.add(id); if (SAVES.active === id) { SAVES.active = null; $s.CR = null; crSyncChars(); } flushSaves(); }
 // arquivo .json com a carreira (para guardar no git e abrir em outro lugar)
 function crExportData(id) {
   const c = SAVES.slots[id || SAVES.active]; if (!c) return null;
@@ -122,9 +169,10 @@ function crImportData(text) {
   c.id = c.id || 'c' + c.seed;
   const cur = SAVES.slots[c.id];
   const replaced = !!cur;
-  if (cur && (cur.season * 100 + cur.week) > (c.season * 100 + c.week) && typeof confirm === 'function'
+  const wk52 = x => (x.v || 1) < 2 ? x.week * 2 - 1 : x.week; // saves antigos: semanas de 26
+  if (cur && (cur.season * 100 + wk52(cur)) > (c.season * 100 + wk52(c)) && typeof confirm === 'function'
     && !confirm('A carreira "' + cur.me.name + '" salva aqui está mais adiantada (T' + cur.season + ' S' + cur.week + ') que a do arquivo (T' + c.season + ' S' + c.week + '). Substituir pela do arquivo?')) return { ok: false, msg: 'Importação cancelada.' };
-  SAVES.slots[c.id] = c; writeSaves();
+  SAVES.slots[c.id] = c; DIRTY.add(c.id); flushSaves();
   return { ok: true, id: c.id, msg: (replaced ? 'Carreira atualizada: ' : 'Carreira importada: ') + c.me.name + ' (T' + c.season + ' S' + c.week + ').' };
 }
 // saves guardados na pasta saves/ do repositório no GitHub
@@ -159,12 +207,14 @@ function poolGet(id) {
 }
 const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || ROSTER.find(c => c.id === id));
 const absWeek = () => ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
-const crPts = () => $s.CR.results.filter(r => r.w > absWeek() - SEASON_WEEKS).reduce((t, r) => t + r.pts, 0);
+const crPts = () => bestN($s.CR.results.filter(r => r.w > absWeek() - SEASON_WEEKS).map(r => r.pts));
+// resultados dos outros: lista compacta (semana absoluta * 10000 + pontos), só os 12 melhores ainda válidos
+const npcPts = id => { const a = ($s.CR.npcR || {})[id]; if (!a) return 0; const lim = absWeek() - SEASON_WEEKS; return bestN(a.filter(x => Math.floor(x / 10000) > lim).map(x => x - Math.floor(x / 10000) * 10000)); };
 const RK = { key: '', list: null };
 function crRanking() {
   const key = [$s.CR.id, $s.CR.season, $s.CR.week, $s.CR.results.length, $s.CR.pool.length, $s.CR.me.fem ? 1 : 0, RK.gen || 0].join('|');
   if (RK.key === key && RK.list) return RK.list;
-  const list = crWorld().map(c => ({ id: c.id, pts: Math.round($s.CR.npc[c.id] || 0) }));
+  const list = crWorld().map(c => ({ id: c.id, pts: npcPts(c.id) }));
   list.push({ id: 'crme', pts: crPts() });
   RK.key = key; RK.list = list.sort((x, y) => y.pts - x.pts || (x.id === 'crme' ? 1 : -1));
   return RK.list;
@@ -173,19 +223,33 @@ function crRanking() {
 function crStateRanking(uf) { return crRanking().filter(r => { const c = crChar(r.id); return c && c.pais === 'BRA' && crUf(c) === uf; }); }
 const crRank = () => crRanking().findIndex(r => r.id === 'crme') + 1;
 const npcTier = o => { let t = 0; for (let i = 0; i < 9; i++) if (TIERS[i].ovr[0] + 3 <= o) t = i; return t; };
-// semana dos outros: quem joga ganha pontos conforme a força dentro do nível
-function crSimWorld(rnd, list) {
+// semana dos outros (semana absoluta aw): cada um joga o torneio do seu nível que existir naquela semana
+// (ou o de baixo) e guarda o resultado; o ranking soma os 10 melhores das últimas 52 semanas
+function crSimWorld(rnd, list, aw, ovrs) {
   rnd = rnd || Math.random; RK.gen = (RK.gen || 0) + 1;
+  if (aw === undefined) aw = absWeek();
+  const season = Math.floor((aw - 1) / SEASON_WEEKS) + 1, wk = aw - (season - 1) * SEASON_WEEKS;
+  const cal = crSeasonCal(season)[wk] || [], lim = aw - SEASON_WEEKS, R = $s.CR.npcR = $s.CR.npcR || {};
   (list || $s.CR.pool.concat(ROSTER)).forEach(c => {
-    const o = crCharOvr(c), t = npcTier(o), T = TIERS[t];
-    let p = ($s.CR.npc[c.id] || 0) * (SEASON_WEEKS - 1) / SEASON_WEEKS;
-    if (rnd() < .6) {
-      const perf = (o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6;
-      const idx = perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4;
-      p += T.pts[Math.min(idx, T.pts.length - 1)];
+    const o = ovrs ? ovrs.get(c.id) : crCharOvr(c);
+    let t = npcTier(o); while (t >= 3 && !cal.includes(t)) t--;
+    let arr = R[c.id];
+    if (rnd() < (t >= 3 ? .55 : .45)) {
+      const T = TIERS[t], perf = (o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6;
+      const idx = perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4, pts = T.pts[Math.min(idx, T.pts.length - 1)];
+      if (pts > 0) { arr = arr || []; arr.push(aw * 10000 + pts); }
     }
-    $s.CR.npc[c.id] = p;
+    if (arr) {
+      arr = arr.filter(x => Math.floor(x / 10000) > lim);
+      if (arr.length > 12) { arr.sort((x, y) => (y - Math.floor(y / 10000) * 10000) - (x - Math.floor(x / 10000) * 10000)); arr.length = 12; }
+      if (arr.length) R[c.id] = arr; else delete R[c.id];
+    }
   });
+}
+// um ano inteiro de resultados do mundo (criação da carreira e migração dos saves antigos)
+function crSimYear(seedK, list) {
+  const r = mulberry($s.CR.seed + seedK), L = list || $s.CR.pool.concat(ROSTER), ovrs = new Map(L.map(c => [c.id, crCharOvr(c)])), now = absWeek();
+  for (let aw = now - SEASON_WEEKS + 1; aw <= now; aw++) crSimWorld(r, L, aw, ovrs);
 }
 function gaussR(rnd) { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 function crTierUnlocked(i) {
@@ -193,13 +257,16 @@ function crTierUnlocked(i) {
   return i === 0 || ($s.CR.titles[i - 1] || 0) > 0 || crPts() >= TIERS[i].req || $s.CR.maxTier >= i;
 }
 function crMaxTier() { let m = 0; for (let i = 0; i < 9; i++) if (crTierUnlocked(i)) m = i; return m; }
-// opções da semana: torneios do seu nível, um abaixo e às vezes um acima para quem já pode
-function crWeekOptions() {
-  if ($s.CR.injury) return [];
-  const rnd = mulberry($s.CR.seed + absWeek() * 97);
-  const top = crMaxTier(), opts = [];
-  const tiers = [top, Math.max(0, top - 1), top > 0 ? Math.max(0, top - 2) : top];
-  if ($s.CR.week === SEASON_WEEKS && crRank() <= 16) tiers.unshift(9);
+// opções de uma semana: os torneios do calendário no seu nível e até 3 abaixo (amadores toda semana; profissionais só nas
+// semanas em que existem). Na semana 51, o Mundial para o top 16
+function crWeekOptions(wk) {
+  if (wk === undefined) wk = $s.CR.week;
+  if ($s.CR.injury && wk === $s.CR.week) return [];
+  const aw = ($s.CR.season - 1) * SEASON_WEEKS + wk;
+  const rnd = mulberry($s.CR.seed + aw * 97);
+  const top = crMaxTier(), opts = [], cal = crSeasonCal($s.CR.season)[wk] || [];
+  const tiers = [top, top - 1, top - 2, top - 3].filter(t => t >= 0 && (t < 3 || cal.includes(t))).slice(0, 3);
+  if (cal.includes(9) && crRank() <= 16) tiers.unshift(9);
   const seen = new Set();
   tiers.forEach((t, k) => {
     const T = TIERS[t]; let city = T.cities[Math.floor(rnd() * T.cities.length)];
@@ -216,10 +283,23 @@ function crWeekOptions() {
     opts.push({ tier: t, name: t >= 3 && t < 9 ? city : city + (t < 3 ? ' · ' + T.curto : '') });
   });
   const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 4);
-  if ($s.CR.wildcard > 0 && top < 8) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
-  const out = crSpecialOptions().concat(list);
-  if (absWeek() % 3 === 0) { const T = TIERS[top]; out.push({ singles: true, tier: top, name: 'Simples · ' + T.cities[Math.floor(rnd() * T.cities.length)] + (top < 3 ? ' · ' + T.curto : '') }); }
+  if ($s.CR.wildcard > 0 && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
+  const out = crSpecialOptions(wk).concat(list);
+  const st = tiers.find(t => t < 9); // simples: o nível mais alto que tem torneio nesta semana
+  if (aw % 3 === 0 && st !== undefined) { const T = TIERS[st]; out.push({ singles: true, tier: st, name: 'Simples · ' + T.cities[Math.floor(rnd() * T.cities.length)] + (st < 3 ? ' · ' + T.curto : '') }); }
+  out.forEach(o => { o.days = crOptPro(o) ? 2 : 1; });
   return out;
+}
+const crOptPro = o => o.special && o.special !== 'estadual' ? true : o.tier >= 3 && o.special !== 'estadual';
+// próximos torneios profissionais do seu nível (e um acima) para planejar o calendário
+function crUpcoming(n) {
+  const top = crMaxTier(), out = [];
+  for (let w = $s.CR.week + 1; w <= SEASON_WEEKS && out.length < (n || 8); w++) {
+    const cal = crSeasonCal($s.CR.season)[w] || [];
+    crWeekOptions(w).filter(o => o.special && o.special !== 'estadual' ? !o.notCalled : o.tier >= Math.max(3, top - 1) && o.tier <= top + 1 && !o.wild && !o.singles).forEach(o => out.push({ w, o, date: crDateTxt($s.CR.season, w, 6) + (o.days > 1 ? '–' + crDate($s.CR.season, w, 7).getDate() : '') }));
+    if (cal.includes(top + 1) && top + 1 < 9 && top + 1 >= 3 && out.filter(x => x.o.locked).length < 3) out.push({ w, o: { tier: top + 1, name: TIERS[top + 1].curto + ' (acima do seu nível)', locked: true }, date: crDateTxt($s.CR.season, w, 6) });
+  }
+  return out.slice(0, n || 8);
 }
 // ---------- criação ----------
 function crCreate(o) {
@@ -229,13 +309,14 @@ function crCreate(o) {
   const target = promessa ? 52 : 60;
   const me = { id: 'crme', uf: (o.pais || 'BRA') === 'BRA' ? o.uf || 'SP' : undefined, name: o.name || 'Você', alt: o.alt, pais: o.pais || 'BRA', estilo: STYLES[o.style].nome, build: o.build || 'atletico', fem: o.fem, canhoto: o.canhoto || undefined,
     a: makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : o.acc === 'band' ? { headband: '#ff5a1f' } : {}, o.hairStyle ? { hairStyle: o.hairStyle } : {}, !o.fem && o.beard ? { beard: o.beard } : { beard: '' }, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
-  $s.CR = { v: 1, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: promessa ? 17 : 22,
-    money: promessa ? 800 : 1200, pe: 0, energy: 100, season: 1, week: 1, results: [], npc: {}, titles: {}, maxTier: 0,
+  $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: promessa ? 17 : 22,
+    money: promessa ? 800 : 1200, pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, titles: {}, maxTier: 0,
     partner: null, chem: 0, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
+  $s.CR.v = 2; $s.CR.potCur = Math.min($s.CR.pot, Math.max(...Object.values(me.a)) + 4);
   crMigrate();
-  const r2 = mulberry(seed + 11); for (let i = 0; i < SEASON_WEEKS; i++) crSimWorld(r2);
+  crSimYear(11);
   $s.CR.ovrLog.push({ s: 1, w: 1, o: overall($s.CR.me.a) });
   crSyncChars(); saveCareer();
 }
@@ -245,8 +326,8 @@ function crWillPartner(c) {
   if ($s.CR.offers.includes(c.id)) return { ok: true, why: 'Convite aceito' };
   const me = crMeOvr(), o = crCharOvr(c), beat = Math.min(2, $s.CR.beat[c.id] || 0);
   // quem está muito acima no ranking só aceita se você já o venceu (ou se ele mesmo convidar)
-  const myPts = crPts(), pts = Math.round($s.CR.npc[c.id] || 0);
-  if (!beat && pts > Math.max(myPts * 1.6 + 150, myPts + 250)) return { ok: false, why: 'Muito acima no ranking: só joga com quem o vencer' };
+  const myPts = crPts(), pts = npcPts(c.id);
+  if (!beat && pts > Math.max(myPts * 1.6 + 60, myPts + 120)) return { ok: false, why: 'Muito acima no ranking: só joga com quem o vencer' };
   const lim = me + 3 + Math.floor(crRankBonus() / 2) + beat * 3;
   if (o <= lim) return { ok: true, why: beat ? 'Respeita você: já perdeu para você' : 'Topa jogar com você' };
   return { ok: false, why: o - lim > 8 ? 'Fora do seu nível por enquanto' : 'Quer alguém com mais ranking ou que já o tenha vencido' };
@@ -365,10 +446,10 @@ function crCallUp(kind) {
   return { teams, mine, called, myRank, myKey };
 }
 // calendário dos especiais
-function crSpecialOptions() {
-  const w = $s.CR.week, out = [], br = $s.CR.me.pais === 'BRA';
-  if (br && (w === 5 || w === 18)) { const band = Math.min(crMaxTier(), 4); const uf = $s.CR.me.uf || 'SP', cs = (STATE_INFO[uf] || STATE_INFO.SP).cities; out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
-  const nat = w === 11 && br ? 'selEst' : w === 15 ? ($s.CR.season % 2 ? (AMERICAS.includes($s.CR.me.pais) ? 'pan' : null) : 'confed') : w === 21 ? 'mundSel' : null;
+function crSpecialOptions(wk) {
+  const w = wk === undefined ? $s.CR.week : wk, out = [], br = $s.CR.me.pais === 'BRA';
+  if (br && (w === 10 || w === 36)) { const band = Math.min(crMaxTier(), 4); const uf = $s.CR.me.uf || 'SP', cs = (STATE_INFO[uf] || STATE_INFO.SP).cities; out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
+  const nat = w === 22 && br ? 'selEst' : w === 30 ? ($s.CR.season % 2 ? (AMERICAS.includes($s.CR.me.pais) ? 'pan' : null) : 'confed') : w === 42 ? 'mundSel' : null;
   if (nat) {
     const cu = crCallUp(nat), S2 = SPECIAL[nat];
     if (cu && cu.called) out.push({ special: nat, tier: S2.tier, name: S2.nome, mate: cu.mine.a === 'crme' ? cu.mine.b : cu.mine.a });
@@ -425,9 +506,18 @@ function crEnter(opt) {
   $s.CR.tour = { tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
-  $s.CR.lastMsg = star ? 'Surpresa na chave: ' + nameOf(star) + ' (OVR ' + crCharOvr(star) + ') veio jogar este torneio. Se vencer a dupla dele, ele pode querer jogar com você.' : ''; saveCareer();
+  $s.CR.lastMsg = star ? 'Surpresa na chave: ' + nameOf(star) + ' (OVR ' + crCharOvr(star) + ') veio jogar este torneio. Se vencer a dupla dele, ele pode querer jogar com você.' : ''; crTourDays(); saveCareer();
   return true;
 }
+// o torneio começa no sábado: até lá ele fica marcado (pending) e os dias seguem livres
+function crTourDays() {
+  const t = $s.CR.tour; if (!t) return;
+  t.day = 1; t.pending = $s.CR.day < 6;
+  if (t.pending) $s.CR.lastMsg = (($s.CR.lastMsg || '') + ' Inscrição feita: o torneio começa no sábado. Até lá, use os dias para treinar ou descansar.').trim();
+  else $s.CR.day = 6;
+}
+// rodadas do sábado: no profissional, tudo menos semifinal e final (que ficam para o domingo); no amador, tudo
+const crDay1Rounds = t => crTourT(t).pro ? crNRounds() - 2 : crNRounds();
 // torneio de simples: 8 jogadores do seu nível, sem parceiro
 function crEnterSingles(opt) {
   const T = TIERS[opt.tier], cost = Math.round(T.fee * .5) + crTravel(T);
@@ -441,7 +531,7 @@ function crEnterSingles(opt) {
   const me = teams.findIndex(t => t.me);
   $s.CR.tour = { tier: opt.tier, singles: true, name: opt.name, teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [SEED8.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
-  $s.CR.lastMsg = ''; saveCareer();
+  $s.CR.lastMsg = ''; crTourDays(); saveCareer();
   return true;
 }
 function crEnterNation(opt) {
@@ -455,7 +545,7 @@ function crEnterNation(opt) {
   $s.CR.tour = { tier: sp.tier, special: kind, mate: opt.mate, name: opt.name, teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
-  $s.CR.lastMsg = 'Convocado! Você joga o ' + sp.nome + ' ao lado de ' + nameOf(crChar(opt.mate)) + '.'; saveCareer();
+  $s.CR.lastMsg = 'Convocado! Você joga o ' + sp.nome + ' ao lado de ' + nameOf(crChar(opt.mate)) + '.'; crTourDays(); saveCareer();
   return true;
 }
 const crRoundNames = n => n === 4 ? ['Oitavas', 'Quartas', 'Semifinal', 'Final'] : ['Quartas', 'Semifinal', 'Final'];
@@ -487,10 +577,13 @@ function crAfterMyMatch(won) {
     else if (!wasRival && crRivalOf(opp)) t.log.push('Nasce uma rivalidade com ' + crTeamName(opp) + ' (' + h.w + '–' + h.l + ')'); }
   if (won) { [opp.a, opp.b].filter(Boolean).forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
   else t.alive = false;
-  t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp));
+  t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp) + (t.lastRating ? ' · nota ' + t.lastRating.r.toFixed(1).replace('.', ',') + (t.lastRating.g > .005 ? ' · potencial +' + t.lastRating.g.toFixed(2).replace('.', ',') : '') : ''));
+  t.lastRating = null;
   crAdvance();
   if (!t.alive) while (t.champion === null) crAdvance();
   if (t.champion !== null) crFinishTour();
+  // fim do sábado num torneio profissional: semifinal e final ficam para o domingo (descanso da noite: +12 de energia)
+  else if (t.day === 1 && t.round >= crDay1Rounds(t)) { t.day = 2; t.night = true; $s.CR.day = 7; $s.CR.energy = Math.min(100, $s.CR.energy + 12); crWlog(6, 'Torneio'); }
   saveCareer();
 }
 function crAdvance() {
@@ -502,7 +595,10 @@ function crAdvance() {
 }
 function crPlaySim() {
   const mm = crMyMatch(); if (!mm) return;
-  crSimOne(mm, true); crAfterMyMatch(mm.w === $s.CR.tour.me);
+  crSimOne(mm, true);
+  // simulada: nota neutra (rende pouco potencial; jogar bem de verdade rende mais)
+  const won = mm.w === $s.CR.tour.me, r = won ? 6.2 : 5.6; $s.CR.tour.lastRating = { r, g: crPotGain(r, $s.CR.tour.tier) }; crRate(r);
+  crAfterMyMatch(won);
 }
 function crFinishTour() {
   const t = $s.CR.tour, T = crTourT(t), nR = crNRounds(), nation = (t.special && t.special !== 'estadual') || t.singles;
@@ -536,6 +632,7 @@ function crFinishTour() {
   $s.CR.history.unshift({ s: $s.CR.season, w: $s.CR.week, name: t.name, tier: T.curto, place: placeName, prize, pts, partner: $s.CR.partner ? nameOf(crChar($s.CR.partner)) : '' });
   $s.CR.history = $s.CR.history.slice(0, 60);
   t.done = true;
+  crWlog(6, 'Torneio'); if ($s.CR.day === 7) crWlog(7, 'Torneio');
 }
 const crXpMul = () => 1 + crStaffList().reduce((t, x) => t + (x.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0);
 // ---------- negócios: investimentos permanentes para o fim da carreira ----------
@@ -587,16 +684,16 @@ function crInvWeek() {
 }
 // ---------- semana ----------
 function crNextWeek(note) {
-  $s.CR.tour = null;
+  $s.CR.tour = null; $s.CR.day = 1; $s.CR.wlog = {};
   $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0) + (crInv('ct') >= 1 ? 6 : 0) + (crLife('nutri') ? 5 : 0) + (crLife('casa') ? 3 : 0));
+  let msg = note || '';
   if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') ? .04 : .08);
   if (crLife('imprensa')) crAddFama(1);
   if ($s.CR.boostW > 0) $s.CR.boostW--;
-  if ($s.CR.injury) { $s.CR.injury.weeks -= 1 + ($s.CR.restWeek ? 1 : 0); if ($s.CR.injury.weeks <= 0) { msg += (msg ? ' ' : '') + 'Recuperado da lesão: liberado para competir.'; $s.CR.injury = null; } }
-  $s.CR.restWeek = false;
+  if ($s.CR.injury) { $s.CR.injury.weeks -= 1 + (($s.CR.restDays || 0) >= 3 ? 1 : 0); if ($s.CR.injury.weeks <= 0) { msg += (msg ? ' ' : '') + 'Recuperado da lesão: liberado para competir.'; $s.CR.injury = null; } }
+  $s.CR.restDays = 0;
   crSimWorld();
   $s.CR.week++;
-  let msg = note || '';
   const spm = crSponsorWeek(); if (spm) msg += (msg ? ' ' : '') + spm;
   const ivg = crInvWeek(); if (ivg) msg += (msg ? ' ' : '') + 'Negócios renderam ' + money(ivg) + '.';
   crFamaWeek(); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
@@ -620,7 +717,7 @@ function crNextWeek(note) {
       if (c.age > 34) { // aposentou: entra um novato no lugar
         const bank = NAME_BANK[c.pais] || NAME_BANK.BRA; let sur = bank.s[Math.floor(rnd() * bank.s.length)]; if (c.fem && c.pais === 'RUS') sur += 'a';
         c.name = bank[c.fem ? 'f' : 'm'][Math.floor(rnd() * bank[c.fem ? 'f' : 'm'].length)] + ' ' + sur; c.age = 18;
-        c.a = makeAttrs(Math.round(44 + rnd() * 14), ['atacante', 'defensor', 'tatico', 'completo'][Math.floor(rnd() * 4)], rnd); $s.CR.npc[c.id] = 0; return;
+        c.a = makeAttrs(Math.round(44 + rnd() * 14), ['atacante', 'defensor', 'tatico', 'completo'][Math.floor(rnd() * 4)], rnd); if ($s.CR.npcR) delete $s.CR.npcR[c.id]; return;
       }
       const o = overall(c.a), d = (c.age < 23 ? 1.6 : c.age < 28 ? .6 : c.age > 31 ? -1.3 : 0) * (o > 84 && c.age < 31 ? .3 : 1);
       const ch = Math.round(d + gaussR(rnd) * 1.1); for (const [k] of ATTRS) c.a[k] = clamp(c.a[k] + ch, 30, 93);
@@ -640,30 +737,62 @@ function crInjuryRoll(mult) {
   $s.CR.injury = { nome: INJ[Math.floor(Math.random() * INJ.length)], weeks: w };
   return 'Lesão: ' + $s.CR.injury.nome + ' (' + w + (w > 1 ? ' semanas' : ' semana') + ' parado). Jogar cansado cobrou o preço.';
 }
-// recompensa do treino com desafio (conta como a semana)
+// cada dia tem uma atividade: treinar, treinar na quadra (desafio), dar aulas ou descansar
+const fmt1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+function crWlog(d, txt) { $s.CR.wlog = $s.CR.wlog || {}; $s.CR.wlog[d] = txt; }
+// recompensa do treino na quadra com desafio (conta como o dia); cumprir a meta também dá um pouco de potencial
 function crDrillReward(ok, pass) {
-  const g = Math.round((ok + (pass ? 4 : 0)) * crXpMul() * .8);
-  $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 10);
-  crNextWeek('Treino com desafio: ' + ok + ' acertos' + (pass ? ' (meta cumprida)' : '') + ', +' + g + ' pontos de evolução.');
-  return g;
+  const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul();
+  $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
+  const pg = pass ? Math.min(.2, $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
+  crWlog($s.CR.day, 'Quadra');
+  crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
+  return fmt1(g);
 }
 function crTrain() {
   if ($s.CR.injury) { $s.CR.lastMsg = 'Lesionado: nada de treino pesado. Descanse ou faça fisioterapia.'; return; }
-  const cost = crInv('quadra') ? 0 : 80 * (crMaxTier() + 1);
+  const cost = crInv('quadra') ? 0 : 20 * (crMaxTier() + 1);
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
-  if ($s.CR.energy < 20) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
-  const inj = crInjuryRoll(.5);
-  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 10 : 15; const g = Math.round((4 + (crInv('quadra') ? 3 : 0)) * crXpMul()); $s.CR.pe += g;
-  crNextWeek('Semana de treino: +' + g + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
+  if ($s.CR.energy < 10) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
+  const inj = crInjuryRoll(.2);
+  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0)) * crXpMul(); $s.CR.pe += g;
+  crWlog($s.CR.day, 'Treino');
+  crNextDay('Dia de treino: +' + fmt1(g) + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
-function crCoach() { const g = crLessonIncome(); $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5); crNextWeek('Semana dando aulas: +' + money(g) + '.'); }
-function crRest() { $s.CR.restWeek = true; return crRest2(); }
-function crRest2() { $s.CR.energy = Math.min(100, $s.CR.energy + 45 + (crLife('crio') ? 20 : 0)); crNextWeek('Semana de descanso: energia recuperada.'); }
+function crCoach() { const g = Math.round(crLessonIncome() * .3 / 10) * 10; $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 2); crWlog($s.CR.day, 'Aulas'); crNextDay('Dia de aulas: +' + money(g) + '.'); }
+function crRest() { $s.CR.restDays = ($s.CR.restDays || 0) + 1; const g = 14 + (crLife('crio') ? 6 : 0); $s.CR.energy = Math.min(100, $s.CR.energy + g); crWlog($s.CR.day, 'Descanso'); crNextDay('Dia de descanso: +' + g + ' de energia.'); }
+// descansa até o torneio começar (sábado) ou, sem torneio, até o fim da semana
+function crRestUntil() {
+  const wk = $s.CR.week; let n = 0;
+  while ($s.CR.week === wk && !($s.CR.tour && !$s.CR.tour.pending) && !$s.CR.event && n < 7) { crRest(); n++; }
+  if (n > 1) $s.CR.lastMsg = n + ' dias de descanso. ' + ($s.CR.lastMsg || '');
+  saveCareer();
+}
+// passa o dia; no sábado o torneio inscrito começa; depois do domingo, vira a semana
+function crNextDay(note) {
+  if ($s.CR.day >= 7) return crNextWeek(note);
+  $s.CR.day++;
+  let msg = note || '';
+  if ($s.CR.day >= 6 && $s.CR.tour && $s.CR.tour.pending) { $s.CR.tour.pending = false; $s.CR.day = 6; msg += (msg ? ' ' : '') + 'Sábado: dia de torneio!'; }
+  $s.CR.lastMsg = msg; crSyncChars(); saveCareer();
+}
 // 60→70 é rápido, 70→80 bem mais lento, 80→90 o mais difícil
 // a reta final é a mais cara: cada ponto acima de 90 custa bem mais
 const crUpCostBase = v => v < 55 ? 1 : v < 62 ? 2 : v < 68 ? 3 : v < 72 ? 4 : v < 76 ? 6 : v < 80 ? 8 : v < 84 ? 12 : v < 88 ? 17 : v < 90 ? 24 : v < 92 ? 36 : v < 94 ? 52 : v < 96 ? 72 : 95;
 const crUpCost = (v, k) => Math.max(1, Math.round(crUpCostBase(v) * (crStaffList().some(x => x.cheap && x.cheap.includes(k)) ? .75 : 1)));
-const crCap = () => Math.min(99, $s.CR.pot);
+// potencial atual: teto dos atributos (não adianta ter pontos de evolução acima dele). Só sobe jogando bem:
+// cada partida dá potencial conforme a nota (0–10) e o nível do torneio, até o potencial máximo do atleta
+const crCap = () => Math.min(99, Math.floor($s.CR.potCur ?? $s.CR.pot));
+function crPotGain(rating, tier) {
+  if (rating < 5.5) return 0;
+  const room = clamp(($s.CR.pot - $s.CR.potCur) / 8, .15, 1);
+  const g = Math.min($s.CR.pot - $s.CR.potCur, (rating - 5.5) * .22 * (.7 + (tier || 0) * .08) * room);
+  if (g <= 0) return 0;
+  $s.CR.potCur += g;
+  return g;
+}
+function crRate(r) { $s.CR.ratings = ($s.CR.ratings || []).concat([Math.round(r * 10) / 10]).slice(-20); }
+const crAvgRating = () => { const l = ($s.CR.ratings || []).slice(-10); return l.length ? l.reduce((t, v) => t + v, 0) / l.length : null; };
 function crUpgrade(k) { const v = $s.CR.me.a[k], c = crUpCost(v, k); if ($s.CR.pe < c || v >= crCap()) return; $s.CR.pe -= c; $s.CR.me.a[k]++; crSyncChars(); saveCareer(); }
 // ---------- partida jogada ----------
 function crPlayMatch() {
@@ -675,12 +804,13 @@ function crPlayMatch() {
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = proFinal ? 6 : $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
   S.settings.pick = { me: 'crme', mate: t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
-  S.careerActive = true; saveCareer();
+  S.careerActive = true; saveCareer(); flushSaves();
   $('career').hidden = true; ac(); newMatch();
 }
-function careerMatchEnded(won) {
+function careerMatchEnded(won, rating) {
   S.careerActive = false;
   const mm = crMyMatch();
+  if (mm && rating !== undefined && $s.CR.tour) { const g = crPotGain(rating, $s.CR.tour.tier); crRate(rating); $s.CR.tour.lastRating = { r: rating, g }; }
   const sTxt = scoreText(), g = S.score.games, hasSets = (S.score.hist || []).length > 0;
   if ($s.CR.prev) { Object.assign(S.settings, { pick: $s.CR.prev.pick, mode: $s.CR.prev.mode, diff: $s.CR.prev.diff, racket: $s.CR.prev.racket, games: $s.CR.prev.games, format: $s.CR.prev.format || 'set', side: $s.CR.prev.side || S.settings.side }); $s.CR.prev = null; }
   if (!mm) return;
@@ -701,14 +831,34 @@ function crMigrate() {
   if ($s.CR.me.pais === 'BRA' && !$s.CR.me.uf) $s.CR.me.uf = 'SP';
   $s.CR.life = $s.CR.life || {}; $s.CR.lifeS = $s.CR.lifeS || {}; $s.CR.boostW = $s.CR.boostW || 0;
   if ($s.CR.goal === undefined) $s.CR.goal = null;
-  // mundo maior: completa os saves antigos até POOL_N por gênero, com uma temporada de pontos simulada para os novos
+  // mundo maior: completa os saves antigos até POOL_N por gênero
   const nM = $s.CR.pool.filter(c => !c.fem).length;
-  if (nM < POOL_N) {
-    const extra = genPool($s.CR.seed, nM, POOL_N, new Set($s.CR.pool.map(c => c.name)));
-    $s.CR.pool = $s.CR.pool.concat(extra);
-    const r = mulberry($s.CR.seed + 31); for (let i = 0; i < SEASON_WEEKS; i++) crSimWorld(r, extra);
-    saveCareer();
-  }
+  let extra = null;
+  if (nM < POOL_N) { extra = genPool($s.CR.seed, nM, POOL_N, new Set($s.CR.pool.map(c => c.name))); $s.CR.pool = $s.CR.pool.concat(extra); }
+  if (($s.CR.v || 1) < 2) {
+    // v2: ano de 52 semanas com dias, pontos no padrão ITF e ranking dos 10 melhores resultados
+    const w2 = w => Math.min(SEASON_WEEKS, Math.max(1, w * 2 - 1));
+    $s.CR.week = w2($s.CR.week);
+    const placeIdx = { 'Campeão': 0, 'Vice-campeão': 1, 'Semifinal': 2, 'Quartas': 3, 'Oitavas': 4 };
+    ($s.CR.history || []).forEach(h => { h.w = w2(h.w); });
+    $s.CR.results = ($s.CR.history || []).map(h => {
+      const ti = TIERS.findIndex(T => T.curto === h.tier), pi = placeIdx[h.place];
+      let pts = ti >= 0 && pi !== undefined && h.pts > 0 ? TIERS[ti].pts[pi] || 0 : 0;
+      if (/^Estadual/.test(h.name || '')) pts = Math.round(pts * .5);
+      return { w: (h.s - 1) * SEASON_WEEKS + h.w, pts };
+    }).filter(r => r.pts > 0);
+    delete $s.CR.npc; $s.CR.npcR = {}; crSimYear(41);
+    const ovr = overall($s.CR.me.a), mx = Math.max(...Object.values($s.CR.me.a));
+    $s.CR.potCur = Math.max(Math.min($s.CR.pot, ovr + 3), mx);
+    $s.CR.wlog = {}; $s.CR.day = 1;
+    const t = $s.CR.tour;
+    if (t && !t.done) { t.pending = false; t.day = t.round >= crDay1Rounds(t) ? 2 : 1; $s.CR.day = t.day === 2 ? 7 : 6; }
+    $s.CR.v = 2; extra = null;
+    $s.CR.lastMsg = 'Carreira atualizada: agora o ano tem 52 semanas com dias, torneios em datas do calendário, pontos no padrão ITF (ranking = 10 melhores resultados do último ano) e potencial que sobe com a sua nota em cada partida.';
+  } else if (extra) crSimYear(31, extra);
+  if ($s.CR.potCur === undefined) $s.CR.potCur = Math.max(Math.min($s.CR.pot, overall($s.CR.me.a) + 3), Math.max(...Object.values($s.CR.me.a)));
+  if ($s.CR.day === undefined) $s.CR.day = 1;
+  if (nM < POOL_N || $s.CR.v === 2 && !$s.CR.migr2) { $s.CR.migr2 = true; saveCareer(); }
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);
@@ -799,4 +949,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+// gancho de depuração (testes no navegador), como o window.__pdo do jogo
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, importData: t => crImportData(t), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };

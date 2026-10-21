@@ -11,7 +11,10 @@ Jogo de beach tennis 3D feito com [three.js](https://threejs.org/), TypeScript e
 - **Campeonato:** chave de 8 duplas (masculino, feminino ou misto) com as duplas reais da temporada ou a sua dupla montada.
 - **Treino:** desafios com lançador (curtas no verde, defenda os smashes, smash perfeito).
 - **Online:** até 8 pessoas pela internet: 2 contra 2, dupla contra a CPU, 1 contra 1 ou campeonato (veja abaixo).
-- **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ~3.800 atletas fictícios + astros reais, ranking de 26 semanas, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
+- **Carreira:** crie seu jogador e suba do Amador C ao Mundial — ~3.800 atletas fictícios + astros reais, dinheiro, evolução de atributos, parceiros, equipe técnica, patrocínios, eventos aleatórios e 18 raquetes.
+  - **Calendário em dias:** o ano tem 52 semanas com datas. Cada dia você treina, treina na quadra (desafio), dá aulas ou descansa. Os torneios são no fim de semana: amadores no sábado; profissionais com as primeiras rodadas no sábado e semifinal e final no domingo. No ano são 15 BT400, 7 Sand Series e o Mundial (semana 51, top 16).
+  - **Ranking ITF:** campeão de BT400 = 450 pts, Sand Series = 750, Mundial = 1000. Contam os 10 melhores resultados das últimas 52 semanas; cada resultado sai do ranking um ano depois.
+  - **Nota e potencial:** cada partida dá uma nota de 0 a 10 (defesas boas, smashes perfeitos, curtas e winners sobem; erros de curta, lob, smash e defesa descem). O potencial atual é o teto dos atributos e só sobe com notas boas, até o potencial máximo do atleta.
 
 ## Jogar online com amigos
 
