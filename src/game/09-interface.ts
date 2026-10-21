@@ -153,8 +153,8 @@ function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev
 // golpe dado pelo seu jogador (chamado na hora da batida)
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
-  // defesa: verde soma bem, amarelo soma um pouco, laranja (levantou) não tira; vermelho (descontrolou) tira
-  if (sw.type === 'defesa' && r.pressure > .25) { if (r.wild) perfAdd(p, -.3, 'defDescontrolou'); else if (!r.pop) perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa'); }
+  // defesa: verde soma bem, amarelo soma um pouco, laranja (levantou) tira pouco, vermelho (descontrolou) tira mais
+  if (sw.type === 'defesa' && r.pressure > .25) { if (r.wild) perfAdd(p, -.3, 'defDescontrolou'); else if (r.pop) perfAdd(p, -.15, 'defLevantou'); else perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa'); }
   // curta: verde soma, amarela (lenta) não tira; descontrolada (vermelho) tira
   if (sw.type === 'curta' && !r.pop) { if (r.wild) perfAdd(p, -.3, 'curtaRuim'); else if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
   if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.2, 'smashRuim'); }

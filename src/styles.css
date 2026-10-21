@@ -592,3 +592,6 @@ body.in-replay #meter, body.in-replay #tags, body.in-replay #reach, body.in-repl
 .clip-n { font-family: var(--f-num); opacity: .7; min-width: 34px; }
 .clip-t { flex: 1; font-weight: 600; font-size: 14px; display: flex; flex-direction: column; }
 .clip-t small { font-weight: 400; opacity: .65; font-size: 12px; }
+.cr-emod { font-size: 11px; font-weight: 700; margin-left: 6px; white-space: nowrap; }
+.cr-emod.hi { color: #4fd18b; }
+.cr-emod.lo { color: #ff7a5c; }
