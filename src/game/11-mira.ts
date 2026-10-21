@@ -25,7 +25,8 @@ function aimAutoX(team = 0) { const ch = AIM.cache[team] || (AIM.cache[team] = {
 const TAC = { aim: null };
 // W = mais curto (perto da rede), S = mais fundo; sem segurar, meio da faixa
 // (no time de cima o W também é "para a rede": o z do mundo vem invertido)
-function humanDepthT(p = human) { const iz = (p.inputZ || 0) * (p.team === 0 ? 1 : -1); return iz < -.25 ? .08 : iz > .25 ? .92 : .5; }
+// profundidade da mira: W (para frente) manda funda, S (para trás) manda curta, nada = meio
+function humanDepthT(p = human) { const iz = (p.inputZ || 0) * (p.team === 0 ? 1 : -1); return iz < -.25 ? .92 : iz > .25 ? .08 : .5; }
 function buildAim() {
   const mk = (geo, op) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); m.renderOrder = 5; scene.add(m); return m; };
   const og = new THREE.RingGeometry(.62, 1.1, 48); og.rotateX(-Math.PI / 2); AIM.outline = mk(og, .35); AIM.outline.material.color.setHex(0x0f2436);
