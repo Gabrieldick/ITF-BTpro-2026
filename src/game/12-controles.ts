@@ -51,7 +51,7 @@ function startMeter(kind, type, c = localCtl()) {
     M.fill = .75; M.half = half; M.center = .78; p.charging = true; M.ideal = smashIdealPoint();
   }
   else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; p.charging = true; }
-  else { M.fill = .9; M.center = TOSS_T / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
+  else { M.fill = .9; M.center = (p.tossDur || TOSS_T) / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .35 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
   if (kind === 'serve') M.half *= clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .6 : 1); // saque por cima: perfeito bem mais difícil (e mais forte)

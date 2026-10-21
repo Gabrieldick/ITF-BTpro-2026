@@ -22,7 +22,7 @@ const RP = { list: null, i: 0, t: 0, speed: 1, cam: new THREE.Vector3(10, 4, 0),
 function snap() {
   return { t: REC.t, b: [ball.pos.x, ball.pos.y, ball.pos.z, ball.vel.x, ball.vel.y, ball.vel.z], bs: ball.state,
     p: PL().map(p => [p.pos.x, p.pos.z, p.swing.t, p.swing.type, p.swing.dur, p.swing.side, p.swing.var, p.jump || 0, p.jumpDur || 0, p.jumpH || 0, p.charging ? 1 : 0, p.dive ? p.dive.t : -1, p.dive ? p.dive.dur : 0, p.split || 0,
-      S.mode === 'toss' && S.serverPlayer === p ? clamp(p.tossT / TOSS_T, 0, 1) : -1]) };
+      S.mode === 'toss' && S.serverPlayer === p ? clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1) : -1]) };
 }
 function recordTick(dt) {
   const m = S.mode;

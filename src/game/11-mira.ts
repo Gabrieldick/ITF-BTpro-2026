@@ -94,11 +94,14 @@ function handPos(p, out) {
 }
 function startToss(p, type) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
+  // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto
+  p.tossDur = TOSS_T * (.82 + Math.random() * .38);
   const f = p.team === 0 ? 1 : -1;
   handPos(p, ball.pos);
   const cx = p.pos.x + .22 * f, cz = p.pos.z - .62 * f, cy = 2.62;
   p.serveJumped = false; p.pendingServe = null;
-  ball.vel.set((cx - ball.pos.x) / TOSS_T, (cy - ball.pos.y + .5 * G * TOSS_T * TOSS_T) / TOSS_T, (cz - ball.pos.z) / TOSS_T);
+  const T = p.tossDur;
+  ball.vel.set((cx - ball.pos.x) / T, (cy - ball.pos.y + .5 * G * T * T) / T, (cz - ball.pos.z) / T);
   hideBanner();
 }
 

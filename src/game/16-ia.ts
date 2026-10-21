@@ -181,7 +181,7 @@ function updateHuman(dt, c = localCtl()) {
   const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');
   if (serving) {
     tvz = 0; if (S.mode === 'toss') tvx = 0;
-    if (S.mode === 'toss' && p.tossT > TOSS_T * .74) { tvz = -2.6 * s; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } }
+    if (S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74) { tvz = -2.6 * s; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } }
   }
   if (p.pendingServe) { tvx = 0; tvz = -2.6 * s; }
   if ((c.remote ? c.assistMove : S.settings.assistMove) && len < .1 && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === opp && assignee(p.team) === p) {
@@ -347,7 +347,7 @@ function updateAI(p, dt) {
     // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
     if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + 1.1);
   }
-  if (S.serverPlayer === p && ((S.mode === 'toss' && p.tossT > TOSS_T * .74) || p.pendingServe)) {
+  if (S.serverPlayer === p && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74) || p.pendingServe)) {
     tz = p.pos.z + (p.team === 0 ? -1 : 1) * .8;
     if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); }
   }

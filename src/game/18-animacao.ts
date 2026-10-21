@@ -59,7 +59,7 @@ function animateAthlete(p, dt) {
   if (p.debug) {
     if (p.debug.type === 'serve') poseAt(SERVE_KEYS, SERVE_U, p.debug.u, pose);
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); mirror = p.debug.type === 'defesa' && p.debug.side < 0; }
-  } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(SERVE_KEYS, SERVE_U, clamp(p.tossT / TOSS_T, 0, 1), pose);
+  } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(SERVE_KEYS, SERVE_U, clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1), pose);
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); const ak = swingKey(p); poseAt(ACT[ak], uOf(ak), swingU, pose); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; }
@@ -248,7 +248,7 @@ function kf(arr, u, rest) {
 function animateFP() {
   const p = human; let th = 1.2, ph = .12, ry = -.35, fw = FP_UP;
   if (p.charging) { const c = clamp(MTR.t / .18, 0, 1); th = lerp(1.2, MTR.type === 'lob' ? -.4 : 3.0, c); fw = lerp(FP_UP, MTR.type === 'lob' ? -.2 : .2, c); }
-  else if (S.mode === 'toss' && S.serverPlayer === p) { const c = clamp(p.tossT / TOSS_T / .75, 0, 1); th = lerp(1.2, 3.0, c); fw = lerp(FP_UP, .2, c); }
+  else if (S.mode === 'toss' && S.serverPlayer === p) { const c = clamp(p.tossT / (p.tossDur || TOSS_T) / .75, 0, 1); th = lerp(1.2, 3.0, c); fw = lerp(FP_UP, .2, c); }
   else if (p.swing.t >= 0) {
     const u = clamp(p.swing.t / p.swing.dur, 0, 1); const k = FPKF[p.swing.type];
     th = kf(k.sh, u, 1.2); ph = kf(k.ph, u, .12) * .6; ry = -.35 + kf(k.tw, u, 0) * .5; fw = kf(k.fw, u, FP_UP);
