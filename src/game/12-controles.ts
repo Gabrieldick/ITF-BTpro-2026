@@ -9,7 +9,7 @@ import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball } from './07-glb';
 import { ac, surf } from './08-audio';
-import { $, dupla, el, feedback, isTouch, shotBtns } from './09-interface';
+import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback } from './09-interface';
 import { startJump, startToss } from './11-mira';
 import { adjustFov, rkInfo, startFromMenu, syncAssistButtons, toggleAssist } from './15-carreira-telas';
 import { humanPlan, playStyleOf } from './16-ia';
@@ -25,7 +25,7 @@ human.mtr = MTR;
 let LOCAL = null;
 const localCtl = () => LOCAL || (LOCAL = { p: human, m: MTR, plan: humanPlan, remote: false });
 function makeRemoteCtl(p) { const m = newMeter(); p.mtr = m; return { p, m, plan: { id: -1, plan: null }, remote: true, ix: 0, iz: 0, assistMove: false, lag: 0, out: [] }; }
-function ctlFeedback(c, main, small, kind) { if (c && c.remote) c.out.push(['fb', main, small || null, kind || null]); else feedback(main, small, kind); }
+function ctlFeedback(c, main, small, kind) { if (c && c.remote) c.out.push(['fb', main, small || null, kind || null]); else shotFeedback(main, small, kind); }
 const ZONE = { facil: .095, medio: .068, dificil: .048 };
 const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE', voleio: 'VOLEIO' };
 const LOB_MAX = 1.25;
@@ -329,13 +329,13 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
-  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.tactic = $('tacticSel').value || 'normal';
+  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal';
   saveSettings();
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
   set('mode', S.settings.mode); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
-  $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('tacticSel').value = S.settings.tactic || 'normal';
+  $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'completo'; $('tacticSel').value = S.settings.tactic || 'normal';
   renderRoster();
 }
 const SLOT_LABEL = { me: 'Você', mate: 'Sua dupla', o1: 'Adversário', o2: 'Adversário 2' };

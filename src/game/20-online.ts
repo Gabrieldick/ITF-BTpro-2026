@@ -13,7 +13,7 @@ import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
-import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver } from './09-interface';
+import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback } from './09-interface';
 import { defenseFlash } from './11-mira';
 import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
@@ -578,7 +578,7 @@ function guestEvent(e) {
     sndHit(e[2]);
     if (e[2] === 1) { const me = ON.G[e[1]] === human && !S.spectate; S.shake = me ? .25 : .1; if (me) ON.mySmashes++; }
   } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); }
-  else if (k === 'fb') feedback(e[1], e[2], e[3]);
+  else if (k === 'fb') shotFeedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);
   else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4] }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
   else if (k === 'mr') {

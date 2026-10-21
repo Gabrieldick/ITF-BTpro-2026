@@ -127,6 +127,9 @@ svg.flag, .flag-txt { width: 18px; height: 12px; flex: none; border-radius: 2px;
 }
 #fb.show { opacity: 1; }
 #fb small { font-family: var(--f-body); font-weight: 800; font-size: 15px; letter-spacing: .08em; margin-left: 10px; }
+#fb.soft { font-size: 17px; padding: 3px 10px; background: rgba(10,22,30,.35); opacity: 0; }
+#fb.soft.show { opacity: .8; }
+#fb.soft small { font-size: 12px; }
 #fb.star { color: #ffd23f; font-size: 32px; border: 2px solid rgba(255,210,63,.7); }
 #fb.star.show { transform: translateX(-50%) scale(1.06); }
 #fb.cpu { color: #9fe3e6; }

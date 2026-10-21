@@ -386,9 +386,14 @@ $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnPauseCam').addEventListener('click', () => { toggleCam(); setPaused(false); });
 $('btnAsMove').addEventListener('click', () => toggleAssist('assistMove'));
 $('btnAsMark').addEventListener('click', () => toggleAssist('assistMark'));
+// nome do golpe na tela: completo → discreto → desligado
+const SHOT_TXT = { completo: 'completo', discreto: 'discreto', off: 'desligado' };
+$('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT), cur = S.settings.shotText || 'completo'; S.settings.shotText = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); syncAssistButtons(); });
+$('shotTextSel').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
 function syncAssistButtons() {
   $('btnAsMove').textContent = 'Seguir a bola: ' + (S.settings.assistMove ? 'ligado' : 'desligado');
   $('btnAsMark').textContent = 'Onde a bola cai: ' + (S.settings.assistMark ? 'ligado' : 'desligado');
+  $('btnShotTxt').textContent = 'Nome do golpe: ' + SHOT_TXT[S.settings.shotText || 'completo'];
 }
 function adjustFov(d) {
   S.settings.fovFp = clamp((S.settings.fovFp || 72) + d, 55, 110); saveSettings(); applyCam();

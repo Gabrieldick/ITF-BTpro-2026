@@ -38,13 +38,20 @@ function banner(title, sub, ms, gold) {
 }
 function hideBanner() { clearTimeout(bannerTimer); el.banner.classList.add('hide'); }
 let fbTimer = 0;
-function feedback(main, small, kind) {
+// texto dos golpes (o seu e os da CPU): pode ser completo, discreto ou desligado nas configurações
+function shotFeedback(main, small, kind) {
+  const m = S.settings.shotText || 'completo';
+  if (m === 'off') return;
+  feedback(main, small, kind, m === 'discreto');
+}
+function feedback(main, small, kind, soft) {
   el.fb.innerHTML = ''; el.fb.append(main);
   if (small) { const s = document.createElement('small'); s.textContent = small; el.fb.append(s); }
   // lances especiais (finalização, smash bomba, curta matadora, lob chutado) aparecem maiores e em dourado
-  const star = /FINALIZA|BOMBA|MATADORA|CHUTADO PERFEITO|LOB CHUTADO/.test(String(main) + ' ' + (small || ''));
+  const star = !soft && /FINALIZA|BOMBA|MATADORA|CHUTADO PERFEITO|LOB CHUTADO/.test(String(main) + ' ' + (small || ''));
+  el.fb.classList.toggle('soft', !!soft);
   el.fb.classList.toggle('cpu', kind === 'cpu'); el.fb.classList.toggle('mate', kind === 'mate'); el.fb.classList.toggle('star', star); el.fb.classList.add('show');
-  clearTimeout(fbTimer); fbTimer = setTimeout(() => el.fb.classList.remove('show'), star ? 1800 : 1400);
+  clearTimeout(fbTimer); fbTimer = setTimeout(() => el.fb.classList.remove('show'), soft ? 900 : star ? 1800 : 1400);
 }
 // ---------- Placar ----------
 const PT = ['0', '15', '30', '40'];
@@ -541,4 +548,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

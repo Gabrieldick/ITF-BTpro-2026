@@ -7,7 +7,7 @@ import { S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball } from './07-glb';
-import { decisive, dupla, feedback, momentum, perfShot } from './09-interface';
+import { decisive, dupla, feedback, momentum, perfShot, shotFeedback } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, ctlFeedback, keys, localCtl, touch } from './12-controles';
@@ -389,12 +389,12 @@ function updateAI(p, dt) {
         if ((shot === 'smash' && ball.pos.y >= 1.9 ? canHit(p, 'smash', .66) : canHit(p, 'defesa', .9)) && !(shot !== 'smash' && ball.pos.y > .6 && ball.vel.y > -4 && waitCloser(p, 0, dt) && p.swing.t >= 0 && p.swing.t < p.swing.dur * .7)) { // espera a bola chegar perto do corpo
           // erro: quase sempre a bola vai na rede/fora; furar (raquete passa e a bola segue) só chegando no limite
           // erro quase sempre é bola na rede/fora; furar (raquete passa e a bola segue) só esticando no limite numa bola difícil
-          if (p.ai.willMiss && !(p.ai.stretch && Math.random() < .55)) { const st = styleOf(p); const r = doHit(p, shot, rand(D.q[0], D.q[1]) * .8, false, { speedMul: st.speed, noiseMul: st.noise * 1.4, misBoost: 1 }); feedback(whoTag(p) + r.label, 'ERROU', whoKind(p)); }
+          if (p.ai.willMiss && !(p.ai.stretch && Math.random() < .55)) { const st = styleOf(p); const r = doHit(p, shot, rand(D.q[0], D.q[1]) * .8, false, { speedMul: st.speed, noiseMul: st.noise * 1.4, misBoost: 1 }); shotFeedback(whoTag(p) + r.label, 'ERROU', whoKind(p)); }
           else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
             const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1), noiseMul: st.noise }, shot === 'lob' ? (oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
-            feedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
+            shotFeedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
         }
       }
@@ -410,7 +410,7 @@ function updateAI(p, dt) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
       const r = doHit(p, ps.type, ps.q, true);
-      feedback(whoTag(p) + r.label, null, whoKind(p));
+      shotFeedback(whoTag(p) + r.label, null, whoKind(p));
     }
     if (!p.swing.hit && !p.pendingServe && p.swing.t > p.swing.dur * .3) p.swing.t = p.swing.dur * .3; // segura armado até a bola chegar
     if (p.swing.t >= p.swing.dur) p.swing.t = -1;
