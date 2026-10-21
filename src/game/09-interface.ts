@@ -102,7 +102,7 @@ function awardPoint(w) {
   }
   return 'point';
 }
-// fim de set: no formato "pro" (finais profissionais) são 2 sets a 6; 1 a 1 vai para o super tie-break
+// fim de set: no formato "pro" (finais profissionais) são 2 sets (de N games); 1 a 1 vai para o super tie-break
 function endSet(w) {
   const sc = S.score;
   if (S.settings.format !== 'pro') { S.matchWinner = w; return 'match'; }

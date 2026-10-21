@@ -914,9 +914,9 @@ function crPlayMatch() {
   const t = $s.CR.tour, opp = t.teams[mm.a === t.me ? mm.b : mm.a];
   $s.CR.prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, diff: S.settings.diff, racket: S.settings.racket, games: S.settings.games, format: S.settings.format, side: S.settings.side };
   S.settings.side = $s.CR.side || 'direita'; // seu lado na dupla (escolhido na carreira; padrão: direita)
-  const proFinal = crIsFinal() && crTourT(t).pro; // finais de torneios profissionais: 2 sets a 6 + super tie-break
+  const proFinal = crIsFinal() && crTourT(t).pro; // finais de torneios profissionais: 2 sets (de 4 ou 6 games, conforme a sua configuração) + super tie-break
   crSyncChars();
-  S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = proFinal ? 6 : $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
+  S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
   S.settings.pick = { me: 'crme', mate: t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
   S.careerActive = true; saveCareer(); flushSaves();
   $('career').hidden = true; ac(); newMatch();
