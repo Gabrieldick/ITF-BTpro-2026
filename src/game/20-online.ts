@@ -237,7 +237,7 @@ function guestLost(g, text) {
   msg(why); fixCpu(); broadcast();
 }
 function clearRemote() {
-  for (const p of PL) { p.isHuman = p === human; p.netHuman = false; p.mtr = null; p.inputX = 0; p.inputZ = 0; }
+  for (const p of PL) { p.isHuman = p === human; p.netHuman = false; p.netName = ''; p.mtr = null; p.inputX = 0; p.inputZ = 0; }
   human.mtr = MTR; NET.remote = [];
   for (const g of ON.guests) { g.ctl = null; g.plIdx = -1; }
   S.spectate = false; document.body.classList.remove('spectate');
@@ -262,6 +262,7 @@ function startMatch(owners, picks, mode, champM) {
     const o = ownerByPl[i];
     p.isHuman = !!o; p.netHuman = !!o && o !== 'host';
     const g = p.netHuman && guestById(o);
+    p.netName = o ? (o === 'host' ? ON.self.name : (g && g.name) || '') : ''; // nome de quem joga com este boneco (aparece na etiqueta)
     if (g) { g.ctl = makeRemoteCtl(p); g.ctl.lag = lagOf(g); g.plIdx = i; NET.remote.push(g.ctl); }
   });
   if (!human.netHuman) human.mtr = MTR;
@@ -294,7 +295,7 @@ function hostPlay() {
 function hostCfg(g) {
   const M = ON.match, names = {}, heights = {};
   M.pickByPl.forEach(id => { if (NAMES[id]) names[id] = NAMES[id]; if (HEIGHTS[id]) heights[id] = HEIGHTS[id]; });
-  return { me: g.plIdx, picks: M.pickByPl, humans: M.ownerByPl.map(o => !!o), settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
+  return { me: g.plIdx, picks: M.pickByPl, humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
 }
 function meterOf(c) { const m = c && c.m; return m && m.active ? [m.kind, m.type, r3(m.t), r3(m.v), m.center, m.half] : null; }
 function hostState(now) {
@@ -539,7 +540,7 @@ function guestStart(cfg) {
     if (cfg.names[id] !== undefined) NAMES[id] = cfg.names[id]; else delete NAMES[id];
     if (cfg.heights[id] !== undefined) HEIGHTS[id] = cfg.heights[id]; else delete HEIGHTS[id];
   }
-  ON.G.forEach((p, i) => { p.isHuman = i === me; p.netHuman = cfg.humans[i] && i !== me; p.mtr = null; });
+  ON.G.forEach((p, i) => { p.isHuman = i === me; p.netHuman = cfg.humans[i] && i !== me; p.netName = (cfg.players || [])[i] || ''; p.mtr = null; });
   human.mtr = MTR;
   S.careerActive = false; S.champActive = false;
   $('online').hidden = true; document.body.classList.remove('in-replay'); $('replayBar').hidden = true;

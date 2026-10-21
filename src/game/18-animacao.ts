@@ -4,7 +4,7 @@ import './17-bola';
 import * as THREE from 'three';
 import { $s } from '../state';
 import { TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shortOf } from './00-base';
-import { S } from './01-estado';
+import { NET, S } from './01-estado';
 import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
 import { ACT, KU, P, READY, SERVE_KEYS, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf } from './04-poses';
@@ -363,12 +363,13 @@ function updateTags(fp) {
     if (_tv.z > 1 || Math.abs(_tv.x) > 1.2 || Math.abs(_tv.y) > 1.2) { t.hidden = true; continue; }
     t.hidden = false;
     const me = p === human && !S.spectate;
-    const key = (p.char ? p.char.id + nameOf(p.char) : p.name) + me;
+    const nn = !me && NET.role && p.netName ? p.netName : ''; // online: nome de quem joga com o boneco
+    const key = (p.char ? p.char.id + nameOf(p.char) : p.name) + me + nn;
     if (t.dataset.k !== key) {
       t.dataset.k = key;
-      t.className = 'tag t' + p.team + (me ? ' me' : '');
+      t.className = 'tag t' + p.team + (me ? ' me' : nn ? ' net' : '');
       t.innerHTML = '';
-      if (me) { const e = document.createElement('em'); e.textContent = 'VOCÊ'; t.append(e); }
+      if (me || nn) { const e = document.createElement('em'); e.textContent = me ? 'VOCÊ' : nn.toUpperCase(); t.append(e); }
       t.append(p.char ? shortOf(p.char) : p.name);
       if (p.char) { const b = document.createElement('b'); b.textContent = overall(p.char.a); t.append(b); }
     }
