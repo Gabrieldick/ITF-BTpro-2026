@@ -54,7 +54,7 @@ function startMeter(kind, type, c = localCtl()) {
   else { M.fill = .9; M.center = TOSS_T / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .35 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
-  if (kind === 'serve') M.half *= clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .75 : 1); // saque por cima: perfeito mais difícil (e mais forte)
+  if (kind === 'serve') M.half *= clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .6 : 1); // saque por cima: perfeito bem mais difícil (e mais forte)
   // tolerância em volta do verde (amarelo/laranja): com atributo baixo fica estreita, errar por pouco já custa caro
   M.pw = .2 * lerp(.45, 1.1, Math.pow(attrN(kind === 'smash' ? p.char.a.smash : p.char.a.saque), 1.5));
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
@@ -179,8 +179,9 @@ function serveRelease(res, amt, word, human) {
   const svN = Math.min(1, attrN(human.char.a.saque)); // atributo de saque
   // perfeito: bem mais força e precisão (no saque por cima a faixa é menor)
   if (res === 'perfeito') { q = lerp(.88, 1, svN); mod = { speedMul: type === 'smash' ? lerp(1.02, 1.2, svN) : 1, noiseMul: lerp(.85, .55, svN), oppMissBoost: (type === 'smash' ? .1 : .03) * svN, misBoost: (1 - svN) * (type === 'smash' ? .08 : .04), perfect: true }; }
-  else if (res === 'cedo') { q = lerp(.88, .5, amt); mod = { speedMul: lerp(.97, .78, amt), misBoost: amt * .08 }; }
-  else { q = lerp(.8, .35, amt); mod = { misBoost: lerp(.04, .5, amt) * (type === 'smash' ? 1 : .5) }; }
+  // fora do perfeito o saque perde bastante: cedo sai fraco, tarde sai impreciso e erra mais
+  else if (res === 'cedo') { q = lerp(.8, .45, amt); mod = { speedMul: lerp(.82, .66, amt), noiseMul: lerp(1.1, 1.4, amt), misBoost: amt * .1 }; }
+  else { q = lerp(.72, .32, amt); mod = { speedMul: lerp(.9, .8, amt), noiseMul: lerp(1.25, 1.8, amt), misBoost: lerp(.06, .5, amt) * (type === 'smash' ? 1 : .5) }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)
   human.pendingServe = { type, q, mod, res, word };
   const sw = human.swing; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = null;
@@ -245,9 +246,22 @@ function meterStep(c, dt) {
   } else if (!c.remote && M.showT > 0) { M.showT -= dt; if (M.showT <= 0) el.meter.hidden = true; }
 }
 const SHOT_KEYS = { j: 'smash', '1': 'smash', k: 'lob', '2': 'lob', l: 'curta', '3': 'curta', ' ': 'defesa', '4': 'defesa' };
+// teclas configuráveis: cada ação tem a sua tecla padrão; a tecla escolhida é traduzida para a padrão antes de tudo,
+// então o resto do jogo continua lendo w/a/s/d, j/k/l, espaço etc. Setas, 1–4 e Esc valem sempre.
+const BIND_ACTIONS = [['up', 'Mover para frente / mira funda', 'w'], ['down', 'Mover para trás / mira curta', 's'], ['left', 'Mover para a esquerda', 'a'], ['right', 'Mover para a direita', 'd'],
+  ['smash', 'Smash', 'j'], ['lob', 'Lob', 'k'], ['curta', 'Curta', 'l'], ['defesa', 'Defesa', ' '], ['cam', 'Trocar câmera', 'c'], ['pause', 'Pausa', 'p'], ['sound', 'Som', 'm'], ['aim', 'Flecha de mira', 'v']];
+const FIXED_KEYS = new Set(['arrowup', 'arrowdown', 'arrowleft', 'arrowright', '1', '2', '3', '4', 'escape', 'enter', 'tab']);
+function bindKey(k) {
+  const b = S.settings.binds; if (!b || FIXED_KEYS.has(k)) return k;
+  for (const [id, , def] of BIND_ACTIONS) if (b[id] && b[id] === k) return def; // tecla escolhida → a padrão da ação
+  for (const [id, , def] of BIND_ACTIONS) if (def === k && b[id] && b[id] !== def) return '§' + k; // a padrão foi trocada: não vale mais
+  return k;
+}
+const keyName = k => k === ' ' ? 'Espaço' : k.length === 1 ? k.toUpperCase() : k.replace(/^arrow/, 'seta ').replace(/^./, c => c.toUpperCase());
 addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'number')) return;
-  const k = e.key.toLowerCase();
+  if (BINDCAP.on) return;
+  const k = bindKey(e.key.toLowerCase());
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   // alguns teclados/programas mandam a repetição automática como aperto novo (sem e.repeat): tecla já segurada não conta de novo
   const held = keys[k];
@@ -264,10 +278,32 @@ addEventListener('keydown', e => {
   else if (k === 'n') toggleAssist('assistMark');
   else if (k === 'v') { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
 });
-addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (SHOT_KEYS[k]) releaseShot(SHOT_KEYS[k]); });
+addEventListener('keyup', e => { const k = bindKey(e.key.toLowerCase()); keys[k] = false; if (SHOT_KEYS[k]) releaseShot(SHOT_KEYS[k]); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPlay() && !NET.role) setPaused(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay() && !NET.role) setPaused(true); });
 const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
+// tela de teclas: clicar numa ação e apertar a nova tecla (se já for de outra ação, as duas trocam)
+const BINDCAP = { on: null };
+function renderBinds() {
+  const box = document.getElementById('bindList'); if (!box) return;
+  const b = S.settings.binds || {};
+  box.innerHTML = BIND_ACTIONS.map(([id, nm, def]) => '<div class="bind-row"><span>' + nm + '</span><button type="button" class="ghost sm' + (BINDCAP.on === id ? ' wait' : '') + '" data-bind="' + id + '">' + (BINDCAP.on === id ? 'aperte uma tecla…' : keyName(b[id] || def)) + '</button></div>').join('');
+  box.querySelectorAll('[data-bind]').forEach(x => x.addEventListener('click', () => { BINDCAP.on = x.dataset.bind; renderBinds(); }));
+}
+addEventListener('keydown', e => {
+  if (!BINDCAP.on) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const k = e.key.toLowerCase(), id = BINDCAP.on; BINDCAP.on = null;
+  if (k !== 'escape' && !FIXED_KEYS.has(k)) {
+    const b = S.settings.binds = Object.assign({}, S.settings.binds), cur = id2 => b[id2] || BIND_ACTIONS.find(a => a[0] === id2)[2];
+    const other = BIND_ACTIONS.find(([id2]) => id2 !== id && cur(id2) === k);
+    if (other) b[other[0]] = cur(id);
+    b[id] = k; saveSettings();
+  }
+  renderBinds();
+}, true);
+{ const rb = document.getElementById('bindReset'); if (rb) rb.addEventListener('click', () => { S.settings.binds = null; BINDCAP.on = null; saveSettings(); renderBinds(); }); }
+renderBinds();
 Object.entries(shotBtns).forEach(([type, b]) => {
   b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) {} pressShot(type); });
   ['pointerup', 'pointercancel'].forEach(ev => b.addEventListener(ev, e => { e.preventDefault(); releaseShot(type); }));

@@ -620,3 +620,7 @@ body.in-replay #meter, body.in-replay #tags, body.in-replay #reach, body.in-repl
 .cra-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd23f, #4fd18b); }
 .cra-row b { text-align: right; font-family: var(--f-num); } .cra-row b small { font-size: 10px; margin-left: 3px; }
 .cra-row b small.up { color: #4fd18b; } .cra-row b small.dn { color: #ff7a5c; }
+.bind-list { display: grid; gap: 4px; }
+.bind-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+.bind-row .ghost.sm { min-width: 92px; font-family: var(--f-num); }
+.bind-row .ghost.sm.wait { border-color: #ffd23f; color: #ffd23f; }
