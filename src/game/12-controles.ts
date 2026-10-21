@@ -29,6 +29,7 @@ function ctlFeedback(c, main, small, kind) { if (c && c.remote) c.out.push(['fb'
 const ZONE = { facil: .095, medio: .068, dificil: .048 };
 const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE', voleio: 'VOLEIO' };
 const LOB_MAX = 1.25;
+const KICK = [.15, .32]; // faixa do lob chutado perfeito, no começo da barra (~75 ms)
 // bola que vem de um lob alto cai mais rápido: a faixa perfeita do smash fica menor
 function smashZoneScale() { return clamp(1.2 - ((ball.apex || 3.5) - 3.5) * .12, .45, 1.2); }
 function smashIdealPoint() {
@@ -62,7 +63,10 @@ function meterDom(M) {
   const kind = M.kind;
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
-  if (kind === 'lob') { el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; el.mZone.style.background = ''; }
+  if (kind === 'lob') {
+    el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; el.mZone.style.background = '';
+    const kz = el.meter.querySelector('.kz'); if (kz) { kz.style.bottom = (KICK[0] / LOB_MAX * 100) + '%'; kz.style.height = ((KICK[1] - KICK[0]) / LOB_MAX * 100) + '%'; }
+  }
   else {
     // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
     const c = M.center, h = M.half, P = v => (clamp(v, -.2, 1.2) * 100).toFixed(1) + '%';
@@ -144,11 +148,13 @@ function releaseMeter(c = localCtl()) {
   const v = M.v, diff = v - M.center;
   if (M.kind === 'lob') {
     const lv = Math.min(v, LOB_MAX);
-    const word = lv < .35 ? 'BAIXO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
+    // começo da barra: lob chutado (perfeito só na faixa verde de baixo); meio: médio; fim: alto; passou: longo
+    const kick = lv >= KICK[0] && lv <= KICK[1];
+    const word = kick ? 'CHUTADO PERFEITO' : lv < KICK[0] ? 'CHUTADO FRACO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
     M.active = false; M.showT = .9;
-    meterResult(c, 'lobm ' + (lv < .35 ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LOB_MAX * 100);
+    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < KICK[0] ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LOB_MAX * 100);
     p.charging = false;
-    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word }; sw.side = sideOf(p); sw.var = '';
+    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word, kick }; sw.side = sideOf(p); sw.var = '';
     return;
   }
   let res = Math.abs(diff) <= M.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';

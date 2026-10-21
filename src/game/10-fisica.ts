@@ -136,6 +136,11 @@ function doHit(p, type, q, isServe, mod) {
     finisher = true;
     spec.speed *= 1.36; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
   }
+  // smash contra lob chutado perfeito: quem chega lá correu para trás e bate mal (fraco, impreciso, erra mais)
+  if (!isServe && key === 'smash' && ball.kick) {
+    finisher = false; spec.speed *= .72; spec.noise *= 1.8; spec.label = 'SMASH RECUANDO';
+    mod.misBoost = (mod.misBoost || 0) + .18 * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
+  }
   // smash do fundo (além de 3,5 m da rede): chega mais lento e menos preciso, para todos
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
@@ -143,11 +148,12 @@ function doHit(p, type, q, isServe, mod) {
   }
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
     const lp = clamp(mod.lobPower, 0, 1);
-    // lob com pouca força sai chutado: baixo, rápido e caindo forte (passa perto do alcance de quem está na rede);
-    // só o carregado sobe alto e devagar
-    spec.T = lerp(.9, 2.6, Math.pow(lp, 1.3)); spec.depth = [lerp(5.6, 6.4, lp), lerp(7.1, 7.6, lp)];
-    spec.margin = lerp(.2, .4, lp); spec.gk = lerp(1.28, 1.1, lp);
+    // lob com pouca força sai chutado: baixo, rápido e caindo forte; só o carregado sobe alto e devagar
+    spec.T = lerp(.95, 2.6, Math.pow(lp, 2.2)); spec.depth = [lerp(5.8, 6.4, lp), lerp(7.1, 7.6, lp)];
+    spec.margin = lerp(.25, .4, lp); spec.gk = lerp(1.6, 1.1, Math.sqrt(lp));
     spec.label = lp < .35 ? 'LOB CHUTADO' : lp < .75 ? 'LOB' : 'LOB ALTO';
+    // chutado PERFEITO: sobe só o bastante para passar por cima do smash de quem está na rede e despenca no fundo
+    if (mod.lobKick) { spec.T = 1.15; spec.depth = [6.5, 7.4]; spec.margin = .5; spec.kick = true; spec.label = 'LOB CHUTADO'; }
     lobLong = Math.max(0, mod.lobPower - 1);
   }
   if (spec.speed) spec.speed *= mod.speedMul || 1;
@@ -192,7 +198,20 @@ function doHit(p, type, q, isServe, mod) {
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);
   if (dir < 0 && tgt.z > -.4) tgt.z = -.4;
   if (dir > 0 && tgt.z < .4) tgt.z = .4;
-  const v = solveShot(ball.pos, tgt, spec);
+  let v;
+  if (spec.kick && !pop) {
+    // lob chutado perfeito: acima do alcance do smash de quem está na frente dos 3 m, inclusive se ele der um passo para trás;
+    // depois do ponto mais alto despenca (gravidade maior = efeito de bola caindo forte)
+    const np = $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0];
+    const zN = (np ? np.pos.z : dir * 2.2) + dir * .8, H = (np ? 3.0 * hScale(np) : 3.0) + .3;
+    spec.gk = 1.3;
+    for (let i = 0; i < 30; i++) {
+      v = solveShot(ball.pos, tgt, spec);
+      const t = (zN - ball.pos.z) / v.z, y = ball.pos.y + v.y * t - .5 * G * spec.gk * t * t;
+      if (t <= 0 || y >= H || spec.gk >= 3.2) break;
+      spec.gk *= 1.06;
+    }
+  } else v = solveShot(ball.pos, tgt, spec);
   let mis = false;
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
   const riskK = { smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1; // golpes arriscados erram mais
@@ -203,7 +222,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado)
   S.lastHit = { p, cat: isServe ? 'saque' : mod.volley ? 'voleio' : key, hard: !isServe && (inSpeed > 14 || !!ball.finisher || pressure > .35 || q < .45), hitId: S.hitId + 1 };
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher; ball.kick = !!spec.kick && !pop;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;

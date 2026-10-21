@@ -260,7 +260,7 @@ function updateHuman(dt, c = localCtl()) {
       // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
       if (sw.meter && !mod.volley) mod.meterSmash = true;
       if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
-      if (sw.lob) mod.lobPower = sw.lob.power;
+      if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
       if (S.drill) S.drill.lastR = Object.assign({}, r, { meterRes: sw.meter ? sw.meter.res : null });
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r, c);
@@ -321,7 +321,7 @@ function updateAI(p, dt) {
       p.swing.t += dt;
       if (p.feed && p.swing.t >= p.swing.dur * .45) {
         const f = p.feed; p.feed = null; p.swing.hit = true;
-        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.finisher = f.finisher; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
+        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.finisher = f.finisher; ball.kick = false; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
         p.contact = { x: f.pos.x, y: f.pos.y, z: f.pos.z, u: .45, hitId: S.hitId };
       }
       if (p.swing.t >= p.swing.dur) p.swing.t = -1;
@@ -354,12 +354,16 @@ function updateAI(p, dt) {
           // defesa fraca sofre com bola rápida/finalização; backhand fraco sofre quando a bola vem do lado dele
           hardK += weakK(p, 'def') * (sp > 15 || ball.finisher ? .16 : .05);
           if (pl && pl.pt.y < 2 && sideOf(p, pl.pt) < -.15) hardK += weakK(p, 'backhand') * .12;
+          // lob chutado perfeito por cima de quem estava na frente dos 3 m: corre para trás e chega mal
+          p.ai.kickBeat = !!ball.kick && Math.abs(p.pos.z) < 3.6;
+          if (p.ai.kickBeat) hardK += lerp(.38, .22, attrK(p, 'vel'));
           if (S.rally === 1) hardK *= .5; }
         // pressão do ponto decisivo pesa mais em quem tem menos nível; time embalado erra menos
         const expK = clamp((overall(p.char ? p.char.a : { forca: 70, vel: 70, def: 70, backhand: 70, curta: 70, lob: 70, smash: 70, saque: 70 }) - 60) / 35, 0, 1);
         hardK += (S.pressure ? (1 - expK) * .06 : 0) - momentum(p.team) * .03;
         p.ai.willMiss = Math.random() < hardK + D.miss * (fast ? (S.rally === 1 ? .9 : 1.6) : 1) + (ball.oppMiss || 0) * (S.rally === 1 ? .5 : 1) + (p.ai.shot === 'smash' ? (1 - attrK(p, 'smash')) * .12 : 0) + (p.ai.shot === 'smash' || (p.ai.plan && p.ai.plan.pt.y >= 2.1) ? clamp(((ball.apex || 0) - 5.5) / 4, 0, 1) * .12 : 0);
         p.ai.shot = chooseAIShot(p, p.ai.plan ? p.ai.plan.pt.y : ball.pos.y);
+        if (p.ai.kickBeat && p.ai.shot === 'smash' && Math.random() < .7) p.ai.shot = Math.random() < .5 ? 'lob' : 'defesa'; // recuando, quase sempre só devolve
         p.ai.swung = false;
         const land = predictLanding();
         const out = Math.abs(land.x) > C.halfW + .35 || Math.abs(land.z) > C.halfL + .35;
@@ -379,7 +383,7 @@ function updateAI(p, dt) {
           else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
-            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) } : {}));
+            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? (oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .4 ? { lobPower: .25, lobKick: true } : { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
             feedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
         }

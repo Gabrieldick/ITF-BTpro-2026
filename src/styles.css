@@ -533,3 +533,6 @@ body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #
 .cam-adj { display: grid; gap: 8px; margin-top: 14px; }
 .cam-adj label { display: flex; align-items: center; gap: .5rem; font-size: .85rem; }
 .cam-adj input { flex: 1; }
+/* faixa do lob chutado perfeito (começo da barra do lob) */
+#meter .kz { position: absolute; left: 0; right: 0; background: #4FD18B; opacity: .9; display: none; }
+#meter.lobm .kz { display: block; }
