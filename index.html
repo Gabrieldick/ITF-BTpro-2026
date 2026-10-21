@@ -33,6 +33,12 @@
 <div id="banner" class="hide"><div id="bTitle"></div><div id="bSub"></div></div>
 <div id="fb"></div>
 <div id="tcue" class="hud" hidden><i></i><span></span></div>
+<div id="clips" hidden><div class="card clips-card">
+  <div><div class="eyebrow">Replays da partida</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CLIPES</h2></div>
+  <div class="cta-row"><button class="cta" id="clipsBest">▶ Melhores momentos</button><button class="ghost" id="clipsBestSave">⬇ Vídeo dos melhores</button><button class="ghost" id="clipsClose">Fechar</button></div>
+  <div id="clipList"></div>
+  <p class="cr-note">"Vídeo" toca o clipe e baixa o arquivo de vídeo no fim.</p>
+</div></div>
 <div id="replayBar" hidden><b>REPLAY</b><span id="replayTxt"></span><button class="ghost sm" id="replaySkip">Pular ⏭</button></div>
 <div id="tags"></div>
 <div id="reach">NO ALCANCE</div>
@@ -359,7 +365,7 @@
     <div class="cta-row">
       <button class="cta" id="btnOverChamp" hidden>Ver a chave</button>
       <button class="cta" id="btnOverCareer" hidden>Voltar à carreira</button>
-      <button class="ghost" id="btnReplay" hidden>▶ Melhores momentos</button>
+      <button class="ghost" id="btnReplay" hidden>🎬 Replays</button>
       <button class="cta" id="btnAgain">Jogar de novo</button>
       <button class="ghost" id="btnMenu">Menu</button>
     </div>

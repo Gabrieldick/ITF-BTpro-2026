@@ -444,7 +444,7 @@ function newMatch(guest) {
   }
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
-  S.highlights = [];
+  S.highlights = []; S.clips = [];
   S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.perf = { sum: 0, n: 0, ev: {} }; S.lastHit = null; S.attempt = null; S.streak = null;
   updateLiveRating();
   if (!guest) setWeather();

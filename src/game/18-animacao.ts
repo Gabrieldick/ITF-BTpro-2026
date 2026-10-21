@@ -60,12 +60,13 @@ function animateAthlete(p, dt) {
     if (p.debug.type === 'serve') poseAt(SERVE_KEYS, SERVE_U, p.debug.u, pose);
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); mirror = p.debug.type === 'defesa' && p.debug.side < 0; }
   } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(SERVE_KEYS, SERVE_U, clamp(p.tossT / TOSS_T, 0, 1), pose);
+  else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); const ak = swingKey(p); poseAt(ACT[ak], uOf(ak), swingU, pose); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; }
   else poseAt(p === human && fpBodyOn ? READY_FP_KEYS : READY_KEYS, READY_U, 0, pose);
   if (mirror) mirrorPose(pose);
   // a postura real persegue a postura-alvo: sem estalos ao começar, trocar de lado ou terminar um golpe
-  const acting = swingU >= 0 || p.charging || (S.mode === 'toss' && S.serverPlayer === p);
+  const acting = swingU >= 0 || p.charging || (S.mode === 'toss' && S.serverPlayer === p) || (S.mode === 'replay' && p.rpToss >= 0);
   blendPose(p.pose, pose, p.debug ? 1 : 1 - Math.exp(-dt * (acting ? 30 : 10)));
   pose = p.pose;
   p.breath = (p.breath || Math.random() * 6) + dt;
@@ -79,7 +80,7 @@ function animateAthlete(p, dt) {
   p.prep = (p.prep || 0) + (prepT - (p.prep || 0)) * Math.min(1, dt * (prepT > (p.prep || 0) ? 7 : 12));
   // recuar não é andar de costas: o corpo vira de lado e as pernas cruzam (idem numa corrida lateral longa)
   const fT = p.team === 0 ? 1 : -1, back = p.vel.z * fT, latV = p.vel.x * fT;
-  const busy = swingU >= 0 || p.charging || (S.mode === 'toss' && S.serverPlayer === p) || !!p.dive;
+  const busy = swingU >= 0 || p.charging || (S.mode === 'toss' && S.serverPlayer === p) || (S.mode === 'replay' && p.rpToss >= 0) || !!p.dive;
   const backK = busy ? 0 : clamp((back - .9) / 2, 0, 1), latK = busy ? 0 : clamp((Math.abs(latV) - 2.6) / 1.6, 0, 1) * (1 - backK);
   const turnSign = Math.abs(latV) > .6 ? -Math.sign(latV) : (p.lefty ? 1 : -1);
   const mtT = (backK * .95 + latK * .55) * turnSign;
@@ -263,7 +264,7 @@ const CAM3 = {
 };
 function updateCamera(dt) {
   const k = 1 - Math.exp(-dt * 7);
-  const fp = S.settings.cam === '1p' && S.mode !== 'menu';
+  const fp = S.settings.cam === '1p' && S.mode !== 'menu' && S.mode !== 'replay';
   const fpBody = fp && !(human.skin && human.skinOn);
   setFpBody(fpBody);
   // na espera mostra a raquete em pé no canto; armando ou batendo, entra o braço animado do jogador
@@ -343,7 +344,7 @@ function tagFor(p) {
 function updateTags(fp) {
   for (const p of ALL) {
     const t = tagFor(p);
-    const show = S.mode !== 'menu' && $s.players.includes(p) && !(fp && p === human);
+    const show = S.mode !== 'menu' && S.mode !== 'replay' && $s.players.includes(p) && !(fp && p === human);
     if (!show) { t.hidden = true; continue; }
     _tv.set(p.pos.x, 2.12 * hScale(p) + p.model.group.position.y, p.pos.z).project(camera);
     if (_tv.z > 1 || Math.abs(_tv.x) > 1.2 || Math.abs(_tv.y) > 1.2) { t.hidden = true; continue; }
@@ -387,8 +388,8 @@ function updateVisuals(dt) {
     landRing.material.color.copy(mine ? RING_MINE : RING_MATE);
     const pulse = 1 + Math.sin(performance.now() / 90) * .12; landRing.scale.set(pulse, pulse, 1);
   } else landRing.visible = false;
-  const fp = S.settings.cam === '1p';
-  reachRing.visible = S.mode !== 'menu' && !fp && !S.spectate;
+  const fp = S.settings.cam === '1p' && S.mode !== 'replay';
+  reachRing.visible = S.mode !== 'menu' && S.mode !== 'replay' && !fp && !S.spectate;
   reachRing.position.set(human.pos.x, .02, human.pos.z);
   { const rs = reachOf('defesa', human) / 1.335; reachRing.scale.set(rs, rs, 1); } // anel do tamanho real do alcance da defesa
   const ready = incoming && canHit(human, 'lob');
