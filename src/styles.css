@@ -79,6 +79,10 @@ svg.flag, .flag-txt { width: 18px; height: 12px; flex: none; border-radius: 2px;
   padding: 8px 14px; font-size: 13px; font-weight: 600; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .chip:hover { border-color: rgba(251,246,234,.5); }
+#liveNota { pointer-events: none; font-family: var(--f-num); }
+#liveNota b { font-size: 15px; margin-left: 4px; }
+#liveNota.hi b { color: #4fd18b; }
+#liveNota.lo b { color: #ff7a5c; }
 .chip kbd { font-family: var(--f-num); font-size: 11px; opacity: .65; margin-left: 4px; }
 
 #banner {

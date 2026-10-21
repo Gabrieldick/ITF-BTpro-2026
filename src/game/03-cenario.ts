@@ -172,10 +172,10 @@ Object.entries(HALF_W).forEach(([k, hw]) => {
 });
 // Rede
 const netTex = canvasTex(64, 64, (x, w, h) => {
-  x.clearRect(0, 0, w, h); x.strokeStyle = 'rgba(12,18,24,1)'; x.lineWidth = 5; x.strokeRect(0, 0, w, h);
+  x.clearRect(0, 0, w, h); x.strokeStyle = 'rgba(6,9,12,1)'; x.lineWidth = 9; x.strokeRect(0, 0, w, h);
 }, false);
 netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping; netTex.repeat.set(C.netHalf * 2 / .045, 1 / .045);
-const netMat = new THREE.MeshStandardMaterial({ color: col('#20262c'), map: netTex, transparent: true, alphaTest: .3, side: THREE.DoubleSide, roughness: .9 });
+const netMat = new THREE.MeshStandardMaterial({ color: col('#0e1216'), map: netTex, transparent: true, alphaTest: .12, side: THREE.DoubleSide, roughness: .9 });
 const net = new THREE.Mesh(new THREE.PlaneGeometry(C.netHalf * 2, 1.0), netMat);
 net.position.set(0, C.netH - .5, 0); scene.add(net);
 const drawBand = c => (x, w, h) => { x.fillStyle = '#f6f4ee'; x.fillRect(0, 0, w, h); x.fillStyle = c; for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 32, h); };

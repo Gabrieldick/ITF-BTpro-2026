@@ -274,8 +274,8 @@ function crWeekOptions(wk) {
     seen.add(t + city);
     const uf = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null;
     if (t < 3 && uf && STATE_INFO[uf]) { // amadores: nas cidades do seu estado
-      const cs = STATE_INFO[uf].cities, pre = ['Copa', 'Open', 'Torneio', 'Desafio', 'Circuito'];
-      city = pre[Math.floor(rnd() * pre.length)] + ' ' + cs[Math.floor(rnd() * cs.length)];
+      const pre = ['Copa', 'Open', 'Torneio', 'Desafio', 'Circuito'];
+      city = pre[Math.floor(rnd() * pre.length)] + ' ' + crAmateurPlace(uf, rnd);
       if (seen.has(t + city)) city += ' II';
       seen.add(t + city);
       opts.push({ tier: t, name: city + ' · ' + T.curto, uf }); return;
@@ -408,6 +408,29 @@ const STATE_INFO = {
   MG: { cities: ['Belo Horizonte', 'Uberlândia', 'Juiz de Fora', 'Lagoa da Pampulha'], pal: { line: '#d6332f', trim: '#ffffff', sand: '#e9d3a8', seat: '#d6332f', board: ['#d6332f', '#ffffff'] } },
   DF: { cities: ['Brasília', 'Lago Paranoá', 'Taguatinga'], pal: { line: '#0a7d3c', trim: '#ffd23f', sand: '#ead7ae', seat: '#0a7d3c', board: ['#0a7d3c', '#ffd23f'] } },
 };
+// arenas e points de beach tennis da capital de cada estado (copas amadoras e estaduais)
+const VENUES = {
+  SP: ['São Paulo', ['Arena Vila Olímpia', 'Point Pinheiros', 'Arena Moema', 'Beach Point Tatuapé', 'Arena Santana', 'Point Morumbi', 'Arena Brooklin', 'Point Vila Madalena']],
+  RJ: ['Rio de Janeiro', ['Point do Leblon', 'Arena Barra', 'Arena Recreio', 'Point Botafogo', 'Arena Flamengo', 'Point Leme', 'Arena Tijuca']],
+  SC: ['Florianópolis', ['Arena Jurerê', 'Point Lagoa da Conceição', 'Arena Campeche', 'Point Coqueiros', 'Arena Trindade', 'Point Canasvieiras']],
+  BA: ['Salvador', ['Arena Pituba', 'Point Barra', 'Arena Itapuã', 'Point Rio Vermelho', 'Arena Stella Maris', 'Point Ondina']],
+  CE: ['Fortaleza', ['Arena Beira-Mar', 'Point Meireles', 'Arena Praia do Futuro', 'Point Aldeota', 'Arena Cocó']],
+  PE: ['Recife', ['Arena Boa Viagem', 'Point Pina', 'Arena Casa Forte', 'Point Graças', 'Arena Piedade']],
+  RS: ['Porto Alegre', ['Arena Moinhos', 'Point Orla do Guaíba', 'Arena Petrópolis', 'Point Ipanema', 'Arena Menino Deus']],
+  PR: ['Curitiba', ['Arena Batel', 'Point Água Verde', 'Arena Ecoville', 'Point Bigorrilho', 'Arena Barigui']],
+  ES: ['Vitória', ['Arena Camburi', 'Point Praia do Canto', 'Arena Jardim da Penha', 'Point Curva da Jurema']],
+  RN: ['Natal', ['Arena Ponta Negra', 'Point Areia Preta', 'Arena Lagoa Nova', 'Point Via Costeira']],
+  AL: ['Maceió', ['Arena Ponta Verde', 'Point Jatiúca', 'Arena Pajuçara', 'Point Cruz das Almas']],
+  PB: ['João Pessoa', ['Arena Tambaú', 'Point Cabo Branco', 'Arena Manaíra', 'Point Bessa']],
+  MG: ['Belo Horizonte', ['Arena Pampulha', 'Point Savassi', 'Arena Belvedere', 'Point Lourdes', 'Arena Buritis']],
+  DF: ['Brasília', ['Arena Lago Sul', 'Point Asa Norte', 'Arena Sudoeste', 'Point Pontão', 'Arena Lago Norte']],
+};
+// local de um torneio amador: metade das vezes uma arena/point da capital, metade uma cidade do estado
+function crAmateurPlace(uf, rnd) {
+  const v = VENUES[uf];
+  if (v && rnd() < .55) return v[1][Math.floor(rnd() * v[1].length)] + ' · ' + v[0];
+  const cs = STATE_INFO[uf].cities; return cs[Math.floor(rnd() * cs.length)];
+}
 const AMERICAS = ['BRA', 'ARG', 'VEN', 'URU', 'CHI', 'PAR', 'COL', 'PER', 'MEX', 'USA', 'CAN', 'ARU'];
 const hashId = id => { let h = 2166136261; for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
 const crUf = c => c.id === 'crme' ? ($s.CR.me.uf || 'SP') : c.pais === 'BRA' ? STATES[hashId(c.id) % STATES.length][0] : null;
@@ -426,6 +449,7 @@ function crTourT(t) {
   if (t.singles) return Object.assign(base, { nome: 'Simples · ' + TIERS[t.tier].nome, draw: 8, prize: TIERS[t.tier].prize.map(v => Math.round(v * .5)), pts: TIERS[t.tier].pts.map(() => 0), xp: TIERS[t.tier].xp.map(v => v + 1) });
   if (!t.special) return base;
   if (t.special === 'estadual') return Object.assign(base, { nome: 'Estadual ' + ufName($s.CR.me.uf || 'SP') + ' · ' + TIERS[t.tier].curto, prize: TIERS[t.tier].prize.map(v => Math.round(v * .7)), pts: TIERS[t.tier].pts.map(v => Math.round(v * .5)), xp: TIERS[t.tier].xp.map(v => v + 1), draw: 8, pro: false });
+  if (t.mixed) { const k = [.12, .18, .25, .4, .55, .7, .85, 1, 1.1][t.cat] || 1; return Object.assign(base, SPECIAL.selEst, { tier: t.tier, diff: TIERS[t.cat].diff, prize: SPECIAL.selEst.prize.map(v => Math.round(v * k / 10) * 10) }); }
   return Object.assign(base, SPECIAL[t.special]);
 }
 // duplas por grupo (país ou estado): os dois melhores de cada um (você entra no seu grupo)
@@ -445,13 +469,94 @@ function crCallUp(kind) {
   const myRank = (() => { const l = crWorld().concat([crMeChar()]).filter(c => (nat ? c.pais : crUf(c)) === myKey && (nat || c.pais === 'BRA')).sort((x, y) => crCharOvr(y) - crCharOvr(x)); return l.findIndex(c => c.id === 'crme') + 1; })();
   return { teams, mine, called, myRank, myKey };
 }
+// ---------- interestadual misto: cada estado leva o top 2 do ranking estadual de cada categoria ----------
+// (C, B, A, BT10 ... Sand Series). O confronto entre dois estados tem um jogo por categoria; você joga o da sua
+const crCatOf = c => c.id === 'crme' ? Math.min(8, crMaxTier()) : npcTier(crCharOvr(c));
+const crCatName = k => 'categoria ' + (TIERS[k].id === 'SS' ? 'Sand Series' : TIERS[k].id);
+const crPtsOf = id => id === 'crme' ? crPts() : npcPts(id);
+function crStateSquads() {
+  const by = {};
+  crWorld().concat([crMeChar()]).forEach(c => { const uf = c.pais === 'BRA' ? crUf(c) : null; if (uf) (by[uf] = by[uf] || []).push(c); });
+  const out = {};
+  for (const [uf, l] of Object.entries(by)) {
+    const cats = {}; l.forEach(c => { const k = crCatOf(c); (cats[k] = cats[k] || []).push(c); });
+    const pts = new Map(l.map(c => [c.id, crPtsOf(c.id)])), ovr = new Map(l.map(c => [c.id, crCharOvr(c)]));
+    Object.values(cats).forEach(a => a.sort((x, y) => pts.get(y.id) - pts.get(x.id) || ovr.get(y.id) - ovr.get(x.id)));
+    const used = new Set(), squad = {}, rank = {};
+    for (let k = 0; k < 9; k++) { squad[k] = (cats[k] || []).slice(0, 2).map(c => c.id); squad[k].forEach(id => used.add(id)); }
+    // categoria sem dois nomes no estado: completa com quem sobrou nas categorias vizinhas (de baixo primeiro)
+    for (let k = 0; k < 9; k++) for (const d of [-1, 1, -2, 2]) for (const c of cats[k + d] || []) { if (squad[k].length >= 2) break; if (!used.has(c.id)) { used.add(c.id); squad[k].push(c.id); } }
+    const me = l.find(c => c.id === 'crme'); if (me) { const k = crCatOf(me); rank.cat = k; rank.pos = cats[k].findIndex(c => c.id === 'crme') + 1; }
+    const full = Object.values(squad).filter(x => x.length === 2);
+    if (!full.length) continue;
+    out[uf] = { uf, squad, rank, str: full.reduce((t, x) => t + crTeamOvr({ a: x[0], b: x[1] }), 0) };
+  }
+  return out;
+}
+// convocação do interestadual: você está numa das duplas do seu estado (na sua categoria ou completando uma vizinha)
+function crCallUpMixed() {
+  const myKey = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null; if (!myKey) return null;
+  const all = crStateSquads(), mine = all[myKey];
+  const cat = mine ? +(Object.keys(mine.squad).find(k => mine.squad[k].length === 2 && mine.squad[k].includes('crme')) ?? -1) : -1;
+  return { all, mine, called: cat >= 0, cat, mate: cat >= 0 ? mine.squad[cat].find(id => id !== 'crme') : null, myKey,
+    info: mine ? 'Você é o ' + (mine.rank.pos || '?') + 'º do ranking estadual da ' + crCatName(mine.rank.cat || 0) + ' (vão os 2 primeiros de cada categoria).' : 'Seu estado não tem seleção formada.' };
+}
+// dupla de um estado numa categoria (ou a mais próxima que ele tiver)
+function crSquadPair(sq, k) { for (const d of [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8, 8]) { const x = sq[k + d]; if (x && x.length === 2) return x; } return null; }
+// confronto entre dois estados: um jogo por categoria; quem não tem dupla na categoria perde por W.O.
+// my: resultado do seu jogo (true = seu estado venceu); empate no número de jogos: vale o da categoria mais alta
+function crTieSim(A, B, my) {
+  const t = $s.CR.tour, res = [];
+  for (let k = 8; k >= 0; k--) {
+    const a = A.squad[k], b = B.squad[k], fa = a && a.length === 2, fb = b && b.length === 2;
+    if (!fa && !fb) continue;
+    let aw;
+    if (my !== undefined && k === t.cat && (A.me ? fa : fb)) aw = A.me ? my : !my;
+    else if (fa && fb) { const sa = crTeamOvr({ a: a[0], b: a[1] }), sb = crTeamOvr({ a: b[0], b: b[1] }); aw = Math.random() < 1 / (1 + Math.exp(-(sa - sb) / 3)); }
+    else aw = fa;
+    res.push(aw);
+  }
+  const na = res.filter(Boolean).length, nb = res.length - na;
+  return { aWon: na > nb || (na === nb && res[0]), na, nb };
+}
+// seu jogo do confronto terminou: os outros jogos são simulados e o confronto decide quem avança
+function crMixedAfter(mm, myWon, myScore) {
+  const t = $s.CR.tour, A = t.teams[mm.a], B = t.teams[mm.b];
+  const r = crTieSim(A, B, myWon), hi = Math.max(r.na, r.nb), lo = Math.min(r.na, r.nb);
+  mm.w = r.aWon ? mm.a : mm.b; mm.score = hi + '–' + lo;
+  const tieWon = mm.w === t.me;
+  t.log.push('Seu jogo (' + TIERS[t.cat].curto + '): ' + (myWon ? 'vitória' : 'derrota') + (myScore ? ' ' + myScore : '') + ' · confronto ' + (tieWon ? 'vencido' : 'perdido') + ' ' + hi + '–' + lo);
+  return tieWon;
+}
+function crEnterMixed(opt) {
+  const cu = crCallUpMixed(), sp = SPECIAL.selEst;
+  if (!cu || !cu.called) { $s.CR.lastMsg = 'Você não foi convocado.'; return false; }
+  const mk = (st, me) => { const p = me ? ['crme', cu.mate] : crSquadPair(st.squad, cu.cat); return { a: p[0], b: p[1], label: ufName(st.uf), pais: 'BRA', uf: st.uf, squad: st.squad, me }; };
+  const teams = Object.values(cu.all).filter(st => st.uf !== cu.myKey).sort((x, y) => y.str - x.str).slice(0, sp.draw - 1).map(st => mk(st, false));
+  teams.push(mk(cu.mine, true));
+  teams.sort((x, y) => (cu.all[y.uf].str - cu.all[x.uf].str));
+  const me = teams.findIndex(t => t.me);
+  $s.CR.tour = { tier: cu.cat, cat: cu.cat, mixed: true, special: 'selEst', mate: cu.mate, name: opt.name + ' · ' + TIERS[cu.cat].curto, teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+    rounds: [SEED8.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
+  $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
+  $s.CR.lastMsg = 'Convocado! ' + ufName(cu.myKey) + ' joga o ' + sp.nome + ' com a dupla de cada categoria; você joga o jogo da ' + crCatName(cu.cat) + ' ao lado de ' + nameOf(crChar(cu.mate)) + '.';
+  crTourDays(); saveCareer();
+  return true;
+}
 // calendário dos especiais
 function crSpecialOptions(wk) {
   const w = wk === undefined ? $s.CR.week : wk, out = [], br = $s.CR.me.pais === 'BRA';
-  if (br && (w === 10 || w === 36)) { const band = Math.min(crMaxTier(), 4); const uf = $s.CR.me.uf || 'SP', cs = (STATE_INFO[uf] || STATE_INFO.SP).cities; out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
+  if (br && (w === 10 || w === 36)) { const band = Math.min(crMaxTier(), 4); const uf = STATE_INFO[$s.CR.me.uf] ? $s.CR.me.uf : 'SP', cs = STATE_INFO[uf].cities.concat(VENUES[uf][1].map(v => v + ' · ' + VENUES[uf][0])); out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
   const nat = w === 22 && br ? 'selEst' : w === 30 ? ($s.CR.season % 2 ? (AMERICAS.includes($s.CR.me.pais) ? 'pan' : null) : 'confed') : w === 42 ? 'mundSel' : null;
   if (nat) {
-    const cu = crCallUp(nat), S2 = SPECIAL[nat];
+    const S2 = SPECIAL[nat];
+    if (nat === 'selEst') {
+      const cu = crCallUpMixed();
+      if (cu && cu.called) out.push({ special: nat, tier: cu.cat, name: S2.nome, mate: cu.mate, info: 'Você joga o jogo da ' + crCatName(cu.cat) + '.' });
+      else if (cu) out.push({ special: nat, tier: S2.tier, name: S2.nome, notCalled: true, info: cu.info });
+      return out;
+    }
+    const cu = crCallUp(nat);
     if (cu && cu.called) out.push({ special: nat, tier: S2.tier, name: S2.nome, mate: cu.mine.a === 'crme' ? cu.mine.b : cu.mine.a });
     else if (cu) out.push({ special: nat, tier: S2.tier, name: S2.nome, notCalled: true, info: cu.mine ? 'Convocados: ' + nameOf(crChar(cu.mine.a)) + ' e ' + nameOf(crChar(cu.mine.b)) + '. Você é o ' + cu.myRank + 'º ' + (nat === 'selEst' ? 'do seu estado' : 'do seu país') + ' (só os 2 melhores vão).' : 'Seu país não tem dupla para este torneio.' });
   }
@@ -463,6 +568,7 @@ const crTeamOvr = t => t.b ? Math.round((crCharOvr(crChar(t.a)) + crCharOvr(crCh
 const crTeamName = t => (t.label ? t.label + ' · ' : '') + shortOf(crChar(t.a)) + (t.b ? ' / ' + shortOf(crChar(t.b)) : '');
 function crEnter(opt) {
   if (opt.notCalled) return false;
+  if (opt.special === 'selEst') return crEnterMixed(opt);
   if (opt.special && opt.special !== 'estadual') return crEnterNation(opt);
   if (opt.singles) return crEnterSingles(opt);
   const T = TIERS[opt.tier], cost = opt.special === 'estadual' ? Math.round(T.fee * .5) : (opt.wild ? 0 : T.fee) + crTravel(T);
@@ -557,6 +663,10 @@ function crMyMatch() { const t = $s.CR.tour; if (!t || t.done || t.round >= crNR
 function crScore(N, rnd) { const l = Math.floor((rnd || Math.random)() * (N - 1)); return N + '–' + l; }
 function crSimOne(m, isMine) {
   const t = $s.CR.tour, A = t.teams[m.a], B = t.teams[m.b];
+  if (t.mixed && A.squad && B.squad) {
+    if (isMine) { const mine = A.me ? A : B, opp = A.me ? B : A; const sa = crTeamOvr(mine) + $s.CR.chem * .4 + crMoodBonus() * .5, sb = crTeamOvr(opp); crMixedAfter(m, Math.random() < 1 / (1 + Math.exp(-(sa - sb) / 3)), crScore($s.CR.games)); return; }
+    const r = crTieSim(A, B); m.w = r.aWon ? m.a : m.b; m.score = Math.max(r.na, r.nb) + '–' + Math.min(r.na, r.nb); return;
+  }
   let sa = crTeamOvr(A), sb = crTeamOvr(B);
   if (!t.singles) { if (A.me) sa += $s.CR.chem * .4 + crMoodBonus() * .5; if (B.me) sb += $s.CR.chem * .4 + crMoodBonus() * .5; }
   const pA = 1 / (1 + Math.exp(-(sa - sb) / 3));
@@ -818,6 +928,7 @@ function careerMatchEnded(won, rating) {
   if (!mm) return;
   mm.w = won ? $s.CR.tour.me : (mm.a === $s.CR.tour.me ? mm.b : mm.a);
   mm.score = hasSets ? sTxt : g[0] + g[1] ? Math.max(g[0], g[1]) + '–' + Math.min(g[0], g[1]) : 'W.O.';
+  if ($s.CR.tour.mixed) won = crMixedAfter(mm, won, mm.score);
   crAfterMyMatch(won);
 }
 // ---------- saves antigos ----------
@@ -953,4 +1064,4 @@ function crResolveEvent(i) {
 
 export { crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, importData: t => crImportData(t), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };

@@ -166,6 +166,16 @@ function matchRating(won) {
   const r = 6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + (won ? .3 : -.3) + bal * (dupla() ? 1 : 1.5);
   return Math.round(clamp(r, 1, 10) * 10) / 10;
 }
+// nota ao vivo (canto de cima à direita) nas partidas da carreira: a mesma conta da nota final, sem o bônus de vitória
+function updateLiveRating() {
+  const e = $('liveNota'); if (!e) return;
+  const on = !!(S.careerActive && S.perf && !S.spectate && !NET.role && !S.drill);
+  e.hidden = !on; if (!on) return;
+  const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
+  const r = Math.round(clamp(6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + bal * (dupla() ? 1 : 1.5), 1, 10) * 10) / 10;
+  e.className = 'chip' + (r >= 7.5 ? ' hi' : r < 5.5 ? ' lo' : '');
+  e.querySelector('b').textContent = r.toFixed(1).replace('.', ',');
+}
 function prependStats(html) { const st = $('stTable'); st.innerHTML = html + (st.innerHTML || ''); }
 function perfSummary() {
   const ev = S.perf.ev, good = [], bad = [];
@@ -315,6 +325,7 @@ function pointTo(w, reason, kind) {
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   const ev = awardPoint(w);
+  updateLiveRating();
   let isTitle = false;
   if (ev === 'set' || ev === 'stb') S.deadT = 2.6;
   if (ev === 'match') {
@@ -435,6 +446,7 @@ function newMatch(guest) {
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
   S.highlights = [];
   S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.perf = { sum: 0, n: 0, ev: {} }; S.lastHit = null; S.attempt = null; S.streak = null;
+  updateLiveRating();
   if (!guest) setWeather();
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
   document.body.classList.remove('in-menu');
