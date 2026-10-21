@@ -75,18 +75,25 @@ function cleanClip(F, hits, deadT) {
         if (w > 0) { dx[f] += cx * w; dz[f] += cz * w; wsum[f] += w; }
       }
       // o golpe com o tempo certo: a raquete chega na bola no ponto de contato
-      const cu = h.serve ? .3 : .45, dur = h.dur || .5, a = Math.max(0, idx(h.t - cu * dur)), b = idx(h.t + (1 - cu) * dur);
+      // por cima (smash e saque) o contato é depois de a raquete cair atrás das costas (45% do golpe) e o golpe fica um
+      // pouco mais longo no replay: no jogo essa fase passa em menos de dois quadros e parece um tranco
+      const ovr = h.serve || h.type === 'smash', cu = .45, dur = ovr ? Math.max(h.dur || .4, .62) : h.dur || .5, a = Math.max(0, idx(h.t - cu * dur)), b = idx(h.t + (1 - cu) * dur);
       // o golpe gravado (com o "salto" do tempo na batida) sai inteiro antes de entrar o limpo
       for (let f = k; f >= 0 && R[f].p[i].st >= 0; f--) R[f].p[i].st = -1;
       for (let f = k + 1; f < N && R[f].p[i].st >= 0; f++) R[f].p[i].st = -1;
       for (let f = a; f <= b; f++) {
-        const Q = R[f].p[i]; Q.st = clamp(R[f].t - h.t + cu * dur, 0, dur - 1e-3); Q.ty = h.type; Q.sd = dur; Q.ss = h.side; Q.sv = h.v; Q.ch = 0;
-        if (R[f].t >= h.t) Q.c = [h.x, h.y, h.z, cu];
+        const Q = R[f].p[i]; Q.st = clamp(R[f].t - h.t + cu * dur, 0, dur - 1e-3); Q.ty = h.serve ? 'smash' : h.type; Q.sd = dur; Q.ts = -1; Q.ss = h.side; Q.sv = h.v; Q.ch = 0;
+        Q.c = [h.x, h.y, h.z, cu, R[f].t < h.t ? 1 : 0]; // antes do contato a raquete já vai para onde vai bater
       }
       // bola acima do alcance do braço com a raquete: um pulinho até ela (no jogo o contato às vezes "estica")
+      // um pulo só, com o ponto mais alto no contato: o pulo gravado (que começa na batida) sai, e entra um limpo
+      // quando a bola está acima do alcance ou no smash alto (no jogo ele pula na hora da batida)
       const top = (over ? 2.45 : 2.05) * hScale(p), need = h.y - top;
-      if (need > .04) { const jd = .42, jh = Math.min(.55, need + .05), s0 = h.t - jd / 2;
-        for (let f = idx(s0); f <= idx(s0 + jd); f++) { const Q = R[f].p[i], left = jd - (R[f].t - s0); if (left > 0 && left <= jd) { Q.j = left; Q.jd = jd; Q.jh = jh; } } }
+      if (need > .04 || (over && !h.serve && h.y > 2.2)) {
+        for (let f = idx(h.t - .5); f <= idx(h.t + .7); f++) R[f].p[i].j = 0;
+        const jd = .42, jh = Math.min(.55, Math.max(need + .05, .26)), s0 = h.t - jd / 2;
+        for (let f = idx(s0); f <= idx(s0 + jd); f++) { const Q = R[f].p[i], left = jd - (R[f].t - s0); if (left > 0 && left <= jd) { Q.j = left; Q.jd = jd; Q.jh = jh; } }
+      }
       if (h.serve) for (let f = 0; f < a; f++) if (R[f].p[i].ts >= 0) R[f].p[i].ts = Math.min(R[f].p[i].ts, .999);
     });
     for (let f = 0; f < N; f++) { const Q = R[f].p[i], w = wsum[f] > 1 ? 1 / wsum[f] : 1; Q.x += dx[f] * w; Q.z += dz[f] * w; }
@@ -125,7 +132,7 @@ function applyAt(c, t) {
     const P = A.p[i], Q = B.p[i], M = N.p[i];
     p.pos.set(L(P.x, Q.x), 0, L(P.z, Q.z)); p.vel.set(L(P.vx, Q.vx), 0, L(P.vz, Q.vz));
     p.swing.t = P.st >= 0 && Q.st >= 0 && P.ty === Q.ty ? L(P.st, Q.st) : M.st; p.swing.type = M.ty; p.swing.dur = M.sd; p.swing.side = M.ss; p.swing.var = M.sv;
-    p.swing.hit = !!M.c; p.contact = M.c ? { x: M.c[0], y: M.c[1], z: M.c[2], u: M.c[3], hitId: S.hitId } : null;
+    p.swing.hit = !!M.c && !M.c[4]; p.contact = M.c ? { x: M.c[0], y: M.c[1], z: M.c[2], u: M.c[3], hitId: S.hitId, pre: !!M.c[4] } : null;
     p.jump = M.j; p.jumpDur = M.jd; p.jumpH = M.jh; p.charging = !!M.ch; p.dive = M.dt >= 0 ? { t: M.dt, dur: M.dd } : null; p.split = M.sp;
     p.rpToss = P.ts >= 0 && Q.ts >= 0 ? L(P.ts, Q.ts) : M.ts;
   });

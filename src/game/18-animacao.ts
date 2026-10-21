@@ -180,12 +180,15 @@ function animateAthlete(p, dt) {
   if (swingU >= 0 && ball.state !== 'held') {
     // antes do contato a raquete vai buscando a bola; depois, fica no ponto onde bateu e acompanha o movimento
     const hitDone = p.swing.hit && p.contact && p.contact.hitId === S.hitId;
-    const cu = hitDone ? p.contact.u : .45;
+    const pre = !hitDone && S.mode === 'replay' && p.contact && p.contact.pre; // replay: já se sabe onde e quando vai bater
+    const cu = hitDone || pre ? p.contact.u : .45;
     const w = hitDone ? clamp(1 - (swingU - cu) / .22, 0, 1) : clamp(1 - Math.abs(swingU - cu) / .3, 0, 1);
     if (w > 0) {
-      if (hitDone) _e.set(p.contact.x, p.contact.y, p.contact.z); else _e.copy(ball.pos);
+      if (hitDone || pre) _e.set(p.contact.x, p.contact.y, p.contact.z); else _e.copy(ball.pos);
       m.spine.worldToLocal(_e);
-      if (_e.distanceTo(shR) < 2.2) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1)); }
+      // perto do limite a raquete solta a bola aos poucos (antes ligava/desligava de uma vez: tranco no smash)
+      const dd = _e.distanceTo(shR), fade = clamp((2.6 - dd) / .5, 0, 1);
+      if (fade > 0) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1) * fade); }
     }
   }
   else if (!p.charging && run > .3) _c.z -= Math.cos(p.gait) * .08 * run * Math.abs(lvz); // braço da raquete balança pouco na corrida
