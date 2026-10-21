@@ -143,18 +143,20 @@ function whoName(p) {
 }
 // nota da partida: o que o SEU jogador fez de bom (defesas, smashes, curtas certos, winners) e de ruim (erros por golpe)
 const PERF_TXT = { defBoa: 'defesas boas', defLevantou: 'defesas que levantaram', curtaTop: 'curtas matadoras', curtaBoa: 'curtas boas', curtaLenta: 'curtas lentas',
-  smashPerf: 'smashes perfeitos', smashRuim: 'smashes fora do tempo', lobChutado: 'lobs chutados perfeitos', finaliz: 'finalizações', winner: 'pontos vencedores',
+  smashPerf: 'smashes perfeitos', smashRuim: 'smashes fora do tempo', defDescontrolou: 'defesas descontroladas', curtaRuim: 'curtas descontroladas', lobChutado: 'lobs chutados perfeitos', finaliz: 'finalizações', winner: 'pontos vencedores',
   furou: 'bolas furadas', erroF: 'erros forçados', e_curta: 'erros de curta', e_lob: 'erros de lob', e_smash: 'erros de smash', e_defesa: 'erros de defesa',
   e_drive: 'erros de drive', e_voleio: 'erros de voleio', e_saque: 'saques errados' };
 const WIN_V = { smash: .6, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .5, saque: .5 };
-const ERR_V = { curta: -.7, lob: -.6, smash: -.6, defesa: -.5, drive: -.5, voleio: -.5, saque: -.5 };
+const ERR_V = { curta: -.8, lob: -.65, smash: -.65, defesa: -.6, drive: -.55, voleio: -.55, saque: -.5 }; // erros (vermelho) pesam um pouco mais
 const perfOn = p => !!p && p === human && !p.netHuman && !S.spectate && !NET.role && !S.drill && !!S.perf;
 function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; if (S.careerActive && S.mode === 'rally') updateLiveRating(); }
 // golpe dado pelo seu jogador (chamado na hora da batida)
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
-  if (sw.type === 'defesa' && r.pressure > .25) { if (r.pop) perfAdd(p, -.15, 'defLevantou'); else if (!r.wild) perfAdd(p, .35, 'defBoa'); }
-  if (sw.type === 'curta' && !r.pop && !r.wild) { if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); else perfAdd(p, -.12, 'curtaLenta'); }
+  // defesa: verde soma bem, amarelo soma um pouco, laranja (levantou) não tira; vermelho (descontrolou) tira
+  if (sw.type === 'defesa' && r.pressure > .25) { if (r.wild) perfAdd(p, -.3, 'defDescontrolou'); else if (!r.pop) perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa'); }
+  // curta: verde soma, amarela (lenta) não tira; descontrolada (vermelho) tira
+  if (sw.type === 'curta' && !r.pop) { if (r.wild) perfAdd(p, -.3, 'curtaRuim'); else if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
   if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.2, 'smashRuim'); }
   if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
   if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
@@ -195,7 +197,7 @@ function updateLiveRating() {
 function prependStats(html) { const st = $('stTable'); st.innerHTML = html + (st.innerHTML || ''); }
 function perfSummary() {
   const ev = S.perf.ev, good = [], bad = [];
-  for (const [k, n] of Object.entries(ev)) { const key = k.startsWith('w_') ? 'winner' : k; (/^(e_|furou|erroF|defLevantou|curtaLenta|smashRuim)/.test(k) ? bad : good).push([key, n]); }
+  for (const [k, n] of Object.entries(ev)) { const key = k.startsWith('w_') ? 'winner' : k; (/^(e_|furou|erroF|defLevantou|defDescontrolou|curtaLenta|curtaRuim|smashRuim)/.test(k) ? bad : good).push([key, n]); }
   const merge = l => { const m = {}; l.forEach(([k, n]) => { m[k] = (m[k] || 0) + n; }); return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => n + ' ' + PERF_TXT[k]); };
   return { good: merge(good), bad: merge(bad) };
 }
