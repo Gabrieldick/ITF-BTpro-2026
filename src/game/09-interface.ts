@@ -149,7 +149,7 @@ const PERF_TXT = { defBoa: 'defesas boas', defLevantou: 'defesas que levantaram'
 const WIN_V = { smash: .6, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .5, saque: .5 };
 const ERR_V = { curta: -.7, lob: -.6, smash: -.6, defesa: -.5, drive: -.5, voleio: -.5, saque: -.5 };
 const perfOn = p => !!p && p === human && !p.netHuman && !S.spectate && !NET.role && !S.drill && !!S.perf;
-function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; }
+function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; if (S.careerActive && S.mode === 'rally') updateLiveRating(); }
 // golpe dado pelo seu jogador (chamado na hora da batida)
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
@@ -170,11 +170,20 @@ function matchRating(won) {
 function updateLiveRating() {
   const e = $('liveNota'); if (!e) return;
   const on = !!(S.careerActive && S.perf && !S.spectate && !NET.role && !S.drill);
-  e.hidden = !on; if (!on) return;
+  e.hidden = !on; if (!on) { delete e.dataset.r; return; }
   const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
   const r = Math.round(clamp(6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + bal * (dupla() ? 1 : 1.5), 1, 10) * 10) / 10;
-  e.className = 'chip' + (r >= 7.5 ? ' hi' : r < 5.5 ? ' lo' : '');
-  e.querySelector('b').textContent = r.toFixed(1).replace('.', ',');
+  // cor do retângulo: vermelho (nota baixa) → amarelo → verde (nota alta)
+  e.style.setProperty('--nh', String(Math.round(clamp((r - 4) / 4.5, 0, 1) * 125)));
+  const b = e.querySelector('b'), prev = +(e.dataset.r || 0);
+  b.textContent = r.toFixed(1).replace('.', ',');
+  if (e.dataset.r && Math.abs(r - prev) > .049) { // variação sobe e some: "+0,2" verde ou "−0,3" vermelho
+    const d = document.createElement('i'), up = r > prev;
+    d.className = 'nd ' + (up ? 'up' : 'dn'); d.textContent = (up ? '+' : '−') + Math.abs(r - prev).toFixed(1).replace('.', ',');
+    e.appendChild(d); setTimeout(() => d.remove(), 1300);
+    e.classList.remove('pulse'); void e.offsetWidth; e.classList.add('pulse');
+  }
+  e.dataset.r = String(r);
 }
 function prependStats(html) { const st = $('stTable'); st.innerHTML = html + (st.innerHTML || ''); }
 function perfSummary() {
@@ -426,7 +435,7 @@ function arenaFor() {
     const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
     const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
-    return Object.assign({ size, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
+    return Object.assign({ size, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO' }, ARENA_PAL.BRA);
   return { size: 0 };

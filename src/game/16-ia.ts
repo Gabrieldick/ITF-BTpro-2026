@@ -53,6 +53,8 @@ function charSkill(p) {
     speed: (2.9 + a.vel * .022) * dm, react: lerp(.3, .09, k) * styleOf(p).react, smart: lerp(.3, .92, k), letGo: lerp(.3, .9, k),
     miss: lerp(.15, .025, k) * lerp(1.3, .7, a.def / 100), err: lerp(.2, .022, Math.pow(k, .85)) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, k), .3, .9), clamp(lerp(.72, 1, k), .5, 1)],
+    pw: lerp(.84, 1, Math.min(1, k)), // nível baixo: golpes mais fracos (não mais bolas furadas)
+    netK: lerp(.8, .45, Math.min(1, k)), // erro de nível baixo vai mais na rede que para fora
   };
 }
 // tática da sua dupla: 'fraco' = mirar no adversário mais fraco, 'meio' = entre os dois, 'lobs' = mais lobs no fundo
@@ -381,11 +383,12 @@ function updateAI(p, dt) {
         }
         if ((shot === 'smash' && ball.pos.y >= 1.9 ? canHit(p, 'smash', .66) : canHit(p, 'defesa', .9)) && !(shot !== 'smash' && ball.pos.y > .6 && ball.vel.y > -4 && waitCloser(p, 0, dt) && p.swing.t >= 0 && p.swing.t < p.swing.dur * .7)) { // espera a bola chegar perto do corpo
           // erro: quase sempre a bola vai na rede/fora; furar (raquete passa e a bola segue) só chegando no limite
-          if (p.ai.willMiss && !p.ai.stretch && Math.random() < .8) { const st = styleOf(p); const r = doHit(p, shot, rand(D.q[0], D.q[1]) * .8, false, { speedMul: st.speed, noiseMul: st.noise * 1.4, misBoost: 1 }); feedback(whoTag(p) + r.label, 'ERROU', whoKind(p)); }
+          // erro quase sempre é bola na rede/fora; furar (raquete passa e a bola segue) só esticando no limite numa bola difícil
+          if (p.ai.willMiss && !(p.ai.stretch && Math.random() < .55)) { const st = styleOf(p); const r = doHit(p, shot, rand(D.q[0], D.q[1]) * .8, false, { speedMul: st.speed, noiseMul: st.noise * 1.4, misBoost: 1 }); feedback(whoTag(p) + r.label, 'ERROU', whoKind(p)); }
           else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
-            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? (oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .4 ? { lobPower: .25, lobKick: true } : { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
+            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1), noiseMul: st.noise }, shot === 'lob' ? (oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .4 ? { lobPower: .25, lobKick: true } : { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
             feedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
         }

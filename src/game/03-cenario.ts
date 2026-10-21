@@ -346,6 +346,75 @@ function boards(x0, z0, len, along, c1, c2, text) {
   if (along === 'z') { b.material = [mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .25 }), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .25 }), mat('#222'), mat('#222'), mat('#222'), mat('#222')]; }
   b.position.set(x0, .35, z0); ARENA.group.add(b);
 }
+// ---------- torneio amador: torcida em pé na beira da quadra e outras quadras com jogos ao lado ----------
+// tudo em malhas instanciadas (3 malhas para o público, 4 para os jogos) e sem sombra: quase não pesa
+const SIDE = { courts: [], players: null, balls: null, n: 0 };
+function standingCrowd(spots) {
+  if (!spots.length) return;
+  const n = spots.length, mk = (g, m) => { const im = new THREE.InstancedMesh(g, m, n); ARENA.group.add(im); return im; };
+  const legs = mk(new THREE.CapsuleGeometry(.12, .55, 3, 8), new THREE.MeshStandardMaterial({ roughness: .85 }));
+  const body = mk(new THREE.CapsuleGeometry(.17, .32, 4, 10), new THREE.MeshStandardMaterial({ roughness: .8 }));
+  const head = mk(new THREE.SphereGeometry(.12, 10, 8), new THREE.MeshStandardMaterial({ roughness: .7 }));
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color(), one = new V3(1, 1, 1);
+  const shirts = ['#ff5a1f', '#fbf6ea', '#17324d', '#ffd23f', '#0b7a83', '#e2364a', '#2457c5', '#7fd6db', '#f4f1ea', '#4fd18b'], shorts = ['#17324d', '#2a2a2a', '#c9b48a', '#2457c5', '#fbf6ea'];
+  const seats = [];
+  spots.forEach(([x, z], i) => {
+    const yaw = Math.atan2(-x, -z * .35); q.setFromAxisAngle(new V3(0, 1, 0), yaw);
+    m4.compose(new V3(x, .4, z), q, one); legs.setMatrixAt(i, m4);
+    m4.compose(new V3(x, 1.1, z), q, one); body.setMatrixAt(i, m4);
+    m4.compose(new V3(x, 1.53, z), q, one); head.setMatrixAt(i, m4);
+    legs.setColorAt(i, c.set(Math.random() < .5 ? SKIN_C[Math.floor(Math.random() * SKIN_C.length)] : shorts[Math.floor(Math.random() * shorts.length)]).convertSRGBToLinear());
+    body.setColorAt(i, c.set(shirts[Math.floor(Math.random() * shirts.length)]).convertSRGBToLinear());
+    head.setColorAt(i, c.set(SKIN_C[Math.floor(Math.random() * SKIN_C.length)]).convertSRGBToLinear());
+    seats.push([x, .79, z, yaw]);
+  });
+  ARENA.crowd.push({ body, head, seats, ph: seats.map(() => Math.random() * 6), stand: true });
+}
+function sideCourt(cx) {
+  const g = new THREE.Group(), hw = HALF_W.dupla, tm = mat('#1f4fb8', { roughness: .6 });
+  const T = (w, l, x, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, .008, l), tm); m.position.set(cx + x, .004, z); g.add(m); };
+  T(hw * 2, .05, 0, C.halfL); T(hw * 2, .05, 0, -C.halfL); T(.05, C.halfL * 2, hw, 0); T(.05, C.halfL * 2, -hw, 0);
+  const nt = new THREE.Mesh(new THREE.PlaneGeometry(C.netHalf * 2, 1), netMat); nt.position.set(cx, 1.2, 0); g.add(nt);
+  const bd = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .06, .012), mat('#f6f4ee')); bd.position.set(cx, 1.68, 0); g.add(bd);
+  [-1, 1].forEach(sd => { const po = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, 1.8, 8), mat('#d8dde2', { metalness: .5, roughness: .4 })); po.position.set(cx + sd * (C.netHalf + .1), .9, 0); g.add(po); });
+  ARENA.group.add(g);
+  SIDE.courts.push({ cx, ph: Math.random() * 10, rally: 0 });
+}
+function sideGames(xs) {
+  SIDE.courts = []; xs.forEach(sideCourt);
+  const n = xs.length * 4; SIDE.n = n;
+  const mk = (gm, m, k) => { const im = new THREE.InstancedMesh(gm, m, k); im.frustumCulled = false; ARENA.group.add(im); return im; };
+  SIDE.players = [mk(new THREE.CapsuleGeometry(.12, .6, 3, 8), new THREE.MeshStandardMaterial({ color: col('#c68a5e'), roughness: .85 }), n),
+    mk(new THREE.CapsuleGeometry(.17, .3, 4, 10), new THREE.MeshStandardMaterial({ roughness: .8 }), n), mk(new THREE.SphereGeometry(.12, 10, 8), new THREE.MeshStandardMaterial({ color: col('#d2a07a'), roughness: .7 }), n)];
+  const c = new THREE.Color(), kits = ['#ff5a1f', '#2457c5', '#ffd23f', '#0b7a83', '#e2364a', '#fbf6ea'];
+  for (let i = 0; i < n; i++) SIDE.players[1].setColorAt(i, c.set(kits[(Math.floor(i / 2) + Math.floor(i / 4)) % kits.length]).convertSRGBToLinear());
+  SIDE.balls = mk(new THREE.SphereGeometry(.05, 8, 6), new THREE.MeshStandardMaterial({ color: col('#ffe14d'), roughness: .5 }), xs.length);
+}
+const _sm = new THREE.Matrix4(), _sq = new THREE.Quaternion(), _sv = new V3(), _s1 = new V3(1, 1, 1), _up = new V3(0, 1, 0);
+function updateSideGames(dt) {
+  if (!SIDE.players || !SIDE.courts.length || !SIDE.players[0].parent) return;
+  const t = performance.now() / 1000;
+  SIDE.courts.forEach((ct, k) => {
+    // a bola vai e volta entre um jogador de cada lado; cada troca leva ~1,3 s
+    const T = 1.3, u = (t + ct.ph) / T, n = Math.floor(u), f = u - n, from = n % 2, hw = HALF_W.dupla;
+    const pos = [];
+    for (let j = 0; j < 4; j++) {
+      const team = j < 2 ? 0 : 1, side = j % 2 ? 1 : -1, zz = (team ? -1 : 1) * (5.2 + Math.sin(t * .7 + j + k) * 1.2);
+      pos.push([ct.cx + side * hw * .5 + Math.sin(t * 1.3 + j * 2 + k) * .6, zz]);
+    }
+    const a = pos[from * 2 + (n % 4 < 2 ? 0 : 1)], b = pos[(1 - from) * 2 + ((n + 1) % 4 < 2 ? 0 : 1)];
+    const bx = a[0] + (b[0] - a[0]) * f, bz = a[1] + (b[1] - a[1]) * f, by = 1 + Math.sin(Math.PI * f) * 2.6;
+    _sm.compose(_sv.set(bx, by, bz), _sq.identity(), _s1); SIDE.balls.setMatrixAt(k, _sm);
+    pos.forEach(([x, z], j) => {
+      const i = k * 4 + j, hop = Math.abs(Math.sin(t * 6 + j)) * .04;
+      _sq.setFromAxisAngle(_up, (j < 2 ? 0 : Math.PI) + Math.sin(t + j) * .3);
+      _sm.compose(_sv.set(x, .43 + hop, z), _sq, _s1); SIDE.players[0].setMatrixAt(i, _sm);
+      _sm.compose(_sv.set(x, 1.15 + hop, z), _sq, _s1); SIDE.players[1].setMatrixAt(i, _sm);
+      _sm.compose(_sv.set(x, 1.58 + hop, z), _sq, _s1); SIDE.players[2].setMatrixAt(i, _sm);
+    });
+  });
+  SIDE.players.forEach(m => { m.instanceMatrix.needsUpdate = true; }); SIDE.balls.instanceMatrix.needsUpdate = true;
+}
 function applyArena(a) {
   a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#0b1d3f', '#33c3ff'], text: 'ITF-BT PRO 2026' }, a || {});
   const key = JSON.stringify(a); if (key === ARENA.key) return; ARENA.key = key;
@@ -355,7 +424,8 @@ function applyArena(a) {
   // arquibancadas
   ARENA.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
   ARENA.group.clear(); ARENA.crowd = [];
-  PROPS.forEach(g => { g.visible = !(a.size > 0 && Math.abs(g.position.x) < 15 && g.position.z > -22 && g.position.z < 16); });
+  PROPS.forEach(g => { g.visible = !((a.size > 0 || a.amateur) && Math.abs(g.position.x) < (a.amateur ? 20 : 15) && g.position.z > -22 && g.position.z < 16); });
+  SIDE.players = null; SIDE.courts = [];
   const L = C.halfL * 2 + 4, W = 7.8;
   let seats = [];
   if (a.size >= 1) seats = seats.concat(bleachers(-1, -W, -1, L * (a.size >= 2 ? 1 : .7), a.size >= 3 ? 8 : a.size >= 2 ? 5 : 3, a.seat, 'z'));
@@ -363,6 +433,14 @@ function applyArena(a) {
   if (a.size >= 3) seats = seats.concat(bleachers(-1, 0, -(C.halfL + 5.5), 2 * W - 1, 6, a.seat, 'x'));
   crowd(seats);
   if (a.size === 0 && a.text) boards(0, -(C.halfL + 3.5), 8, 'x', a.board[0], a.board[1], a.text); // torneio local: uma faixa no fundo
+  if (a.amateur) { // público em pé dos dois lados e no fundo, e duas quadras vizinhas com jogo
+    const spots = [];
+    // não fica perto da câmera (atrás da sua linha de fundo), só da metade da quadra para lá
+    [-1, 1].forEach(sd => { for (let z = -C.halfL + .5; z < 3.5; z += rand(.6, 1.3)) if (Math.random() < .8) spots.push([sd * (HALF_W.dupla + rand(2, 3)), z]); });
+    for (let x = -5; x <= 5; x += rand(.8, 1.5)) if (Math.random() < .6) spots.push([x, -(C.halfL + rand(4.2, 5.2))]);
+    standingCrowd(spots);
+    sideGames([-(HALF_W.dupla * 2 + 5), HALF_W.dupla * 2 + 5]);
+  }
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
 }
@@ -392,12 +470,18 @@ function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); }
 const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cs = new V3(1, 1, 1);
 function updateArena(dt) {
   updateConfetti(dt);
+  updateSideGames(dt);
   if (!ARENA.crowd.length || ARENA.cheerT <= 0) return;
   ARENA.cheerT = Math.max(0, ARENA.cheerT - dt);
   const t = performance.now() / 1000, amp = Math.min(1, ARENA.cheerT) * .22;
   ARENA.crowd.forEach(cr => {
     cr.seats.forEach(([x, y, z, side, along], i) => {
       const j = Math.max(0, Math.sin(t * 9 + cr.ph[i])) * amp;
+      if (cr.stand) { // em pé: pulinho curto (as pernas ficam)
+        _cq.setFromAxisAngle(new V3(0, 1, 0), side); const jj = j * .35;
+        _cm.compose(_cp.set(x, 1.1 + jj, z), _cq, _cs); cr.body.setMatrixAt(i, _cm);
+        _cm.compose(_cp.set(x, 1.53 + jj, z), _cq, _cs); cr.head.setMatrixAt(i, _cm); return;
+      }
       _cq.setFromAxisAngle(new V3(0, 1, 0), along === 'z' ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0));
       _cm.compose(_cp.set(x, y + .31 + j, z), _cq, _cs); cr.body.setMatrixAt(i, _cm);
       _cm.compose(_cp.set(x, y + .75 + j, z), _cq, _cs); cr.head.setMatrixAt(i, _cm);

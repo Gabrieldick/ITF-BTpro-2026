@@ -96,6 +96,14 @@ function animateAthlete(p, dt) {
   else p.celYaw = undefined;
   m.group.rotation.y = yaw;
   if (p.jump > 0) p.jump = Math.max(0, p.jump - dt);
+  // mais split steps: (1) adversário armando o smash → pulinho antes do contato, para aterrissar pronto para defender;
+  // (2) voltou correndo para a posição (ex.: depois de uma curta) e parou → pulinho de prontidão
+  if (S.mode === 'rally' && ball.state === 'live' && !(p.split > 0) && !busy && p.jump <= 0) {
+    const sm = ($s.teams[1 - p.team] || []).some(o => (o.charging && (o.mtr || MTR).type !== 'lob') || (o.swing.t >= 0 && o.swing.type === 'smash' && !o.swing.hit && ball.pos.y > 1.9 && o.swing.t > o.swing.dur * .12));
+    if (sm && S.lastTeam === p.team && p.splitFor !== S.hitId) { p.splitFor = S.hitId; p.split = .26; }
+    else if (sp < .5 && (p.prevSp || 0) > 2.2 && S.lastTeam === p.team && p.splitBack !== S.hitId) { p.splitBack = S.hitId; p.split = .22; }
+  }
+  p.prevSp = sp;
   if (p.split > 0) { p.split = Math.max(0, p.split - dt); if (p.split === 0) p.burst = .3; }
   if (p.burst > 0) p.burst = Math.max(0, p.burst - dt);
   // split step: pulinho com os dois pés quando o adversário bate, aterrissando abaixado e com as pernas abertas
@@ -147,7 +155,7 @@ function animateAthlete(p, dt) {
     const shuffle = sp > .25 && sp < 4.2 ? Math.abs(lvx) : 0; // deslocamento lateral: passo cruzado vira passo lateral
     const ph = p.gait + (i ? Math.PI * (1 - .45 * shuffle) : 0);
     let lift = 0;
-    if (sp > .25) { fx += lvx * stride * (1 - .4 * shuffle) * Math.cos(ph); fz += lvz * stride * Math.cos(ph); lift = Math.max(0, -Math.sin(ph)) * (.05 + sp * .02) * run; }
+    if (sp > .25) { fx += lvx * stride * (1 - .4 * shuffle) * Math.cos(ph); fz += lvz * stride * Math.cos(ph); lift = Math.max(0, -Math.sin(ph)) * (.06 + sp * .026) * run; }
     let fy = .07 + lift;
     if (air) {
       const jp = p.jumpDur ? 1 - p.jump / p.jumpDur : .5, sw = jp < .45 ? 1 : -1;
@@ -180,6 +188,7 @@ function animateAthlete(p, dt) {
       if (_e.distanceTo(shR) < 2.2) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1)); }
     }
   }
+  else if (!p.charging && run > .3) _c.z -= Math.cos(p.gait) * .08 * run * Math.abs(lvz); // braço da raquete balança pouco na corrida
   _b.fromArray(pose.rp);
   const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
@@ -190,7 +199,8 @@ function animateAthlete(p, dt) {
   if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(-.18, 1.05, -.05); _b.set(-.8, 0, .3); }
-  if (swingU < 0 && !p.charging && run > .3 && !celPh) _c.y += Math.sin(p.gait) * .04 * run;
+  // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
+  if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z += Math.cos(p.gait) * .17 * run * Math.abs(lvz); }
   if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }

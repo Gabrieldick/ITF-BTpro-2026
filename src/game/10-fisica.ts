@@ -145,6 +145,12 @@ function doHit(p, type, q, isServe, mod) {
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
     if (far > 0) { spec.speed *= 1 - far * .18; spec.noise *= 1 + far * .8; mod.misBoost = (mod.misBoost || 0) + far * (.03 + (1 - attrK(p, 'smash')) * .2); mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .7); }
+    // smash perfeito do fundo de quem tem força e smash altos: bomba (anula a perda do fundo e ainda ganha velocidade)
+    const A = p.char && p.char.a, pk = A ? clamp(((A.forca + A.smash) / 2 - 72) / 18, 0, 1) : 0;
+    if (pk > 0 && Math.abs(p.pos.z) > 3 && ball.pos.y > 1.9 && (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3))) {
+      spec.speed *= (1 + far * .18 * pk) * (1 + .14 * pk); spec.noise *= 1 - .3 * pk; spec.depth = [4.2, 6.8];
+      mod.oppMissBoost = (mod.oppMissBoost || 0) + .14 * pk; if (pk > .35) spec.label = 'SMASH BOMBA';
+    }
   }
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
     const lp = clamp(mod.lobPower, 0, 1);
@@ -218,7 +224,7 @@ function doHit(p, type, q, isServe, mod) {
   const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err * riskK + prs;
   if (unforced || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
-    if (Math.random() < .5) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
+    if (Math.random() < (p.isHuman ? .5 : skillOf(p).netK || .5)) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado).
   // forcedBy: o golpe do adversário que forçou (smash, curta boa, lob chutado, bola rápida) — ele leva o crédito do ponto
@@ -244,7 +250,7 @@ function doHit(p, type, q, isServe, mod) {
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
   sndHit(power); if (NET.ev) NET.ev('hit', p, power);
   if (key === 'smash') { const mine = p.isHuman && !p.netHuman; S.shake = mine ? .25 : .1; if (mine) S.stats.smashes++; }
-  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react; o.split = .26; });
+  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react; if (o.splitFor !== S.hitId - 1) o.split = .26; }); // quem já deu o split no smash não repete
   p.swing.type = isServe ? 'smash' : type; p.swing.hit = true;
   const hitAt = isServe ? .3 : .45;
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;

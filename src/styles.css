@@ -79,10 +79,18 @@ svg.flag, .flag-txt { width: 18px; height: 12px; flex: none; border-radius: 2px;
   padding: 8px 14px; font-size: 13px; font-weight: 600; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .chip:hover { border-color: rgba(251,246,234,.5); }
-#liveNota { pointer-events: none; font-family: var(--f-num); }
-#liveNota b { font-size: 15px; margin-left: 4px; }
-#liveNota.hi b { color: #4fd18b; }
-#liveNota.lo b { color: #ff7a5c; }
+#liveNota { --nh: 60; position: relative; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 4px 12px;
+  border-radius: 6px; background: hsl(var(--nh) 70% 38%); border: 2px solid hsl(var(--nh) 80% 60%); color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.3); transition: background .4s, border-color .4s; }
+#liveNota[hidden] { display: none; }
+#liveNota small { font-size: 10px; letter-spacing: .14em; opacity: .85; font-weight: 700; }
+#liveNota b { font-family: var(--f-num); font-size: 24px; line-height: 1; }
+#liveNota.pulse { animation: notaPulse .45s ease; }
+@keyframes notaPulse { 40% { transform: scale(1.12); } }
+#liveNota .nd { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); font-style: normal; font-family: var(--f-num); font-weight: 800; font-size: 16px; white-space: nowrap;
+  text-shadow: 0 2px 6px rgba(0,0,0,.6); animation: notaDelta 1.3s ease-out forwards; }
+#liveNota .nd.up { color: #6ff0a8; }
+#liveNota .nd.dn { color: #ff8a6e; }
+@keyframes notaDelta { 0% { opacity: 0; transform: translate(-50%, 6px); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 26px); } }
 .chip kbd { font-family: var(--f-num); font-size: 11px; opacity: .65; margin-left: 4px; }
 
 #banner {
