@@ -220,8 +220,24 @@ function doHit(p, type, q, isServe, mod) {
     mis = true;
     if (Math.random() < .5) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
   }
-  // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado)
-  S.lastHit = { p, cat: isServe ? 'saque' : mod.volley ? 'voleio' : key, hard: !isServe && (inSpeed > 14 || !!ball.finisher || pressure > .35 || q < .45), hitId: S.hitId + 1 };
+  // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado).
+  // forcedBy: o golpe do adversário que forçou (smash, curta boa, lob chutado, bola rápida) — ele leva o crédito do ponto
+  const prev = S.lastHit && S.lastHit.p.team !== p.team ? S.lastHit : null;
+  const thrIn = ball.threat || 0, stretch = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) / reachOf(type, p);
+  const forced = !isServe && (thrIn >= .4 || inSpeed > 14 || !!ball.finisher || pressure > .35);
+  const hard = forced || (!isServe && (!!p.dive || stretch > .8 || ball.pos.y < .35 || q < .45));
+  S.lastHit = { p, cat: isServe ? 'saque' : mod.volley ? 'voleio' : key, hard, forcedBy: forced && prev ? { p: prev.p, cat: prev.cat } : null, hitId: S.hitId + 1 };
+  // ameaça do golpe que sai (0 a 1): o quanto ele força o erro de quem vai receber
+  let threat = 0;
+  if (!pop && !wild && !mis) {
+    threat = clamp((Math.hypot(v.x, v.z) - 12) / 8, 0, 1);
+    if (key === 'smash') threat = Math.max(threat, .55);
+    if (key === 'curta') threat = Math.max(threat, clamp((curtaK - .35) / .55, 0, 1));
+    if (spec.kick) threat = Math.max(threat, .85);
+    if (finisher) threat = 1;
+    if (isServe) threat *= .6; // devolução: o recebedor já está esperando a bola
+  }
+  ball.threat = threat;
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher; ball.kick = !!spec.kick && !pop;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;

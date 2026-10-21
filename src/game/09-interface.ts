@@ -173,11 +173,23 @@ function perfSummary() {
   const merge = l => { const m = {}; l.forEach(([k, n]) => { m[k] = (m[k] || 0) + n; }); return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => n + ' ' + PERF_TXT[k]); };
   return { good: merge(good), bad: merge(bad) };
 }
-// de quem foi o ponto: vencedor de quem bateu por último, ou erro (forçado / não forçado) de quem errou
+// de quem foi o ponto: vencedor de quem bateu por último, ou erro (forçado / não forçado) de quem errou.
+// Erro forçado por um golpe do adversário (smash, curta boa, lob chutado, bola forte) conta também como ponto vencedor dele
+function creditForcer(by) {
+  if (!by) return '';
+  statOf(by.p)[by.cat]++; perfAdd(by.p, WIN_V[by.cat] || .5, 'w_' + by.cat);
+  return by.cat === 'saque' ? phrase('Saque vencedor', by.p) : phrase(CAT_WIN[by.cat], by.p, FEM_CAT[by.cat]);
+}
+const forcedTxt = (win, p, tail) => win + ' — erro forçado ' + (isMe(p) ? 'seu' : 'de ' + whoName(p)) + (tail || '');
 function creditPoint(w, kind) {
   const lh = S.lastHit, at = S.attempt;
   if (kind === 'in') {
-    if (at && at.hitId === S.hitId && at.p.team !== w) { const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++; perfAdd(at.p, at.hard ? -.2 : -.45, at.hard ? 'erroF' : 'furou'); return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p); }
+    if (at && at.hitId === S.hitId && at.p.team !== w) {
+      const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++;
+      perfAdd(at.p, at.hard ? -.2 : -.45, at.hard ? 'erroF' : 'furou');
+      if (at.hard && lh && lh.p.team === w) return forcedTxt(creditForcer({ p: lh.p, cat: lh.cat }), at.p);
+      return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p);
+    }
     if (lh && lh.p.team === w) { statOf(lh.p)[lh.cat]++; perfAdd(lh.p, WIN_V[lh.cat] || .5, 'w_' + lh.cat); return lh.cat === 'saque' ? phrase('Ace', lh.p) : phrase(CAT_WIN[lh.cat], lh.p, FEM_CAT[lh.cat]); }
     return '';
   }
@@ -186,7 +198,9 @@ function creditPoint(w, kind) {
   if (lh.cat === 'saque') { st.ue++; perfAdd(lh.p, ERR_V.saque, 'e_saque'); return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
   if (lh.hard) st.fe++; else st.ue++;
   if (lh.hard) perfAdd(lh.p, -.2, 'erroF'); else perfAdd(lh.p, ERR_V[lh.cat] || -.5, 'e_' + lh.cat);
-  return phrase(lh.hard ? 'Erro forçado' : 'Erro não forçado', lh.p, false, ' (' + CAT_NAME[lh.cat] + ' ' + where + ')');
+  const tail = ' (' + CAT_NAME[lh.cat] + ' ' + where + ')';
+  if (lh.forcedBy && lh.forcedBy.p.team === w) return forcedTxt(creditForcer(lh.forcedBy), lh.p, tail);
+  return phrase(lh.hard ? 'Erro forçado' : 'Erro não forçado', lh.p, false, tail);
 }
 // momento: 0 a 1 para o time numa sequência de pontos (a partir do 2º seguido)
 const momentum = t => S.streak && S.streak.team === t ? Math.min(1, (S.streak.n - 1) / 3) : 0;
@@ -234,7 +248,7 @@ function startDrill(kind, onEnd) {
 function drillNext() {
   const d = S.drill, D = DRILLS[d.kind];
   if (d.n >= D.max) return drillEnd();
-  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; d.lastR = null;
+  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; ball.threat = 0; d.lastR = null;
   human.swing.t = -1; human.charging = false; human.dive = null;
   // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
   const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[d.kind];
@@ -243,7 +257,7 @@ function drillNext() {
   const hx = clamp(human.pos.x + (Math.random() - .5) * 2.2, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
   const g = 9.8;
   if (d.kind === 'curtas') { const T = 1.05; ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (1.0 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T); }
-  if (d.kind === 'defesa') { const T = .55; ball.pos.set((Math.random() - .5) * 2, 2.6, -1.6); ball.vel.set((hx - ball.pos.x) / T, (.75 - 2.6 + .5 * g * 1.35 * T * T) / T, (hz - ball.pos.z) / T); ball.gk = 1.35; ball.finisher = true; }
+  if (d.kind === 'defesa') { const T = .55; ball.pos.set((Math.random() - .5) * 2, 2.6, -1.6); ball.vel.set((hx - ball.pos.x) / T, (.75 - 2.6 + .5 * g * 1.35 * T * T) / T, (hz - ball.pos.z) / T); ball.gk = 1.35; ball.finisher = true; ball.threat = 1; }
   if (d.kind === 'smash') { const T = 2.1; ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = 6; }
   // quem lança é o professor: ele fica atrás do ponto de saída, faz o movimento e a bola só sai na hora do contato (16-ia)
   const coach = $s.teams[1][0], type = { curtas: 'defesa', defesa: 'smash', smash: 'lob' }[d.kind];
@@ -432,7 +446,7 @@ function newMatch(guest) {
 }
 // tabela do fim do jogo: pontos por golpe, erros forçados e não forçados de cada jogador e da dupla
 function renderMatchStats() {
-  const rows = [['Aces', 'saque'], ['Smash', 'smash'], ['Voleio', 'voleio'], ['Drive', 'drive'], ['Curta', 'curta'], ['Lob', 'lob'], ['Defesa', 'defesa']];
+  const rows = [['Saque', 'saque'], ['Smash', 'smash'], ['Voleio', 'voleio'], ['Drive', 'drive'], ['Curta', 'curta'], ['Lob', 'lob'], ['Defesa', 'defesa']];
   const teams = $s.teams.map(tm => tm.map(p => ({ p, s: statOf(p) })));
   const win = s => rows.reduce((t, r) => t + s[r[1]], 0);
   const val = (s, k) => typeof k === 'function' ? k(s) : s[k];

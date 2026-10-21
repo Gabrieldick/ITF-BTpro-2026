@@ -271,7 +271,7 @@ function updateHuman(dt, c = localCtl()) {
       ctlFeedback(c, r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
     }
     if (p.isHuman && !sw.hit && !sw.meter && sw.t > sw.dur * .55 && sw.t < sw.dur * .8 && canHit(p, sw.type) && waitCloser(p, su, dt)) sw.t -= dt * .8; // segura a raquete armada
-    sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { ctlFeedback(c, 'SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: false }; } sw.t = -1; sw.meter = null; }
+    sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { ctlFeedback(c, 'SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 }; } sw.t = -1; sw.meter = null; }
   }
 }
 function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z) < 3.2); }
@@ -323,7 +323,7 @@ function updateAI(p, dt) {
       p.swing.t += dt;
       if (p.feed && p.swing.t >= p.swing.dur * .45) {
         const f = p.feed; p.feed = null; p.swing.hit = true;
-        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.finisher = f.finisher; ball.kick = false; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
+        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.finisher = f.finisher; ball.threat = f.finisher ? 1 : 0; ball.kick = false; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
         p.contact = { x: f.pos.x, y: f.pos.y, z: f.pos.z, u: .45, hitId: S.hitId };
       }
       if (p.swing.t >= p.swing.dur) p.swing.t = -1;
@@ -382,7 +382,7 @@ function updateAI(p, dt) {
         if ((shot === 'smash' && ball.pos.y >= 1.9 ? canHit(p, 'smash', .66) : canHit(p, 'defesa', .9)) && !(shot !== 'smash' && ball.pos.y > .6 && ball.vel.y > -4 && waitCloser(p, 0, dt) && p.swing.t >= 0 && p.swing.t < p.swing.dur * .7)) { // espera a bola chegar perto do corpo
           // erro: quase sempre a bola vai na rede/fora; furar (raquete passa e a bola segue) só chegando no limite
           if (p.ai.willMiss && !p.ai.stretch && Math.random() < .8) { const st = styleOf(p); const r = doHit(p, shot, rand(D.q[0], D.q[1]) * .8, false, { speedMul: st.speed, noiseMul: st.noise * 1.4, misBoost: 1 }); feedback(whoTag(p) + r.label, 'ERROU', whoKind(p)); }
-          else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
+          else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
             const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed, noiseMul: st.noise }, shot === 'lob' ? (oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .4 ? { lobPower: .25, lobKick: true } : { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
