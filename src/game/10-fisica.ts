@@ -249,7 +249,10 @@ function doHit(p, type, q, isServe, mod) {
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
   const riskK = { smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1; // golpes arriscados erram mais
   const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err * riskK + prs;
-  if (unforced || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
+  // finalização de perto (menos de 2 m da rede) em cima de quem está colado na rede: com a barra perfeita, mesmo a defesa
+  // perfeita volta para dentro no máximo 1 em 5; sem o perfeito, metade (o reflexo salva a bola, mas sem controle)
+  const closeFin = !isServe && !!ball.finNear && Math.abs(p.pos.z) < 3.2 && Math.random() < ball.finNear;
+  if (unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
     if (Math.random() < (p.isHuman ? .5 : skillOf(p).netK || .5)) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
   }
@@ -271,7 +274,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= .6; // devolução: o recebedor já está esperando a bola
   }
   ball.threat = threat;
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher; ball.kick = !!spec.kick && !pop;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher; ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0; ball.kick = !!spec.kick && !pop;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
