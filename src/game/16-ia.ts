@@ -285,6 +285,11 @@ function chooseAIShot(p, y) {
   if (p.team === 0 && S.settings.tactic === 'lobs' && y < 2.1 && Math.random() < .45) return 'lob';
   if (oppNearNet(p.team) && Math.random() < clamp(.55 * st.w.lob, .12, .9)) return 'lob';
   if (oppAllDeep(p.team) && Math.random() < clamp(.4 * st.w.curta, .1, .85)) return 'curta';
+  // dupla: basta um adversário no fundo para a curta valer (mais ainda batendo perto da rede e com a bola baixa)
+  if (dupla() && y < 1.7) {
+    const deep = $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) > 5.4).length;
+    if (deep && Math.random() < clamp((deep === 2 ? .34 : .18) * st.w.curta * (Math.abs(p.pos.z) < 4.5 ? 1.3 : .8), .05, .7)) return 'curta';
+  }
   if (Math.hypot(ball.vel.x, ball.vel.z) > 14) return Math.random() < st.mid * .5 ? 'smash' : 'defesa';
   const w = st.w, tot = w.smash + w.lob + w.curta + w.defesa; let r2 = Math.random() * tot;
   for (const k of ['defesa', 'lob', 'curta', 'smash']) { if ((r2 -= w[k]) <= 0) return k; }
