@@ -2,7 +2,7 @@
 // elementos da interface e placar
 import './08-audio';
 import { $s } from '../state';
-import { C, HALF_W, ZONE3, clamp, nameOf, shortOf } from './00-base';
+import { C, HALF_W, ZONE3, clamp, nameOf, rand, shortOf } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
 import { applyArena, cheerArena, confetti, linesGroup, setNetHeight } from './03-cenario';
@@ -281,12 +281,36 @@ function drillNext() {
   // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
   const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[d.kind];
   if (d.n === 0 || Math.abs(human.pos.x) > C.halfW + .3 || human.pos.z > C.halfL + .3 || human.pos.z < 1) { human.pos.set(0, 0, zone[2]); human.vel.set(0, 0, 0); }
-  const hw = C.halfW - .45;
-  const hx = clamp(human.pos.x + (Math.random() - .5) * 2.2, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
-  const g = 9.8;
-  if (d.kind === 'curtas') { const T = 1.05; ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (1.0 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T); }
-  if (d.kind === 'defesa') { const T = .55; ball.pos.set((Math.random() - .5) * 2, 2.6, -1.6); ball.vel.set((hx - ball.pos.x) / T, (.75 - 2.6 + .5 * g * 1.35 * T * T) / T, (hz - ball.pos.z) / T); ball.gk = 1.35; ball.finisher = true; ball.threat = 1; }
-  if (d.kind === 'smash') { const T = 2.1; ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = 6; }
+  const hw = C.halfW - .45, g = 9.8, pick = l => l[Math.floor(Math.random() * l.length)];
+  let hx = clamp(human.pos.x + (Math.random() - .5) * 2.2, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
+  // bolas variadas: cada treino sorteia um tipo de bola (o nome aparece na hora do lançamento)
+  let vName = '';
+  if (d.kind === 'curtas') {
+    const v = pick(['media', 'media', 'funda', 'baixa', 'alta']);
+    if (v === 'funda') hz = clamp(rand(5.6, 6.6), zone[0], zone[1] + .2);
+    const T = { media: 1.05, funda: 1.15, baixa: .8, alta: 1.45 }[v], y1 = v === 'baixa' ? .75 : 1.0;
+    ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (y1 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T);
+    vName = { media: '', funda: 'BOLA FUNDA', baixa: 'BOLA BAIXA E RÁPIDA', alta: 'BOLA ALTA' }[v];
+  }
+  if (d.kind === 'defesa') {
+    const v = pick(['perto', 'perto', 'fundo', 'angulado', 'corpo']);
+    if (v === 'angulado') hx = Math.sign(human.pos.x || rand(-1, 1)) * -1 * rand(hw * .7, hw) || hw;
+    if (v === 'corpo') hx = clamp(human.pos.x + rand(-.2, .2), -hw, hw);
+    hz = clamp(v === 'fundo' ? rand(5.2, 6.6) : hz, 3.4, 6.8);
+    const from = v === 'fundo' ? [-4.6, 2.5, .78, 1.15] : [-1.6, 2.6, .55, 1.35]; // z de quem bate, altura, tempo, gravidade
+    const T = from[2], gk = from[3];
+    ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); ball.vel.set((hx - ball.pos.x) / T, (.75 - from[1] + .5 * g * gk * T * T) / T, (hz - ball.pos.z) / T); ball.gk = gk; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
+    vName = { perto: 'SMASH PERTO DA REDE', fundo: 'SMASH DO FUNDO', angulado: 'SMASH ANGULADO', corpo: 'SMASH NO CORPO' }[v];
+  }
+  if (d.kind === 'smash') {
+    const v = pick(['normal', 'normal', 'curto', 'fundo', 'alto', 'lateral']);
+    if (v === 'curto') hz = rand(2.3, 3.0); if (v === 'fundo') hz = rand(4.6, 5.6);
+    if (v === 'lateral') hx = Math.sign(-human.pos.x || rand(-1, 1)) * rand(hw * .6, hw);
+    const T = { normal: 2.1, curto: 1.7, fundo: 2.3, alto: 2.7, lateral: 2.1 }[v];
+    ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = v === 'alto' ? 7.5 : 6;
+    vName = { normal: '', curto: 'LOB CURTO', fundo: 'LOB NO FUNDO', alto: 'LOB ALTO', lateral: 'LOB NA LATERAL' }[v];
+  }
+  if (vName) feedback('PROFESSOR', vName, null);
   // quem lança é o professor: ele fica atrás do ponto de saída, faz o movimento e a bola só sai na hora do contato (16-ia)
   const coach = $s.teams[1][0], type = { curtas: 'defesa', defesa: 'smash', smash: 'lob' }[d.kind];
   coach.feed = { pos: ball.pos.clone(), vel: ball.vel.clone(), gk: ball.gk, finisher: ball.finisher, apex: ball.apex };

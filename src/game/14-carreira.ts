@@ -189,7 +189,8 @@ function crSyncChars() {
   if ($s.CR) crSignature();
   // o parceiro joga melhor quando está contente e pior quando está insatisfeito
   const mb = $s.CR && $s.CR.partner ? crMoodBonus() : 0, mbB = {}; if (mb) for (const [k] of ATTRS) mbB[k] = mb;
-  $s.CAREER_CHARS = $s.CR ? $s.CR.pool.map(c => mb && c.id === $s.CR.partner ? Object.assign({}, c, { a: effA(c.a, mbB) }) : c).concat([crMeChar()]) : [];
+  // na partida cada um joga com a sua fase (e os reais com a evolução da carreira)
+  $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
 function crGearBonus() { const b = {}; ($s.CR.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = (b[k] || 0) + g.b[k]; }); return b; }
@@ -199,7 +200,20 @@ function crFatigue() { const p = crEnergyMod(); const b = {}; for (const [k] of 
 function crMental() { const b = {}; if ($s.CR.staff.psico) for (const [k] of ATTRS) b[k] = 1; return b; }
 function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crGearBonus(), crFatigue(), crMental()) }); }
 const crMeOvr = () => overall(effA($s.CR.me.a, crGearBonus(), racketBonus($s.CR.racket), crFatigue(), crMental()));
-const crCharOvr = c => c.id === 'crme' ? crMeOvr() : overall(effA(c.a, racketBonus(c.look && c.look.racket)));
+// fase de cada atleta: oscila semana a semana (−3 a +3 em todos os atributos); os profissionais reais também mudam de
+// nível de uma temporada para outra (até ±4), já que eles não envelhecem como os fictícios
+const crFormV = id => Math.round((($s.CR && $s.CR.form) || {})[id] || 0) + ((($s.CR && $s.CR.drift) || {})[id] || 0);
+function crFormB(id) { const v = crFormV(id), b = {}; if (v) for (const [k] of ATTRS) b[k] = v; return b; }
+const crFormWord = id => { const v = Math.round((($s.CR && $s.CR.form) || {})[id] || 0); return v >= 2 ? ['▲▲', 'em grande fase'] : v === 1 ? ['▲', 'em boa fase'] : v <= -2 ? ['▼▼', 'em má fase'] : v === -1 ? ['▼', 'em fase ruim'] : null; };
+function crFormWeek() {
+  const f = $s.CR.form = $s.CR.form || {}, rnd = Math.random;
+  crWorld().forEach(c => { const v = (f[c.id] || 0) * .8 + gaussR(rnd) * .9; if (Math.abs(v) < .05) delete f[c.id]; else f[c.id] = Math.round(clamp(v, -3.4, 3.4) * 100) / 100; });
+}
+function crDriftSeason(rnd) {
+  const d = $s.CR.drift = $s.CR.drift || {};
+  ROSTER.forEach(c => { const v = clamp((d[c.id] || 0) + Math.round(gaussR(rnd) * .9), -4, 4); if (v) d[c.id] = v; else delete d[c.id]; });
+}
+const crCharOvr = c => c.id === 'crme' ? crMeOvr() : overall(effA(c.a, racketBonus(c.look && c.look.racket), crFormB(c.id)));
 // mundo do seu gênero (fictícios + astros reais)
 const crWorld = () => $s.CR.pool.filter(c => !!c.fem === !!$s.CR.me.fem).concat(ROSTER.filter(c => !!c.fem === !!$s.CR.me.fem));
 const POOL_IDX = { pool: null, len: 0, map: null };
@@ -802,6 +816,7 @@ function crNextWeek(note) {
   if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') ? .04 : .08);
   if (crLife('imprensa')) crAddFama(1);
   if ($s.CR.boostW > 0) $s.CR.boostW--;
+  crFormWeek();
   if ($s.CR.injury) { $s.CR.injury.weeks -= 1 + (($s.CR.restDays || 0) >= 3 ? 1 : 0); if ($s.CR.injury.weeks <= 0) { msg += (msg ? ' ' : '') + 'Recuperado da lesão: liberado para competir.'; $s.CR.injury = null; } }
   $s.CR.restDays = 0;
   crSimWorld();
@@ -834,6 +849,7 @@ function crNextWeek(note) {
       const o = overall(c.a), d = (c.age < 23 ? 1.6 : c.age < 28 ? .6 : c.age > 31 ? -1.3 : 0) * (o > 84 && c.age < 31 ? .3 : 1);
       const ch = Math.round(d + gaussR(rnd) * 1.1); for (const [k] of ATTRS) c.a[k] = clamp(c.a[k] + ch, 30, 93);
     });
+    crDriftSeason(rnd);
     if ($s.CR.age > 31) for (const [k] of [['vel']]) $s.CR.me.a[k] = Math.max(40, $s.CR.me.a[k] - 1);
   }
   $s.CR.ovrLog.push({ s: $s.CR.season, w: $s.CR.week, o: overall($s.CR.me.a) }); $s.CR.ovrLog = $s.CR.ovrLog.slice(-80);
@@ -974,6 +990,8 @@ function crMigrate() {
   if ($s.CR.potCur === undefined) $s.CR.potCur = Math.max(Math.min($s.CR.pot, overall($s.CR.me.a) + 3), Math.max(...Object.values($s.CR.me.a)));
   if ($s.CR.day === undefined) $s.CR.day = 1;
   if (nM < POOL_N || $s.CR.v === 2 && !$s.CR.migr2) { $s.CR.migr2 = true; saveCareer(); }
+  // profissionais reais novos na lista: ganham um ano de resultados para entrar no ranking com pontos
+  if ($s.CR.npcR && $s.CR.rosterN !== ROSTER.length) { const miss = ROSTER.filter(c => !$s.CR.npcR[c.id]); if (miss.length) crSimYear(7717, miss); $s.CR.rosterN = ROSTER.length; }
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);
@@ -1064,6 +1082,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };

@@ -601,3 +601,6 @@ body.in-replay #meter, body.in-replay #tags, body.in-replay #reach, body.in-repl
 .rk-tot.up { background: rgba(79,209,139,.18); color: #4fd18b; }
 .rk-tot.dn { background: rgba(255,122,92,.18); color: #ff7a5c; }
 .rk-b em { white-space: nowrap; }
+.cr-form { display: block; font-style: normal; font-size: 9px; line-height: 1; letter-spacing: -.05em; }
+.cr-form.up { color: #4fd18b; }
+.cr-form.dn { color: #ff7a5c; }
