@@ -130,7 +130,9 @@ function doHit(p, type, q, isServe, mod) {
     }
   }
   let lobLong = 0, finisher = false;
-  if (!isServe && key === 'smash' && Math.abs(p.pos.z) < 2.2 && ball.pos.y > 2.0) {
+  // finalização: smash por cima perto da rede; o smash PERFEITO da barra vale até um pouco atrás da linha dos 3 m e com a bola mais baixa
+  const netD = Math.abs(p.pos.z);
+  if (!isServe && key === 'smash' && !mod.volley && ((netD < 2.6 && ball.pos.y > 1.9) || (mod.perfect && netD < 3.6 && ball.pos.y > 1.5))) {
     finisher = true;
     spec.speed *= 1.36; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
   }

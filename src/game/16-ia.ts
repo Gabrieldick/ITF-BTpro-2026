@@ -236,7 +236,7 @@ function updateHuman(dt, c = localCtl()) {
         // atributo: com smash baixo, mesmo o perfeito sai mais fraco e às vezes erra
         const skN = clamp((p.char ? p.char.a.smash : 70) - 50, 0, 45) / 45;
         if (res === 'voleio') { q = Math.max(q, lerp(.66, .86, skN)); mod = { speedMul: lerp(1, 1.12, skN), noiseMul: lerp(1.15, .85, skN), volley: true }; }
-        else if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1 }; }
+        else if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true }; }
         // fora do verde: amarelo perde pouco, laranja bastante, vermelho erra muito (cedo = fraco, tarde = erra mais)
         else if (res === 'cedo') mod = { speedMul: lerp(.97, .6, amt), noiseMul: lerp(1.05, 1.8, amt), misBoost: (1 - skN) * .08 + amt * .2 };
         else mod = { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt) };
