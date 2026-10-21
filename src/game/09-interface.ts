@@ -186,7 +186,8 @@ function updateLiveRating() {
   const r = Math.round(clamp(6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + bal * (dupla() ? 1 : 1.5), 1, 10) * 10) / 10;
   // estilo NBA 2K: a nota no hexágono (cor pela nota, com a subida/descida embaixo) e os números do seu jogo ao lado
   const ev = S.perf.ev, sum = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
-  const vals = { nota: r, pts: sum(/^w_/), def: ev.defBoa || 0, err: sum(/^(e_|furou|erroF)/) };
+  // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · ERR: erros
+  const vals = { nota: r, pts: sum(/^w_/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), err: sum(/^(e_|furou|erroF)/) };
   e.style.setProperty('--nh', String(Math.round(clamp((r - 4) / 4.5, 0, 1) * 125)));
   for (const [k, v] of Object.entries(vals)) {
     const c = e.querySelector('[data-k="' + k + '"]'); if (!c) continue;
