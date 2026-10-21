@@ -144,6 +144,12 @@ function doHit(p, type, q, isServe, mod) {
     finisher = false; spec.speed *= .72; spec.noise *= 1.8; spec.label = 'SMASH RECUANDO';
     mod.misBoost = (mod.misBoost || 0) + .18 * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
   }
+  // smash na devolução de saque: contra saque rasante é difícil (bola baixa, pouco tempo para subir na rede) e sai ruim;
+  // só contra saque que subiu muito (saque muito ruim) o smash sai normal. Vale para todos
+  if (!isServe && S.rally === 1 && !S.drill && key === 'smash' && !mod.volley) {
+    const low = clamp((3.6 - (ball.apex || 3.6)) / .8, 0, 1);
+    if (low > 0) { finisher = false; spec.label = 'SMASH APRESSADO'; spec.speed *= 1 - .22 * low; spec.noise *= 1 + .9 * low; mod.misBoost = (mod.misBoost || 0) + .28 * low; mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - low); }
+  }
   // smash do fundo (além de 3,5 m da rede): chega mais lento e menos preciso, para todos
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
