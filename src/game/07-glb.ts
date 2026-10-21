@@ -255,7 +255,30 @@ function puff(x, z, n, power) {
     pVel[i * 3] = Math.cos(a) * s; pVel[i * 3 + 1] = rand(1, 2.6) * power; pVel[i * 3 + 2] = Math.sin(a) * s; pLife[i] = rand(.5, .9);
   }
 }
+// estrelinhas do saque perfeito: poucas, pequenas e rápidas (somem em ~0,6 s)
+const SN = 14, sGeo = new THREE.BufferGeometry(), sPos = new Float32Array(SN * 3), sVel = new Float32Array(SN * 3), sCol = new Float32Array(SN * 3);
+sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3)); sGeo.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
+const starTex = canvasTex(32, 32, (x, w) => { const g = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.25, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? w * .12 : w / 2; x.lineTo(w / 2 + Math.cos(a) * r, w / 2 + Math.sin(a) * r); } x.fill(); });
+const sparks = new THREE.Points(sGeo, new THREE.PointsMaterial({ size: .07, map: starTex, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+sparks.frustumCulled = false; sparks.visible = false; scene.add(sparks);
+let sLife = 0;
+function sparkle(p) {
+  const c = new THREE.Color();
+  for (let i = 0; i < SN; i++) {
+    sPos[i * 3] = p.x; sPos[i * 3 + 1] = p.y; sPos[i * 3 + 2] = p.z;
+    const a = Math.random() * Math.PI * 2, b = rand(-.6, 1), sp = rand(.5, 1.3);
+    sVel[i * 3] = Math.cos(a) * Math.cos(b) * sp; sVel[i * 3 + 1] = Math.sin(b) * sp + .3; sVel[i * 3 + 2] = Math.sin(a) * Math.cos(b) * sp;
+    c.set(Math.random() < .6 ? '#ffe28a' : '#ffffff'); sCol[i * 3] = c.r; sCol[i * 3 + 1] = c.g; sCol[i * 3 + 2] = c.b;
+  }
+  sGeo.attributes.color.needsUpdate = true; sLife = .6; sparks.visible = true;
+}
 function updateParticles(dt) {
+  if (sLife > 0) {
+    sLife -= dt; sparks.material.opacity = Math.max(0, sLife / .6) * .85;
+    for (let i = 0; i < SN; i++) { sVel[i * 3 + 1] -= 1.2 * dt; sPos[i * 3] += sVel[i * 3] * dt; sPos[i * 3 + 1] += sVel[i * 3 + 1] * dt; sPos[i * 3 + 2] += sVel[i * 3 + 2] * dt; }
+    sGeo.attributes.position.needsUpdate = true; if (sLife <= 0) sparks.visible = false;
+  }
   for (let i = 0; i < PN; i++) {
     if (pLife[i] <= 0) continue;
     pLife[i] -= dt; pVel[i * 3 + 1] -= G * dt;
@@ -265,4 +288,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
