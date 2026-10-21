@@ -135,6 +135,8 @@ function doHit(p, type, q, isServe, mod) {
   if (!isServe && key === 'smash' && !mod.volley && ((netD < 3 && ball.pos.y > 1.9) || (mod.perfect && netD < 3.6 && ball.pos.y > 1.5))) {
     finisher = true;
     spec.speed *= 1.36; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
+    // finalização com a barra perfeita: um foguete para baixo, mesmo para quem ainda não tem tanta força
+    if (mod.perfect) spec.speed *= 1.05;
   }
   // smash contra lob chutado perfeito: quem chega lá correu para trás e bate mal (fraco, impreciso, erra mais).
   // Se alcançou ainda na zona de finalização (o lob não passou), é finalização normal
@@ -169,7 +171,7 @@ function doHit(p, type, q, isServe, mod) {
   if (p.char) {
     const A = p.char.a;
     spec.noise *= lerp(1.6, .65, (isServe ? A.saque : A[ATTR_OF[key]] || A.def) / 100);
-    if (!isServe && (key === 'smash' || key === 'drive')) spec.speed *= lerp(.82, 1.12, A.forca / 100);
+    if (!isServe && (key === 'smash' || key === 'drive')) spec.speed *= finisher ? lerp(.94, 1.12, A.forca / 100) : lerp(.82, 1.12, A.forca / 100); // na finalização a força pesa menos
     if (isServe && spec.speed) spec.speed *= lerp(.88, 1.1, (A.forca + A.saque) / 200);
     if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07;
   }
@@ -182,8 +184,8 @@ function doHit(p, type, q, isServe, mod) {
   const vfx = vr && key !== 'drive' ? VAR_FX[type + '_' + vr] : null;
   if (vfx) {
     if (!finisher) spec.label = vfx.label;
-    if (vfx.speed && spec.speed) spec.speed *= vfx.speed; if (vfx.depth) spec.depth = vfx.depth; if (vfx.T && spec.T) spec.T = vfx.T;
-    if (vfx.noise) spec.noise *= vfx.noise; if (vfx.gk) spec.gk = vfx.gk;
+    if (vfx.speed && spec.speed) spec.speed *= vfx.speed; if (vfx.depth && !finisher) spec.depth = vfx.depth; if (vfx.T && spec.T) spec.T = vfx.T; // a finalização mantém a profundidade dela
+    if (vfx.noise) spec.noise *= vfx.noise; if (vfx.gk && !finisher) spec.gk = vfx.gk;
     if (vfx.wide) aim = Math.sign(aim || rand(-1, 1)) * lim * .92;
     if (vfx.jump) startJump(p, .5, .42);
   }
@@ -199,7 +201,9 @@ function doHit(p, type, q, isServe, mod) {
     if (curtaK > .86 && !finisher) spec.label = 'CURTA MATADORA';
   }
   const err = 1.15 - q;
-  const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], humanDepthT(p)) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
+  // na finalização a mira curta (W) vai só até o meio: mais curta, a bola precisaria subir para passar a rede e perderia a velocidade
+  const dT = p.isHuman ? (finisher ? .45 + humanDepthT(p) * .55 : humanDepthT(p)) : 0;
+  const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
   if (wild) { tgt.x += (Math.random() < .5 ? -1 : 1) * rand(.8, 2.2); tgt.z += dir * rand(1.2, 3.2); }
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);
