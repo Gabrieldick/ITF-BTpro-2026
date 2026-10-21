@@ -40,25 +40,26 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ATTRS = [['forca', 'Força'], ['vel', 'Velocidade'], ['def', 'Defesa'], ['backhand', 'Backhand'], ['curta', 'Curta'], ['lob', 'Lob'], ['smash', 'Smash'], ['saque', 'Saque']];
 const ATTR_W = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob: .11, smash: .15, saque: .12 };
 // raquetes e equipamentos: alteram os atributos de quem usa (também fora da carreira)
+// raquetes: a soma dos bônus cresce com o preço; as especializadas têm picos maiores com algum ponto fraco
 const RACKET_STATS = {
   basica: { nome: 'Iniciante Areia', preco: 0, desc: 'Pesada e sem potência. É o que dá para ter no começo.', b: { forca: -4, smash: -4, saque: -3, curta: -2, lob: -1 } },
-  tropic: { nome: 'Tropic Lite', preco: 300, desc: 'Alumínio leve: um pouco menos dura que a Iniciante.', b: { forca: -3, smash: -3, saque: -2, curta: -1 } },
-  brisa: { nome: 'Brisa Junior', preco: 450, desc: 'Face macia: bom toque para quem está começando.', b: { curta: 1, def: 1, forca: -3, smash: -3, saque: -2 } },
-  fibra: { nome: 'Fibra Speed', preco: 600, desc: 'Fibra de vidro, leve e confortável. Ainda falta potência.', b: { forca: -2, smash: -2, saque: -1, curta: 1, def: 1 } },
+  tropic: { nome: 'Tropic Lite', preco: 300, desc: 'Alumínio leve: perde menos que a Iniciante, ainda sem potência.', b: { forca: -2, smash: -2, saque: -1, curta: -1 } },
+  brisa: { nome: 'Brisa Junior', preco: 450, desc: 'Face macia: bom toque para quem está começando.', b: { curta: 1, def: 1, forca: -2, smash: -2, saque: -1 } },
+  fibra: { nome: 'Fibra Speed', preco: 600, desc: 'Fibra de vidro, leve e confortável. Ainda falta potência.', b: { forca: -1, smash: -1, curta: 1, def: 1 } },
   mare: { nome: 'Maré Control', preco: 1500, desc: 'Controle: bolas na mão para curtas e defesas.', b: { def: 2, curta: 2, lob: 1, forca: -1 } },
   coral: { nome: 'Coral Power', preco: 1800, desc: 'Primeira raquete de potência: smash mais pesado.', b: { forca: 2, smash: 2, saque: 1, curta: -1 } },
   duna: { nome: 'Duna Soft', preco: 2200, desc: 'Borracha macia: lobs altos e defesa segura.', b: { lob: 3, def: 1, backhand: 1 } },
-  medusa: { nome: 'Medusa', preco: 2800, desc: 'Controle: curtas, defesas e backhand mais precisos.', b: { def: 3, curta: 4, backhand: 3, lob: 1, forca: -1 } },
-  proteo: { nome: 'Proteo', preco: 3200, desc: 'Equilíbrio entre controle e potência.', b: { lob: 2, def: 2, smash: 2, saque: 2, curta: 1, backhand: 1 } },
+  medusa: { nome: 'Medusa', preco: 2800, desc: 'Controle: curtas, defesas e backhand mais precisos.', b: { def: 2, curta: 3, backhand: 2, forca: -1 } },
+  proteo: { nome: 'Proteo', preco: 3200, desc: 'Equilíbrio entre controle e potência.', b: { lob: 1, def: 1, smash: 1, saque: 1, curta: 1, backhand: 1 } },
   tufao: { nome: 'Tufão Attack', preco: 3900, desc: 'Ataque: smash e força, mas pouca sensibilidade.', b: { smash: 4, forca: 3, saque: 2, def: -1, curta: -1 } },
-  atol: { nome: 'Atol Defense', preco: 4200, desc: 'Defensiva: alcança mais e devolve tudo.', b: { def: 4, vel: 1, backhand: 3, lob: 2, smash: -1 } },
-  kronos: { nome: 'Kronos', preco: 4500, desc: 'Potência: smash e saque pesados, menos toque.', b: { forca: 5, smash: 4, saque: 3, curta: -2, def: -1 } },
-  ventosul: { nome: 'Vento Sul Touch', preco: 5200, desc: 'Toque refinado: curtas e lobs milimétricos.', b: { curta: 5, lob: 4, backhand: 2, forca: -1 } },
-  recife: { nome: 'Recife Hybrid', preco: 6000, desc: 'Híbrida: um pouco de tudo, sem pontos fracos.', b: { smash: 2, def: 2, saque: 2, lob: 2, curta: 2, backhand: 2, forca: 1 } },
-  supercarbon: { nome: 'Supercarbon', preco: 9000, desc: 'Topo de linha em carbono: melhora tudo.', b: { forca: 4, smash: 4, saque: 3, def: 3, curta: 2, lob: 2, backhand: 2 } },
-  tsunami: { nome: 'Tsunami Pro', preco: 11000, desc: 'A mais potente do circuito: pancada pura.', b: { forca: 6, smash: 6, saque: 4, def: 1, curta: -1 } },
-  eclipse: { nome: 'Eclipse Carbon 3K', preco: 14000, desc: 'Controle de elite: defesa, curta e lob de outro nível.', b: { def: 5, curta: 5, backhand: 4, lob: 4, vel: 1, smash: 1 } },
-  zenite: { nome: 'Zênite Elite', preco: 20000, desc: 'A melhor raquete do mundo: tudo no máximo.', b: { forca: 5, smash: 5, saque: 4, def: 4, curta: 3, lob: 3, backhand: 3, vel: 1 } },
+  atol: { nome: 'Atol Defense', preco: 4200, desc: 'Defensiva: alcança mais e devolve tudo.', b: { def: 4, vel: 1, backhand: 2, lob: 2, smash: -1 } },
+  kronos: { nome: 'Kronos', preco: 4500, desc: 'Potência: smash e saque pesados, menos toque.', b: { forca: 5, smash: 4, saque: 2, curta: -2, def: -1 } },
+  ventosul: { nome: 'Vento Sul Touch', preco: 5200, desc: 'Toque refinado: curtas e lobs milimétricos.', b: { curta: 5, lob: 4, backhand: 1, forca: -1 } },
+  recife: { nome: 'Recife Hybrid', preco: 6000, desc: 'Híbrida: um pouco de tudo, sem pontos fracos.', b: { smash: 2, def: 2, saque: 1, lob: 2, curta: 2, backhand: 1 } },
+  supercarbon: { nome: 'Supercarbon', preco: 9000, desc: 'Topo de linha em carbono: melhora tudo.', b: { forca: 3, smash: 3, saque: 2, def: 2, curta: 1, lob: 1, backhand: 1 } },
+  tsunami: { nome: 'Tsunami Pro', preco: 11000, desc: 'A mais potente do circuito: pancada pura.', b: { forca: 6, smash: 5, saque: 3, def: 1, curta: -1 } },
+  eclipse: { nome: 'Eclipse Carbon 3K', preco: 14000, desc: 'Controle de elite: defesa, curta e lob de outro nível.', b: { def: 5, curta: 4, backhand: 3, lob: 3, vel: 1 } },
+  zenite: { nome: 'Zênite Elite', preco: 20000, desc: 'A melhor raquete do mundo: tudo no máximo.', b: { forca: 4, smash: 4, saque: 3, def: 3, curta: 2, lob: 2, backhand: 1 } },
 };
 // visual de cada jogador (penteado, barba, faixa, óculos): derivado do id, sempre o mesmo para a mesma pessoa
 const HAIR_M = ['curto', 'curto', 'raspado', 'careca', 'cacheado', 'topete', 'longo', 'moicano'];

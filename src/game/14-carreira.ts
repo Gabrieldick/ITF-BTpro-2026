@@ -193,8 +193,8 @@ function crSyncChars() {
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
 function crGearBonus() { const b = {}; ($s.CR.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = (b[k] || 0) + g.b[k]; }); return b; }
-// energia no desempenho (todos os atributos): abaixo de 10 → −2, abaixo de 30 → −1, acima de 80 → +1, acima de 95 → +2
-const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -2 : e < 30 ? -1 : e > 95 ? 2 : e > 80 ? 1 : 0; };
+// energia no desempenho (todos os atributos): abaixo de 10 → −4, de 20 → −3, de 30 → −2, de 45 → −1; acima de 80 → +1, de 95 → +2
+const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -4 : e < 20 ? -3 : e < 30 ? -2 : e < 45 ? -1 : e > 95 ? 2 : e > 80 ? 1 : 0; };
 function crFatigue() { const p = crEnergyMod(); const b = {}; for (const [k] of ATTRS) b[k] = p; return b; }
 function crMental() { const b = {}; if ($s.CR.staff.psico) for (const [k] of ATTRS) b[k] = 1; return b; }
 function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crGearBonus(), crFatigue(), crMental()) }); }
