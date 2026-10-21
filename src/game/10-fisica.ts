@@ -129,7 +129,7 @@ function doHit(p, type, q, isServe, mod) {
       spec.margin = lerp(.3, .07, dk); // bem batida passa rente à rede (abaixo da altura de finalização do jogador da rede)
     }
   }
-  let lobLong = 0, finisher = false;
+  let lobLong = 0, finisher = false, topK = 0; // topK: quanto efeito para baixo o golpe consegue (0 a 1)
   // finalização: smash por cima até a linha dos 3 m; o smash PERFEITO da barra vale até um pouco atrás dela (3,6 m) e com a bola mais baixa
   const netD = Math.abs(p.pos.z);
   if (!isServe && key === 'smash' && !mod.volley && ((netD < 3 && ball.pos.y > 1.9) || (mod.perfect && netD < 3.6 && ball.pos.y > 1.5))) {
@@ -147,12 +147,16 @@ function doHit(p, type, q, isServe, mod) {
   // smash do fundo (além de 3,5 m da rede): chega mais lento e menos preciso, para todos
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
-    if (far > 0) { spec.speed *= 1 - far * .18; spec.noise *= 1 + far * .8; mod.misBoost = (mod.misBoost || 0) + far * (.03 + (1 - attrK(p, 'smash')) * .2); mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .7); }
-    // smash perfeito do fundo de quem tem força e smash altos: bomba (anula a perda do fundo e ainda ganha velocidade)
+    // quem tem força e smash bons perde bem menos do fundo
     const A = p.char && p.char.a, pk = A ? clamp(((A.forca + A.smash) / 2 - 72) / 18, 0, 1) : 0;
-    if (pk > 0 && Math.abs(p.pos.z) > 3 && ball.pos.y > 1.9 && (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3))) {
-      spec.speed *= (1 + far * .18 * pk) * (1 + .14 * pk); spec.noise *= 1 - .3 * pk; spec.depth = [4.2, 6.8];
-      mod.oppMissBoost = (mod.oppMissBoost || 0) + .14 * pk; if (pk > .35) spec.label = 'SMASH BOMBA';
+    if (far > 0) { spec.speed *= 1 - far * .18 * (1 - pk * .75); spec.noise *= 1 + far * .8 * (1 - pk * .5); mod.misBoost = (mod.misBoost || 0) + far * (.03 + (1 - attrK(p, 'smash')) * .2); mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .7 * (1 - pk * .6)); }
+    // smash do meio para o fundo (além dos 3 m) de quem tem força e smash altos: sai mais forte sempre;
+    // com a barra perfeita (ou num golpe bem encaixado da CPU) vira SMASH BOMBA
+    if (pk > 0 && Math.abs(p.pos.z) > 3 && ball.pos.y > 1.9) {
+      const full = mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3), k = pk * (full ? 1 : .45);
+      topK = Math.max(topK, k);
+      spec.speed *= 1 + .16 * k + far * .06 * k; spec.noise *= 1 - .3 * k; if (full) spec.depth = [4.2, 6.8];
+      mod.oppMissBoost = (mod.oppMissBoost || 0) + .14 * k; if (full && pk > .35) spec.label = 'SMASH BOMBA';
     }
   }
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
@@ -222,17 +226,19 @@ function doHit(p, type, q, isServe, mod) {
       if (t <= 0 || y >= H || spec.gk >= 3.2) break;
       spec.gk *= 1.06;
     }
-  } else if (finisher && !pop && !wild) {
-    // finalização: em vez de subir a bola para passar a rede (e perder a velocidade), bate com efeito para baixo:
-    // a bola passa a rede e despenca (gravidade maior), até ~2,8× — só quando a linha reta não passaria
+  } else if (!pop && !wild && spec.speed && (finisher || topK > 0 || (isServe && mod.perfect && type === 'smash'))) {
+    // em vez de subir a bola para passar a rede (e perder a velocidade), bate com efeito para baixo: a bola passa a rede e
+    // despenca (gravidade maior), só quando a linha reta não passaria. Finalização até 2,8×; smash do meio/fundo de quem tem
+    // força e smash bons até ~2,4× (mais com a barra perfeita); saque por cima perfeito conforme o atributo de saque
+    const gkMax = finisher ? 2.8 : isServe ? lerp(1.3, 2.1, attrK(p, 'saque')) : lerp(1.5, 2.4, topK);
     const d = Math.hypot(tgt.x - ball.pos.x, tgt.z - ball.pos.z), T0 = Math.max(.28, d / spec.speed), tn = Math.abs(ball.pos.z) / (d / T0);
     let gk = spec.gk || 1.35;
-    for (let i = 0; i < 24 && gk < 2.8; i++) {
+    for (let i = 0; i < 24 && gk < gkMax; i++) {
       const vy = (tgt.y - ball.pos.y + .5 * G * gk * T0 * T0) / T0, yn = ball.pos.y + vy * tn - .5 * G * gk * tn * tn;
       if (yn >= C.netH + C.ballR + (spec.margin || .1)) break;
       gk *= 1.07;
     }
-    spec.gk = Math.min(gk, 2.8); v = solveShot(ball.pos, tgt, spec);
+    spec.gk = Math.min(gk, gkMax); v = solveShot(ball.pos, tgt, spec);
   } else v = solveShot(ball.pos, tgt, spec);
   let mis = false;
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo

@@ -54,7 +54,7 @@ function startMeter(kind, type, c = localCtl()) {
   else { M.fill = .9; M.center = TOSS_T / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp((p.char.a.smash - 45) / 50, .25, 1.1) * (1 - .35 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
-  if (kind === 'serve') M.half *= clamp((p.char.a.saque - 45) / 50, .25, 1.15);
+  if (kind === 'serve') M.half *= clamp((p.char.a.saque - 45) / 50, .25, 1.15) * (type === 'smash' ? .75 : 1); // saque por cima: perfeito mais difícil (e mais forte)
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
   if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half]); else meterDom(M);
 }
@@ -175,7 +175,8 @@ function serveRelease(res, amt, word, human) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
   const svN = clamp(human.char.a.saque - 50, 0, 45) / 45; // atributo de saque
-  if (res === 'perfeito') { q = lerp(.85, 1, svN); mod = { speedMul: type === 'smash' ? lerp(.96, 1.1, svN) : 1, oppMissBoost: (type === 'smash' ? .05 : .02) * svN, misBoost: (1 - svN) * (type === 'smash' ? .14 : .05) }; }
+  // perfeito: bem mais força e precisão (no saque por cima a faixa é menor)
+  if (res === 'perfeito') { q = lerp(.88, 1, svN); mod = { speedMul: type === 'smash' ? lerp(1.02, 1.2, svN) : 1, noiseMul: lerp(.85, .55, svN), oppMissBoost: (type === 'smash' ? .1 : .03) * svN, misBoost: (1 - svN) * (type === 'smash' ? .08 : .04), perfect: true }; }
   else if (res === 'cedo') { q = lerp(.88, .5, amt); mod = { speedMul: lerp(.97, .78, amt), misBoost: amt * .08 }; }
   else { q = lerp(.8, .35, amt); mod = { misBoost: lerp(.04, .5, amt) * (type === 'smash' ? 1 : .5) }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)
