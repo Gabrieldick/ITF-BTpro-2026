@@ -314,7 +314,7 @@ function crCreate(o) {
     partner: null, chem: 0, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
-  $s.CR.v = 2; $s.CR.potCur = Math.min($s.CR.pot, Math.max(...Object.values(me.a)) + 4);
+  $s.CR.v = 2; $s.CR.potCur = Math.min($s.CR.pot, overall(me.a) + 6);
   crMigrate();
   crSimYear(11);
   $s.CR.ovrLog.push({ s: 1, w: 1, o: overall($s.CR.me.a) });
@@ -780,7 +780,7 @@ function crNextDay(note) {
 // a reta final é a mais cara: cada ponto acima de 90 custa bem mais
 const crUpCostBase = v => v < 55 ? 1 : v < 62 ? 2 : v < 68 ? 3 : v < 72 ? 4 : v < 76 ? 6 : v < 80 ? 8 : v < 84 ? 12 : v < 88 ? 17 : v < 90 ? 24 : v < 92 ? 36 : v < 94 ? 52 : v < 96 ? 72 : 95;
 const crUpCost = (v, k) => Math.max(1, Math.round(crUpCostBase(v) * (crStaffList().some(x => x.cheap && x.cheap.includes(k)) ? .75 : 1)));
-// potencial atual: teto dos atributos (não adianta ter pontos de evolução acima dele). Só sobe jogando bem:
+// potencial atual: teto do overall (não adianta ter pontos de evolução acima dele). Só sobe jogando bem:
 // cada partida dá potencial conforme a nota (0–10) e o nível do torneio, até o potencial máximo do atleta
 const crCap = () => Math.min(99, Math.floor($s.CR.potCur ?? $s.CR.pot));
 function crPotGain(rating, tier) {
@@ -793,7 +793,9 @@ function crPotGain(rating, tier) {
 }
 function crRate(r) { $s.CR.ratings = ($s.CR.ratings || []).concat([Math.round(r * 10) / 10]).slice(-20); }
 const crAvgRating = () => { const l = ($s.CR.ratings || []).slice(-10); return l.length ? l.reduce((t, v) => t + v, 0) / l.length : null; };
-function crUpgrade(k) { const v = $s.CR.me.a[k], c = crUpCost(v, k); if ($s.CR.pe < c || v >= crCap()) return; $s.CR.pe -= c; $s.CR.me.a[k]++; crSyncChars(); saveCareer(); }
+// o potencial limita o OVERALL: cada atributo pode ir até 99, desde que o overall não passe do potencial atual
+const crCanUp = k => { const a = $s.CR.me.a; if (a[k] >= 99) return false; return overall(Object.assign({}, a, { [k]: a[k] + 1 })) <= crCap(); };
+function crUpgrade(k) { const v = $s.CR.me.a[k], c = crUpCost(v, k); if ($s.CR.pe < c || !crCanUp(k)) return; $s.CR.pe -= c; $s.CR.me.a[k]++; crSyncChars(); saveCareer(); }
 // ---------- partida jogada ----------
 function crPlayMatch() {
   const mm = crMyMatch(); if (!mm) return;
@@ -949,6 +951,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, importData: t => crImportData(t), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };
