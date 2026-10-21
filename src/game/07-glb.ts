@@ -161,14 +161,14 @@ function rebuildModel(p, look) {
 }
 function assignCharacters() {
   const pk = S.settings.pick;
-  // partida mista (homens e mulheres em quadra): a mulher joga com 70% dos atributos (diferença física)
+  // partida mista (homens e mulheres em quadra): a mulher joga com ~88% dos atributos (95 → 84), pela diferença física
   const ids = S.settings.mode === 'dupla' ? [pk.me, pk.mate, pk.o1, pk.o2] : [pk.me, pk.o1], fems = ids.map(id => !!charById(id).fem);
   const mixed = fems.includes(true) && fems.includes(false);
   [[human, pk.me, 0, 0], [partner, pk.mate, 0, 1], [cpuA, pk.o1, 1, 0], [cpuB, pk.o2, 1, 1]].forEach(([p, id, team, idx]) => {
     const c = charById(id);
     // atributos em jogo: base + raquete (a sua vem do menu/carreira; a dos outros, do equipamento de cada um)
     let a = effA(c.a, racketBonus(p === human ? S.settings.racket : c.look && c.look.racket));
-    if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .7)); a = m; }
+    if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .885)); a = m; }
     p.char = Object.assign({}, c, { a });
     const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
     const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
