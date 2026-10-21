@@ -170,18 +170,25 @@ function matchRating(won) {
 function updateLiveRating() {
   const e = $('liveNota'); if (!e) return;
   const on = !!(S.careerActive && S.perf && !S.spectate && !NET.role && !S.drill);
-  e.hidden = !on; if (!on) { delete e.dataset.r; return; }
+  e.hidden = !on; if (!on) { delete e.dataset.r; e.querySelectorAll('[data-v]').forEach(c => { delete c.dataset.v; }); return; }
   const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
   const r = Math.round(clamp(6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + bal * (dupla() ? 1 : 1.5), 1, 10) * 10) / 10;
-  // cor do retângulo: vermelho (nota baixa) → amarelo → verde (nota alta)
+  // estilo NBA 2K: a nota no hexágono (cor pela nota, com a subida/descida embaixo) e os números do seu jogo ao lado
+  const ev = S.perf.ev, sum = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
+  const vals = { nota: r, pts: sum(/^w_/), def: ev.defBoa || 0, err: sum(/^(e_|furou|erroF)/) };
   e.style.setProperty('--nh', String(Math.round(clamp((r - 4) / 4.5, 0, 1) * 125)));
-  const b = e.querySelector('b'), prev = +(e.dataset.r || 0);
-  b.textContent = r.toFixed(1).replace('.', ',');
-  if (e.dataset.r && Math.abs(r - prev) > .049) { // variação sobe e some: "+0,2" verde ou "−0,3" vermelho
-    const d = document.createElement('i'), up = r > prev;
-    d.className = 'nd ' + (up ? 'up' : 'dn'); d.textContent = (up ? '+' : '−') + Math.abs(r - prev).toFixed(1).replace('.', ',');
-    e.appendChild(d); setTimeout(() => d.remove(), 1300);
-    e.classList.remove('pulse'); void e.offsetWidth; e.classList.add('pulse');
+  for (const [k, v] of Object.entries(vals)) {
+    const c = e.querySelector('[data-k="' + k + '"]'); if (!c) continue;
+    const b = c.querySelector('b'), prev = +(c.dataset.v ?? v), txt = k === 'nota' ? v.toFixed(1).replace('.', ',') : String(v);
+    if (b.textContent === txt) continue;
+    b.textContent = txt;
+    if (e.dataset.r && Math.abs(v - prev) > .049) { // variação sobe e some: "+1" / "+0,2" verde ou "−0,3" vermelho
+      const d = document.createElement('i'), up = v > prev, good = k === 'err' ? !up : up;
+      d.className = 'nd ' + (good ? 'up' : 'dn'); d.textContent = (up ? '+' : '−') + (k === 'nota' ? Math.abs(v - prev).toFixed(1).replace('.', ',') : Math.abs(v - prev));
+      c.appendChild(d); setTimeout(() => d.remove(), 1300);
+      c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse');
+    }
+    c.dataset.v = String(v);
   }
   e.dataset.r = String(r);
 }
