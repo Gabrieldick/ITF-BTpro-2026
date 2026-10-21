@@ -186,7 +186,8 @@ function doHit(p, type, q, isServe, mod) {
     if (!isServe && (key === 'smash' || key === 'drive')) spec.speed *= finisher ? lerp(.92, 1.12, fk) : lerp(.8, 1.15, fk); // na finalização a força pesa menos
     // saque: um pouco mais forte para todos e bem mais forte para quem tem força e saque altos
     if (isServe && spec.speed) spec.speed *= lerp(.92, 1.22, Math.pow(Math.min(1, attrN((A.forca + A.saque) / 2)), 1.3));
-    if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07;
+    // saque bom faz o recebedor errar mais; fora do perfeito esse efeito é bem menor (devolver é mais fácil)
+    if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07 * (mod.perfect ? 1 : .3);
   }
   const dir = p.team === 0 ? -1 : 1;
   const lim = C.halfW - (key === 'curta' ? .8 : .35); // curta mira mais para dentro (é toque, não precisa da linha)
@@ -240,9 +241,9 @@ function doHit(p, type, q, isServe, mod) {
     // despenca (gravidade maior), só quando a linha reta não passaria. Finalização até 2,8×; smash do meio/fundo de quem tem
     // força e smash bons até ~2,4× (mais com a barra perfeita); saque por cima perfeito conforme o atributo de saque
     // saque por cima: sempre com algum efeito (rasante); o perfeito com mais. Só o muito fraco (speedMul baixo) sobe
-    const gkMax = finisher ? 2.8 : isServe ? (mod.perfect ? lerp(1.3, 2.1, attrK(p, 'saque')) : (mod.speedMul || 1) < .8 ? 1.15 : lerp(1.25, 1.7, attrK(p, 'saque'))) : lerp(1.5, 2.4, topK);
+    const gkMax = finisher ? 2.8 : isServe ? (mod.perfect ? lerp(1.3, 2.1, attrK(p, 'saque')) : (mod.speedMul || 1) < .8 ? 1.15 : lerp(1.45, 1.95, attrK(p, 'saque'))) : lerp(1.5, 2.4, topK);
     const d = Math.hypot(tgt.x - ball.pos.x, tgt.z - ball.pos.z), T0 = Math.max(.28, d / spec.speed), tn = Math.abs(ball.pos.z) / (d / T0);
-    if (isServe) spec.margin = Math.max(spec.margin || 0, .2); // saque rápido com efeito: folga sobre a rede (vento não derruba)
+    if (isServe) spec.margin = Math.max(spec.margin || 0, mod.perfect ? .2 : .14); // saque rápido com efeito: folga sobre a rede (vento não derruba)
     let gk = spec.gk || 1.35;
     for (let i = 0; i < 24 && gk < gkMax; i++) {
       const vy = (tgt.y - ball.pos.y + .5 * G * gk * T0 * T0) / T0, yn = ball.pos.y + vy * tn - .5 * G * gk * tn * tn;
@@ -277,7 +278,7 @@ function doHit(p, type, q, isServe, mod) {
     if (key === 'curta') threat = Math.max(threat, clamp((curtaK - .35) / .55, 0, 1));
     if (spec.kick) threat = Math.max(threat, .85);
     if (finisher) threat = 1;
-    if (isServe) threat *= .6; // devolução: o recebedor já está esperando a bola
+    if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher; ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0; ball.kick = !!spec.kick && !pop;
