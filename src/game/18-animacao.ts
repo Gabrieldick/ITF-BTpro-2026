@@ -342,7 +342,7 @@ function placeMeter(fp) {
   if (MTR.active) {
     const v = MTR.v;
     el.mFill.style.height = (clamp(v, 0, 1) * 100) + '%';
-    if (MTR.kind === 'lob') { el.mFill.style.height = (clamp(v / LOB_MAX, 0, 1) * 100) + '%'; el.meter.classList.toggle('over', v > 1); }
+    if (MTR.kind === 'lob') { el.mFill.style.height = (clamp(v / (MTR.lmax || LOB_MAX), 0, 1) * 100) + '%'; el.meter.classList.toggle('over', v > 1); }
     else el.meter.classList.toggle('in', Math.abs(v - MTR.center) <= MTR.half);
   }
 }

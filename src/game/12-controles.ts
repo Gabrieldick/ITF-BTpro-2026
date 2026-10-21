@@ -2,7 +2,7 @@
 // teclado, toque, barras de força e menus
 import './11-mira';
 import { canHit } from './10-fisica';
-import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN } from './00-base';
+import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK } from './00-base';
 import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
@@ -51,7 +51,8 @@ function startMeter(kind, type, c = localCtl()) {
     // a faixa verde muda de lugar a cada smash (a velocidade da barra se ajusta para ela coincidir com a chegada da bola)
     M.fill = .75; M.half = half * .8; M.center = .5 + Math.random() * .42; p.charging = true; M.ideal = smashIdealPoint();
   }
-  else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; p.charging = true; }
+  // lob: a barra sobe um pouco mais devagar e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
+  else if (kind === 'lob') { M.fill = .55; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))); p.charging = true; }
   else { M.fill = .9; M.center = (p.tossDur || TOSS_T) / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
@@ -59,7 +60,7 @@ function startMeter(kind, type, c = localCtl()) {
   // tolerância em volta do verde (amarelo/laranja): com atributo baixo fica estreita, errar por pouco já custa caro
   M.pw = .2 * lerp(.45, 1.1, Math.pow(attrN(kind === 'smash' ? p.char.a.smash : p.char.a.saque), 1.5));
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
-  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw]); else meterDom(M);
+  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw, M.lmax]); else meterDom(M);
 }
 // desenha a barra recém-armada (local, ou do convidado com os dados vindos do anfitrião)
 function meterDom(M) {
@@ -67,8 +68,9 @@ function meterDom(M) {
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
   if (kind === 'lob') {
-    el.mZone.style.bottom = (100 / LOB_MAX) + '%'; el.mZone.style.height = (100 - 100 / LOB_MAX) + '%'; el.mZone.style.background = '';
-    const kz = el.meter.querySelector('.kz'); if (kz) { kz.style.bottom = (KICK[0] / LOB_MAX * 100) + '%'; kz.style.height = ((KICK[1] - KICK[0]) / LOB_MAX * 100) + '%'; }
+    const LM = M.lmax || LOB_MAX;
+    el.mZone.style.bottom = (100 / LM) + '%'; el.mZone.style.height = (100 - 100 / LM) + '%'; el.mZone.style.background = '';
+    const kz = el.meter.querySelector('.kz'); if (kz) { kz.style.bottom = (KICK[0] / LM * 100) + '%'; kz.style.height = ((KICK[1] - KICK[0]) / LM * 100) + '%'; }
   }
   else {
     // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
@@ -150,12 +152,12 @@ function releaseMeter(c = localCtl()) {
   if (c.remote && c.lag > 0 && M.kind === 'smash') M.v = Math.max(0, M.v - M.rate * c.lag);
   const v = M.v, diff = v - M.center;
   if (M.kind === 'lob') {
-    const lv = Math.min(v, LOB_MAX);
+    const LM = M.lmax || LOB_MAX, lv = Math.min(v, LM);
     // começo da barra: lob chutado (perfeito só na faixa verde de baixo); meio: médio; fim: alto; passou: longo
     const kick = lv >= KICK[0] && lv <= KICK[1];
     const word = kick ? 'CHUTADO PERFEITO' : lv < KICK[0] ? 'CHUTADO FRACO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
     M.active = false; M.showT = .9;
-    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < KICK[0] ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LOB_MAX * 100);
+    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < KICK[0] ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LM * 100);
     p.charging = false;
     const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word, kick }; sw.side = sideOf(p); sw.var = '';
     return;
@@ -241,7 +243,7 @@ function meterStep(c, dt) {
     const v = M.v;
     if ((M.kind === 'smash' || M.kind === 'lob') && S.mode !== 'rally') cancelMeter(c);
     else if (M.kind === 'smash' && v >= 1.15) releaseMeter(c);
-    else if (M.kind === 'lob' && v >= LOB_MAX) releaseMeter(c);
+    else if (M.kind === 'lob' && v >= (M.lmax || LOB_MAX)) releaseMeter(c);
     else if (M.kind === 'serve' && S.mode !== 'toss') cancelMeter(c);
     else if (M.kind === 'serve' && ball.vel.y < 0 && ball.pos.y < 1.75) releaseMeter(c);
   } else if (!c.remote && M.showT > 0) { M.showT -= dt; if (M.showT <= 0) el.meter.hidden = true; }
