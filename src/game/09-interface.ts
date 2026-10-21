@@ -41,8 +41,10 @@ let fbTimer = 0;
 function feedback(main, small, kind) {
   el.fb.innerHTML = ''; el.fb.append(main);
   if (small) { const s = document.createElement('small'); s.textContent = small; el.fb.append(s); }
-  el.fb.classList.toggle('cpu', kind === 'cpu'); el.fb.classList.toggle('mate', kind === 'mate'); el.fb.classList.add('show');
-  clearTimeout(fbTimer); fbTimer = setTimeout(() => el.fb.classList.remove('show'), 900);
+  // lances especiais (finalização, smash bomba, curta matadora, lob chutado) aparecem maiores e em dourado
+  const star = /FINALIZA|BOMBA|MATADORA|CHUTADO PERFEITO|LOB CHUTADO/.test(String(main) + ' ' + (small || ''));
+  el.fb.classList.toggle('cpu', kind === 'cpu'); el.fb.classList.toggle('mate', kind === 'mate'); el.fb.classList.toggle('star', star); el.fb.classList.add('show');
+  clearTimeout(fbTimer); fbTimer = setTimeout(() => el.fb.classList.remove('show'), star ? 1800 : 1400);
 }
 // ---------- Placar ----------
 const PT = ['0', '15', '30', '40'];

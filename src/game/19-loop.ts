@@ -13,6 +13,7 @@ import { HITS, applyGfx, getResScale, setResScale } from './08-audio';
 import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
 import { applyCam, inPlay, setPaused, syncMenu } from './12-controles';
 import { step } from './17-bola';
+import { doHit } from './10-fisica';
 import { READY_FP, updateCamera, updateVisuals } from './18-animacao';
 import { RP, recordTick, replayCamera, replayTick, startReplay } from './21-replay';
 // ---------- Loop ----------
@@ -85,7 +86,7 @@ function start(data) {
     setupPoint(); setPaused(true);
   }
   renderBoard();
-  window.__pdo = { MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, GLB };
+  window.__pdo = { doHit, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, GLB };
   loadModels().then(ok => {
     assignCharacters(); configureMode();
     if (!ok) { const fs2 = document.getElementById('fsPlayers'); if (fs2) fs2.hidden = true; }
