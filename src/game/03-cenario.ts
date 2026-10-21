@@ -137,7 +137,7 @@ const sandGeo = new THREE.PlaneGeometry(420, 320, 168, 128);
   for (let i = 0; i < pa.count; i++) {
     const x = pa.getX(i), y = pa.getY(i);
     const wz = 90 - y;
-    const d = Math.max(0, Math.max(Math.abs(x) - 11, Math.abs(wz) - 16));
+    const d = Math.max(0, Math.max(Math.abs(x) - 19, Math.abs(wz) - 16)); // plano até 19 m para os lados (cabem as quadras vizinhas dos amadores)
     let hgt = Math.min(1, d / 20) * (Math.sin(x * .07) * 1.1 + Math.cos(wz * .09) * .8 + 1.3) * smooth(-30, -12, wz);
     hgt += (fbm(x * .08 + 50, wz * .08 + 50, 4096, 3, 9) - .5) * .25 * Math.min(1, d / 4 + .15);
     hgt -= .6 * smooth(SHORE_Z + 4, SHORE_Z - 8, wz);
