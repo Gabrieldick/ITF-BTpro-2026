@@ -136,8 +136,9 @@ function doHit(p, type, q, isServe, mod) {
     finisher = true;
     spec.speed *= 1.36; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
   }
-  // smash contra lob chutado perfeito: quem chega lá correu para trás e bate mal (fraco, impreciso, erra mais)
-  if (!isServe && key === 'smash' && ball.kick) {
+  // smash contra lob chutado perfeito: quem chega lá correu para trás e bate mal (fraco, impreciso, erra mais).
+  // Se alcançou ainda perto da rede (o lob não passou), é finalização normal
+  if (!isServe && key === 'smash' && ball.kick && !(finisher && netD < 2.6)) {
     finisher = false; spec.speed *= .72; spec.noise *= 1.8; spec.label = 'SMASH RECUANDO';
     mod.misBoost = (mod.misBoost || 0) + .18 * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
   }
