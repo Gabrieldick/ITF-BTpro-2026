@@ -120,7 +120,8 @@
         <input type="radio" name="cam3" id="c3pad" value="padrao" checked><label for="c3pad">Padrão</label>
         <input type="radio" name="cam3" id="c3alt" value="alta"><label for="c3alt">Alta (TV)</label>
         <input type="radio" name="cam3" id="c3per" value="perto"><label for="c3per">Perto</label>
-      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">Distância da 3ª pessoa <input type="range" id="camDist" min="60" max="170" step="5" value="100" style="flex:1"> <span id="camDistV">100%</span> <kbd>−</kbd><kbd>+</kbd></label></fieldset>
+      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">Distância da 3ª pessoa <input type="range" id="camDist" min="60" max="170" step="5" value="100" style="flex:1"> <span id="camDistV">100%</span> <kbd>−</kbd><kbd>+</kbd></label>
+      <label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">Altura da 3ª pessoa <input type="range" id="camHeight" min="40" max="250" step="5" value="100" style="flex:1"> <span id="camHeightV">100%</span> <kbd>[</kbd><kbd>]</kbd></label></fieldset>
       <div class="toggles">
         <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
         <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
@@ -172,7 +173,7 @@
         <div><i style="background:#4FD18B"></i><b>Defesa <kbd>Espaço</kbd></b><p>Mais alcance e controle contra bolas rápidas. Devolve no meio da quadra.</p></div>
       </div>
     </div>
-    <p class="keys">Saque: segure qualquer golpe para jogar a bola para cima e solte na faixa verde. <kbd>WASD</kbd>/setas correr · <kbd>1</kbd>–<kbd>4</kbd> também batem · <kbd>C</kbd> troca a câmera (padrão, alta, perto, 1ª pessoa) · <kbd>−</kbd>/<kbd>+</kbd> distância da câmera (FOV na 1ª pessoa) · <kbd>B</kbd>/<kbd>N</kbd> assistências · <kbd>Esc</kbd> pausa · <kbd>M</kbd> som. No celular, use o joystick e os botões.</p>
+    <p class="keys">Saque: segure qualquer golpe para jogar a bola para cima e solte na faixa verde. <kbd>WASD</kbd>/setas correr · <kbd>1</kbd>–<kbd>4</kbd> também batem · <kbd>C</kbd> troca a câmera (padrão, alta, perto, 1ª pessoa) · <kbd>−</kbd>/<kbd>+</kbd> distância da câmera (FOV na 1ª pessoa) · <kbd>[</kbd>/<kbd>]</kbd> altura da câmera · <kbd>B</kbd>/<kbd>N</kbd> assistências · <kbd>Esc</kbd> pausa · <kbd>M</kbd> som. No celular, use o joystick e os botões.</p>
       <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button></div>
     </section>
   </div>
@@ -335,6 +336,10 @@
       <button class="ghost" id="btnAsMove">Seguir a bola</button>
       <button class="ghost" id="btnAsMark">Onde a bola cai</button>
       <button class="ghost" id="btnQuit">Sair para o menu</button>
+    </div>
+    <div class="cam-adj">
+      <label>Distância da câmera <input type="range" id="pCamDist" min="60" max="170" step="5" value="100"> <span id="pCamDistV">100%</span></label>
+      <label>Altura da câmera <input type="range" id="pCamHeight" min="40" max="250" step="5" value="100"> <span id="pCamHeightV">100%</span></label>
     </div>
   </div>
 </div>

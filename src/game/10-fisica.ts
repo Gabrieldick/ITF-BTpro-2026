@@ -2,7 +2,7 @@
 // física da bola, trajetórias e o golpe (doHit)
 import './09-interface';
 import { $s } from '../state';
-import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall } from './00-base';
+import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK } from './00-base';
 import { S, NET } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
@@ -83,8 +83,8 @@ function doHit(p, type, q, isServe, mod) {
   if (bhSide) {
     const bh = attrK(p, 'backhand');
     spec.noise *= lerp(1.6, 1.05, bh);
-    q *= lerp(.72, .98, bh);
-    mod.misBoost = (mod.misBoost || 0) + (1 - bh) * .18;
+    q *= lerp(.72, .98, bh) * (1 - weakK(p, 'backhand') * .15);
+    mod.misBoost = (mod.misBoost || 0) + (1 - bh) * .18 + weakK(p, 'backhand') * .14; // backhand fraco: muito mais bola na rede/fora
   }
   let contactWord = '';
   if (!isServe) {
@@ -103,13 +103,16 @@ function doHit(p, type, q, isServe, mod) {
   }
   const inSpeed = Math.hypot(ball.vel.x, ball.vel.z);
   // devolução de saque pesa menos (o recebedor já está esperando a bola)
-  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .35 : 0), 0, 1.3) * (S.rally === 1 ? .5 : 1);
+  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .55 : 0), 0, 1.5) * (S.rally === 1 ? .5 : 1);
   if (pressure > 0) {
     // contra bola forte, o golpe de defesa é o mais seguro; a curta (toque) é uma aposta: levanta ou sai mais
     const risk = key === 'defesa' ? .6 : key === 'curta' ? 1.45 : 1;
     const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5 + (key === 'defesa' ? .06 : 0), 0, 1);
     grade = qq;
-    const pOut = pressure * (1 - qq) * .45 * risk, pPop = pressure * (.12 + (1 - qq) * .9) * risk;
+    const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
+    let pOut = pressure * (1 - qq) * .45 * risk * wDef, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef;
+    // bola de finalização: mesmo a defesa perfeita às vezes não segura (menos para quem defende muito bem)
+    if (ball.finisher) { const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1); pPop += lerp(.22, .08, dk); pOut += lerp(.08, .03, dk); }
     const r0 = Math.random();
     if (r0 < pOut) wild = true; else if (r0 < pOut + pPop) pop = true;
   }
@@ -122,14 +125,14 @@ function doHit(p, type, q, isServe, mod) {
     if (S.rally !== 1 && (pressure > .3 || inSpeed > 14) && dq >= .5 && Math.random() < lerp(.3, .55, dk)) { // na devolução de saque, não
       spec.T = rand(1.75, 2.15); spec.depth = [6.3, 7.4]; spec.margin = .5; spec.label = 'DEFESA ALTA';
     } else {
-      spec.T = lerp(1.25, .78, dk) * lerp(1.06, .94, attrK(p, 'def'));
+      spec.T = lerp(1.25, .78, dk) * lerp(1.06, .94, attrK(p, 'def')) * (1 + weakK(p, 'def') * .18); // defensor fraco devolve mais flutuada
       spec.margin = lerp(.3, .07, dk); // bem batida passa rente à rede (abaixo da altura de finalização do jogador da rede)
     }
   }
   let lobLong = 0, finisher = false;
   if (!isServe && key === 'smash' && Math.abs(p.pos.z) < 2.2 && ball.pos.y > 2.0) {
     finisher = true;
-    spec.speed *= 1.25; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
+    spec.speed *= 1.36; spec.depth = [3.0, 5.6]; spec.noise *= .8; spec.label = 'FINALIZAÇÃO';
   }
   // smash do fundo (além de 3,5 m da rede): chega mais lento e menos preciso, para todos
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
@@ -138,8 +141,11 @@ function doHit(p, type, q, isServe, mod) {
   }
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
     const lp = clamp(mod.lobPower, 0, 1);
-    spec.T = lerp(1.25, 2.6, lp); spec.depth = [lerp(5.4, 6.4, lp), lerp(7.0, 7.6, lp)];
-    spec.label = lp < .35 ? 'LOB BAIXO' : lp < .75 ? 'LOB' : 'LOB ALTO';
+    // lob com pouca força sai chutado: baixo, rápido e caindo forte (passa perto do alcance de quem está na rede);
+    // só o carregado sobe alto e devagar
+    spec.T = lerp(.9, 2.6, Math.pow(lp, 1.3)); spec.depth = [lerp(5.6, 6.4, lp), lerp(7.1, 7.6, lp)];
+    spec.margin = lerp(.2, .4, lp); spec.gk = lerp(1.28, 1.1, lp);
+    spec.label = lp < .35 ? 'LOB CHUTADO' : lp < .75 ? 'LOB' : 'LOB ALTO';
     lobLong = Math.max(0, mod.lobPower - 1);
   }
   if (spec.speed) spec.speed *= mod.speedMul || 1;
@@ -195,7 +201,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado)
   S.lastHit = { p, cat: isServe ? 'saque' : mod.volley ? 'voleio' : key, hard: !isServe && (inSpeed > 14 || !!ball.finisher || pressure > .35 || q < .45), hitId: S.hitId + 1 };
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .22 : 0); ball.finisher = finisher;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;

@@ -276,9 +276,9 @@ function updateCamera(dt) {
     tmpA.set(Math.sin(S.orbit) * 12, 3.2 + Math.sin(S.orbit * .7) * 1.2, Math.cos(S.orbit) * 12);
     camPos.lerp(tmpA, .04); tmpB.set(0, 1.2, 0); camLook.lerp(tmpB, .04);
   } else if (!fp) {
-    const d = dupla() ? 1 : 0, V = CAM3[S.settings.cam3] || CAM3.padrao, dk = (S.settings.camDist || 100) / 100;
+    const d = dupla() ? 1 : 0, V = CAM3[S.settings.cam3] || CAM3.padrao, dk = (S.settings.camDist || 100) / 100, hk = (S.settings.camHeight || 100) / 100;
     const bz = lerp(6, human.pos.z, V.zf); // profundidade que a câmera acompanha
-    tmpA.set(human.pos.x * V.fx[d], V.ly + (V.h[d] - V.ly) * dk, bz + V.back[d] * dk); camPos.lerp(tmpA, k);
+    tmpA.set(human.pos.x * V.fx[d], V.ly + (V.h[d] - V.ly) * dk * hk, bz + V.back[d] * dk); camPos.lerp(tmpA, k);
     tmpB.set(human.pos.x * V.lx[d], V.ly, bz + V.lz); camLook.lerp(tmpB, k);
   } else {
     const bob = Math.abs(Math.sin(human.gait)) * .025 * Math.min(1, Math.hypot(human.vel.x, human.vel.z) / 4);

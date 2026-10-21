@@ -249,6 +249,7 @@ addEventListener('keydown', e => {
   else if (k === 'c') toggleCam();
   else if (k === 'p' || k === 'escape') togglePause();
   else if (k === 'm') toggleSound();
+  else if (k === '[' || k === ']') adjustCamHeight(k === '[' ? -10 : 10);
   else if (k === '-' || k === '=' || k === '+') { if (S.settings.cam === '1p') adjustFov(k === '-' ? -5 : 5); else adjustCamDist(k === '-' ? -10 : 10); }
   else if (k === 'b') toggleAssist('assistMove');
   else if (k === 'n') toggleAssist('assistMark');
@@ -281,7 +282,8 @@ function applyCam() {
   el.btnCam.firstChild.textContent = fp ? '1ª pessoa' : '3ª · ' + (CAM3[S.settings.cam3] || CAM3.padrao).nome;
   camera.fov = fp ? (S.settings.fovFp || 72) : (dupla() ? 58 : 55); camera.updateProjectionMatrix();
   const r = $('fovFp'); if (r) { r.value = S.settings.fovFp || 72; $('fovFpV').textContent = r.value + '°'; }
-  const cd = $('camDist'); if (cd) { cd.value = S.settings.camDist || 100; $('camDistV').textContent = cd.value + '%'; }
+  // os controles de distância/altura existem no menu e na pausa; todos mostram o mesmo valor
+  [['camDist', 'camDist'], ['pCamDist', 'camDist'], ['camHeight', 'camHeight'], ['pCamHeight', 'camHeight']].forEach(([id, k]) => { const e = $(id); if (e) { e.value = S.settings[k] || 100; $(id + 'V').textContent = e.value + '%'; } });
 }
 // C (e o botão) passa por: 3ª padrão → 3ª alta → 3ª perto → 1ª pessoa → ...
 const CAM_ORDER = ['padrao', 'alta', 'perto', '1p'];
@@ -296,6 +298,14 @@ function adjustCamDist(d) {
   S.settings.camDist = clamp((S.settings.camDist || 100) + d, 60, 170); saveSettings(); applyCam();
   feedback('DISTÂNCIA ' + S.settings.camDist + '%', '3ª PESSOA', null);
 }
+function adjustCamHeight(d) {
+  S.settings.camHeight = clamp((S.settings.camHeight || 100) + d, 40, 250); saveSettings(); applyCam();
+  feedback('ALTURA ' + S.settings.camHeight + '%', '3ª PESSOA', null);
+}
+// sliders de distância e altura (menu e pausa)
+[['camDist', 'camDist'], ['pCamDist', 'camDist'], ['camHeight', 'camHeight'], ['pCamHeight', 'camHeight']].forEach(([id, k]) => {
+  const e = $(id); if (e) e.addEventListener('input', () => { S.settings[k] = +e.value; saveSettings(); applyCam(); });
+});
 function syncCamMenu() {
   const a = document.querySelector('input[name=cam][value="' + S.settings.cam + '"]'); if (a) a.checked = true;
   const b = document.querySelector('input[name=cam3][value="' + (S.settings.cam3 || 'padrao') + '"]'); if (b) b.checked = true;
