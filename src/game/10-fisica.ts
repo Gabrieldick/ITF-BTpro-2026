@@ -235,6 +235,7 @@ function doHit(p, type, q, isServe, mod) {
     // força e smash bons até ~2,4× (mais com a barra perfeita); saque por cima perfeito conforme o atributo de saque
     const gkMax = finisher ? 2.8 : isServe ? lerp(1.3, 2.1, attrK(p, 'saque')) : lerp(1.5, 2.4, topK);
     const d = Math.hypot(tgt.x - ball.pos.x, tgt.z - ball.pos.z), T0 = Math.max(.28, d / spec.speed), tn = Math.abs(ball.pos.z) / (d / T0);
+    if (isServe) spec.margin = Math.max(spec.margin || 0, .2); // saque rápido com efeito: folga sobre a rede (vento não derruba)
     let gk = spec.gk || 1.35;
     for (let i = 0; i < 24 && gk < gkMax; i++) {
       const vy = (tgt.y - ball.pos.y + .5 * G * gk * T0 * T0) / T0, yn = ball.pos.y + vy * tn - .5 * G * gk * tn * tn;

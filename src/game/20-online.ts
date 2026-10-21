@@ -11,7 +11,7 @@ import { $s } from '../state';
 import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail } from './07-glb';
+import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback } from './09-interface';
 import { defenseFlash } from './11-mira';
@@ -305,7 +305,7 @@ function hostState(now) {
       const sw = p.swing, M = p.charging ? (p.mtr || MTR) : null, ct = p.contact;
       return [r3(p.pos.x), r3(p.pos.z), r3(p.vel.x), r3(p.vel.z), r3(sw.t), sw.type, sw.dur, r3(sw.side || 0), sw.var || '', sw.hit ? 1 : 0,
         r3(p.jump || 0), p.jumpDur || 0, p.jumpH || 0, M ? M.type : 0, M ? r3(M.t) : 0, p.dive ? r3(p.dive.t) : -1, p.dive ? p.dive.dur : 0, r3(p.split || 0), r3(p.tossT || 0),
-        ct ? [r3(ct.x), r3(ct.y), r3(ct.z), r3(ct.u), ct.hitId] : 0];
+        ct ? [r3(ct.x), r3(ct.y), r3(ct.z), r3(ct.u), ct.hitId] : 0, r3(p.tossDur || TOSS_T)];
     }),
     sc: S.score, sv: S.server, si: S.serverIdx, sp: PL.indexOf(S.serverPlayer), lt: S.lastTeam, hid: S.hitId, r: S.rally,
     w: S.wind || { x: 0, z: 0 }, ht: S.heat ? 1 : 0, pr: S.pressure || '', stk: S.streak || null, mt: null,
@@ -336,6 +336,7 @@ NET.ev = (k, a, b) => {
   if (NET.role !== 'host' || !ON.guests.length) return;
   if (k === 'hit') ON.outq.push(['hit', PL.indexOf(a), b]);
   else if (k === 'sand') ON.outq.push(['sand', r3(a), r3(b)]);
+  else if (k === 'spark') ON.outq.push(['spark', r3(a.x), r3(a.y), r3(a.z)]);
 };
 NET.onNewMatch = () => { if (NET.role !== 'host') return; ON.inMatch = true; ON.outq.push(['cfg']); };
 NET.onSetupPoint = () => { if (NET.role === 'host') ON.outq.push(['sv', PL.indexOf(S.serverPlayer)]); };
@@ -578,9 +579,10 @@ function guestEvent(e) {
     sndHit(e[2]);
     if (e[2] === 1) { const me = ON.G[e[1]] === human && !S.spectate; S.shake = me ? .25 : .1; if (me) ON.mySmashes++; }
   } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); }
+  else if (k === 'spark') sparkle({ x: e[1] * m, y: e[2], z: e[3] * m });
   else if (k === 'fb') shotFeedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);
-  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4] }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
+  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], pw: e[5] || .2 }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
   else if (k === 'mr') {
     MTR.active = false; human.charging = false; LS.meter = null;
     el.meter.className = e[1]; el.mRes.textContent = e[2]; el.mFill.style.height = e[3] + '%'; el.meter.hidden = false;
@@ -609,6 +611,7 @@ function applyState(a, b, k, ex = 0) {
     else p.mtr = p.charging ? { type: pb[13], t: pb[14] } : null;
     p.dive = pb[15] >= 0 ? { t: pb[15], dur: pb[16], landed: true } : null;
     p.split = pb[17]; p.tossT = pb[18] >= pa[18] ? L(pa[18], pb[18]) : pb[18];
+    p.tossDur = pb[20] || TOSS_T; // altura de cada lançamento do saque (o tempo até o contato)
     const ct = pb[19]; p.contact = ct ? { x: ct[0] * m, y: ct[1], z: ct[2] * m, u: ct[3], hitId: ct[4] } : null; // raquete vai até onde bateu
   });
   // barra de força de quem está jogando aqui

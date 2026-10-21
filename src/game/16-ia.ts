@@ -3,7 +3,7 @@
 import './15-carreira-telas';
 import { $s } from '../state';
 import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
-import { S } from './01-estado';
+import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball, sparkle } from './07-glb';
@@ -239,7 +239,7 @@ function updateHuman(dt, c = localCtl()) {
       ball.state = 'live'; S.mode = 'rally';
       const sp = ball.pos.clone();
       const r = doHit(p, ps.type, ps.q, true, ps.mod);
-      if (ps.res === 'perfeito' && !r.mis) sparkle(sp); // saque perfeito: estrelinhas no contato
+      if (ps.res === 'perfeito' && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); } // saque perfeito: estrelinhas no contato
       ctlFeedback(c, r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
     } else if (!sw.hit && !p.pendingServe && S.mode === 'rally' && contact) {
       let q = hitQuality(p, sw.type), mod = {};
@@ -418,8 +418,11 @@ function updateAI(p, dt) {
     if (p.pendingServe && p.swing.t >= p.swing.dur * .45) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
-      const r = doHit(p, ps.type, ps.q, true);
-      shotFeedback(whoTag(p) + r.label, null, whoKind(p));
+      // CPU/parceira: de vez em quando o saque sai perfeito (mais com atributo de saque alto): mais forte, preciso e com estrelinhas
+      const svN = attrK(p, 'saque'), perf = ps.type === 'smash' && Math.random() < .06 + .16 * svN, sp = ball.pos.clone();
+      const r = doHit(p, ps.type, ps.q, true, perf ? { speedMul: lerp(1, 1.12, svN), noiseMul: lerp(.85, .6, svN), perfect: true } : undefined);
+      if (perf && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); }
+      shotFeedback(whoTag(p) + r.label, perf ? 'PERFEITO' : null, whoKind(p));
     }
     if (!p.swing.hit && !p.pendingServe && p.swing.t > p.swing.dur * .3) p.swing.t = p.swing.dur * .3; // segura armado até a bola chegar
     if (p.swing.t >= p.swing.dur) p.swing.t = -1;
