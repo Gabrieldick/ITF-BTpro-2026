@@ -37,8 +37,12 @@ const DIFF = {
 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // elenco com nomes que lembram jogadores do circuito; atributos são estimativas do jogo e os nomes podem ser trocados no menu
-const ATTRS = [['forca', 'Força'], ['vel', 'Velocidade'], ['def', 'Defesa'], ['backhand', 'Backhand'], ['curta', 'Curta'], ['lob', 'Lob'], ['smash', 'Smash'], ['saque', 'Saque']];
-const ATTR_W = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob: .11, smash: .15, saque: .12 };
+const ATTRS = [['forca', 'Força'], ['vel', 'Velocidade'], ['def', 'Defesa'], ['backhand', 'Backhand'], ['curta', 'Curta'], ['lob', 'Lob'], ['smash', 'Smash'], ['saque', 'Saque'], ['leitura', 'Noção de jogo']];
+const ATTR_W0 = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob: .11, smash: .15, saque: .12 };
+// noção de jogo (leitura): pesa 8% no overall; quem não tem (jogadores antigos) fica com a média dos outros atributos
+const ATTR_W = Object.assign(Object.fromEntries(Object.entries(ATTR_W0).map(([k, w]) => [k, w * .92])), { leitura: .08 });
+const leituraOf = a => Math.round(Object.keys(ATTR_W0).reduce((t, k) => t + (a[k] ?? 50) * ATTR_W0[k], 0));
+const attrOf = (a, k) => a[k] ?? (k === 'leitura' ? leituraOf(a) : 50);
 // raquetes e equipamentos: alteram os atributos de quem usa (também fora da carreira)
 // raquetes: a soma dos bônus cresce com o preço; as especializadas têm picos maiores com algum ponto fraco
 const RACKET_STATS = {
@@ -128,7 +132,7 @@ const styleOf = p => PLAY_STYLES[p.playStyle] || PLAY_STYLES.completo;
 const racketBonus = key => (RACKET_STATS[key] || RACKET_STATS.proteo).b;
 // atributos com bônus somados (limitados entre 30 e 99)
 function effA(a, ...bonuses) {
-  const out = {}; for (const [k] of ATTRS) { let v = a[k]; bonuses.forEach(b => { if (b && b[k]) v += b[k]; }); out[k] = clamp(Math.round(v), 30, 99); }
+  const out = {}; for (const [k] of ATTRS) { let v = attrOf(a, k); bonuses.forEach(b => { if (b && b[k]) v += b[k]; }); out[k] = clamp(Math.round(v), 30, 99); }
   return out;
 }
 const ROSTER = [
@@ -196,7 +200,7 @@ const ROSTER = [
   { id: 'glimak', jogo: 'tatico', name: 'Irina Glimak', alt: 171, pais: 'RUS', estilo: 'Toque e variação', build: 'esguio', fem: true, a: { forca: 82, vel: 86, def: 87, backhand: 86, curta: 89, lob: 87, smash: 82, saque: 82 }, look: { skin: '#f1cfae', hair: '#2b1d14', cap: '#17324d', glasses: true, tank: true, num: '78', racket: 'ventosul' } },
   { id: 'nikoian', name: 'Liudmila Nikoian', alt: 172, pais: 'RUS', estilo: 'Regularidade e defesa', build: 'compacto', fem: true, a: { forca: 81, vel: 83, def: 87, backhand: 84, curta: 82, lob: 84, smash: 81, saque: 81 }, look: { skin: '#e2b48f', hair: '#3a2614', visor: '#0b7a83', glasses: false, tank: true, num: '79', racket: 'medusa' } },
 ];
-const overall = a => Math.round(Object.keys(ATTR_W).reduce((t, k) => t + a[k] * ATTR_W[k], 0));
+const overall = a => Math.round(Object.keys(ATTR_W).reduce((t, k) => t + attrOf(a, k) * ATTR_W[k], 0));
 let NAMES = {};
 try { NAMES = JSON.parse(localStorage.getItem('pdo-names') || '{}') || {}; } catch (e) { NAMES = {}; }
 $s.CAREER_CHARS = []; // jogador da carreira e personagens fictícios
@@ -218,7 +222,7 @@ const KITS = [
 const ATTR_OF = { smash: 'smash', drive: 'smash', lob: 'lob', curta: 'curta', defesa: 'def' };
 // atributo na escala do jogo: 35 → 0, 65 → .5, 95 → 1 (os atributos vão de ~35 nos amadores a ~95 no topo)
 const attrN = v => clamp((v - 35) / 60, 0, 1.07);
-const attrK = (p, k) => attrN(p.char ? p.char.a[k] : 70);
+const attrK = (p, k) => attrN(p.char ? attrOf(p.char.a, k) : 70);
 // fraqueza: 0 com o atributo em 72 ou mais, 1 em 40 — atributo fraco pesa bem mais que a escala linear
 const weakK = (p, k) => clamp((72 - (p.char ? p.char.a[k] : 70)) / 32, 0, 1);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -236,4 +240,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf };
+export { attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf };

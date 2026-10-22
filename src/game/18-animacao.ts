@@ -3,7 +3,7 @@
 import './17-bola';
 import * as THREE from 'three';
 import { $s } from '../state';
-import { TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shortOf } from './00-base';
+import { TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
@@ -17,6 +17,7 @@ import { LOB_MAX, MTR, timeToReach } from './12-controles';
 import { assignee } from './16-ia';
 // ---------- Animação: cinemática inversa em braços e pernas ----------
 const _id = new V3(), _iu = new V3(), _iw = new V3(), _in = new V3(), _iX = new V3(), _iY = new V3(), _iZ = new V3(), _im = new THREE.Matrix4();
+const RING_ERR = { id: -1, x: 0, z: 0 }; // desvio do anel de queda (noção de jogo baixa)
 function ik2(upper, lower, origin, target, pole, L1, L2) {
   _id.subVectors(target, origin);
   const dist = clamp(_id.length(), .05, L1 + L2 - .002);
@@ -398,9 +399,12 @@ function updateVisuals(dt) {
   const incoming = ball.state === 'live' && S.lastTeam === 1 && S.mode === 'rally';
   const mine = incoming && assignee(0) === human;
   if (incoming && S.settings.assistMark) {
-    const l = predictLanding(); landRing.position.set(l.x, .02, l.z); landRing.visible = true;
-    landRing.material.color.copy(mine ? RING_MINE : RING_MATE);
-    const pulse = 1 + Math.sin(performance.now() / 90) * .12; landRing.scale.set(pulse, pulse, 1);
+    // noção de jogo de quem você controla: no 87 o anel é o normal; abaixo, maior e um pouco fora do lugar (no 40, ~2× o raio)
+    const lv = human.char ? attrOf(human.char.a, 'leitura') : 87, rk = lv >= 87 ? lerp(1, .85, (lv - 87) / 12) : 1 + (87 - lv) / 47;
+    if (RING_ERR.id !== S.hitId) { const an = Math.random() * Math.PI * 2, d = Math.random() * Math.max(0, rk - 1) * .2; RING_ERR.id = S.hitId; RING_ERR.x = Math.cos(an) * d; RING_ERR.z = Math.sin(an) * d; }
+    const l = predictLanding(); landRing.position.set(l.x + RING_ERR.x, .02, l.z + RING_ERR.z); landRing.visible = true;
+    landRing.material.color.copy(mine ? RING_MINE : RING_MATE); landRing.material.opacity = mine ? .8 : 1; // o do parceiro mais forte
+    const pulse = (1 + Math.sin(performance.now() / 90) * .12) * rk * (mine ? 1 : 1.12); landRing.scale.set(pulse, pulse, 1);
   } else landRing.visible = false;
   const fp = S.settings.cam === '1p' && S.mode !== 'replay';
   reachRing.visible = S.mode !== 'menu' && S.mode !== 'replay' && !fp && !S.spectate;

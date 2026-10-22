@@ -242,7 +242,7 @@ const trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute('position', n
 const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: col('#ffb070'), transparent: true, opacity: .4 }));
 trail.frustumCulled = false; scene.add(trail);
 function resetTrail() { for (let i = 0; i < TRAIL_N; i++) { trailPos[i * 3] = ball.pos.x; trailPos[i * 3 + 1] = ball.pos.y; trailPos[i * 3 + 2] = ball.pos.z; } trailGeo.attributes.position.needsUpdate = true; }
-const RING_MINE = col('#ff5a1f'), RING_MATE = col('#3fd17a');
+const RING_MINE = col('#ff5a1f'), RING_MATE = col('#00b84a'); // verde mais forte (aparece melhor na areia)
 const landRing = new THREE.Mesh(new THREE.RingGeometry(.16, .22, 40), new THREE.MeshBasicMaterial({ color: RING_MINE.clone(), transparent: true, opacity: .8, depthWrite: false }));
 landRing.rotation.x = -Math.PI / 2; landRing.visible = false; scene.add(landRing);
 const reachRing = new THREE.Mesh(new THREE.RingGeometry(1.32, 1.35, 72), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .18, depthWrite: false }));
