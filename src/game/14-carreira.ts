@@ -779,8 +779,8 @@ const crTitlesAt = t => Object.entries($s.CR.titles || {}).reduce((n, [k, v]) =>
 const INVEST = {
   marca: { nome: 'Marca pessoal', ic: '🏷️', niveis: [
     { nome: 'Marca própria', preco: 25000, desc: 'Royalties toda semana conforme a sua fama; a fama cai pela metade da velocidade.', req: () => $s.CR.fama >= 30 ? '' : 'Precisa de 30 de fama' },
-    { nome: 'Raquete assinatura', preco: 70000, desc: 'Sua raquete sob medida: melhor que a Zênite e com +2 nos seus três melhores atributos. Royalties em dobro.', req: () => crTitlesAt(5) >= 1 ? '' : 'Precisa de um título de BT100 ou maior' },
-    { nome: 'Linha completa de produtos', preco: 180000, desc: 'Roupas, bolas e acessórios com seu nome: royalties ×3,5 e +2 de fama a cada título.', req: () => $s.CR.fama >= 60 && crTitlesAt(7) >= 1 ? '' : 'Precisa de 60 de fama e um título de BT400 ou maior' },
+    { nome: 'Raquete assinatura', preco: 400000, desc: 'Sua raquete sob medida: melhor que a Zênite e com +2 nos seus três melhores atributos. Royalties em dobro.', req: () => crTitlesAt(5) >= 1 ? '' : 'Precisa de um título de BT100 ou maior' },
+    { nome: 'Linha completa de produtos', preco: 650000, desc: 'Roupas, bolas e acessórios com seu nome: royalties ×3,5 e +2 de fama a cada título.', req: () => $s.CR.fama >= 60 && crTitlesAt(7) >= 1 ? '' : 'Precisa de 60 de fama e um título de BT400 ou maior' },
   ] },
   quadra: { nome: 'Quadra de beach', ic: '🏖️', niveis: [
     { nome: 'Quadra própria', preco: 15000, desc: 'Treinar fica de graça e rende +3 pontos de evolução; aulas rendem 40% mais.', req: () => '' },
