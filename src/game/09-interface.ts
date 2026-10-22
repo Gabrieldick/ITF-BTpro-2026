@@ -185,20 +185,21 @@ function perfHitHook(p) { const d = S.defPend; if (!d) return; S.defPend = null;
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
   if (sw.type === 'defesa' || sw.type === 'lob') S.defPend = { p, team: p.team, key: sw.type === 'lob' ? 'lobIn' : 'defIn' };
-  // defesa: verde soma bem, amarelo soma um pouco, laranja (levantou) tira pouco, vermelho (descontrolou) tira mais
-  if (sw.type === 'defesa' && r.pressure > .25) { if (r.wild) perfAdd(p, -.15, 'defDescontrolou'); else if (r.pop) perfAdd(p, -.1, 'defLevantou'); else perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa'); }
-  // curta: verde soma, amarela (lenta) não tira; descontrolada (vermelho) tira
-  if (sw.type === 'curta' && !r.pop) { if (r.wild) perfAdd(p, -.15, 'curtaRuim'); else if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
-  if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.15, 'smashRuim'); }
+  // defesa: verde soma bem, amarelo soma um pouco; levantou ou descontrolou não tira na hora (se der erro, o erro do ponto já conta)
+  if (sw.type === 'defesa' && r.pressure > .25 && !r.wild && !r.pop) perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa');
+  // curta: verde soma, amarela (lenta) não tira; descontrolada também não tira na hora (só se virar erro)
+  if (sw.type === 'curta' && !r.pop && !r.wild) { if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
+  if (sw.meter && sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); // smash fora do verde que entra não tira nada
   if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
   if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
 }
 // conta da nota (a mesma ao vivo e no fim): jogadas pesam menos que antes e, acima de 8, a nota sobe devagar
 // (10 só numa partida excepcional)
 function rateFrom(wonB) {
-  const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
+  // pontos perdidos por erro do seu parceiro não entram no saldo (só os seus e os do adversário)
+  const pp = S.stats.pts, lost = Math.max(0, pp[1] - (S.perf.mateErr || 0)), bal = (pp[0] - lost) / Math.max(8, pp[0] + lost);
   // começo de jogo pesa menos (divide por pelo menos √20): poucos pontos bons não disparam a nota
-  let r = 6 + S.perf.sum * 1.75 / Math.sqrt(Math.max(20, S.perf.n)) + wonB + bal * (dupla() ? .8 : 1.2);
+  let r = 6 + S.perf.sum * 1.75 / Math.sqrt(Math.max(20, S.perf.n)) + wonB + bal * (dupla() ? .55 : 1.2);
   if (r > 8) r = 8 + (r - 8) * .6;
   return Math.round(clamp(r, 1, 10) * 10) / 10;
 }
@@ -253,6 +254,7 @@ function creditPoint(w, kind) {
   if (kind === 'in') {
     if (at && at.hitId === S.hitId && at.p.team !== w) {
       const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++;
+      if (S.perf && at.p !== human && at.p.team === human.team) S.perf.mateErr = (S.perf.mateErr || 0) + 1;
       perfAdd(at.p, at.hard ? -.2 : -.45, at.hard ? 'erroF' : 'furou');
       if (at.hard && lh && lh.p.team === w) return forcedTxt(creditForcer({ p: lh.p, cat: lh.cat }), at.p);
       return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p);
@@ -262,6 +264,7 @@ function creditPoint(w, kind) {
   }
   if (!lh || lh.p.team === w) return '';
   const st = statOf(lh.p), where = kind === 'net' ? 'na rede' : 'fora';
+  if (S.perf && lh.p !== human && lh.p.team === human.team) S.perf.mateErr = (S.perf.mateErr || 0) + 1; // erro do parceiro: não pesa no seu saldo
   if (lh.cat === 'saque') { st.ue++; perfAdd(lh.p, ERR_V.saque, 'e_saque'); return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
   if (lh.hard) st.fe++; else st.ue++;
   if (lh.hard) perfAdd(lh.p, -.15, 'erroF'); else perfAdd(lh.p, ERR_V[lh.cat] || -.5, 'e_' + lh.cat);
