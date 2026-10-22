@@ -92,10 +92,10 @@ function handPos(p, out) {
   if (!isFinite(out.x) || out.y < .3) out.set(p.pos.x + .05 * f, 1.25, p.pos.z - .35 * f);
   return out;
 }
-function startToss(p, type) {
+function startToss(p, type, tf) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
   // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto
-  p.tossDur = TOSS_T * (.82 + Math.random() * .38);
+  p.tossDur = TOSS_T * (tf || (.82 + Math.random() * .38)); // tf: sorteado pelo convidado no online
   const f = p.team === 0 ? 1 : -1;
   handPos(p, ball.pos);
   const cx = p.pos.x + .22 * f, cz = p.pos.z - .62 * f, cy = 2.62;

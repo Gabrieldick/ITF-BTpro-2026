@@ -235,7 +235,8 @@ function hostData(g, d) {
     if (d[5] > 0) { g.interp = d[5]; c.lag = lagOf(g); }
     const s = c.p.team === 0 ? 1 : -1; c.ix = (+d[1] || 0) * s; c.iz = (+d[2] || 0) * s; c.assistMove = !!d[3]; return; // time de cima: a tela dele é espelhada
   }
-  if (k === 's' && inPlay()) { if (d[2]) pressShot(d[1], c); else releaseShot(d[1], c); }
+  // o convidado sorteia a altura do lançamento e o lugar do verde do smash e manda junto: os dois usam o mesmo valor
+  if (k === 's' && inPlay()) { if (d[2]) { c.tossF = d[3] || 0; c.smC = d[4] || 0; pressShot(d[1], c); } else releaseShot(d[1], c); }
 }
 // quanto o convidado vê a bola atrasada: ida e volta + o atraso de desenho dele (para descontar no tempo do golpe)
 const lagOf = g => Math.min(.3, (g.rtt + (g.interp || INTERP_START)) / 1000);
@@ -462,7 +463,8 @@ async function joinRoom() {
 // sem esperar a volta da rede
 NET.shot = (type, down) => {
   if (!ON.inMatch || ON.myIdx < 0 || !inPlay()) return;
-  send(['s', type, down ? 1 : 0]);
+  if (down) { LS.tossF = .82 + Math.random() * .38; LS.smC = .5 + Math.random() * .42; }
+  send(down ? ['s', type, 1, LS.tossF, LS.smC] : ['s', type, 0]);
   localShot(type, down);
 };
 // previsão local do próprio jogador: golpe, carga e barra que dependem só do tempo
@@ -479,12 +481,13 @@ function localShot(type, down) {
   }
   if (S.mode === 'serve' && S.serverPlayer === human && !LS.meter) { // saque: a barra anda pelo tempo, igual no anfitrião
     LS.meter = { kind: 'serve', type, t0: now, fill: .9 };
-    Object.assign(MTR, { active: true, kind: 'serve', type, t: 0, v: 0, center: TOSS_T / .9, half: MTR.half || .068 }); meterDom(MTR);
+    Object.assign(MTR, { active: true, kind: 'serve', type, t: 0, v: 0, center: TOSS_T * (LS.tossF || 1) / .9, half: MTR.half || .068 }); meterDom(MTR);
     return;
   }
   if (S.mode !== 'rally' || (LS.t >= 0 && LS.t < LS.dur * .8)) return;
   if (type === 'smash' || type === 'lob') {
     LS.charge = type; LS.c0 = now; LS.t = -1;
+    if (type === 'smash') MTR.center = LS.smC || .78; // o verde já começa no lugar certo
     if (type === 'lob') { LS.meter = { kind: 'lob', type, t0: now, fill: .55 }; Object.assign(MTR, { active: true, kind: 'lob', type, t: 0, v: 0, center: -1, half: 0, lmax: 1 + lerp(.25, .1, Math.min(1, attrK(human, 'lob'))) }); meterDom(MTR); }
     return;
   }

@@ -50,7 +50,7 @@ function startMeter(kind, type, c = localCtl()) {
   if (kind === 'smash') {
     // a faixa verde fica parada; a velocidade da barra se ajusta para o verde coincidir com a chegada da bola
     // a faixa verde muda de lugar a cada smash (a velocidade da barra se ajusta para ela coincidir com a chegada da bola)
-    M.fill = .75; M.half = half * .8; M.center = .5 + Math.random() * .42; p.charging = true; M.ideal = smashIdealPoint();
+    M.fill = .75; M.half = half * .8; M.center = c.smC || (.5 + Math.random() * .42); p.charging = true; M.ideal = smashIdealPoint();
   }
   // lob: a barra sobe um pouco mais devagar e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
   else if (kind === 'lob') { M.fill = .55; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))); p.charging = true; }
@@ -200,7 +200,7 @@ function pressShot(type, c) {
   }
   const M = c.m, p = c.p, plan = c.plan;
   if (M.active && M.kind === 'serve' && M.armedTap) { releaseMeter(c); return; }
-  if (S.mode === 'serve' && S.serverPlayer === p) { startToss(p, type); startMeter('serve', type, c); return; }
+  if (S.mode === 'serve' && S.serverPlayer === p) { startToss(p, type, c.tossF); startMeter('serve', type, c); return; }
   if (S.mode === 'rally' || S.mode === 'toss') {
     if (M.active && (M.kind === 'smash' || M.kind === 'lob')) cancelMeter(c);
     const sw = p.swing;
