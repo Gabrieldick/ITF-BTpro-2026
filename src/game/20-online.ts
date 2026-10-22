@@ -228,7 +228,7 @@ function hostData(g, d) {
     msg(g.name + ' entrou na sala.', true);
     fixCpu(); broadcast(); return;
   }
-  if (k === 'seat' || k === 'pick') { act(g.id, d); return; }
+  if (k === 'seat' || k === 'pick' || k === 'cchar' || k === 'racket') { act(g.id, d); return; } // ações da sala vindas de quem entrou
   if (!c) return;
   if (k === 'i') {
     if (d[4] <= g.inSeq) return; g.inSeq = d[4]; // chegou fora de ordem: já há uma mais nova
