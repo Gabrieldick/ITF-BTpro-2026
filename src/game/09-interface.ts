@@ -304,7 +304,7 @@ const DRILLS = {
 };
 // níveis do treino: meta maior, bolas mais rápidas e mais abertas; na carreira, mais recompensa
 const DRILL_LVL = [
-  { nome: 'Fácil', goal: { curtas: 7, defesa: 4, smash: 4 }, spd: 1.15, wide: .8, rew: .6 },
+  { nome: 'Fácil', goal: { curtas: 7, defesa: 4, smash: 4 }, spd: 1.28, wide: .45, rew: .6 },
   { nome: 'Médio', goal: { curtas: 10, defesa: 5, smash: 5 }, spd: 1, wide: 1, rew: 1 },
   { nome: 'Difícil', goal: { curtas: 11, defesa: 7, smash: 7 }, spd: .88, wide: 1.25, rew: 1.7 },
   { nome: 'Profissional', goal: { curtas: 13, defesa: 8, smash: 8 }, spd: .78, wide: 1.45, rew: 2.6 },
@@ -330,14 +330,14 @@ function drillNext() {
   // bolas variadas: cada treino sorteia um tipo de bola (o nome aparece na hora do lançamento)
   let vName = '';
   if (d.kind === 'curtas') {
-    const v = pick(['media', 'media', 'funda', 'baixa', 'alta']);
+    const v = pick([['media', 'media', 'alta'], ['media', 'media', 'funda', 'baixa', 'alta'], ['media', 'funda', 'baixa', 'baixa', 'alta'], ['funda', 'baixa', 'baixa', 'alta', 'media']][d.lvl ?? 1]);
     if (v === 'funda') hz = clamp(rand(5.6, 6.6), zone[0], zone[1] + .2);
     const T = { media: 1.05, funda: 1.15, baixa: .8, alta: 1.45 }[v] * LV.spd, y1 = v === 'baixa' ? .75 : 1.0;
     ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (y1 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T);
     vName = { media: '', funda: 'BOLA FUNDA', baixa: 'BOLA BAIXA E RÁPIDA', alta: 'BOLA ALTA' }[v];
   }
   if (d.kind === 'defesa') {
-    const v = pick(['perto', 'perto', 'fundo', 'angulado', 'corpo']);
+    const v = pick([['fundo', 'fundo', 'perto'], ['perto', 'perto', 'fundo', 'angulado', 'corpo'], ['perto', 'angulado', 'angulado', 'corpo', 'fundo'], ['perto', 'angulado', 'angulado', 'corpo', 'corpo']][d.lvl ?? 1]);
     if (v === 'angulado') hx = Math.sign(human.pos.x || rand(-1, 1)) * -1 * rand(hw * .7, hw) || hw;
     if (v === 'corpo') hx = clamp(human.pos.x + rand(-.2, .2), -hw, hw);
     hz = clamp(v === 'fundo' ? rand(5.2, 6.6) : hz, 3.4, 6.8);
@@ -347,7 +347,7 @@ function drillNext() {
     vName = { perto: 'SMASH PERTO DA REDE', fundo: 'SMASH DO FUNDO', angulado: 'SMASH ANGULADO', corpo: 'SMASH NO CORPO' }[v];
   }
   if (d.kind === 'smash') {
-    const v = pick(['normal', 'normal', 'curto', 'fundo', 'alto', 'lateral']);
+    const v = pick([['normal', 'normal', 'alto'], ['normal', 'normal', 'curto', 'fundo', 'alto', 'lateral'], ['normal', 'curto', 'fundo', 'alto', 'lateral', 'lateral'], ['curto', 'fundo', 'fundo', 'lateral', 'lateral', 'alto']][d.lvl ?? 1]);
     if (v === 'curto') hz = rand(2.3, 3.0); if (v === 'fundo') hz = rand(4.6, 5.6);
     if (v === 'lateral') hx = Math.sign(-human.pos.x || rand(-1, 1)) * rand(hw * .6, hw);
     const T = { normal: 2.1, curto: 1.7, fundo: 2.3, alto: 2.7, lateral: 2.1 }[v];
