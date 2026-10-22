@@ -79,7 +79,7 @@ function aiAim(p) {
 }
 // ---------- Planejamento (CPU, parceiro e assistência) ----------
 function planIntercept(p, speed, react) {
-  const pos = ball.pos.clone(), vel = ball.vel.clone(); const dt = .02; let t = 0; let lastP = null;
+  const pos = ball.pos.clone(), vel = ball.vel.clone(); const dt = .02; let t = 0; let lastP = null, best = null;
   const sgn = p.team === 0 ? 1 : -1;
   for (let i = 0; i < 260; i++) {
     vel.y -= bG() * dt; pos.addScaledVector(vel, dt); t += dt;
@@ -87,9 +87,13 @@ function planIntercept(p, speed, react) {
     if (pos.z * sgn < .3 || pos.y < .5 - .12 * shortK(p) || pos.y > 2.6 * hScale(p)) continue;
     const d = Math.hypot(pos.x - p.pos.x, pos.z - p.pos.z);
     lastP = { pt: pos.clone(), t, ok: false };
-    if (Math.max(0, d - .9) / speed + react <= t) { lastP.ok = true; return lastP; }
+    if (Math.max(0, d - .9) / speed + react <= t) {
+      // devolução de saque: entre os pontos que dá para alcançar, fica com o mais perto; no resto do jogo, o primeiro
+      if (S.rally !== 1) { lastP.ok = true; return lastP; }
+      const sc = d + Math.max(0, .9 - pos.y) * .8; if (!best || sc < best.sc) best = { pt: pos.clone(), t, ok: true, sc };
+    }
   }
-  return lastP;
+  return best || lastP;
 }
 const humanPlan = { id: -1, plan: null };
 // qual dos dois do time vai na bola
@@ -114,11 +118,6 @@ function assignee(team) {
       if (Math.abs(ball.vel.z) > .5) { const t = (zLine - ball.pos.z) / ball.vel.z; if (t > 0) { const lx = ball.pos.x + ball.vel.x * t, lt = Math.abs((land.z - ball.pos.z) / ball.vel.z); if (t < lt) bx = lx; } }
       if (Math.abs(bx - split) < .3) who = Math.abs(bx - m.pos.x) < Math.abs(bx - h.pos.x) ? m : h;
       else who = Math.sign(bx - split) === Math.sign(m.pos.x - split) ? m : h;
-      // bola cruzada que passa pelo parceiro mas cairia do seu lado: se ele alcança e você está longe dela, ele pega
-      if (who === h) {
-        const pm = planIntercept(m, skillOf(m).speed, 0), ph = planIntercept(h, P_SPEED, 0);
-        if (pm && pm.ok && (!ph || !ph.ok || Math.hypot(ph.pt.x - h.pos.x, ph.pt.z - h.pos.z) > Math.hypot(pm.pt.x - m.pos.x, pm.pt.z - m.pos.z) + 1.4)) who = m;
-      }
     } else {
       // dupla da IA: vai quem está do lado onde a bola chega (na linha da dupla, ou onde cai se cair antes);
       // o outro só assume se o primeiro não alcança e ele sim (antes a curta cruzada ia para quem estava reto)
