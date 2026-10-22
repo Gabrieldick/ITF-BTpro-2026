@@ -647,3 +647,4 @@ body.in-replay #review { display: none; }
 .on-cc span { flex-basis: 100%; opacity: .8; }
 .on-cc .cr-sel { flex: 1; min-width: 160px; }
 .on-file { cursor: pointer; display: inline-flex; align-items: center; }
+.app-ver { margin: 10px 0 0; font-size: 12px; opacity: .55; letter-spacing: .04em; text-align: right; }
