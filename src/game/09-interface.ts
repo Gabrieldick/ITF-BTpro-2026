@@ -561,7 +561,7 @@ const ARENA_PAL = {
 function arenaFor() {
   if (S.careerActive && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();
-    const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
+    const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier|saint-georges/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
     const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
     return Object.assign({ size, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
