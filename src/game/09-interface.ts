@@ -562,14 +562,13 @@ const ARENA_PAL = {
   ARU: { line: '#1f4fb8', trim: '#418fde', sand: '#fffdf8', seat: '#418fde', board: ['#418fde', '#fbe122'] },
   MUN: { line: '#111111', trim: '#e8a317', sand: '#fffaf0', seat: '#17324d', board: ['#111111', '#e8a317'] },
 };
-const hashId0 = s => { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
 function arenaFor() {
   if (S.careerActive && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();
     const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier|saint-georges/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
     const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
-    const indoor = t.tier <= 2 && /\b(arena|point)\b/i.test(t.name || '') && hashId0(t.name) % 2 === 0; // metade dos points/arenas é coberta
+    const indoor = (t.tier <= 2 || t.special === 'estadual') && /\b(arena|point)\b/i.test(t.name || ''); // points e arenas: ambiente fechado
     return Object.assign({ size, indoor, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO' }, ARENA_PAL.BRA);
