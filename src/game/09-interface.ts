@@ -194,8 +194,8 @@ function perfShot(p, sw, r) {
 // (10 só numa partida excepcional)
 function rateFrom(wonB) {
   const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
-  let r = 6 + S.perf.sum * 1.5 / Math.sqrt(Math.max(12, S.perf.n)) + wonB + bal * (dupla() ? .8 : 1.2);
-  if (r > 8) r = 8 + (r - 8) * .45;
+  let r = 6 + S.perf.sum * 1.75 / Math.sqrt(Math.max(12, S.perf.n)) + wonB + bal * (dupla() ? .8 : 1.2);
+  if (r > 8) r = 8 + (r - 8) * .65;
   return Math.round(clamp(r, 1, 10) * 10) / 10;
 }
 function matchRating(won) {
