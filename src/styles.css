@@ -626,3 +626,11 @@ body.in-replay #meter, body.in-replay #tags, body.in-replay #reach, body.in-repl
 .bind-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 .bind-row .ghost.sm { min-width: 92px; font-family: var(--f-num); }
 .bind-row .ghost.sm.wait { border-color: #ffd23f; color: #ffd23f; }
+/* revisão de lance ajustado */
+#review { position: fixed; z-index: 7; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 6px; padding: 8px; border-radius: 12px;
+  background: rgba(10,22,30,.85); box-shadow: 0 6px 20px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; pointer-events: none; }
+#review.show { opacity: 1; transform: none; }
+#review canvas { width: 260px; height: 150px; border-radius: 8px; display: block; }
+#review b { font-family: var(--f-display); font-size: 15px; letter-spacing: .04em; text-align: center; }
+#review b.in { color: #4fd18b; } #review b.out { color: #ff7a5c; }
+body.in-replay #review { display: none; }

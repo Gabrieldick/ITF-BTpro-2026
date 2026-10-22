@@ -3,11 +3,12 @@
 import './16-ia';
 import { $s } from '../state';
 import { C, bG, clamp, rand } from './00-base';
+const BALL_VIS = .055; // raio da bola como ela aparece (07-glb)
 import { S, NET } from './01-estado';
 import { human } from './06-modelos';
 import { ball, puff } from './07-glb';
 import { sndHit, sndSand } from './08-audio';
-import { drillNext, el, placeHeldBall, pointTo, setupPoint, showOver } from './09-interface';
+import { drillNext, el, placeHeldBall, pointTo, setupPoint, showOver, showReview } from './09-interface';
 import { skillOf, startJump, startToss } from './11-mira';
 import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
@@ -44,9 +45,13 @@ function updateBall(dt) {
       const back = ball.vel.y < -.01 ? clamp((C.ballR - ball.pos.y) / -ball.vel.y, 0, .05) : 0;
       ball.pos.x -= ball.vel.x * back; ball.pos.z -= ball.vel.z * back; ball.pos.y = C.ballR;
       const x = ball.pos.x, z = ball.pos.z;
-      // qualquer toque na fita é dentro: a fita tem 5 cm (metade para fora da linha) + o raio da bola
-      const LINE = .025 + C.ballR + .005;
-      const inB = Math.abs(x) <= C.halfW + LINE && Math.abs(z) <= C.halfL + LINE;
+      // qualquer toque na fita é dentro: a fita tem 5 cm (metade para fora da linha) + o raio da bola desenhada (5,5 cm)
+      const LINE = .025 + BALL_VIS;
+      const mx = C.halfW + LINE - Math.abs(x), mz = C.halfL + LINE - Math.abs(z); // folga até deixar de tocar (negativa = fora)
+      const inB = mx >= 0 && mz >= 0;
+      // lance muito ajustado (até 6 cm de um lado ou do outro): telinha de revisão vista de cima
+      const axis = (mx < 0) !== (mz < 0) ? (mx < 0 ? 'x' : 'z') : (Math.abs(mx) < Math.abs(mz) ? 'x' : 'z'), mg = axis === 'x' ? mx : mz;
+      if (Math.abs(mg) < .06 && !S.drill) { const rv = { x, z, axis, inB, mg }; try { showReview(rv); } catch (e) {} if (NET.ev) NET.ev('review', rv); }
       const owner = z > 0 ? 0 : 1;
       sndSand(); puff(x, z, 16, 1); if (NET.ev) NET.ev('sand', x, z);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;

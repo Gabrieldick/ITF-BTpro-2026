@@ -38,6 +38,26 @@ function banner(title, sub, ms, gold) {
 }
 function hideBanner() { clearTimeout(bannerTimer); el.banner.classList.add('hide'); }
 let fbTimer = 0;
+// revisão de lance ajustado: vista de cima da marca da bola na linha, com dentro/fora e a distância
+let reviewT = 0;
+function showReview(r) {
+  let box = document.getElementById('review');
+  if (!box) { box = document.createElement('div'); box.id = 'review'; box.innerHTML = '<canvas width="260" height="150"></canvas><b></b>'; document.body.appendChild(box); }
+  const cv = box.querySelector('canvas'), x = cv.getContext('2d'), W = cv.width, H = cv.height, PX = 900; // 1 m = 900 px (zoom grande)
+  const lineC = r.axis === 'x' ? C.halfW : C.halfL, pos = Math.abs(r.axis === 'x' ? r.x : r.z), along = r.axis === 'x' ? r.z : r.x;
+  x.fillStyle = '#ead8b4'; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(120,90,50,' + (Math.random() * .12) + ')'; x.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+  // a fita fica no meio da tela (vertical); dentro da quadra à esquerda, fora à direita
+  const cx = W / 2, tapeW = .05 * PX;
+  x.fillStyle = '#1f4fb8'; x.fillRect(cx - tapeW / 2, 0, tapeW, H);
+  const bx = cx + (pos - lineC) * PX, by = H / 2, br = .055 * PX;
+  x.beginPath(); x.ellipse(bx, by, br, br * .9, 0, 0, Math.PI * 2); x.fillStyle = 'rgba(90,60,30,.45)'; x.fill();
+  x.strokeStyle = r.inB ? '#4fd18b' : '#e5484d'; x.lineWidth = 3; x.stroke();
+  x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 11px sans-serif'; x.fillText('QUADRA', 8, 16); x.fillText('FORA', W - 40, 16);
+  const cm = Math.abs(r.mg * 100).toFixed(1).replace('.', ',');
+  const t = box.querySelector('b'); t.textContent = 'REVISÃO · ' + (r.inB ? 'DENTRO (tocou a linha · ' + cm + ' cm)' : 'FORA por ' + cm + ' cm'); t.className = r.inB ? 'in' : 'out';
+  box.classList.add('show'); clearTimeout(reviewT); reviewT = setTimeout(() => box.classList.remove('show'), 2600);
+}
 // texto dos golpes (o seu e os da CPU): pode ser completo, discreto ou desligado nas configurações
 function shotFeedback(main, small, kind) {
   const m = S.settings.shotText || 'discreto';
@@ -549,4 +569,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

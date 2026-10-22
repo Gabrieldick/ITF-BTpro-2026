@@ -13,7 +13,7 @@ import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
-import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback } from './09-interface';
+import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview } from './09-interface';
 import { defenseFlash } from './11-mira';
 import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
@@ -338,6 +338,7 @@ NET.ev = (k, a, b) => {
   if (k === 'hit') ON.outq.push(['hit', PL.indexOf(a), b]);
   else if (k === 'sand') ON.outq.push(['sand', r3(a), r3(b)]);
   else if (k === 'spark') ON.outq.push(['spark', r3(a.x), r3(a.y), r3(a.z)]);
+  else if (k === 'review') ON.outq.push(['rev', a.x, a.z, a.axis, a.inB ? 1 : 0, a.mg]);
 };
 NET.onNewMatch = () => { if (NET.role !== 'host') return; ON.inMatch = true; ON.outq.push(['cfg']); };
 NET.onSetupPoint = () => { if (NET.role === 'host') ON.outq.push(['sv', PL.indexOf(S.serverPlayer)]); };
@@ -581,6 +582,7 @@ function guestEvent(e) {
     if (e[2] === 1) { const me = ON.G[e[1]] === human && !S.spectate; S.shake = me ? .25 : .1; if (me) ON.mySmashes++; }
   } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); }
   else if (k === 'spark') sparkle({ x: e[1] * m, y: e[2], z: e[3] * m });
+  else if (k === 'rev') showReview({ x: e[1] * m, z: e[2] * m, axis: e[3], inB: !!e[4], mg: e[5] });
   else if (k === 'fb') shotFeedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);
   else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], pw: e[5] || .2, lmax: e[6] || undefined }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
