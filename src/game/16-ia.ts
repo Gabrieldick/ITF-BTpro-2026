@@ -244,6 +244,7 @@ function updateHuman(dt, c = localCtl()) {
       ball.state = 'live'; S.mode = 'rally';
       const sp = ball.pos.clone();
       const r = doHit(p, ps.type, ps.q, true, ps.mod);
+      if (S.drill) S.drill.lastR = Object.assign({}, r, { serveRes: ps.res });
       if (ps.res === 'perfeito' && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); } // saque perfeito: estrelinhas no contato
       ctlFeedback(c, r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
     } else if (!sw.hit && !p.pendingServe && S.mode === 'rally' && contact) {

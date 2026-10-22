@@ -414,8 +414,8 @@ $('drillBack').addEventListener('click', () => { $('drillPick').hidden = true; i
 // nível do desafio: mostra a meta de cada treino e (na carreira) quanto rende
 const drillLvl = () => { const i = document.querySelector('input[name=drillLvl]:checked'); return i ? +i.value : 1; };
 function drillInfo() {
-  const L = DRILL_LVL[drillLvl()], nm = { curtas: 'Curtas no verde', defesa: 'Defenda os smashes', smash: 'Smash perfeito' };
-  document.querySelectorAll('[data-drill]').forEach(b => { b.textContent = nm[b.dataset.drill] + ' · ' + L.goal[b.dataset.drill] + ' de ' + DRILLS[b.dataset.drill].max; });
+  const L = DRILL_LVL[drillLvl()];
+  document.querySelectorAll('[data-drill]').forEach(b => { b.textContent = DRILLS[b.dataset.drill].nome + ' · ' + L.goal[b.dataset.drill] + ' de ' + DRILLS[b.dataset.drill].max; });
   $('drillInfo').textContent = drillFromCareer ? 'Recompensa na carreira: ×' + String(L.rew).replace('.', ',') + ' (pontos de evolução e potencial ao cumprir a meta).' : 'Mais difícil: meta maior e bolas mais rápidas e abertas.';
 }
 document.querySelectorAll('input[name=drillLvl]').forEach(r => r.addEventListener('change', drillInfo));

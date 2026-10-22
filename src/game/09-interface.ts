@@ -298,45 +298,57 @@ function weatherText() {
 // ---------- treino com desafios ----------
 // curtas: 15 bolas, meta 10 curtas boas (anel verde) · defesa: 10 smashes, meta 5 devolvidos · smash: 10 lobs, meta 5 smashes perfeitos
 const DRILLS = {
-  curtas: { nome: 'Curtas no verde', max: 15, goal: 10, txt: 'curtas boas' },
-  defesa: { nome: 'Defenda os smashes', max: 10, goal: 5, txt: 'defesas' },
-  smash: { nome: 'Smash perfeito', max: 10, goal: 5, txt: 'smashes perfeitos' },
+  curtas: { nome: 'Curtas no verde', max: 15, txt: 'curtas boas', seq: ['curtas'] },
+  defesa: { nome: 'Defenda os smashes', max: 10, txt: 'defesas', seq: ['defesa'] },
+  smash: { nome: 'Smash perfeito', max: 10, txt: 'smashes perfeitos', seq: ['smash'] },
+  saque: { nome: 'Saque no alvo', max: 12, txt: 'saques bons', seq: ['saque'] },
+  // combinados: duas bolas seguidas; a sequência só conta se as duas saírem certas
+  ataque: { nome: 'Ataque: curta e smash', max: 8, txt: 'sequências completas', seq: ['curtas', 'smash'] },
+  defcurta: { nome: 'Defesa e buscar a curta', max: 8, txt: 'sequências completas', seq: ['defesa', 'buscar'] },
+  contra: { nome: 'Defesa e contra-ataque', max: 8, txt: 'sequências completas', seq: ['defesa', 'smash'] },
 };
 // níveis do treino: meta maior, bolas mais rápidas e mais abertas; na carreira, mais recompensa
+// saque: fácil vale qualquer saque dentro; médio, dentro no alvo; difícil, perfeito; profissional, perfeito e no alvo
 const DRILL_LVL = [
-  { nome: 'Fácil', goal: { curtas: 7, defesa: 4, smash: 4 }, spd: 1.28, wide: .45, rew: .6 },
-  { nome: 'Médio', goal: { curtas: 10, defesa: 5, smash: 5 }, spd: 1, wide: 1, rew: 1 },
-  { nome: 'Difícil', goal: { curtas: 11, defesa: 7, smash: 7 }, spd: .88, wide: 1.25, rew: 1.7 },
-  { nome: 'Profissional', goal: { curtas: 13, defesa: 8, smash: 8 }, spd: .78, wide: 1.45, rew: 2.6 },
+  { nome: 'Fácil', goal: { curtas: 7, defesa: 4, smash: 4, saque: 8, ataque: 3, defcurta: 3, contra: 3 }, spd: 1.28, wide: .45, rew: .6 },
+  { nome: 'Médio', goal: { curtas: 10, defesa: 5, smash: 5, saque: 7, ataque: 4, defcurta: 4, contra: 4 }, spd: 1, wide: 1, rew: 1 },
+  { nome: 'Difícil', goal: { curtas: 11, defesa: 7, smash: 7, saque: 7, ataque: 5, defcurta: 5, contra: 5 }, spd: .88, wide: 1.25, rew: 1.7 },
+  { nome: 'Profissional', goal: { curtas: 13, defesa: 8, smash: 8, saque: 7, ataque: 6, defcurta: 6, contra: 6 }, spd: .78, wide: 1.45, rew: 2.6 },
 ];
+const STEP_TXT = { curtas: 'CURTA', defesa: 'DEFESA', smash: 'SMASH', buscar: 'BUSQUE A CURTA', saque: 'SAQUE' };
+const SERVE_TGT = { aberto: 'ALVO: SAQUE ABERTO', meio: 'ALVO: SAQUE NO MEIO', fundo: 'ALVO: SAQUE FUNDO' };
 function startDrill(kind, onEnd, lvl) {
   S.settings.mode = 'simples'; S.settings.format = 'set';
   newMatch();
   const L = DRILL_LVL[lvl === undefined ? 1 : lvl] || DRILL_LVL[1];
-  S.drill = { kind, n: 0, ok: 0, onEnd, lastR: null, lvl: lvl === undefined ? 1 : lvl, goal: L.goal[kind], max: DRILLS[kind].max, L };
+  S.drill = { kind, n: 0, ok: 0, step: 0, onEnd, lastR: null, lvl: lvl === undefined ? 1 : lvl, goal: L.goal[kind], max: DRILLS[kind].max, L };
   drillNext();
 }
 function drillNext() {
   const d = S.drill, D = DRILLS[d.kind];
   if (d.n >= d.max) return drillEnd();
+  const st = D.seq[d.step || 0];
+  if (st === 'saque') return drillServe();
   S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; ball.threat = 0; d.lastR = null;
   human.swing.t = -1; human.charging = false; human.dive = null;
   // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
-  const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[d.kind];
-  if (d.n === 0 || Math.abs(human.pos.x) > C.halfW + .3 || human.pos.z > C.halfL + .3 || human.pos.z < 1) { human.pos.set(0, 0, zone[2]); human.vel.set(0, 0, 0); }
+  const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2], buscar: [1, 2.6, 2] }[st];
+  const z0 = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[D.seq[0]];
+  if (D.seq.length > 1 && !d.step) { human.pos.set(0, 0, z0[2]); human.vel.set(0, 0, 0); } // combinado: cada sequência começa do lugar do 1º golpe
+  else if (d.n === 0 || Math.abs(human.pos.x) > C.halfW + .3 || human.pos.z > C.halfL + .3 || human.pos.z < 1) { human.pos.set(0, 0, zone[2]); human.vel.set(0, 0, 0); }
   const hw = C.halfW - .45, g = 9.8, pick = l => l[Math.floor(Math.random() * l.length)];
   const LV = d.L || DRILL_LVL[1];
   let hx = clamp(human.pos.x + (Math.random() - .5) * 2.2 * LV.wide, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
   // bolas variadas: cada treino sorteia um tipo de bola (o nome aparece na hora do lançamento)
   let vName = '';
-  if (d.kind === 'curtas') {
+  if (st === 'curtas') {
     const v = pick([['media', 'media', 'alta'], ['media', 'media', 'funda', 'baixa', 'alta'], ['media', 'funda', 'baixa', 'baixa', 'alta'], ['funda', 'baixa', 'baixa', 'alta', 'media']][d.lvl ?? 1]);
     if (v === 'funda') hz = clamp(rand(5.6, 6.6), zone[0], zone[1] + .2);
     const T = { media: 1.05, funda: 1.15, baixa: .8, alta: 1.45 }[v] * LV.spd, y1 = v === 'baixa' ? .75 : 1.0;
     ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (y1 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T);
     vName = { media: '', funda: 'BOLA FUNDA', baixa: 'BOLA BAIXA E RÁPIDA', alta: 'BOLA ALTA' }[v];
   }
-  if (d.kind === 'defesa') {
+  if (st === 'defesa') {
     const v = pick([['fundo', 'fundo', 'perto'], ['perto', 'perto', 'fundo', 'angulado', 'corpo'], ['perto', 'angulado', 'angulado', 'corpo', 'fundo'], ['perto', 'angulado', 'angulado', 'corpo', 'corpo']][d.lvl ?? 1]);
     if (v === 'angulado') hx = Math.sign(human.pos.x || rand(-1, 1)) * -1 * rand(hw * .7, hw) || hw;
     if (v === 'corpo') hx = clamp(human.pos.x + rand(-.2, .2), -hw, hw);
@@ -346,7 +358,7 @@ function drillNext() {
     ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); ball.vel.set((hx - ball.pos.x) / T, (.75 - from[1] + .5 * g * gk * T * T) / T, (hz - ball.pos.z) / T); ball.gk = gk; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
     vName = { perto: 'SMASH PERTO DA REDE', fundo: 'SMASH DO FUNDO', angulado: 'SMASH ANGULADO', corpo: 'SMASH NO CORPO' }[v];
   }
-  if (d.kind === 'smash') {
+  if (st === 'smash') {
     const v = pick([['normal', 'normal', 'alto'], ['normal', 'normal', 'curto', 'fundo', 'alto', 'lateral'], ['normal', 'curto', 'fundo', 'alto', 'lateral', 'lateral'], ['curto', 'fundo', 'fundo', 'lateral', 'lateral', 'alto']][d.lvl ?? 1]);
     if (v === 'curto') hz = rand(2.3, 3.0); if (v === 'fundo') hz = rand(4.6, 5.6);
     if (v === 'lateral') hx = Math.sign(-human.pos.x || rand(-1, 1)) * rand(hw * .6, hw);
@@ -354,9 +366,16 @@ function drillNext() {
     ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = v === 'alto' ? 7.5 : 6;
     vName = { normal: '', curto: 'LOB CURTO', fundo: 'LOB NO FUNDO', alto: 'LOB ALTO', lateral: 'LOB NA LATERAL' }[v];
   }
+  if (st === 'buscar') { // curtinha do professor junto da rede: corra e devolva antes de ela cair
+    hz = rand(...[[1.8, 2.6], [1.3, 2.4], [1.1, 2.1], [1, 1.8]][d.lvl ?? 1]);
+    const T = 1.3 * LV.spd;
+    ball.pos.set((Math.random() - .5) * 2, .9, -1.6); ball.vel.set((hx - ball.pos.x) / T, (.35 - .9 + .5 * g * T * T) / T, (hz - ball.pos.z) / T);
+    vName = 'CURTA DO PROFESSOR';
+  }
+  if (D.seq.length > 1) vName = (d.step ? 'AGORA: ' : '') + STEP_TXT[st] + (vName ? ' · ' + vName : '');
   if (vName) feedback('PROFESSOR', vName, null);
   // quem lança é o professor: ele fica atrás do ponto de saída, faz o movimento e a bola só sai na hora do contato (16-ia)
-  const coach = $s.teams[1][0], type = { curtas: 'defesa', defesa: 'smash', smash: 'lob' }[d.kind];
+  const coach = $s.teams[1][0], type = { curtas: 'defesa', defesa: 'smash', smash: 'lob', buscar: 'curta' }[st];
   coach.feed = { pos: ball.pos.clone(), vel: ball.vel.clone(), gk: ball.gk, finisher: ball.finisher, apex: ball.apex };
   coach.pos.set(ball.pos.x + .5 * (coach.lefty ? -1 : 1), 0, ball.pos.z - .35); coach.vel.set(0, 0, 0);
   coach.swing.type = type; coach.swing.dur = .7; coach.swing.t = 0; coach.swing.hit = false;
@@ -364,29 +383,56 @@ function drillNext() {
   S.serverPlayer = coach; ball.state = 'held'; ball.vel.set(0, 0, 0);
   ball.prev = null; resetTrail(); renderBoard();
 }
-function drillResult(w, kind) {
-  const d = S.drill, r = d.lastR; d.n++;
+// treino de saque: você saca e o professor só olha (não devolve); nos níveis com alvo, ele diz onde mirar
+function drillServe() {
+  const d = S.drill;
+  d.tgt = d.lvl === 1 || d.lvl === 3 ? ['aberto', 'meio', 'fundo'][Math.floor(Math.random() * 3)] : null;
+  S.server = 0; S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; S.hitId++; ball.state = 'held'; ball.vel.set(0, 0, 0); ball.gk = 1; ball.finisher = false; d.lastR = null;
+  $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.dive = null; p.feed = null; });
+  MTR.active = false; el.meter.hidden = true;
+  S.serverPlayer = human; human.pos.set((d.n % 2 ? -.7 : .7), 0, 8.6);
+  const coach = $s.teams[1][0]; coach.pos.set(0, 0, -(ZONE3 + .3));
+  placeHeldBall(); resetTrail(); renderBoard();
+  feedback('PROFESSOR', d.tgt ? SERVE_TGT[d.tgt] : d.lvl >= 2 ? 'SAQUE PERFEITO E DENTRO' : 'SAQUE DENTRO', null);
+}
+// onde o saque caiu (lado do professor): aberto = perto da lateral, meio = no centro, fundo = perto da linha de fundo
+const serveOnTgt = (t, x, z) => t === 'aberto' ? Math.abs(x) > C.halfW * .55 : t === 'meio' ? Math.abs(x) < C.halfW * .35 : Math.abs(z) > C.halfL - 2.2;
+// cada golpe do treino: certo ou não, e por quê
+function drillStepOk(st, w, kind, r, d) {
+  if (st === 'saque') {
+    if (w !== 0 || kind !== 'in' || !r) return [false, !r ? 'não sacou' : kind === 'net' ? 'saque na rede' : 'saque fora'];
+    if (d.lvl >= 2 && r.serveRes !== 'perfeito') return [false, 'saque não foi perfeito'];
+    if (d.tgt && !serveOnTgt(d.tgt, ball.pos.x, ball.pos.z)) return [false, 'fora do alvo (' + SERVE_TGT[d.tgt].slice(6).toLowerCase() + ')'];
+    return [true, ''];
+  }
   let ok = false;
   if (w === 0 && kind === 'in' && r) {
-    if (d.kind === 'curtas') ok = r.key === 'curta' && !r.pop && r.grade >= .7;
-    if (d.kind === 'defesa') ok = !r.pop;
-    if (d.kind === 'smash') ok = r.meterRes === 'perfeito'; // smash perfeito que caiu dentro conta (mesmo se pegou a bola mais baixa)
+    if (st === 'curtas') ok = r.key === 'curta' && !r.pop && r.grade >= .7;
+    if (st === 'defesa' || st === 'buscar') ok = !r.pop;
+    // smash perfeito que caiu dentro conta (mesmo se pegou a bola mais baixa); nos combinados fáceis basta o smash entrar
+    if (st === 'smash') ok = r.meterRes === 'perfeito' || (d.kind !== 'smash' && (d.lvl ?? 1) <= 1 && !!r.meterRes && r.meterRes !== 'voleio');
   }
-  if (ok) d.ok++;
-  // por que não contou
+  if (ok) return [true, ''];
   let why = '';
-  if (!ok) {
-    if (!r) why = 'não chegou na bola';
-    else if (d.kind === 'smash' && r.meterRes && r.meterRes !== 'perfeito') why = 'barra ' + (r.meterRes === 'voleio' ? 'curta demais (virou voleio)' : r.meterRes.toUpperCase());
-    else if (d.kind === 'smash' && !r.meterRes) why = 'use J segurando (barra do smash)';
-    else if (d.kind === 'curtas' && r.key !== 'curta') why = 'não foi curta (use L)';
-    else if (d.kind === 'curtas' && r.grade < .7) why = 'curta LENTA (aperte no sinal verde)';
-    else if (r.pop) why = 'a bola levantou';
-    else why = kind === 'net' ? 'foi na rede' : kind === 'out' ? 'foi fora' : 'não passou';
-  }
+  if (!r) why = 'não chegou na bola';
+  else if (st === 'smash' && r.meterRes && r.meterRes !== 'perfeito') why = 'barra ' + (r.meterRes === 'voleio' ? 'curta demais (virou voleio)' : r.meterRes.toUpperCase());
+  else if (st === 'smash' && !r.meterRes) why = 'use J segurando (barra do smash)';
+  else if (st === 'curtas' && r.key !== 'curta') why = 'não foi curta (use L)';
+  else if (st === 'curtas' && r.grade < .7) why = 'curta LENTA (aperte no sinal verde)';
+  else if (r.pop) why = 'a bola levantou';
+  else why = kind === 'net' ? 'foi na rede' : kind === 'out' ? 'foi fora' : 'não passou';
+  return [false, why];
+}
+function drillResult(w, kind) {
+  const d = S.drill, r = d.lastR, D = DRILLS[d.kind], st = D.seq[d.step || 0];
+  const [ok, why] = drillStepOk(st, w, kind, r, d);
+  // combinado: acertou e ainda tem golpe na sequência → a próxima bola vem logo
+  if (ok && d.step < D.seq.length - 1) { d.step++; S.mode = 'dead'; S.deadT = .45; banner('Boa! Agora: ' + STEP_TXT[D.seq[d.step]].toLowerCase(), '', 0, false); renderBoard(); return; }
+  d.n++; d.step = 0;
+  if (ok) d.ok++;
   sndWhistle(ok);
   S.mode = 'dead'; S.deadT = 1.3;
-  banner(ok ? 'Boa!' : 'Não valeu: ' + why, DRILLS[d.kind].txt + ': ' + d.ok + '/' + d.goal + ' · bola ' + d.n + '/' + d.max, 0, false);
+  banner(ok ? 'Boa!' : 'Não valeu: ' + why, D.txt + ': ' + d.ok + '/' + d.goal + ' · bola ' + d.n + '/' + d.max, 0, false);
   renderBoard();
 }
 function drillEnd() {
