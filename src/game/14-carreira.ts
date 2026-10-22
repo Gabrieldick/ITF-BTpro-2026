@@ -614,15 +614,16 @@ function crMixedAfter(mm, myWon, myScore) {
 function crEnterMixed(opt) {
   const cu = crCallUpMixed(), sp = SPECIAL.selEst;
   if (!cu || !cu.called) { $s.CR.lastMsg = 'Você não foi convocado.'; return false; }
-  const mk = (st, me) => { const p = me ? ['crme', cu.mate] : crSquadPair(st.squad, cu.cat); return { a: p[0], b: p[1], label: ufName(st.uf), pais: 'BRA', uf: st.uf, squad: st.squad, me }; };
-  const teams = Object.values(cu.all).filter(st => st.uf !== cu.myKey).sort((x, y) => y.str - x.str).slice(0, sp.draw - 1).map(st => mk(st, false));
-  teams.push(mk(cu.mine, true));
-  teams.sort((x, y) => (cu.all[y.uf].str - cu.all[x.uf].str));
+  // os 8 estados mais fortes (com o seu) disputam as 4 categorias; você joga a chave da sua, as outras são simuladas
+  const states = Object.values(cu.all).filter(st => st.uf !== cu.myKey).sort((x, y) => y.str - x.str).slice(0, sp.draw - 1).concat([cu.mine]);
+  const mk = (st, me) => { const p = me ? ['crme', cu.mate] : st.squad[cu.cat]; return { a: p[0], b: p[1], label: ufName(st.uf), pais: 'BRA', uf: st.uf, me }; };
+  const teams = states.filter(st => st.uf === cu.myKey || (st.squad[cu.cat] || []).length === 2).map(st => mk(st, st.uf === cu.myKey));
+  teams.sort((x, y) => crTeamOvr(y) - crTeamOvr(x));
   const me = teams.findIndex(t => t.me);
-  $s.CR.tour = { tier: crCatTier(cu.cat), cat: cu.cat, mixed: true, special: 'selEst', mate: cu.mate, name: opt.name + ' · ' + crCatShort(cu.cat), teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+  $s.CR.tour = { states: states.map(st => ({ uf: st.uf, squad: st.squad })), tier: crCatTier(cu.cat), cat: cu.cat, mixed: true, special: 'selEst', mate: cu.mate, name: opt.name + ' · ' + crCatShort(cu.cat), teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [SEED8.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
-  $s.CR.lastMsg = 'Convocado! ' + ufName(cu.myKey) + ' joga o ' + sp.nome + ' com a dupla de cada categoria; você joga o jogo da ' + crCatName(cu.cat) + ' ao lado de ' + nameOf(crChar(cu.mate)) + '.';
+  $s.CR.lastMsg = 'Convocado! ' + ufName(cu.myKey) + ' joga o ' + sp.nome + ' com a dupla de cada categoria; você joga a chave da ' + crCatName(cu.cat) + ' ao lado de ' + nameOf(crChar(cu.mate)) + '. Campeão da categoria soma 4 pontos para o estado, vice 2 e 3º lugar 1.';
   crTourDays(); saveCareer();
   return true;
 }
@@ -635,7 +636,7 @@ function crSpecialOptions(wk) {
     const S2 = SPECIAL[nat];
     if (nat === 'selEst') {
       const cu = crCallUpMixed();
-      if (cu && cu.called) out.push({ special: nat, tier: crCatTier(cu.cat), name: S2.nome, mate: cu.mate, info: 'Você joga o jogo da ' + crCatName(cu.cat) + '.' });
+      if (cu && cu.called) out.push({ special: nat, tier: crCatTier(cu.cat), name: S2.nome, mate: cu.mate, info: 'Você joga a chave da ' + crCatName(cu.cat) + ' (campeão soma 4 pontos para o estado, vice 2, 3º 1).' });
       else if (cu) out.push({ special: nat, tier: S2.tier, name: S2.nome, notCalled: true, info: cu.info });
       return out;
     }
@@ -746,7 +747,7 @@ function crMyMatch() { const t = $s.CR.tour; if (!t || t.done || t.round >= crNR
 function crScore(N, rnd) { const l = Math.floor((rnd || Math.random)() * (N - 1)); return N + '–' + l; }
 function crSimOne(m, isMine) {
   const t = $s.CR.tour, A = t.teams[m.a], B = t.teams[m.b];
-  if (t.mixed && A.squad && B.squad) {
+  if (t.mixed && A.squad && B.squad) { // formato antigo (confronto entre estados), só para torneio já em andamento
     if (isMine) { const mine = A.me ? A : B, opp = A.me ? B : A; const sa = crTeamOvr(mine) + $s.CR.chem * .4 + crMoodBonus() * .5, sb = crTeamOvr(opp); crMixedAfter(m, Math.random() < 1 / (1 + Math.exp(-(sa - sb) / 3)), crScore($s.CR.games)); return; }
     const r = crTieSim(A, B); m.w = r.aWon ? m.a : m.b; m.score = Math.max(r.na, r.nb) + '–' + Math.min(r.na, r.nb); return;
   }
@@ -794,6 +795,37 @@ function crPlaySim() {
   const won = mm.w === $s.CR.tour.me, r = won ? 6.2 : 5.6; $s.CR.tour.lastRating = { r, g: crPotGain(r, $s.CR.tour.tier) }; crRate(r);
   crAfterMyMatch(won);
 }
+// interestadual por categorias: cada categoria dá 4 pontos ao campeão, 2 ao vice e 1 ao 3º; a soma decide o estado campeão
+const SEL_PTS = [4, 2, 1];
+function crPairWin(a, b) { const sa = crTeamOvr({ a: a[0], b: a[1] }), sb = crTeamOvr({ a: b[0], b: b[1] }); return Math.random() < 1 / (1 + Math.exp(-(sa - sb) / 3)); }
+// chave simulada de uma categoria: [campeão, vice, 3º] (o 3º sai do jogo entre os perdedores das semifinais)
+function crSimCatBracket(list) {
+  let rd = list.slice().sort((x, y) => crTeamOvr({ a: y.p[0], b: y.p[1] }) - crTeamOvr({ a: x.p[0], b: x.p[1] }));
+  const sz = rd.length <= 2 ? 2 : rd.length <= 4 ? 4 : 8, seeds = sz === 8 ? SEED8 : sz === 4 ? [[0, 3], [1, 2]] : [[0, 1]];
+  let cur = seeds.map(([i, j]) => [rd[i] || null, rd[j] || null]), semiL = [];
+  while (true) {
+    const win = cur.map(([x, y]) => { if (!x || !y) return x || y; const w = crPairWin(x.p, y.p) ? x : y; if (cur.length === 2) semiL.push(w === x ? y : x); return w; });
+    if (win.length === 1) { const champ = win[0], vice = cur[0][0] === champ ? cur[0][1] : cur[0][0]; const third = semiL.length === 2 ? (crPairWin(semiL[0].p, semiL[1].p) ? semiL[0] : semiL[1]) : semiL[0] || null; return [champ, vice, third].map(x => x && x.uf); }
+    cur = []; for (let i = 0; i < win.length; i += 2) cur.push([win[i], win[i + 1] || null]);
+  }
+}
+function crSelStandings(t, place) {
+  const pts = {}, cats = {};
+  t.states.forEach(st => { pts[st.uf] = 0; cats[st.uf] = [null, null, null, null]; });
+  const give = (k, podium) => podium.forEach((uf, i) => { if (uf && pts[uf] !== undefined) { pts[uf] += SEL_PTS[i]; cats[uf][k] = i + 1; } });
+  for (let k = 0; k < 4; k++) {
+    if (k === t.cat) {
+      // a sua chave: campeão, vice e 3º (disputa entre os perdedores das semifinais, simulada)
+      const fin = t.rounds[t.rounds.length - 1][0], ufOf = i => i >= 0 ? t.teams[i].uf : null;
+      const semis = t.rounds[t.rounds.length - 2] || [], sl = semis.map(m => m.w === m.a ? m.b : m.a).filter(i => i >= 0);
+      const tm = i => t.teams[i], pr = i => [tm(i).a, tm(i).b], third = sl.length === 2 ? (crPairWin(pr(sl[0]), pr(sl[1])) ? sl[0] : sl[1]) : sl.length ? sl[0] : -1;
+      t.third = third;
+      give(k, [ufOf(fin.w), ufOf(fin.w === fin.a ? fin.b : fin.a), third >= 0 ? ufOf(third) : null]);
+    } else give(k, crSimCatBracket(t.states.filter(st => (st.squad[k] || []).length === 2).map(st => ({ uf: st.uf, p: st.squad[k] }))));
+  }
+  const tit = uf => cats[uf].filter(x => x === 1).length;
+  return Object.keys(pts).map(uf => ({ uf, pts: pts[uf], cats: cats[uf] })).sort((x, y) => y.pts - x.pts || tit(y.uf) - tit(x.uf) || (y.cats[3] ? 4 - y.cats[3] : 0) - (x.cats[3] ? 4 - x.cats[3] : 0));
+}
 function crFinishTour() {
   const t = $s.CR.tour, T = crTourT(t), nR = crNRounds(), nation = (t.special && t.special !== 'estadual') || t.singles;
   // fase em que caiu: 0 campeão, 1 vice, 2 semi, 3 quartas, 4 oitavas
@@ -805,6 +837,12 @@ function crFinishTour() {
   $s.CR.money += prize; $s.CR.pe += xp;
   $s.CR.results.push({ w: absWeek(), pts });
   if (!nation) crCatAdd('crme', t.tier, pts, absWeek()); // conta para as categorias das seleções estaduais
+  if (t.mixed && t.states) {
+    t.stand = crSelStandings(t, place);
+    const me = t.stand.findIndex(x => x.uf === t.teams[t.me].uf), top = t.stand[0];
+    t.log.push(ufName(top.uf) + ' é o estado campeão com ' + top.pts + ' pontos' + (me > 0 ? '; ' + ufName(t.teams[t.me].uf) + ' ficou em ' + (me + 1) + 'º com ' + t.stand[me].pts : '') + '.');
+    if (me === 0) { crAddFama(3); $s.CR.honors = $s.CR.honors || []; $s.CR.honors.unshift({ s: $s.CR.season, name: SPECIAL.selEst.nome + ' (por estados)', place: 'Campeão' }); }
+  }
   if (t.special || t.singles) { // estaduais, seleções e simples: honrarias próprias
     if (T.fama) crAddFama(T.fama[place] || 0); else if (place === 0) crAddFama(2);
     $s.CR.honors = $s.CR.honors || []; if (place <= 1) $s.CR.honors.unshift({ s: $s.CR.season, name: T.nome || t.name, place: place === 0 ? 'Campeão' : 'Vice' });
@@ -1006,7 +1044,7 @@ function crPlayMatch() {
   const proFinal = crIsFinal() && crTourT(t).pro; // finais de torneios profissionais: 2 sets (de 4 ou 6 games, conforme a sua configuração) + super tie-break
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
-  S.settings.pick = { me: 'crme', mate: t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
+  S.settings.pick = { me: 'crme', mate: t.teams[t.me].b || t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
   S.careerStars = $s.CR.stars || 3; // dificuldade escolhida (3 = padrão: acompanha o nível do torneio)
   S.careerActive = true; saveCareer(); flushSaves();
   $('career').hidden = true; ac(); newMatch();
@@ -1020,7 +1058,7 @@ function careerMatchEnded(won, rating) {
   if (!mm) return;
   mm.w = won ? $s.CR.tour.me : (mm.a === $s.CR.tour.me ? mm.b : mm.a);
   mm.score = hasSets ? sTxt : g[0] + g[1] ? Math.max(g[0], g[1]) + '–' + Math.min(g[0], g[1]) : 'W.O.';
-  if ($s.CR.tour.mixed) won = crMixedAfter(mm, won, mm.score);
+  if ($s.CR.tour.mixed && !$s.CR.tour.states) won = crMixedAfter(mm, won, mm.score);
   crAfterMyMatch(won);
 }
 // ---------- saves antigos ----------

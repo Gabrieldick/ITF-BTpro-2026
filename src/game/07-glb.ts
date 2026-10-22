@@ -163,7 +163,7 @@ function assignCharacters() {
   const pk = S.settings.pick;
   // partida mista (homens e mulheres em quadra): a mulher joga com ~88% dos atributos (95 → 84), pela diferença física
   const ids = S.settings.mode === 'dupla' ? [pk.me, pk.mate, pk.o1, pk.o2] : [pk.me, pk.o1], fems = ids.map(id => !!charById(id).fem);
-  const mixed = fems.includes(true) && fems.includes(false);
+  const mixed = fems.includes(true) && fems.includes(false) && !S.careerActive; // a carreira nunca é mista
   const rkp = S.rkPick || {}; // online: raquete escolhida por quem joga com cada boneco
   [[human, pk.me, 0, 0, 'me'], [partner, pk.mate, 0, 1, 'mate'], [cpuA, pk.o1, 1, 0, 'o1'], [cpuB, pk.o2, 1, 1, 'o2']].forEach(([p, id, team, idx, slot]) => {
     const c = charById(id);
