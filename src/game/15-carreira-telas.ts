@@ -7,7 +7,7 @@ import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
-import { $, el, feedback, hideBanner, newMatch, startDrill } from './09-interface';
+import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound } from './12-controles';
 import { crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
@@ -391,17 +391,25 @@ document.querySelectorAll('#menu [data-goto]').forEach(b => b.addEventListener('
 $('btnStart').addEventListener('click', startFromMenu);
 // treino com desafios (menu): sem recompensa, só para praticar
 let drillFromCareer = null;
-$('btnDrill').addEventListener('click', () => { drillFromCareer = null; el.menu.hidden = true; $('drillPick').hidden = false; });
+$('btnDrill').addEventListener('click', () => { drillFromCareer = null; el.menu.hidden = true; $('drillPick').hidden = false; drillInfo(); });
 $('drillBack').addEventListener('click', () => { $('drillPick').hidden = true; if (drillFromCareer) openCareer(); else el.menu.hidden = false; });
+// nível do desafio: mostra a meta de cada treino e (na carreira) quanto rende
+const drillLvl = () => { const i = document.querySelector('input[name=drillLvl]:checked'); return i ? +i.value : 1; };
+function drillInfo() {
+  const L = DRILL_LVL[drillLvl()], nm = { curtas: 'Curtas no verde', defesa: 'Defenda os smashes', smash: 'Smash perfeito' };
+  document.querySelectorAll('[data-drill]').forEach(b => { b.textContent = nm[b.dataset.drill] + ' · ' + L.goal[b.dataset.drill] + ' de ' + DRILLS[b.dataset.drill].max; });
+  $('drillInfo').textContent = drillFromCareer ? 'Recompensa na carreira: ×' + String(L.rew).replace('.', ',') + ' (pontos de evolução e potencial ao cumprir a meta).' : 'Mais difícil: meta maior e bolas mais rápidas e abertas.';
+}
+document.querySelectorAll('input[name=drillLvl]').forEach(r => r.addEventListener('change', drillInfo));
 document.querySelectorAll('[data-drill]').forEach(b => b.addEventListener('click', () => {
-  $('drillPick').hidden = true; ac(); readMenu();
+  $('drillPick').hidden = true; ac(); readMenu(); const lvl = drillLvl(), rew = DRILL_LVL[lvl].rew;
   const cr = drillFromCareer; S.careerDrill = !!cr;
   if (cr) { const prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode }; S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.careerActive = false;
-    startDrill(b.dataset.drill, (ok, pass) => { Object.assign(S.settings, prev); const g = crDrillReward(ok, pass); $('stTable').innerHTML += '<p class="cr-note">Carreira: +' + g + ' pontos de evolução' + (pass ? ' e +0,2 de potencial' : '') + '.</p>'; }); }
-  else startDrill(b.dataset.drill, null);
+    startDrill(b.dataset.drill, (ok, pass) => { Object.assign(S.settings, prev); const g = crDrillReward(ok, pass, rew); $('stTable').innerHTML += '<p class="cr-note">Carreira: +' + g + ' pontos de evolução' + (pass ? ' e +' + String(Math.round(.2 * rew * 100) / 100).replace('.', ',') + ' de potencial' : '') + '.</p>'; }, lvl); }
+  else startDrill(b.dataset.drill, null, lvl);
 }));
-$('btnAgain').addEventListener('click', e => { if (S.lastDrill && $('overEyebrow').textContent.startsWith('Treino')) { e.stopImmediatePropagation(); el.over.hidden = true; startDrill(S.lastDrill, null); } }, true);
-function openDrillFromCareer() { drillFromCareer = true; $('career').hidden = true; $('drillPick').hidden = false; }
+$('btnAgain').addEventListener('click', e => { if (S.lastDrill && $('overEyebrow').textContent.startsWith('Treino')) { e.stopImmediatePropagation(); el.over.hidden = true; startDrill(S.lastDrill, null, S.lastDrillLvl); } }, true);
+function openDrillFromCareer() { drillFromCareer = true; $('career').hidden = true; $('drillPick').hidden = false; drillInfo(); }
 $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnPauseCam').addEventListener('click', () => { toggleCam(); setPaused(false); });
 $('btnAsMove').addEventListener('click', () => toggleAssist('assistMove'));

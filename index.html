@@ -317,10 +317,17 @@
   <div class="card" style="width:min(100%,460px)">
     <div><div class="eyebrow">Treino com desafios</div><h2 class="title" style="font-size:40px">TREINO</h2></div>
     <p class="lede">Um lançador manda as bolas. Cumpra a meta para passar no desafio.</p>
+    <fieldset class="seg"><legend>Nível</legend><div class="pills" id="drillLvls">
+      <input type="radio" name="drillLvl" id="dl0" value="0"><label for="dl0">Fácil</label>
+      <input type="radio" name="drillLvl" id="dl1" value="1" checked><label for="dl1">Médio</label>
+      <input type="radio" name="drillLvl" id="dl2" value="2"><label for="dl2">Difícil</label>
+      <input type="radio" name="drillLvl" id="dl3" value="3"><label for="dl3">Profissional</label>
+    </div></fieldset>
+    <p class="cr-note" id="drillInfo"></p>
     <div class="cta-row" style="flex-direction:column;align-items:stretch">
-      <button class="cta" data-drill="curtas">Curtas no verde · 10 de 15</button>
-      <button class="cta" data-drill="defesa">Defenda os smashes · 5 de 10</button>
-      <button class="cta" data-drill="smash">Smash perfeito · 5 de 10</button>
+      <button class="cta" data-drill="curtas">Curtas no verde</button>
+      <button class="cta" data-drill="defesa">Defenda os smashes</button>
+      <button class="cta" data-drill="smash">Smash perfeito</button>
       <button class="ghost" id="drillBack">Voltar</button>
     </div>
   </div>

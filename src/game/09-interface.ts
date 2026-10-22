@@ -87,7 +87,7 @@ function renderBoard() {
   const tn = t => $s.teams[t].map(pn).join('<span class="sep"> / </span>');
   const key = tn(0) + '|' + tn(1);
   if (el.nmKey !== key) { el.nmKey = key; $('nmP').innerHTML = tn(0); $('nmC').innerHTML = tn(1); }
-  const title = S.drill ? DRILLS[S.drill.kind].nome.toUpperCase() + ' · ' + S.drill.ok + '/' + DRILLS[S.drill.kind].goal + ' · BOLA ' + Math.min(S.drill.n + 1, DRILLS[S.drill.kind].max) + '/' + DRILLS[S.drill.kind].max : S.careerActive ? crBoardTitle() : S.champActive ? champBoardTitle() : '';
+  const title = S.drill ? DRILLS[S.drill.kind].nome.toUpperCase() + ' · ' + S.drill.L.nome.toUpperCase() + ' · ' + S.drill.ok + '/' + S.drill.goal + ' · BOLA ' + Math.min(S.drill.n + 1, S.drill.max) + '/' + S.drill.max : S.careerActive ? crBoardTitle() : S.champActive ? champBoardTitle() : '';
   $('sbTitle').textContent = title; $('sbTitle').hidden = !title;
   el.gP.textContent = sc.games[0]; el.gC.textContent = sc.games[1];
   el.pP.textContent = sc.tb ? sc.pts[0] : PT[Math.min(3, sc.pts[0])];
@@ -302,28 +302,37 @@ const DRILLS = {
   defesa: { nome: 'Defenda os smashes', max: 10, goal: 5, txt: 'defesas' },
   smash: { nome: 'Smash perfeito', max: 10, goal: 5, txt: 'smashes perfeitos' },
 };
-function startDrill(kind, onEnd) {
+// níveis do treino: meta maior, bolas mais rápidas e mais abertas; na carreira, mais recompensa
+const DRILL_LVL = [
+  { nome: 'Fácil', goal: { curtas: 7, defesa: 4, smash: 4 }, spd: 1.15, wide: .8, rew: .6 },
+  { nome: 'Médio', goal: { curtas: 10, defesa: 5, smash: 5 }, spd: 1, wide: 1, rew: 1 },
+  { nome: 'Difícil', goal: { curtas: 11, defesa: 7, smash: 7 }, spd: .88, wide: 1.25, rew: 1.7 },
+  { nome: 'Profissional', goal: { curtas: 13, defesa: 8, smash: 8 }, spd: .78, wide: 1.45, rew: 2.6 },
+];
+function startDrill(kind, onEnd, lvl) {
   S.settings.mode = 'simples'; S.settings.format = 'set';
   newMatch();
-  S.drill = { kind, n: 0, ok: 0, onEnd, lastR: null };
+  const L = DRILL_LVL[lvl === undefined ? 1 : lvl] || DRILL_LVL[1];
+  S.drill = { kind, n: 0, ok: 0, onEnd, lastR: null, lvl: lvl === undefined ? 1 : lvl, goal: L.goal[kind], max: DRILLS[kind].max, L };
   drillNext();
 }
 function drillNext() {
   const d = S.drill, D = DRILLS[d.kind];
-  if (d.n >= D.max) return drillEnd();
+  if (d.n >= d.max) return drillEnd();
   S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; ball.threat = 0; d.lastR = null;
   human.swing.t = -1; human.charging = false; human.dive = null;
   // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
   const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[d.kind];
   if (d.n === 0 || Math.abs(human.pos.x) > C.halfW + .3 || human.pos.z > C.halfL + .3 || human.pos.z < 1) { human.pos.set(0, 0, zone[2]); human.vel.set(0, 0, 0); }
   const hw = C.halfW - .45, g = 9.8, pick = l => l[Math.floor(Math.random() * l.length)];
-  let hx = clamp(human.pos.x + (Math.random() - .5) * 2.2, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
+  const LV = d.L || DRILL_LVL[1];
+  let hx = clamp(human.pos.x + (Math.random() - .5) * 2.2 * LV.wide, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
   // bolas variadas: cada treino sorteia um tipo de bola (o nome aparece na hora do lançamento)
   let vName = '';
   if (d.kind === 'curtas') {
     const v = pick(['media', 'media', 'funda', 'baixa', 'alta']);
     if (v === 'funda') hz = clamp(rand(5.6, 6.6), zone[0], zone[1] + .2);
-    const T = { media: 1.05, funda: 1.15, baixa: .8, alta: 1.45 }[v], y1 = v === 'baixa' ? .75 : 1.0;
+    const T = { media: 1.05, funda: 1.15, baixa: .8, alta: 1.45 }[v] * LV.spd, y1 = v === 'baixa' ? .75 : 1.0;
     ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (y1 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T);
     vName = { media: '', funda: 'BOLA FUNDA', baixa: 'BOLA BAIXA E RÁPIDA', alta: 'BOLA ALTA' }[v];
   }
@@ -333,7 +342,7 @@ function drillNext() {
     if (v === 'corpo') hx = clamp(human.pos.x + rand(-.2, .2), -hw, hw);
     hz = clamp(v === 'fundo' ? rand(5.2, 6.6) : hz, 3.4, 6.8);
     const from = v === 'fundo' ? [-4.6, 2.5, .78, 1.15] : [-1.6, 2.6, .55, 1.35]; // z de quem bate, altura, tempo, gravidade
-    const T = from[2], gk = from[3];
+    const T = from[2] * LV.spd, gk = from[3];
     ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); ball.vel.set((hx - ball.pos.x) / T, (.75 - from[1] + .5 * g * gk * T * T) / T, (hz - ball.pos.z) / T); ball.gk = gk; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
     vName = { perto: 'SMASH PERTO DA REDE', fundo: 'SMASH DO FUNDO', angulado: 'SMASH ANGULADO', corpo: 'SMASH NO CORPO' }[v];
   }
@@ -377,18 +386,18 @@ function drillResult(w, kind) {
   }
   sndWhistle(ok);
   S.mode = 'dead'; S.deadT = 1.3;
-  banner(ok ? 'Boa!' : 'Não valeu: ' + why, DRILLS[d.kind].txt + ': ' + d.ok + '/' + DRILLS[d.kind].goal + ' · bola ' + d.n + '/' + DRILLS[d.kind].max, 0, false);
+  banner(ok ? 'Boa!' : 'Não valeu: ' + why, DRILLS[d.kind].txt + ': ' + d.ok + '/' + d.goal + ' · bola ' + d.n + '/' + d.max, 0, false);
   renderBoard();
 }
 function drillEnd() {
   const d = S.drill, D = DRILLS[d.kind]; S.drill = null;
   S.mode = 'over'; hideBanner();
-  const pass = d.ok >= D.goal;
+  const pass = d.ok >= d.goal;
   $('overEyebrow').textContent = 'Treino · ' + D.nome; $('overTitle').textContent = pass ? 'DESAFIO CUMPRIDO' : 'QUASE LÁ';
-  $('overScore').textContent = d.ok + '/' + D.goal; $('stTable').innerHTML = '<p class="cr-note">' + d.ok + ' ' + D.txt + ' em ' + D.max + ' bolas.</p>';
+  $('overScore').textContent = d.ok + '/' + d.goal; $('stTable').innerHTML = '<p class="cr-note">' + d.ok + ' ' + D.txt + ' em ' + d.max + ' bolas · nível ' + d.L.nome.toLowerCase() + '.</p>';
   $('btnOverChamp').hidden = true; $('btnOverCareer').hidden = !d.onEnd; $('btnAgain').hidden = !!d.onEnd;
   if (d.onEnd) d.onEnd(d.ok, pass);
-  S.lastDrill = d.kind;
+  S.lastDrill = d.kind; S.lastDrillLvl = d.lvl;
   el.over.hidden = false;
 }
 function pointTo(w, reason, kind) {
@@ -587,4 +596,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

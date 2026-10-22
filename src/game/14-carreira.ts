@@ -890,10 +890,11 @@ function crInjuryRoll(mult) {
 const fmt1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
 function crWlog(d, txt) { $s.CR.wlog = $s.CR.wlog || {}; $s.CR.wlog[d] = txt; }
 // recompensa do treino na quadra com desafio (conta como o dia); cumprir a meta também dá um pouco de potencial
-function crDrillReward(ok, pass) {
-  const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul();
+function crDrillReward(ok, pass, rew) {
+  rew = rew || 1; // nível do desafio: mais difícil, mais recompensa
+  const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew;
   $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
-  const pg = pass ? Math.min(.2, $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
+  const pg = pass ? Math.min(.2 * rew, $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
   crWlog($s.CR.day, 'Quadra');
   crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
   return fmt1(g);
