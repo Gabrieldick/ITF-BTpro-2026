@@ -56,7 +56,7 @@ function showReview(r) {
   x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 11px sans-serif'; x.fillText('QUADRA', 8, 16); x.fillText('FORA', W - 40, 16);
   const cm = Math.abs(r.mg * 100).toFixed(1).replace('.', ',');
   const t = box.querySelector('b'); t.textContent = 'REVISÃO · ' + (r.inB ? 'DENTRO (tocou a linha · ' + cm + ' cm)' : 'FORA por ' + cm + ' cm'); t.className = r.inB ? 'in' : 'out';
-  box.classList.add('show'); clearTimeout(reviewT); reviewT = setTimeout(() => box.classList.remove('show'), 2600);
+  box.classList.add('show'); clearTimeout(reviewT); reviewT = setTimeout(() => box.classList.remove('show'), 5500);
 }
 // texto dos golpes (o seu e os da CPU): pode ser completo, discreto ou desligado nas configurações
 function shotFeedback(main, small, kind) {
