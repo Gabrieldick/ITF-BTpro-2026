@@ -7,9 +7,9 @@ import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
-import { ball } from './07-glb';
+import { ball, BALL_STYLES, setBallStyle } from './07-glb';
 import { ac, surf } from './08-audio';
-import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback } from './09-interface';
+import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback, COURTS } from './09-interface';
 import { startJump, startToss } from './11-mira';
 import { adjustFov, rkInfo, startFromMenu, syncAssistButtons, toggleAssist } from './15-carreira-telas';
 import { humanPlan, playStyleOf } from './16-ia';
@@ -286,12 +286,22 @@ addEventListener('keyup', e => { const k = bindKey(e.key.toLowerCase()); keys[k]
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPlay() && !NET.role) setPaused(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay() && !NET.role) setPaused(true); });
 const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
+// modelos de quadra (partida rápida/online) e de bolinha (todos os modos)
+function fillLooks() {
+  const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + v.nome + '</option>').join('');
+  const cs = $('courtSel'); if (cs) cs.innerHTML = opt(COURTS, S.settings.court || 'praia');
+  ['ballSel', 'ballSel2'].forEach(id => { const e = $(id); if (e) e.innerHTML = opt(BALL_STYLES, S.settings.ballStyle || 'laranja'); });
+}
+['ballSel', 'ballSel2'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', () => { S.settings.ballStyle = e.value; saveSettings(); setBallStyle(e.value); fillLooks(); }); });
+{ const cs = document.getElementById('courtSel'); if (cs) cs.addEventListener('change', () => { S.settings.court = cs.value; saveSettings(); }); }
 // tela de teclas: clicar numa ação e apertar a nova tecla (se já for de outra ação, as duas trocam)
 const BINDCAP = { on: null };
 function renderBinds() {
   const box = document.getElementById('bindList'); if (!box) return;
   const b = S.settings.binds || {};
-  box.innerHTML = BIND_ACTIONS.map(([id, nm, def]) => '<div class="bind-row"><span>' + nm + '</span><button type="button" class="ghost sm' + (BINDCAP.on === id ? ' wait' : '') + '" data-bind="' + id + '">' + (BINDCAP.on === id ? 'aperte uma tecla…' : keyName(b[id] || def)) + '</button></div>').join('');
+  const row = ([id, nm, def]) => '<div class="bind-row"><span>' + nm + '</span><button type="button" class="kcap' + (BINDCAP.on === id ? ' wait' : '') + ((b[id] && b[id] !== def) ? ' changed' : '') + '" data-bind="' + id + '">' + (BINDCAP.on === id ? 'aperte uma tecla…' : keyName(b[id] || def)) + '</button></div>';
+  const grp = (t, ids) => '<div class="bind-grp"><p class="section-label">' + t + '</p>' + BIND_ACTIONS.filter(a => ids.includes(a[0])).map(row).join('') + '</div>';
+  box.innerHTML = grp('Movimento e mira', ['up', 'down', 'left', 'right']) + grp('Golpes', ['smash', 'lob', 'curta', 'defesa']) + grp('Outros', ['cam', 'pause', 'sound', 'aim']);
   box.querySelectorAll('[data-bind]').forEach(x => x.addEventListener('click', () => { BINDCAP.on = x.dataset.bind; renderBinds(); }));
 }
 addEventListener('keydown', e => {
@@ -371,13 +381,13 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
-  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal';
+  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.court = $('courtSel').value || 'praia'; S.settings.ballStyle = $('ballSel').value || 'laranja'; S.settings.tactic = $('tacticSel').value || 'normal';
   saveSettings();
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
   set('mode', S.settings.mode); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
-  $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'discreto'; $('tacticSel').value = S.settings.tactic || 'normal';
+  $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'discreto'; fillLooks(); $('tacticSel').value = S.settings.tactic || 'normal';
   renderRoster();
 }
 const SLOT_LABEL = { me: 'Você', mate: 'Sua dupla', o1: 'Adversário', o2: 'Adversário 2' };

@@ -7,7 +7,7 @@ import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
 import { applyArena, cheerArena, confetti, linesGroup, setNetHeight } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail } from './07-glb';
+import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail, setBallStyle } from './07-glb';
 import { swingVar } from './04-poses';
 import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
@@ -506,12 +506,25 @@ function arenaFor() {
     return Object.assign({ size, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO' }, ARENA_PAL.BRA);
-  return { size: 0 };
+  // partida rápida e online: modelo de quadra escolhido (no online vale o de quem criou a sala)
+  const ct = COURTS[NET.role === 'guest' ? S.netCourt : S.settings.court] || COURTS.praia;
+  return Object.assign({}, ct.a);
 }
+const COURTS = {
+  praia: { nome: 'Praia (padrão)', a: { size: 0 } },
+  amador: { nome: 'Torneio amador (público e quadras ao lado)', a: Object.assign({ size: 0, amateur: true, text: 'TORNEIO DA PRAIA' }, { line: '#1f4fb8', trim: '#ffd23f', sand: '#ffffff', board: ['#0a7d3c', '#ffd23f'] }) },
+  brasil: { nome: 'Arena Brasil', a: Object.assign({ size: 2, text: 'BEACH TENNIS BRASIL' }, ARENA_PAL.BRA) },
+  italia: { nome: 'Arena Itália', a: Object.assign({ size: 2, text: 'BEACH TENNIS ITALIA' }, ARENA_PAL.ITA) },
+  espanha: { nome: 'Arena Espanha', a: Object.assign({ size: 2, text: 'BEACH TENIS ESPAÑA' }, ARENA_PAL.ESP) },
+  franca: { nome: 'Arena França', a: Object.assign({ size: 2, text: 'BEACH TENNIS FRANCE' }, ARENA_PAL.FRA) },
+  portugal: { nome: 'Arena Portugal', a: Object.assign({ size: 2, text: 'BEACH TÉNIS PORTUGAL' }, ARENA_PAL.POR) },
+  aruba: { nome: 'Arena Aruba', a: Object.assign({ size: 2, text: 'ARUBA BEACH TENNIS' }, ARENA_PAL.ARU) },
+  estadio: { nome: 'Estádio do Mundial', a: Object.assign({ size: 3, text: 'CAMPEONATO MUNDIAL' }, ARENA_PAL.MUN) },
+};
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
   S.drill = null;
-  applyArena(arenaFor());
+  applyArena(arenaFor()); setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
   configureMode();
   { // rede: 1,80 m só no profissional masculino (carreira: BT10 para cima); feminino, misto e amador: 1,70 m
@@ -574,4 +587,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

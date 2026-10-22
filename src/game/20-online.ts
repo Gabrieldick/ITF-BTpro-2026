@@ -14,9 +14,9 @@ import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON } from './14-carreira';
-import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview } from './09-interface';
+import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
 import { defenseFlash } from './11-mira';
-import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu } from './12-controles';
+import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
 import { sideOf } from './18-animacao';
 
@@ -175,7 +175,7 @@ function fixCpu() {
 }
 function lobbyState() {
   return {
-    code: ON.code, kind: ON.room.kind, mode: ON.room.mode, games: S.settings.games, diff: S.settings.diff,
+    code: ON.code, kind: ON.room.kind, mode: ON.room.mode, games: S.settings.games, diff: S.settings.diff, court: S.settings.court || 'praia',
     members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt), cc: m.cc || null, rk: m.rk || '' })),
     seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing,
   };
@@ -313,7 +313,7 @@ function hostPlay() {
 function hostCfg(g) {
   const M = ON.match, names = {}, heights = {};
   M.pickByPl.forEach(id => { if (NAMES[id]) names[id] = NAMES[id]; if (HEIGHTS[id]) heights[id] = HEIGHTS[id]; });
-  return { me: g.plIdx, picks: M.pickByPl, rackets: M.rkByPl || [], humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
+  return { me: g.plIdx, picks: M.pickByPl, rackets: M.rkByPl || [], humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), court: S.settings.court || 'praia', settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
 }
 function meterOf(c) { const m = c && c.m; return m && m.active ? [m.kind, m.type, r3(m.t), r3(m.v), m.center, m.half] : null; }
 function hostState(now) {
@@ -549,7 +549,7 @@ function guestStart(cfg) {
   const me = cfg.me;
   ON.myIdx = me; ON.mirror = me >= 2; ON.G = VIEW[Math.max(0, me)];
   S.spectate = me < 0; document.body.classList.toggle('spectate', S.spectate);
-  Object.assign(S.settings, cfg.settings);
+  Object.assign(S.settings, cfg.settings); S.netCourt = cfg.court || 'praia';
   const pick = {}, rk = {}; ON.G.forEach((p, i) => { pick[SLOT.get(p)] = cfg.picks[i]; rk[SLOT.get(p)] = (cfg.rackets || [])[i] || ''; }); S.settings.pick = pick; S.rkPick = rk;
   const mine = charById(pick.me); S.settings.racket = (mine.look && mine.look.racket) || S.settings.racket;
   // nomes e alturas personalizados do anfitrião (só na memória; voltam ao sair)
@@ -747,6 +747,7 @@ function renderRoom(force) {
   const mine = memberOf(L, me), taken = new Set(L.members.filter(m => m.id !== me).map(m => m.pick));
   const pk = JSON.stringify([mine && mine.pick, [...taken], L.playing, mine && mine.cc && mine.cc.name]);
   fillCcSlots();
+  { const oc = $('onCourt'); if (oc && document.activeElement !== oc) { if (!oc.options.length) oc.innerHTML = Object.entries(COURTS).map(([k, v]) => '<option value="' + k + '">' + esc(v.nome) + '</option>').join(''); oc.value = L.court || 'praia'; oc.disabled = NET.role !== 'host' || !!L.playing; } }
   { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + '</option>').join(''); rs.value = want; } }
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
@@ -816,6 +817,7 @@ $('onCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom()
 $('onCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
 $('onPick').addEventListener('change', e => doAct(['pick', e.target.value]));
 $('onRk').addEventListener('change', e => doAct(['racket', e.target.value]));
+$('onCourt').addEventListener('change', e => { if (NET.role !== 'host') return; S.settings.court = e.target.value; saveSettings(); broadcast(); });
 // personagem da carreira: de um save deste navegador ou de um arquivo .json
 function fillCcSlots() {
   const sel = $('onCcSlot'); if (!sel || document.activeElement === sel) return;

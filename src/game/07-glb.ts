@@ -205,15 +205,34 @@ const fpArm = new THREE.Group(); fpArm.position.set(.24, -.34, -.34); fpArm.rota
 }
 fpArm.visible = false;
 // Bola
-const ballTex = canvasTex(256, 128, (x, w, h) => {
-  const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#ff7a12'); gr.addColorStop(1, '#ff5a00'); // laranja de bola de beach tennis x.fillStyle = gr; x.fillRect(0, 0, w, h);
-  for (let i = 0; i < 1800; i++) { x.fillStyle = `rgba(255,${rand(110, 170) | 0},${rand(20, 70) | 0},${rand(.1, .3)})`; x.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
-  x.strokeStyle = 'rgba(255,236,170,.98)'; x.lineWidth = 6; x.beginPath();
+// modelos de bolinha (escolhidos nas configurações): cores do fundo, dos pontinhos, da costura e do brilho
+const BALL_STYLES = {
+  laranja: { nome: 'Laranja (padrão)', c: ['#ff7a12', '#ff5a00'], sp: [255, 110, 170, 20, 70], seam: 'rgba(255,236,170,.98)', em: '#ff4d00' },
+  amarela: { nome: 'Amarela', c: ['#eef25a', '#d4e02c'], sp: [240, 230, 255, 40, 90], seam: 'rgba(255,255,255,.95)', em: '#a8b400' },
+  limao: { nome: 'Verde-limão', c: ['#b8f04c', '#8ed82c'], sp: [150, 220, 255, 40, 90], seam: 'rgba(255,255,255,.95)', em: '#5aa800' },
+  rosa: { nome: 'Rosa', c: ['#ff86c0', '#ff4f9a'], sp: [255, 120, 190, 150, 210], seam: 'rgba(255,255,255,.95)', em: '#ff2d7a' },
+  azul: { nome: 'Azul', c: ['#46a8ff', '#1f6fe0'], sp: [60, 140, 220, 200, 255], seam: 'rgba(255,214,70,.98)', em: '#1f6fe0' },
+  branca: { nome: 'Branca', c: ['#f6f4ee', '#dedad0'], sp: [200, 190, 220, 170, 200], seam: 'rgba(255,90,31,.95)', em: '#9a958a' },
+  itf: { nome: 'Laranja ITF (costura azul)', c: ['#ff7a12', '#ff5200'], sp: [255, 110, 160, 20, 60], seam: 'rgba(31,79,184,.98)', em: '#ff4d00' },
+};
+function drawBall(x, w, h, st) {
+  const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, st.c[0]); gr.addColorStop(1, st.c[1]);
+  x.fillStyle = gr; x.fillRect(0, 0, w, h);
+  const [r, g0, g1, b0, b1] = st.sp;
+  for (let i = 0; i < 1800; i++) { x.fillStyle = `rgba(${r},${rand(g0, g1) | 0},${rand(b0, b1) | 0},${rand(.1, .3)})`; x.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
+  x.strokeStyle = st.seam; x.lineWidth = 6; x.beginPath();
   for (let i = 0; i <= w; i++) { const y = h / 2 + Math.sin(i / w * Math.PI * 4) * h * .28; i ? x.lineTo(i, y) : x.moveTo(i, y); }
   x.stroke();
-});
+}
+const ballTex = canvasTex(256, 128, (x, w, h) => drawBall(x, w, h, BALL_STYLES.laranja));
 const ball = { pos: new V3(0, 1, 0), vel: new V3(), state: 'held' };
 const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(.055, 24, 16), mat('#ffffff', { map: ballTex, roughness: .8, emissive: col('#ff4d00'), emissiveIntensity: .32 }));
+let ballStyleKey = 'laranja';
+function setBallStyle(k) {
+  const st = BALL_STYLES[k] || BALL_STYLES.laranja; if (ballStyleKey === k && k) return; ballStyleKey = k;
+  const cv = ballTex.image; drawBall(cv.getContext('2d'), cv.width, cv.height, st); ballTex.needsUpdate = true;
+  ballMesh.material.emissive.copy(col(st.em));
+}
 scene.add(ballMesh);
 const ballShadow = new THREE.Mesh(new THREE.PlaneGeometry(.3, .3), new THREE.MeshBasicMaterial({ map: SHADOW_TEX, transparent: true, depthWrite: false }));
 ballShadow.rotation.x = -Math.PI / 2; scene.add(ballShadow);
@@ -290,4 +309,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
