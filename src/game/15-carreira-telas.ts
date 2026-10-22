@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -52,7 +52,7 @@ function crAgendaHTML() {
   const T0 = TIERS[crMaxTier()];
   const acts = '<p class="section-label">Hoje · ' + DAY_FULL[d - 1] + '</p><div class="cr-cards">'
     + '<div class="cr-card"><div class="eyebrow">Treino físico e técnico</div><b>Treinar</b><span>+' + (Math.round((.9 + (crInv('quadra') ? .6 : 0)) * crXpMul() * 10) / 10).toString().replace('.', ',') + ' ponto de evolução · −6 energia</span><span>Custo: ' + money(crInv('quadra') ? 0 : 20 * (crMaxTier() + 1)) + '</span><button class="ghost sm" id="crTrain"' + ($s.CR.injury ? ' disabled' : '') + '>Treinar hoje</button></div>'
-    + '<div class="cr-card"><div class="eyebrow">Treino com desafio</div><b>Treinar na quadra</b><span>Curtas, defesa ou smash: evolução por acerto; cumprindo a meta, +0,2 de potencial · −5 energia</span><button class="ghost sm" id="crDrill"' + ($s.CR.injury ? ' disabled' : '') + '>Escolher desafio</button></div>'
+    + '<div class="cr-card"><div class="eyebrow">Treino com desafio</div><b>Treinar na quadra</b><span>Curtas, defesa ou smash: evolução por acerto; cumprindo a meta, um pouco de potencial · −5 energia</span><button class="ghost sm" id="crDrill"' + ($s.CR.injury ? ' disabled' : '') + '>Escolher desafio</button></div>'
     + '<div class="cr-card"><div class="eyebrow">Renda extra</div><b>Dar aulas</b><span>+' + money(Math.round(crLessonIncome() * .3 / 10) * 10) + ' · −2 energia</span><button class="ghost sm" id="crCoach">Dar aulas hoje</button></div>'
     + '<div class="cr-card"><div class="eyebrow">Recuperação</div><b>Descansar</b><span>+14 de energia' + (crLife('crio') ? ' (+6 da crioterapia)' : '') + '. 3 dias de descanso na semana aceleram a volta de lesão.</span><div class="cta-row"><button class="ghost sm" id="crRest">Descansar hoje</button><button class="ghost sm" id="crRestUntil">' + (reg ? 'Descansar até o torneio' : 'Descansar até o fim da semana') + '</button></div></div></div>';
   const regC = reg ? '<div class="cr-card gold"><div class="eyebrow">Inscrito · ' + (crTourT(reg).pro ? 'sábado e domingo' : 'sábado') + '</div><b>' + esc(reg.name) + '</b><span>' + (crTourT(reg).pro ? 'Sábado: primeiras rodadas. Domingo: semifinal e final (se chegar lá).' : 'Todas as rodadas no sábado.') + '</span></div>' : '';
@@ -182,13 +182,30 @@ function crSponsorHTML() {
 let crRankView = 'geral';
 function crRankingHTML() {
   const uf = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null;
-  const tabs = uf ? '<div class="pills" style="margin-bottom:6px"><button type="button" class="ghost sm' + (crRankView === 'geral' ? ' sel' : '') + '" data-rkview="geral">Mundial</button><button type="button" class="ghost sm' + (crRankView === 'uf' ? ' sel' : '') + '" data-rkview="uf">' + esc(STATES.find(x => x[0] === uf)[1]) + '</button></div>' : '';
+  const tabs = uf ? '<div class="pills" style="margin-bottom:6px"><button type="button" class="ghost sm' + (crRankView === 'geral' ? ' sel' : '') + '" data-rkview="geral">Mundial</button><button type="button" class="ghost sm' + (crRankView === 'uf' ? ' sel' : '') + '" data-rkview="uf">' + esc(STATES.find(x => x[0] === uf)[1]) + '</button><button type="button" class="ghost sm' + (crRankView === 'sel' ? ' sel' : '') + '" data-rkview="sel">Seleção estadual</button></div>' : '';
+  if (crRankView === 'sel' && uf) return tabs + crSelRankHTML(uf);
   if (crRankView === 'uf' && uf) {
     const r = crStateRanking(uf), me = r.findIndex(x => x.id === 'crme');
     const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
     return tabs + '<p class="section-label">Ranking de ' + esc(STATES.find(x => x[0] === uf)[1]) + ' · ' + r.length + ' atletas · você é o ' + (me + 1) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + uf + ' · OVR ' + crCharOvr(c) + ' · ' + (crRanking().findIndex(y => y.id === x.id) + 1) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
   }
   return tabs + crRankingGeral();
+}
+// rankings das categorias do Brasileiro de Seleções Estaduais (C, B, A e Profissional) do seu estado
+let crSelCat = null;
+function crSelRankHTML(uf) {
+  const q = crStateSquad(uf), n = crCatN('crme'), mc = crMinCat('crme');
+  if (crSelCat === null) crSelCat = q.rank.cat ?? Math.max(mc, 0);
+  const k = crSelCat, r = q.cats[k], sq = q.squad[k] || [], me = r.findIndex(x => x.id === 'crme');
+  const pills = '<div class="pills" style="margin-bottom:6px">' + CAT_NAMES.map((nm, i) => '<button type="button" class="ghost sm' + (i === k ? ' sel' : '') + '" data-selcat="' + i + '">' + (i < 3 ? 'Categoria ' : '') + nm + '</button>').join('') + '</div>';
+  const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
+  const status = '<p class="cr-note">Vão ao Brasileiro de Seleções Estaduais os 2 primeiros de cada categoria (quem aparece em duas joga na mais alta). Quem joga 3 torneios numa categoria sai do ranking das de baixo e não pode mais jogar nelas; da A só sai quem acumula 70 pontos no profissional.<br>Seus torneios: C ' + n[0] + ' · B ' + n[1] + ' · A ' + n[2] + ' · Profissional ' + n[3] + ' (' + n[4] + ' pts acumulados). '
+    + (mc ? 'Você não joga mais ' + (mc === 1 ? 'a categoria C' : mc === 2 ? 'as categorias C e B' : 'os amadores') + '.' : 'Você pode jogar todas as categorias.')
+    + (mc === 2 && n[4] < 70 ? ' Faltam ' + (70 - n[4]) + ' pts no profissional para sair da A.' : '') + '</p>';
+  return pills + '<p class="section-label">' + esc(STATES.find(x => x[0] === uf)[1]) + ' · ' + (k < 3 ? 'categoria ' : '') + CAT_NAMES[k] + ' · ' + r.length + ' atletas' + (me >= 0 ? ' · você é o ' + (me + 1) + 'º' : mc > k ? ' · você não está mais nesta categoria' : '') + '</p>'
+    + '<div class="cr-list">' + (show.length ? show.map(x => { const i = r.indexOf(x), c = x.c, pick = sq.includes(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + (pick ? ' <small>· convocado</small>' : '') + '</b><small>OVR ' + x.ovr + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') : '<p class="cr-note">Ninguém nesta categoria.</p>') + '</div>'
+    + (sq.some(id => !r.find(x => x.id === id)) ? '<p class="cr-note">Faltou gente na categoria: completa com ' + sq.filter(id => !r.find(x => x.id === id)).map(id => esc(nameOf(crChar(id)))).join(' e ') + ' (de uma categoria abaixo).</p>' : '')
+    + status;
 }
 function crRankingGeral() {
   const r = crRanking(), me = r.findIndex(x => x.id === 'crme');
@@ -225,7 +242,7 @@ function crTourHTML() {
     msg = (riv ? '<p class="cr-msg">🔥 Clássico! Confronto direto: ' + h.w + '–' + h.l + '. Vencer rende bônus.</p>' : h.w + h.l ? '<p class="cr-note">Confronto direto: ' + h.w + '–' + h.l + '</p>' : '')
       + (t.singles ? '' : '<p class="cr-note">Seu lado na dupla: <select id="crSide" class="cr-sel"><option value="esquerda">Esquerda</option><option value="direita">Direita</option></select></p>')
       + '<p class="cr-note">Tática: <select id="crTactic" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></p>'
-      + (t.mixed ? '<p class="cr-note">Confronto entre estados: um jogo por categoria (top 2 do ranking estadual de cada uma). Vocês jogam o da ' + esc(TIERS[t.cat].curto) + '; os outros são simulados e vence o estado que ganhar mais jogos.</p>' : '')
+      + (t.mixed ? '<p class="cr-note">Confronto entre estados: um jogo por categoria (top 2 do ranking estadual de cada uma). Vocês jogam o da ' + esc(t.cat >= 3 ? 'PROFISSIONAL' : TIERS[t.cat].curto) + '; os outros são simulados e vence o estado que ganhar mais jogos.</p>' : '')
       + '<p class="lede">' + names[t.round] + ': ' + (t.singles ? 'você' : 'vocês') + ' contra <b>' + crTeamName(opp) + '</b> (OVR ' + crTeamOvr(opp) + '): ' + esc(shortOf(crChar(opp.a))) + ' é ' + sty(opp.a) + (opp.b ? ', ' + esc(shortOf(crChar(opp.b))) + ' é ' + sty(opp.b) + '. Sua dupla: OVR ' : '. Você: OVR ') + crTeamOvr(t.teams[t.me]) + '.</p>';
   }
   const dayTxt = '<p class="cr-note"><b>Dia ' + (t.day || 1) + ' · ' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day) + '</b>' + (T.pro && !t.done ? (t.day === 2 ? ' · semifinal e final hoje' : ' · semifinal e final no domingo') : '') + '</p>';
@@ -262,6 +279,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-pact]').forEach(bt => bt.addEventListener('click', () => { crPartnerAct(bt.dataset.pact); renderCareer(); }));
   body.querySelectorAll('[data-goal]').forEach(bt => bt.addEventListener('click', () => { crPickGoal(+bt.dataset.goal); renderCareer(); }));
   body.querySelectorAll('[data-rkview]').forEach(bt => bt.addEventListener('click', () => { crRankView = bt.dataset.rkview; renderCareer(); }));
+  body.querySelectorAll('[data-selcat]').forEach(bt => bt.addEventListener('click', () => { crSelCat = +bt.dataset.selcat; renderCareer(); }));
   body.querySelectorAll('[data-inv]').forEach(bt => bt.addEventListener('click', () => { crInvBuy(bt.dataset.inv); renderCareer(); }));
   body.querySelectorAll('[data-hire]').forEach(bt => bt.addEventListener('click', () => { crHire(bt.dataset.hire); renderCareer(); }));
   body.querySelectorAll('[data-ev]').forEach(bt => bt.addEventListener('click', () => { crResolveEvent(+bt.dataset.ev); renderCareer(); }));
@@ -405,7 +423,7 @@ document.querySelectorAll('[data-drill]').forEach(b => b.addEventListener('click
   $('drillPick').hidden = true; ac(); readMenu(); const lvl = drillLvl(), rew = DRILL_LVL[lvl].rew;
   const cr = drillFromCareer; S.careerDrill = !!cr;
   if (cr) { const prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode }; S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.careerActive = false;
-    startDrill(b.dataset.drill, (ok, pass) => { Object.assign(S.settings, prev); const g = crDrillReward(ok, pass, rew); $('stTable').innerHTML += '<p class="cr-note">Carreira: +' + g + ' pontos de evolução' + (pass ? ' e +' + String(Math.round(.2 * rew * 100) / 100).replace('.', ',') + ' de potencial' : '') + '.</p>'; }, lvl); }
+    startDrill(b.dataset.drill, (ok, pass) => { Object.assign(S.settings, prev); const g = crDrillReward(ok, pass, rew); $('stTable').innerHTML += '<p class="cr-note">Carreira: +' + g + ' pontos de evolução' + (pass ? ' e um pouco de potencial' : '') + '.</p>'; }, lvl); }
   else startDrill(b.dataset.drill, null, lvl);
 }));
 $('btnAgain').addEventListener('click', e => { if (S.lastDrill && $('overEyebrow').textContent.startsWith('Treino')) { e.stopImmediatePropagation(); el.over.hidden = true; startDrill(S.lastDrill, null, S.lastDrillLvl); } }, true);

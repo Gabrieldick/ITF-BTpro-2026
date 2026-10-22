@@ -112,7 +112,7 @@ function doHit(p, type, q, isServe, mod) {
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
     let pOut = pressure * (1 - qq) * .45 * risk * wDef, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef;
     // bola de finalização: mesmo a defesa perfeita às vezes não segura (menos para quem defende muito bem)
-    if (ball.finisher) { const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1); pPop += lerp(.22, .08, dk); pOut += lerp(.08, .03, dk); }
+    if (ball.finisher) { const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1); pPop += lerp(.24, .1, dk); pOut += lerp(.2, .1, dk); } // espirra para fora com frequência
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
     if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk; pPop += .14 * ball.smashPow * dk; }

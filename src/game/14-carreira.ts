@@ -251,6 +251,49 @@ function crRanking() {
 function crStateRanking(uf) { return crRanking().filter(r => { const c = crChar(r.id); return c && c.pais === 'BRA' && crUf(c) === uf; }); }
 const crRank = () => crRanking().findIndex(r => r.id === 'crme') + 1;
 const npcTier = o => { let t = 0; for (let i = 0; i < 9; i++) if (TIERS[i].ovr[0] + 3 <= o) t = i; return t; };
+// ---------- categorias do Brasileiro de Seleções Estaduais: C, B, A e Profissional (BT10 em diante) ----------
+// catN[id] = [torneios na C, na B, na A, no profissional, pontos acumulados no profissional] (a carreira toda)
+// catR[id] = resultados das últimas 52 semanas por categoria ((semana + 1000) * 100000 + categoria * 10000 + pontos;
+// o +1000 mantém positivo o ano simulado antes da semana 1)
+// quem jogou 3 torneios numa categoria sai do ranking das de baixo e não joga mais nelas; da A só sai com 70 pontos no profissional
+const CAT_NAMES = ['C', 'B', 'A', 'Profissional'];
+const catOfTier = t => Math.min(3, t);
+const crCatN = id => (($s.CR.catN || {})[id]) || [0, 0, 0, 0, 0];
+function crMinCat(id) { const n = crCatN(id); return n[4] >= 70 ? 3 : n[2] >= 3 || n[3] >= 3 ? 2 : n[1] >= 3 ? 1 : 0; }
+const crMinTier = id => crMinCat(id); // categoria mínima = nível mínimo de torneio (C=0, B=1, A=2, profissional=3)
+function crCatAdd(id, tier, pts, aw, noR) { // noR: estrangeiro, não entra nos rankings estaduais
+  const N = $s.CR.catN = $s.CR.catN || {}, R = $s.CR.catR = $s.CR.catR || {}, k = catOfTier(tier);
+  const n = N[id] = N[id] || [0, 0, 0, 0, 0]; n[k] = Math.min(99, n[k] + 1); if (k === 3) n[4] = Math.min(9999, n[4] + pts);
+  if (pts > 0 && !noR) { const lim = aw - SEASON_WEEKS; let a = (R[id] || []).filter(x => Math.floor(x / 100000) - 1000 > lim); a.push((aw + 1000) * 100000 + k * 10000 + pts); if (a.length > 12) { a.sort((x, y) => y % 10000 - x % 10000); a.length = 12; } R[id] = a; }
+}
+// pontos de cada categoria (10 melhores das últimas 52 semanas)
+function crCatPts(id) {
+  const out = [0, 0, 0, 0], a = ($s.CR.catR || {})[id]; if (!a) return out;
+  const lim = absWeek() - SEASON_WEEKS, by = [[], [], [], []];
+  a.forEach(x => { if (Math.floor(x / 100000) - 1000 > lim) by[Math.floor(x / 10000) % 10].push(x % 10000); });
+  return by.map(l => bestN(l));
+}
+// categoria em que o atleta joga hoje (o nível dele, nunca abaixo da categoria mínima)
+const crCatLevel = c => Math.max(crMinCat(c.id), c.id === 'crme' ? catOfTier(crMaxTier()) : catOfTier(npcTier(crCharOvr(c))));
+// ranking de uma categoria (só atletas de um estado, se uf): quem ainda pode jogar nela e tem pontos nela ou joga nela hoje
+function crCatRanking(k, uf) {
+  const out = [];
+  crWorld().concat([crMeChar()]).forEach(c => {
+    if (uf && (c.pais !== 'BRA' || crUf(c) !== uf)) return;
+    if (crMinCat(c.id) > k) return;
+    const pts = crCatPts(c.id)[k];
+    if (pts > 0 || crCatLevel(c) === k) out.push({ id: c.id, pts, ovr: crCharOvr(c), c });
+  });
+  return out.sort((x, y) => y.pts - x.pts || y.ovr - x.ovr);
+}
+// saves antigos: monta as contagens e os pontos por categoria a partir dos resultados que já existem
+function crCatSeed() {
+  $s.CR.catN = {}; $s.CR.catR = {};
+  const L = $s.CR.pool.concat(ROSTER);
+  L.forEach(c => { const a = ($s.CR.npcR || {})[c.id]; if (!a) return; const t = npcTier(crCharOvr(c)); a.slice().sort((x, y) => x - y).forEach(x => crCatAdd(c.id, t, x - Math.floor(x / 10000) * 10000, Math.floor(x / 10000), c.pais !== 'BRA')); });
+  ($s.CR.history || []).slice().reverse().forEach(h => { const ti = TIERS.findIndex(T => T.curto === h.tier); if (ti >= 0 && ti < 9) crCatAdd('crme', ti, h.pts || 0, (h.s - 1) * SEASON_WEEKS + h.w); });
+  $s.CR.catV = 1;
+}
 // semana dos outros (semana absoluta aw): cada um joga o torneio do seu nível que existir naquela semana
 // (ou o de baixo) e guarda o resultado; o ranking soma os 10 melhores das últimas 52 semanas
 function crSimWorld(rnd, list, aw, ovrs) {
@@ -260,12 +303,14 @@ function crSimWorld(rnd, list, aw, ovrs) {
   const cal = crSeasonCal(season)[wk] || [], lim = aw - SEASON_WEEKS, R = $s.CR.npcR = $s.CR.npcR || {};
   (list || $s.CR.pool.concat(ROSTER)).forEach(c => {
     const o = ovrs ? ovrs.get(c.id) : crCharOvr(c);
-    let t = npcTier(o); while (t >= 3 && !cal.includes(t)) t--;
+    const mt = crMinTier(c.id);
+    let t = Math.max(npcTier(o), mt); while (t >= 3 && !cal.includes(t)) t--;
     let arr = R[c.id];
-    if (rnd() < (t >= 3 ? .55 : .45)) {
+    if (t >= mt && rnd() < (t >= 3 ? .55 : .45)) {
       const T = TIERS[t], perf = (o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6;
       const idx = perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4, pts = T.pts[Math.min(idx, T.pts.length - 1)];
       if (pts > 0) { arr = arr || []; arr.push(aw * 10000 + pts); }
+      crCatAdd(c.id, t, pts, aw, c.pais !== 'BRA');
     }
     if (arr) {
       arr = arr.filter(x => Math.floor(x / 10000) > lim);
@@ -284,7 +329,7 @@ function crTierUnlocked(i) {
   if (i === 9) return false;
   return i === 0 || ($s.CR.titles[i - 1] || 0) > 0 || crPts() >= TIERS[i].req || $s.CR.maxTier >= i;
 }
-function crMaxTier() { let m = 0; for (let i = 0; i < 9; i++) if (crTierUnlocked(i)) m = i; return m; }
+function crMaxTier() { let m = 0; for (let i = 0; i < 9; i++) if (crTierUnlocked(i)) m = i; return Math.max(m, crMinTier('crme')); } // nunca abaixo da categoria mínima
 // opções de uma semana: os torneios do calendário no seu nível e até 3 abaixo (amadores toda semana; profissionais só nas
 // semanas em que existem). Na semana 51, o Mundial para o top 16
 function crWeekOptions(wk) {
@@ -293,7 +338,7 @@ function crWeekOptions(wk) {
   const aw = ($s.CR.season - 1) * SEASON_WEEKS + wk;
   const rnd = mulberry($s.CR.seed + aw * 97);
   const top = crMaxTier(), opts = [], cal = crSeasonCal($s.CR.season)[wk] || [];
-  const tiers = [top, top - 1, top - 2, top - 3].filter(t => t >= 0 && (t < 3 || cal.includes(t))).slice(0, 3);
+  const tiers = [top, top - 1, top - 2, top - 3].filter(t => t >= crMinTier('crme') && (t < 3 || cal.includes(t))).slice(0, 3);
   if (cal.includes(9) && crRank() <= 16) tiers.unshift(9);
   const seen = new Set();
   tiers.forEach((t, k) => {
@@ -485,7 +530,7 @@ function crTourT(t) {
   if (t.singles) return Object.assign(base, { nome: 'Simples · ' + TIERS[t.tier].nome, draw: 8, prize: TIERS[t.tier].prize.map(v => Math.round(v * .5)), pts: TIERS[t.tier].pts.map(() => 0), xp: TIERS[t.tier].xp.map(v => v + 1) });
   if (!t.special) return base;
   if (t.special === 'estadual') return Object.assign(base, { nome: 'Estadual ' + ufName($s.CR.me.uf || 'SP') + ' · ' + TIERS[t.tier].curto, prize: TIERS[t.tier].prize.map(v => Math.round(v * .7)), pts: TIERS[t.tier].pts.map(v => Math.round(v * .5)), xp: TIERS[t.tier].xp.map(v => v + 1), draw: 8, pro: false });
-  if (t.mixed) { const k = [.12, .18, .25, .4, .55, .7, .85, 1, 1.1][t.cat] || 1; return Object.assign(base, SPECIAL.selEst, { tier: t.tier, diff: TIERS[t.cat].diff, prize: SPECIAL.selEst.prize.map(v => Math.round(v * k / 10) * 10) }); }
+  if (t.mixed) { const k = [.12, .18, .25, .4, .55, .7, .85, 1, 1.1][t.tier] || 1; return Object.assign(base, SPECIAL.selEst, { tier: t.tier, diff: TIERS[t.tier].diff, prize: SPECIAL.selEst.prize.map(v => Math.round(v * k / 10) * 10) }); }
   return Object.assign(base, SPECIAL[t.special]);
 }
 // duplas por grupo (país ou estado): os dois melhores de cada um (você entra no seu grupo)
@@ -506,28 +551,30 @@ function crCallUp(kind) {
   return { teams, mine, called, myRank, myKey };
 }
 // ---------- interestadual misto: cada estado leva o top 2 do ranking estadual de cada categoria ----------
-// (C, B, A, BT10 ... Sand Series). O confronto entre dois estados tem um jogo por categoria; você joga o da sua
-const crCatOf = c => c.id === 'crme' ? Math.min(8, crMaxTier()) : npcTier(crCharOvr(c));
-const crCatName = k => 'categoria ' + (TIERS[k].id === 'SS' ? 'Sand Series' : TIERS[k].id);
-const crPtsOf = id => id === 'crme' ? crPts() : npcPts(id);
+// (C, B, A e Profissional). O confronto entre dois estados tem um jogo por categoria; você joga o da sua
+const crCatName = k => k >= 3 ? 'categoria Profissional' : 'categoria ' + CAT_NAMES[k];
+const crCatShort = k => k >= 3 ? 'PROFISSIONAL' : TIERS[k].curto;
+// nível dos adversários do seu jogo: na Profissional, o seu nível de torneio
+const crCatTier = k => k >= 3 ? clamp(crMaxTier(), 3, 8) : k;
 function crStateSquads() {
-  const by = {};
-  crWorld().concat([crMeChar()]).forEach(c => { const uf = c.pais === 'BRA' ? crUf(c) : null; if (uf) (by[uf] = by[uf] || []).push(c); });
+  const ufs = new Set(); crWorld().forEach(c => { if (c.pais === 'BRA') ufs.add(crUf(c)); }); if ($s.CR.me.pais === 'BRA') ufs.add($s.CR.me.uf || 'SP');
   const out = {};
-  for (const [uf, l] of Object.entries(by)) {
-    const cats = {}; l.forEach(c => { const k = crCatOf(c); (cats[k] = cats[k] || []).push(c); });
-    const pts = new Map(l.map(c => [c.id, crPtsOf(c.id)])), ovr = new Map(l.map(c => [c.id, crCharOvr(c)]));
-    Object.values(cats).forEach(a => a.sort((x, y) => pts.get(y.id) - pts.get(x.id) || ovr.get(y.id) - ovr.get(x.id)));
-    const used = new Set(), squad = {}, rank = {};
-    for (let k = 0; k < 9; k++) { squad[k] = (cats[k] || []).slice(0, 2).map(c => c.id); squad[k].forEach(id => used.add(id)); }
-    // categoria sem dois nomes no estado: completa com quem sobrou nas categorias vizinhas (de baixo primeiro)
-    for (let k = 0; k < 9; k++) for (const d of [-1, 1, -2, 2]) for (const c of cats[k + d] || []) { if (squad[k].length >= 2) break; if (!used.has(c.id)) { used.add(c.id); squad[k].push(c.id); } }
-    const me = l.find(c => c.id === 'crme'); if (me) { const k = crCatOf(me); rank.cat = k; rank.pos = cats[k].findIndex(c => c.id === 'crme') + 1; }
-    const full = Object.values(squad).filter(x => x.length === 2);
-    if (!full.length) continue;
-    out[uf] = { uf, squad, rank, str: full.reduce((t, x) => t + crTeamOvr({ a: x[0], b: x[1] }), 0) };
-  }
+  for (const uf of ufs) { const q = crStateSquad(uf); if (q.str) out[uf] = q; }
   return out;
+}
+// seleção de um estado: rankings das 4 categorias e as duplas convocadas (str 0 = sem nenhuma dupla completa)
+function crStateSquad(uf) {
+  {
+    const cats = [0, 1, 2, 3].map(k => crCatRanking(k, uf));
+    const used = new Set(), squad = {}, rank = {};
+    // de cima para baixo: quem está no ranking de duas categorias joga na mais alta
+    for (let k = 3; k >= 0; k--) { squad[k] = []; for (const x of cats[k]) { if (squad[k].length >= 2) break; if (!used.has(x.id)) { used.add(x.id); squad[k].push(x.id); } } }
+    // categoria sem dois nomes no estado: completa com quem sobrou das categorias de baixo (ninguém desce de categoria)
+    for (let k = 1; k <= 3; k++) for (let d = 1; d <= k && squad[k].length < 2; d++) for (const x of cats[k - d]) { if (squad[k].length >= 2) break; if (!used.has(x.id)) { used.add(x.id); squad[k].push(x.id); } }
+    for (let k = 3; k >= 0; k--) { const p = cats[k].findIndex(x => x.id === 'crme'); if (p >= 0) { rank.cat = k; rank.pos = p + 1; break; } }
+    const full = Object.values(squad).filter(x => x.length === 2);
+    return { uf, squad, rank, cats, str: full.reduce((t, x) => t + crTeamOvr({ a: x[0], b: x[1] }), 0) };
+  }
 }
 // convocação do interestadual: você está numa das duplas do seu estado (na sua categoria ou completando uma vizinha)
 function crCallUpMixed() {
@@ -538,12 +585,12 @@ function crCallUpMixed() {
     info: mine ? 'Você é o ' + (mine.rank.pos || '?') + 'º do ranking estadual da ' + crCatName(mine.rank.cat || 0) + ' (vão os 2 primeiros de cada categoria).' : 'Seu estado não tem seleção formada.' };
 }
 // dupla de um estado numa categoria (ou a mais próxima que ele tiver)
-function crSquadPair(sq, k) { for (const d of [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8, 8]) { const x = sq[k + d]; if (x && x.length === 2) return x; } return null; }
+function crSquadPair(sq, k) { for (const d of [0, -1, 1, -2, 2, -3, 3]) { const x = sq[k + d]; if (x && x.length === 2) return x; } return null; }
 // confronto entre dois estados: um jogo por categoria; quem não tem dupla na categoria perde por W.O.
 // my: resultado do seu jogo (true = seu estado venceu); empate no número de jogos: vale o da categoria mais alta
 function crTieSim(A, B, my) {
   const t = $s.CR.tour, res = [];
-  for (let k = 8; k >= 0; k--) {
+  for (let k = 3; k >= 0; k--) {
     const a = A.squad[k], b = B.squad[k], fa = a && a.length === 2, fb = b && b.length === 2;
     if (!fa && !fb) continue;
     let aw;
@@ -561,7 +608,7 @@ function crMixedAfter(mm, myWon, myScore) {
   const r = crTieSim(A, B, myWon), hi = Math.max(r.na, r.nb), lo = Math.min(r.na, r.nb);
   mm.w = r.aWon ? mm.a : mm.b; mm.score = hi + '–' + lo;
   const tieWon = mm.w === t.me;
-  t.log.push('Seu jogo (' + TIERS[t.cat].curto + '): ' + (myWon ? 'vitória' : 'derrota') + (myScore ? ' ' + myScore : '') + ' · confronto ' + (tieWon ? 'vencido' : 'perdido') + ' ' + hi + '–' + lo);
+  t.log.push('Seu jogo (' + crCatShort(t.cat) + '): ' + (myWon ? 'vitória' : 'derrota') + (myScore ? ' ' + myScore : '') + ' · confronto ' + (tieWon ? 'vencido' : 'perdido') + ' ' + hi + '–' + lo);
   return tieWon;
 }
 function crEnterMixed(opt) {
@@ -572,7 +619,7 @@ function crEnterMixed(opt) {
   teams.push(mk(cu.mine, true));
   teams.sort((x, y) => (cu.all[y.uf].str - cu.all[x.uf].str));
   const me = teams.findIndex(t => t.me);
-  $s.CR.tour = { tier: cu.cat, cat: cu.cat, mixed: true, special: 'selEst', mate: cu.mate, name: opt.name + ' · ' + TIERS[cu.cat].curto, teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+  $s.CR.tour = { tier: crCatTier(cu.cat), cat: cu.cat, mixed: true, special: 'selEst', mate: cu.mate, name: opt.name + ' · ' + crCatShort(cu.cat), teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [SEED8.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
   $s.CR.lastMsg = 'Convocado! ' + ufName(cu.myKey) + ' joga o ' + sp.nome + ' com a dupla de cada categoria; você joga o jogo da ' + crCatName(cu.cat) + ' ao lado de ' + nameOf(crChar(cu.mate)) + '.';
@@ -582,13 +629,13 @@ function crEnterMixed(opt) {
 // calendário dos especiais
 function crSpecialOptions(wk) {
   const w = wk === undefined ? $s.CR.week : wk, out = [], br = $s.CR.me.pais === 'BRA';
-  if (br && (w === 10 || w === 36)) { const band = Math.min(crMaxTier(), 4); const uf = STATE_INFO[$s.CR.me.uf] ? $s.CR.me.uf : 'SP', cs = STATE_INFO[uf].cities.concat(VENUES[uf][1].map(v => v + ' · ' + VENUES[uf][0])); out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
+  if (br && (w === 10 || w === 36)) { const band = Math.max(crMinTier('crme'), Math.min(crMaxTier(), 4)); const uf = STATE_INFO[$s.CR.me.uf] ? $s.CR.me.uf : 'SP', cs = STATE_INFO[uf].cities.concat(VENUES[uf][1].map(v => v + ' · ' + VENUES[uf][0])); out.push({ special: 'estadual', tier: band, uf, name: 'Estadual ' + uf + ' · ' + cs[(absWeek() + band) % cs.length] + ' · ' + TIERS[band].curto }); }
   const nat = w === 22 && br ? 'selEst' : w === 30 ? ($s.CR.season % 2 ? (AMERICAS.includes($s.CR.me.pais) ? 'pan' : null) : 'confed') : w === 42 ? 'mundSel' : null;
   if (nat) {
     const S2 = SPECIAL[nat];
     if (nat === 'selEst') {
       const cu = crCallUpMixed();
-      if (cu && cu.called) out.push({ special: nat, tier: cu.cat, name: S2.nome, mate: cu.mate, info: 'Você joga o jogo da ' + crCatName(cu.cat) + '.' });
+      if (cu && cu.called) out.push({ special: nat, tier: crCatTier(cu.cat), name: S2.nome, mate: cu.mate, info: 'Você joga o jogo da ' + crCatName(cu.cat) + '.' });
       else if (cu) out.push({ special: nat, tier: S2.tier, name: S2.nome, notCalled: true, info: cu.info });
       return out;
     }
@@ -757,6 +804,7 @@ function crFinishTour() {
   const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round(((T.xp[place] || 0) + xpBonus) * crXpMul());
   $s.CR.money += prize; $s.CR.pe += xp;
   $s.CR.results.push({ w: absWeek(), pts });
+  if (!nation) crCatAdd('crme', t.tier, pts, absWeek()); // conta para as categorias das seleções estaduais
   if (t.special || t.singles) { // estaduais, seleções e simples: honrarias próprias
     if (T.fama) crAddFama(T.fama[place] || 0); else if (place === 0) crAddFama(2);
     $s.CR.honors = $s.CR.honors || []; if (place <= 1) $s.CR.honors.unshift({ s: $s.CR.season, name: T.nome || t.name, place: place === 0 ? 'Campeão' : 'Vice' });
@@ -894,7 +942,7 @@ function crDrillReward(ok, pass, rew) {
   rew = rew || 1; // nível do desafio: mais difícil, mais recompensa
   const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew;
   $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
-  const pg = pass ? Math.min(.2 * rew, $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
+  const pg = pass ? Math.min(.07 * rew * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
   crWlog($s.CR.day, 'Quadra');
   crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
   return fmt1(g);
@@ -937,7 +985,9 @@ const crCap = () => Math.min(99, Math.floor($s.CR.potCur ?? $s.CR.pot));
 function crPotGain(rating, tier) {
   if (rating < 5.5) return 0;
   const room = clamp(($s.CR.pot - $s.CR.potCur) / 8, .15, 1);
-  const g = Math.min($s.CR.pot - $s.CR.potCur, (rating - 5.5) * .22 * (.7 + (tier || 0) * .08) * room);
+  // potencial muito acima do seu overall quase não sobe mais (os pontos de evolução precisam alcançar)
+  const ahead = clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1);
+  const g = Math.min($s.CR.pot - $s.CR.potCur, (rating - 5.5) * .07 * (.7 + (tier || 0) * .08) * room * ahead);
   if (g <= 0) return 0;
   $s.CR.potCur += g;
   return g;
@@ -1016,6 +1066,7 @@ function crMigrate() {
   if (nM < POOL_N || $s.CR.v === 2 && !$s.CR.migr2) { $s.CR.migr2 = true; saveCareer(); }
   // profissionais reais novos na lista: ganham um ano de resultados para entrar no ranking com pontos
   if ($s.CR.npcR && $s.CR.rosterN !== ROSTER.length) { const miss = ROSTER.filter(c => !$s.CR.npcR[c.id]); if (miss.length) crSimYear(7717, miss); $s.CR.rosterN = ROSTER.length; }
+  if ($s.CR.catV !== 1 && $s.CR.npcR) { crCatSeed(); saveCareer(); }
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);
@@ -1106,6 +1157,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season) };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek() };
