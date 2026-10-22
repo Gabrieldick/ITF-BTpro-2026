@@ -193,6 +193,11 @@ function doHit(p, type, q, isServe, mod) {
   const lim = C.halfW - (key === 'curta' ? .8 : .35); // curta mira mais para dentro (é toque, não precisa da linha)
   let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim(p) : aiAim(p), -lim, lim);
   if (mod.aimShift) aim = clamp(aim + mod.aimShift, -lim - .45, lim + .45);
+  // smash do fundo cruzado (na diagonal): mais difícil — menos preciso e erra um pouco mais
+  if (!isServe && key === 'smash' && !finisher && !mod.volley) {
+    const farX = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), crossK = clamp((Math.abs(aim - p.pos.x) - 1.5) / 2.5, 0, 1);
+    if (farX * crossK > 0) { spec.noise *= 1 + .5 * farX * crossK; mod.misBoost = (mod.misBoost || 0) + .12 * farX * crossK; }
+  }
   // variação do golpe conforme o contato
   const vr = isServe || pop ? '' : swingVar(type, ball.pos.y, p, aim);
   const vfx = vr && key !== 'drive' ? VAR_FX[type + '_' + vr] : null;
