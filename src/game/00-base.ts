@@ -200,6 +200,35 @@ const ROSTER = [
   { id: 'glimak', jogo: 'tatico', name: 'Irina Glimak', alt: 171, pais: 'RUS', estilo: 'Toque e variação', build: 'esguio', fem: true, a: { forca: 82, vel: 86, def: 87, backhand: 86, curta: 89, lob: 87, smash: 82, saque: 82 }, look: { skin: '#f1cfae', hair: '#2b1d14', cap: '#17324d', glasses: true, tank: true, num: '78', racket: 'ventosul' } },
   { id: 'nikoian', name: 'Liudmila Nikoian', alt: 172, pais: 'RUS', estilo: 'Regularidade e defesa', build: 'compacto', fem: true, a: { forca: 81, vel: 83, def: 87, backhand: 84, curta: 82, lob: 84, smash: 81, saque: 81 }, look: { skin: '#e2b48f', hair: '#3a2614', visor: '#0b7a83', glasses: false, tank: true, num: '79', racket: 'medusa' } },
 ];
+// mais jogadores para a partida rápida, do nível amador ao circuito (overall ~52 a 80); fictícios
+{
+  const SK = ['#f1cfae', '#e2b48f', '#d2a07a', '#c68a5e', '#a8704a', '#8d5a3b', '#6b4229'], HR = ['#120c08', '#2b1d14', '#3a2615', '#5a3a1e', '#6a3f1d', '#a8743a', '#c99a5a'];
+  const ST = { ataque: { forca: 5, smash: 6, saque: 4, def: -4, curta: -4, lob: -3, backhand: -2 }, defesa: { def: 6, vel: 5, backhand: 3, smash: -4, forca: -4, saque: -3 }, toque: { curta: 6, lob: 6, backhand: 3, forca: -5, smash: -4, saque: -2, vel: -1 }, completo: {} };
+  const EST = { ataque: 'Atacante: smash e saque fortes', defesa: 'Defensor: alcança tudo no fundo', toque: 'Tático: curtas e lobs', completo: 'Completo, sem pontos fracos' };
+  const JOGO = { ataque: 'agressivo', defesa: 'paredao', toque: 'tatico', completo: 'completo' };
+  const Q = [ // nome, país, mulher, overall, estilo, canhoto
+    ['Rafael Teixeira', 'BRA', 0, 80, 'ataque', 0], ['Giulia Marchetti', 'ITA', 1, 80, 'completo', 0], ['Bruno Salgado', 'BRA', 0, 78, 'defesa', 1], ['Larissa Fontes', 'BRA', 1, 78, 'toque', 0],
+    ['Pablo Herrera', 'ESP', 0, 76, 'completo', 0], ['Chloé Martin', 'FRA', 1, 76, 'ataque', 1], ['Thiago Moura', 'BRA', 0, 75, 'toque', 0], ['Inês Carvalho', 'POR', 1, 75, 'defesa', 0],
+    ['Matteo Ferri', 'ITA', 0, 74, 'ataque', 0], ['Camila Duarte', 'BRA', 1, 73, 'completo', 0], ['Diego Paredes', 'ARG', 0, 72, 'defesa', 0], ['Valentina Rossi', 'ITA', 1, 72, 'toque', 1],
+    ['Lucas Bittencourt', 'BRA', 0, 71, 'completo', 1], ['Manon Girard', 'FRA', 1, 70, 'ataque', 0], ['Hugo Navas', 'ESP', 0, 69, 'toque', 0], ['Beatriz Lacerda', 'BRA', 1, 69, 'defesa', 0],
+    ['Enzo Batista', 'BRA', 0, 68, 'ataque', 0], ['Martina Gallo', 'ITA', 1, 67, 'completo', 0], ['Tiago Neves', 'POR', 0, 66, 'defesa', 1], ['Luana Prado', 'BRA', 1, 66, 'ataque', 0],
+    ['Felipe Rangel', 'BRA', 0, 65, 'completo', 0], ['Sofía Medina', 'ARG', 1, 64, 'toque', 0], ['Antoine Roux', 'FRA', 0, 63, 'completo', 0], ['Natália Siqueira', 'BRA', 1, 63, 'completo', 1],
+    ['Caio Almeida', 'BRA', 0, 62, 'toque', 0], ['Lucía Ortega', 'ESP', 1, 61, 'defesa', 0], ['Igor Vasconcelos', 'BRA', 0, 60, 'ataque', 1], ['Mariana Couto', 'BRA', 1, 60, 'completo', 0],
+    ['Marco Bellini', 'ITA', 0, 58, 'defesa', 0], ['Bianca Moraes', 'BRA', 1, 58, 'toque', 0], ['Renan Pires', 'BRA', 0, 57, 'completo', 0], ['Alessia Conti', 'ITA', 1, 56, 'ataque', 0],
+    ['Davi Monteiro', 'BRA', 0, 55, 'completo', 0], ['Paula Ribas', 'BRA', 1, 54, 'defesa', 1], ['Otávio Lins', 'BRA', 0, 53, 'toque', 0], ['Helena Farias', 'BRA', 1, 52, 'completo', 0],
+  ];
+  const W0 = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob: .11, smash: .15, saque: .12 };
+  Q.forEach(([name, pais, fem, ovr, st, lefty], i) => {
+    const d = ST[st], a = {}; let h = 7; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const r = () => { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
+    for (const k in W0) a[k] = ovr + (d[k] || 0) + Math.round((r() - .5) * 4);
+    const cur = Object.keys(W0).reduce((t, k) => t + a[k] * W0[k], 0); for (const k in W0) a[k] = Math.max(30, Math.min(99, Math.round(a[k] + ovr - cur)));
+    a.leitura = Math.max(30, Math.min(99, ovr + Math.round((r() - .5) * 6)));
+    const look = { skin: SK[Math.floor(r() * SK.length)], hair: HR[Math.floor(r() * HR.length)], glasses: r() < .4, band: r() < .5, num: String(10 + Math.floor(r() * 89)), racket: ovr >= 76 ? 'supercarbon' : ovr >= 70 ? 'tufao' : ovr >= 64 ? 'proteo' : ovr >= 58 ? 'mare' : 'fibra' };
+    if (r() < .35) look.cap = '#fbf6ea'; else if (r() < .5) look.visor = '#17324d';
+    ROSTER.push({ id: 'q' + i, jogo: JOGO[st], name, alt: fem ? 160 + Math.round(r() * 18) : 174 + Math.round(r() * 20), pais, estilo: EST[st], build: ['atletico', 'esguio', 'compacto', 'forte'][Math.floor(r() * 4)], fem: !!fem, canhoto: !!lefty || undefined, a, look, extra: true });
+  });
+}
 const overall = a => Math.round(Object.keys(ATTR_W).reduce((t, k) => t + attrOf(a, k) * ATTR_W[k], 0));
 let NAMES = {};
 try { NAMES = JSON.parse(localStorage.getItem('pdo-names') || '{}') || {}; } catch (e) { NAMES = {}; }
