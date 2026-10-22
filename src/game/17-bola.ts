@@ -40,9 +40,13 @@ function updateBall(dt) {
       }
     }
     if (ball.pos.y <= C.ballR) {
-      ball.pos.y = C.ballR;
+      // ponto exato do toque na areia (o passo da simulação pode ter passado um pouco dele numa bola rápida)
+      const back = ball.vel.y < -.01 ? clamp((C.ballR - ball.pos.y) / -ball.vel.y, 0, .05) : 0;
+      ball.pos.x -= ball.vel.x * back; ball.pos.z -= ball.vel.z * back; ball.pos.y = C.ballR;
       const x = ball.pos.x, z = ball.pos.z;
-      const inB = Math.abs(x) <= C.halfW + C.ballR && Math.abs(z) <= C.halfL + C.ballR;
+      // qualquer toque na fita é dentro: a fita tem 5 cm (metade para fora da linha) + o raio da bola
+      const LINE = .025 + C.ballR + .005;
+      const inB = Math.abs(x) <= C.halfW + LINE && Math.abs(z) <= C.halfL + LINE;
       const owner = z > 0 ? 0 : 1;
       sndSand(); puff(x, z, 16, 1); if (NET.ev) NET.ev('sand', x, z);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;
