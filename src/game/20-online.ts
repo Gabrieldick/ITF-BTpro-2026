@@ -8,11 +8,12 @@
 // Também dá para fazer um campeonato: chave com todos da sala (completada com CPU), uma partida por vez.
 import './19-loop';
 import { $s } from '../state';
-import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf } from './00-base';
+import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
+import { crSlots, crSlotChar, crCharFromJSON } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview } from './09-interface';
 import { defenseFlash } from './11-mira';
 import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu } from './12-controles';
@@ -157,6 +158,16 @@ function hostBeat() {
   if (now - ON.lastL > 3000) broadcast(); // atualiza os pings na tela de todos
 }
 // personagens da CPU: sem repetir nenhum que alguém da sala escolheu
+function sanitizeCC(c, mid) {
+  if (!c || typeof c !== 'object' || !c.a) return null;
+  const a = {}; for (const k of ['forca', 'vel', 'def', 'backhand', 'curta', 'lob', 'smash', 'saque']) a[k] = clamp(Math.round(+c.a[k] || 50), 30, 99);
+  const L = c.look || {}, look = {};
+  for (const k of ['skin', 'hair', 'hairStyle', 'beard', 'cap', 'visor', 'headband', 'glasses', 'band', 'tank', 'num', 'glassStyle', 'lens']) if (L[k] !== undefined && typeof L[k] !== 'object') look[k] = typeof L[k] === 'string' ? L[k].slice(0, 24) : L[k];
+  look.racket = RACKET_STATS[L.racket] ? L.racket : 'proteo';
+  return { id: 'cc_' + mid, name: String(c.name || 'Jogador').slice(0, 24), alt: clamp(+c.alt || 182, 150, 215), pais: String(c.pais || 'BRA').slice(0, 3).toUpperCase(), fem: !!c.fem,
+    build: ['atletico', 'esguio', 'compacto', 'forte'].includes(c.build) ? c.build : 'atletico', estilo: String(c.estilo || 'Carreira').slice(0, 30), canhoto: !!c.canhoto || undefined, a, look, career: true };
+}
+const regOnlineChars = list => { $s.ONLINE_CHARS = (list || members()).filter(m => m.cc).map(m => m.cc); };
 function fixCpu() {
   const used = new Set(members().map(m => m.pick).filter(Boolean));
   const free = () => byOvr().find(c => !used.has(c.id)).id;
@@ -165,7 +176,7 @@ function fixCpu() {
 function lobbyState() {
   return {
     code: ON.code, kind: ON.room.kind, mode: ON.room.mode, games: S.settings.games, diff: S.settings.diff,
-    members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt) })),
+    members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt), cc: m.cc || null })),
     seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing,
   };
 }
@@ -186,8 +197,10 @@ function act(mid, m) {
   }
   if (m[0] === 'pick' && !room.playing) {
     const id = m[1];
-    if (ROSTER.some(c => c.id === id) && !members().some(x => x !== mem && x.pick === id)) mem.pick = id;
+    if ((ROSTER.some(c => c.id === id) || (mem.cc && id === mem.cc.id)) && !members().some(x => x !== mem && x.pick === id)) mem.pick = id;
   }
+  // personagem da carreira de quem está na sala: o anfitrião confere os valores e passa a valer para todos
+  if (m[0] === 'cchar' && !room.playing) { const cc = sanitizeCC(m[1], mid); if (cc) { mem.cc = cc; mem.pick = cc.id; regOnlineChars(); } }
   if (mid === 'host' && m[0] === 'cpu' && SEATS.includes(m[1]) && ROSTER.some(c => c.id === m[2]) && !members().some(x => x.pick === m[2])) {
     const other = SEATS.find(s => s !== m[1] && room.cpu[s] === m[2]); if (other) room.cpu[other] = room.cpu[m[1]];
     room.cpu[m[1]] = m[2];
@@ -511,7 +524,7 @@ function guestData(d) {
   if (k === 'e') { for (const e of d[2]) ON.evq.push({ t: d[1], e }); return; }
   if (k === 'ping') { send(['pong', d[1]]); return; }
   if (k === 'pong') { const r = now - d[1]; ON.rtt = ON.rtt ? ON.rtt * .7 + r * .3 : r; return; }
-  if (k === 'L') { ON.L = d[1]; if (!$('online').hidden && !ON.inMatch) renderRoom(); return; }
+  if (k === 'L') { ON.L = d[1]; regOnlineChars(d[1].members || []); if (!$('online').hidden && !ON.inMatch) renderRoom(); return; }
   if (k === 'welcome') { ON.myId = d[1].id; return; }
   if (k === 'bye') { leave('Quem criou a sala fechou a sala.'); return; }
   if (k === 'full') { leave('Essa sala já está cheia (8 pessoas).'); return; }
@@ -699,6 +712,7 @@ function leave(text) {
   if (was === 'guest') { send(['bye']); const c = ON.conn; setTimeout(() => { try { c && c.close(); } catch (e) {} }, 150); }
   const p = ON.peer; if (p) setTimeout(() => { try { p.destroy(); } catch (e) {} }, 200);
   clearInterval(ON.hb);
+  $s.ONLINE_CHARS = [];
   Object.assign(ON, { peer: null, conn: null, open: false, code: '', rtt: 0, guests: [], room: null, outq: [], match: null, inMatch: false, L: null, G: null, mirror: false, myIdx: -1, buf: [], evq: [], offs: [], off: null, myId: '', seatsKey: '', pickKey: '', champKey: '', fast: null, interp: 0, gap: 0 });
   NET.role = null;
   clearRemote(); restoreNames();
@@ -726,10 +740,11 @@ function renderRoom(force) {
   $('onMembers').innerHTML = L.members.map(m => '<div class="on-member"><b>' + esc(m.name) + '</b>' + (m.id === 'host' ? ' <small>criou a sala</small>' : '') + (m.id === me ? ' <small>(você)</small>' : '') + ' <small>· ' + esc(charLabel(m.pick)) + (m.id !== 'host' && m.rtt ? ' · ' + m.rtt + ' ms' : '') + '</small></div>').join('');
   // seu personagem (sem repetir o de outra pessoa)
   const mine = memberOf(L, me), taken = new Set(L.members.filter(m => m.id !== me).map(m => m.pick));
-  const pk = JSON.stringify([mine && mine.pick, [...taken], L.playing]);
+  const pk = JSON.stringify([mine && mine.pick, [...taken], L.playing, mine && mine.cc && mine.cc.name]);
+  fillCcSlots();
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
-    $('onPick').innerHTML = byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
+    $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + mine.cc.id + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
     $('onPick').disabled = L.playing;
   }
   document.querySelectorAll('input[name=onKind]').forEach(r => { r.checked = r.value === L.kind; r.disabled = !host || L.playing; });
@@ -794,6 +809,19 @@ $('onJoin').addEventListener('click', joinRoom);
 $('onCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 $('onCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
 $('onPick').addEventListener('change', e => doAct(['pick', e.target.value]));
+// personagem da carreira: de um save deste navegador ou de um arquivo .json
+function fillCcSlots() {
+  const sel = $('onCcSlot'); if (!sel || document.activeElement === sel) return;
+  const sl = crSlots(), key = sl.map(x => x.id + x.ovr).join();
+  if (sel.dataset.k === key) return; sel.dataset.k = key;
+  sel.innerHTML = sl.length ? sl.map(x => '<option value="' + x.id + '">' + esc(x.name) + ' · OVR ' + x.ovr + ' · ' + esc(x.tier) + '</option>').join('') : '<option value="">Nenhuma carreira salva neste navegador</option>';
+}
+function useCareerChar(c) {
+  if (!c) { msg('Não deu para ler esse save de carreira.'); return; }
+  doAct(['cchar', c]); msg('Você vai jogar com ' + c.name + ' (OVR ' + overall(c.a) + ').');
+}
+$('onCcUse').addEventListener('click', () => { const id = $('onCcSlot').value; if (id) useCareerChar(crSlotChar(id)); });
+$('onCcFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => useCareerChar(crCharFromJSON(String(rd.result))); rd.readAsText(f); e.target.value = ''; });
 document.querySelectorAll('input[name=onKind]').forEach(r => r.addEventListener('change', () => doAct(['kind', r.value])));
 document.querySelectorAll('input[name=onMode]').forEach(r => r.addEventListener('change', () => doAct(['mode', r.value])));
 document.querySelectorAll('input[name=onGames]').forEach(r => r.addEventListener('change', () => doAct(['games', r.value])));

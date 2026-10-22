@@ -639,3 +639,7 @@ body.in-replay #review { display: none; }
 .cr-stars button { background: none; border: 0; padding: 0 2px; font-size: 20px; line-height: 1; color: rgba(255,255,255,.25); cursor: pointer; }
 .cr-stars button.on { color: #ffd23f; }
 .cr-stars small { margin-left: 8px; opacity: .75; }
+.on-cc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; margin-top: 4px; }
+.on-cc span { flex-basis: 100%; opacity: .8; }
+.on-cc .cr-sel { flex: 1; min-width: 160px; }
+.on-file { cursor: pointer; display: inline-flex; align-items: center; }

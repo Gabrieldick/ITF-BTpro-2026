@@ -201,7 +201,8 @@ let NAMES = {};
 try { NAMES = JSON.parse(localStorage.getItem('pdo-names') || '{}') || {}; } catch (e) { NAMES = {}; }
 $s.CAREER_CHARS = []; // jogador da carreira e personagens fictícios
 // na carreira vale a versão da carreira (com fase e evolução); fora dela, a base
-const charById = id => ($s.CAREER_CHARS && $s.CAREER_CHARS.find(c => c.id === id)) || ROSTER.find(c => c.id === id) || ROSTER[0];
+// online: personagens da carreira trazidos por quem está na sala
+const charById = id => ($s.ONLINE_CHARS && $s.ONLINE_CHARS.find(c => c.id === id)) || ($s.CAREER_CHARS && $s.CAREER_CHARS.find(c => c.id === id)) || ROSTER.find(c => c.id === id) || ROSTER[0];
 let HEIGHTS = {};
 try { HEIGHTS = JSON.parse(localStorage.getItem('pdo-heights') || '{}') || {}; } catch (e) { HEIGHTS = {}; }
 const heightOf = c => clamp(+(HEIGHTS[c.id] || c.alt || (c.fem ? 170 : 183)), 150, 215) / 100;
