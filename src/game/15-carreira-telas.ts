@@ -8,7 +8,7 @@ import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS } from './09-interface';
-import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound } from './12-controles';
+import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
 import { crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
@@ -418,11 +418,17 @@ $('btnAsMark').addEventListener('click', () => toggleAssist('assistMark'));
 const SHOT_TXT = { completo: 'completo', discreto: 'discreto', off: 'desligado' };
 $('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT), cur = S.settings.shotText || 'discreto'; S.settings.shotText = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); syncAssistButtons(); });
 $('shotTextSel').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
+// barra de força na pausa: tamanho e opacidade (alternam)
+const MTR_SIZES = ['pequena', 'normal', 'grande'], MTR_OPS = ['100', '75', '50', '35'];
+$('btnMtrSize').addEventListener('click', () => { const c = S.settings.meterSize || 'normal'; S.settings.meterSize = MTR_SIZES[(MTR_SIZES.indexOf(c) + 1) % MTR_SIZES.length]; saveSettings(); applyMeterLook(); syncAssistButtons(); });
+$('btnMtrOp').addEventListener('click', () => { const c = String(S.settings.meterOp || '100'); S.settings.meterOp = MTR_OPS[(MTR_OPS.indexOf(c) + 1) % MTR_OPS.length]; saveSettings(); applyMeterLook(); syncAssistButtons(); });
 $('btnBall').addEventListener('click', () => { const l = Object.keys(BALL_STYLES), cur = S.settings.ballStyle || 'laranja'; S.settings.ballStyle = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); setBallStyle(S.settings.ballStyle); syncAssistButtons(); });
 function syncAssistButtons() {
   $('btnAsMove').textContent = 'Seguir a bola: ' + (S.settings.assistMove ? 'ligado' : 'desligado');
   $('btnAsMark').textContent = 'Onde a bola cai: ' + (S.settings.assistMark ? 'ligado' : 'desligado');
   $('btnShotTxt').textContent = 'Nome do golpe: ' + SHOT_TXT[S.settings.shotText || 'discreto'];
+  $('btnMtrSize').textContent = 'Tamanho da barra: ' + (S.settings.meterSize || 'normal');
+  $('btnMtrOp').textContent = 'Opacidade da barra: ' + (S.settings.meterOp || '100') + '%';
   $('btnBall').textContent = 'Bolinha: ' + (BALL_STYLES[S.settings.ballStyle || 'laranja'] || BALL_STYLES.laranja).nome.replace(' (padrão)', '').toLowerCase();
 }
 function adjustFov(d) {
