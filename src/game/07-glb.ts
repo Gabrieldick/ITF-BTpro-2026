@@ -187,7 +187,7 @@ function applyRackets() {
   [[human, human.rkKey || mine], [partner, partner.rkKey || (partner.char ? partner.char.look.racket : 'medusa')], [cpuA, cpuA.rkKey || (cpuA.char ? cpuA.char.look.racket : 'kronos')], [cpuB, cpuB.rkKey || (cpuB.char ? cpuB.char.look.racket : 'supercarbon')]].forEach(([p, key]) => {
     p.look.racket = key; p.model.racket.userData.setStyle(key); if (p.skin) p.skin.racket.userData.setStyle(key);
   });
-  if (fpRacket) fpRacket.userData.setStyle(mine);
+  if (fpRacket) fpRacket.userData.setStyle(human.rkKey || mine); // a mesma raquete do seu jogador
 }
 // braço em primeira pessoa (preso à câmera)
 let fpRacket = null;

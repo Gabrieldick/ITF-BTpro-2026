@@ -3,7 +3,7 @@
 import './17-bola';
 import * as THREE from 'three';
 import { $s } from '../state';
-import { TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shortOf, attrOf } from './00-base';
+import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
@@ -17,6 +17,29 @@ import { LOB_MAX, MTR, timeToReach } from './12-controles';
 import { assignee } from './16-ia';
 // ---------- Animação: cinemática inversa em braços e pernas ----------
 const _id = new V3(), _iu = new V3(), _iw = new V3(), _in = new V3(), _iX = new V3(), _iY = new V3(), _iZ = new V3(), _im = new THREE.Matrix4();
+const _pv = new V3();
+// flecha na borda da tela para onde a bola vai cair (quando o ponto está fora da vista) e aviso de linha no rali
+function hudHints(incoming) {
+  const la = $('landArrow'), lw = $('lineWarn');
+  if (la) {
+    let show = false;
+    if (incoming && S.settings.assistMark && S.settings.landArrow !== 'off') {
+      const l = predictLanding(); _pv.set(l.x, .05, l.z).project(camera);
+      const behind = _pv.z > 1; let x = _pv.x, y = _pv.y; if (behind) { x = -x; y = -y; }
+      if (behind || Math.abs(x) > .94 || Math.abs(y) > .9) {
+        const ang = Math.atan2(y, x), r = Math.min(.9 / Math.max(1e-3, Math.abs(Math.cos(ang))), .82 / Math.max(1e-3, Math.abs(Math.sin(ang))));
+        la.style.left = ((Math.cos(ang) * r + 1) / 2 * 100) + '%'; la.style.top = ((1 - Math.sin(ang) * r) / 2 * 100) + '%';
+        la.style.transform = 'translate(-50%,-50%) rotate(' + (-ang).toFixed(3) + 'rad)'; show = true;
+      }
+    }
+    if (la.hidden === show) la.hidden = !show;
+  }
+  if (lw) {
+    const hw = dupla() ? HALF_W.dupla : HALF_W.simples, d = Math.min(hw - Math.abs(human.pos.x), C.halfL - human.pos.z);
+    const st = S.mode === 'rally' && S.settings.lineWarn !== 'off' && !S.spectate ? (d < 0 ? 'out' : d < .45 ? 'near' : '') : '';
+    if (lw.dataset.s !== st) { lw.dataset.s = st; lw.hidden = !st; lw.textContent = st === 'out' ? 'FORA DA QUADRA' : 'PERTO DA LINHA'; }
+  }
+}
 const RING_ERR = { id: -1, x: 0, z: 0 }; // desvio do anel de queda (noção de jogo baixa)
 function ik2(upper, lower, origin, target, pole, L1, L2) {
   _id.subVectors(target, origin);
@@ -282,10 +305,10 @@ function updateCamera(dt) {
   const fpBody = fp && !(human.skin && human.skinOn);
   setFpBody(fpBody);
   // na espera mostra a raquete em pé no canto; armando ou batendo, entra o braço animado do jogador
-  const acting = human.swing.t >= 0 || human.charging || (S.mode === 'toss' && S.serverPlayer === human);
   human.model.group.visible = !fp || fpBody;
-  human.model.armR.el.visible = !fpBody || acting;
-  fpArm.visible = fp && (!fpBody || !acting);
+  // 1ª pessoa: sempre o braço da câmera (com a sua raquete); os braços do corpo somem (não aparecem do nada nem trocam de raquete)
+  human.model.armR.el.visible = !fpBody; human.model.armL.el.visible = !fpBody;
+  fpArm.visible = fp;
   if (S.mode === 'menu') {
     S.orbit += dt * .06;
     tmpA.set(Math.sin(S.orbit) * 12, 3.2 + Math.sin(S.orbit * .7) * 1.2, Math.cos(S.orbit) * 12);
@@ -406,6 +429,7 @@ function updateVisuals(dt) {
     landRing.material.color.copy(mine ? RING_MINE : RING_MATE); landRing.material.opacity = mine ? .8 : 1; // o do parceiro mais forte
     const pulse = (1 + Math.sin(performance.now() / 90) * .12) * rk * (mine ? 1 : 1.12); landRing.scale.set(pulse, pulse, 1);
   } else landRing.visible = false;
+  hudHints(incoming);
   const fp = S.settings.cam === '1p' && S.mode !== 'replay';
   reachRing.visible = S.mode !== 'menu' && S.mode !== 'replay' && !fp && !S.spectate;
   reachRing.position.set(human.pos.x, .02, human.pos.z);

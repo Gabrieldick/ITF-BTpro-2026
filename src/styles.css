@@ -661,3 +661,10 @@ body.in-replay #review { display: none; }
 .court-pick .cp small { font-size: 10.5px; line-height: 1.1; text-align: center; opacity: .85; }
 .court-pick .cp.sel { border-color: #ffd23f; background: rgba(255,210,63,.1); }
 .court-pick .cp:disabled { cursor: default; opacity: .55; } .court-pick .cp.sel:disabled { opacity: 1; }
+
+/* flecha na borda da tela apontando para onde a bola vai cair, e aviso de linha */
+#landArrow { position: fixed; z-index: 6; pointer-events: none; font-size: 34px; line-height: 1; color: #ff5a1f; text-shadow: 0 0 6px rgba(0,0,0,.6), 0 2px 4px rgba(0,0,0,.5); }
+#landArrow[hidden] { display: none; }
+#lineWarn { position: fixed; z-index: 6; left: 50%; bottom: 96px; transform: translateX(-50%); pointer-events: none; padding: 5px 12px; border-radius: 14px; font: 800 12px/1 var(--f-num, sans-serif); letter-spacing: .12em; color: #fff; background: rgba(214, 160, 20, .9); }
+#lineWarn[data-s="out"] { background: rgba(214, 40, 40, .92); }
+#lineWarn[hidden] { display: none; }

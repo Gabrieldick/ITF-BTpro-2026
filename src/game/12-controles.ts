@@ -310,7 +310,7 @@ function applyMeterLook() {
   const st = document.documentElement.style;
   st.setProperty('--msc', String({ pequena: .72, normal: 1, grande: 1.25 }[S.settings.meterSize || 'normal'] || 1));
   st.setProperty('--mop', String((+(S.settings.meterOp || 100)) / 100));
-  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on' }[e.dataset.setting] || 'normal')); });
+  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on', landArrow: 'on', lineWarn: 'on' }[e.dataset.setting] || 'normal')); });
 }
 document.querySelectorAll('select[data-setting]').forEach(e => e.addEventListener('change', () => { S.settings[e.dataset.setting] = e.value; saveSettings(); applyMeterLook(); }));
 applyMeterLook();
