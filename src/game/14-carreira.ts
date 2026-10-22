@@ -23,6 +23,8 @@ const TIERS = [
   { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [750, 530, 340, 180, 75], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba'] },
   { id: 'WC', nome: 'Campeonato Mundial ITF', curto: 'MUNDIAL', ovr: [84, 99], draw: 16, fee: 0, travel: 3000, prize: [150000, 75000, 36000, 15000, 5000], pts: [1000, 700, 450, 250, 100], xp: [20, 14, 10, 6, 3], diff: 'dificil', req: 1e9, cities: ['Mundial de Matosinhos'] },
 ];
+// torneios a cada ~2 semanas: cada um paga mais (prêmio ×1,6) e rende o dobro da evolução de fim de torneio
+TIERS.forEach(T => { T.prize = T.prize.map(v => Math.round(v * 1.6 / 10) * 10); T.xp = T.xp.map(v => v * 2); });
 const SEASON_WEEKS = 52; // a temporada é um ano: 52 semanas de 7 dias
 const RANK_BEST = 10;    // o ranking soma os 10 melhores resultados das últimas 52 semanas
 // ---------- calendário: dias, datas e torneios do ano ----------
@@ -51,6 +53,18 @@ function crSeasonCal(season) {
   cal[51].push(9); // Mundial (top 16 do ranking)
   CALC.key = key; CALC.cal = cal;
   return cal;
+}
+// semanas com torneio para você: em média uma a cada 2 semanas (às vezes seguidas, às vezes 3 de intervalo);
+// as outras são de treino. Especiais (estaduais, seleções, Mundial) têm data própria e não dependem disso
+const OPENC = { key: '', set: null };
+function crOpenWeek(season, w) {
+  const key = $s.CR.seed + ':' + season;
+  if (OPENC.key !== key) {
+    const rnd = mulberry($s.CR.seed + season * 4243 + 17), set = new Set();
+    for (let k = 1 + Math.floor(rnd() * 2); k <= SEASON_WEEKS; ) { set.add(k); const r = rnd(); k += r < .25 ? 1 : r < .75 ? 2 : 3; }
+    OPENC.key = key; OPENC.set = set;
+  }
+  return OPENC.set.has(w);
 }
 // 10 melhores resultados
 const bestN = arr => arr.sort((a, b) => b - a).slice(0, RANK_BEST).reduce((t, v) => t + v, 0);
@@ -367,9 +381,10 @@ function crWeekOptions(wk) {
   });
   const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 4);
   if ($s.CR.wildcard > 0 && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
-  const out = crSpecialOptions(wk).concat(list);
+  const open = crOpenWeek($s.CR.season, wk);
+  const out = crSpecialOptions(wk).concat(open ? list : list.filter(o => o.tier === 9));
   const st = tiers.find(t => t < 9); // simples: o nível mais alto que tem torneio nesta semana
-  if (aw % 3 === 0 && st !== undefined) { const T = TIERS[st]; out.push({ singles: true, tier: st, name: 'Simples · ' + T.cities[Math.floor(rnd() * T.cities.length)] + (st < 3 ? ' · ' + T.curto : '') }); }
+  if (open && aw % 3 === 0 && st !== undefined) { const T = TIERS[st]; out.push({ singles: true, tier: st, name: 'Simples · ' + T.cities[Math.floor(rnd() * T.cities.length)] + (st < 3 ? ' · ' + T.curto : '') }); }
   out.forEach(o => { o.days = crOptPro(o) ? 2 : 1; });
   return out;
 }
@@ -777,9 +792,9 @@ function crAfterMyMatch(won) {
   const t = $s.CR.tour; $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
   const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
-  // evolução por partida: vitória ≈ 4 no Amador C, ≈ 9 no BT200 e ≈ 11 no Sand Series (sobe bem menos que o custo dos atributos);
+  // evolução por partida: vitória ≈ 5 no Amador C, ≈ 12 no BT200 e ≈ 14 no Sand Series (sobe bem menos que o custo dos atributos);
   // derrota rende 30% disso
-  const winPE = 4 + t.tier * .9;
+  const winPE = (4 + t.tier * .9) * 1.25; // +25%: com torneio a cada ~2 semanas, cada partida vale mais
   $s.CR.pe += Math.round((won ? winPE : winPE * .3) * crXpMul());
   // nota alta rende mais (a partir de 8; nota 10 dobra o que a vitória dá)
   const rb = t.lastRating && t.lastRating.r > 8 ? Math.round((t.lastRating.r - 8) / 2 * winPE * crXpMul() * 10) / 10 : 0;
@@ -1113,7 +1128,7 @@ function crPotGain(rating, tier) {
   const ahead = clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1);
   // quanto mais alto o potencial, mais devagar ele sobe (≈7 por temporada no começo, ≈4 perto dos 85)
   const hiK = clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1);
-  const g = Math.min(lim - $s.CR.potCur, (rating - 5.5) * .03 * (.8 + (tier || 0) * .05) * room * ahead * hiK);
+  const g = Math.min(lim - $s.CR.potCur, (rating - 5.5) * .045 * (.8 + (tier || 0) * .05) * room * ahead * hiK);
   if (g <= 0) return 0;
   $s.CR.potCur += g;
   return g;
