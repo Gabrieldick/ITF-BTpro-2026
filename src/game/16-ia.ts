@@ -46,7 +46,7 @@ function gapX(team, jitter) {
 function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
-  const adj = p.team === 1 && !S.careerActive ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  const adj = p.team === 1 ? (!S.careerActive ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : [-.14, -.07, 0, .06, .12][(S.careerStars || 3) - 1]) : 0;
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
   const k = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)) + adj, 0, 1.1);
   const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;

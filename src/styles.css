@@ -634,3 +634,8 @@ body.in-replay #meter, body.in-replay #tags, body.in-replay #reach, body.in-repl
 #review b { font-family: var(--f-display); font-size: 15px; letter-spacing: .04em; text-align: center; }
 #review b.in { color: #4fd18b; } #review b.out { color: #ff7a5c; }
 body.in-replay #review { display: none; }
+.cr-stars { display: flex; align-items: center; gap: 4px; font-size: 13px; margin: 2px 0 6px; }
+.cr-stars span { margin-right: 6px; opacity: .8; }
+.cr-stars button { background: none; border: 0; padding: 0 2px; font-size: 20px; line-height: 1; color: rgba(255,255,255,.25); cursor: pointer; }
+.cr-stars button.on { color: #ffd23f; }
+.cr-stars small { margin-left: 8px; opacity: .75; }

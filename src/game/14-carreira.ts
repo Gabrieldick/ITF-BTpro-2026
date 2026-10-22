@@ -696,6 +696,7 @@ function crSimOne(m, isMine) {
   }
   let sa = crTeamOvr(A), sb = crTeamOvr(B);
   if (!t.singles) { if (A.me) sa += $s.CR.chem * .4 + crMoodBonus() * .5; if (B.me) sb += $s.CR.chem * .4 + crMoodBonus() * .5; }
+  { const st = (3 - ($s.CR.stars || 3)) * 1.5; if (A.me) sa += st; if (B.me) sb += st; } // dificuldade em estrelas vale na partida simulada também
   const pA = 1 / (1 + Math.exp(-(sa - sb) / 3));
   m.w = Math.random() < pA ? m.a : m.b;
   const N = isMine ? $s.CR.games : 6; m.score = crScore(N);
@@ -946,6 +947,7 @@ function crPlayMatch() {
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
   S.settings.pick = { me: 'crme', mate: t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
+  S.careerStars = $s.CR.stars || 3; // dificuldade escolhida (3 = padrão: acompanha o nível do torneio)
   S.careerActive = true; saveCareer(); flushSaves();
   $('career').hidden = true; ac(); newMatch();
 }
