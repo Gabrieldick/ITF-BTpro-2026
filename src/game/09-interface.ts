@@ -190,20 +190,25 @@ function perfShot(p, sw, r) {
   if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
   if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
 }
+// conta da nota (a mesma ao vivo e no fim): jogadas pesam menos que antes e, acima de 8, a nota sobe devagar
+// (10 só numa partida excepcional)
+function rateFrom(wonB) {
+  const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
+  let r = 6 + S.perf.sum * 1.5 / Math.sqrt(Math.max(12, S.perf.n)) + wonB + bal * (dupla() ? .8 : 1.2);
+  if (r > 8) r = 8 + (r - 8) * .45;
+  return Math.round(clamp(r, 1, 10) * 10) / 10;
+}
 function matchRating(won) {
   if (!S.perf || S.spectate || NET.role) return null;
   // saldo de pontos pesa também (sozinho na simples mais que na dupla): perder de lavada não dá nota média
-  const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
-  const r = 6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + (won ? .3 : -.3) + bal * (dupla() ? 1 : 1.5);
-  return Math.round(clamp(r, 1, 10) * 10) / 10;
+  return rateFrom(won ? .3 : -.3);
 }
 // nota ao vivo (canto de cima à direita) nas partidas da carreira: a mesma conta da nota final, sem o bônus de vitória
 function updateLiveRating() {
   const e = $('liveNota'); if (!e) return;
   const on = !!(S.careerActive && S.perf && !S.spectate && !NET.role && !S.drill);
   e.hidden = !on; if (!on) { delete e.dataset.r; e.querySelectorAll('[data-v]').forEach(c => { delete c.dataset.v; }); return; }
-  const pp = S.stats.pts, bal = (pp[0] - pp[1]) / Math.max(8, pp[0] + pp[1]);
-  const r = Math.round(clamp(6 + S.perf.sum * 2.2 / Math.sqrt(Math.max(12, S.perf.n)) + bal * (dupla() ? 1 : 1.5), 1, 10) * 10) / 10;
+  const r = rateFrom(0);
   // estilo NBA 2K: a nota no hexágono (cor pela nota, com a subida/descida embaixo) e os números do seu jogo ao lado
   const ev = S.perf.ev, sum = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
   // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · ERR: erros
