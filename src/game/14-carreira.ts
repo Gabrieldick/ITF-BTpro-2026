@@ -159,7 +159,9 @@ function crCharFromSave(c) {
   if (!c || !c.me || !c.me.a) return null;
   const gb = {}; (c.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) gb[k] = (gb[k] || 0) + g.b[k]; });
   const me = c.me, rk = c.racket === 'assinatura' ? 'zenite' : c.racket || 'basica';
-  return { name: me.name, alt: me.alt, pais: me.pais, fem: !!me.fem, build: me.build, estilo: me.estilo, canhoto: me.canhoto, a: effA(me.a, gb), look: Object.assign({}, me.look, { racket: rk }) };
+  // mesmo limite da carreira: raquete + equipamento somam com retorno decrescente (a raquete entra de novo na partida, então desconta)
+  const rb = racketBonus(rk), eq = {}; for (const [k] of ATTRS) { const t = (gb[k] || 0) + (rb[k] || 0); eq[k] = (t > 2 ? Math.min(3, 2 + (t - 2) * .25) : t) - (rb[k] || 0); }
+  return { name: me.name, alt: me.alt, pais: me.pais, fem: !!me.fem, build: me.build, estilo: me.estilo, canhoto: me.canhoto, a: effA(me.a, eq), look: Object.assign({}, me.look, { racket: rk }) };
 }
 const crSlotChar = id => crCharFromSave(SAVES.slots[id]);
 function crCharFromJSON(text) { let o; try { o = JSON.parse(text); } catch (e) { return null; } return crCharFromSave(o && o.formato === SAVE_FMT ? o.carreira : o); }
@@ -206,12 +208,20 @@ function crSyncChars() {
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
 function crGearBonus() { const b = {}; ($s.CR.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = (b[k] || 0) + g.b[k]; }); return b; }
-// energia no desempenho (todos os atributos): abaixo de 10 → −4, de 20 → −3, de 30 → −2, de 45 → −1; acima de 80 → +1, de 95 → +2
-const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -4 : e < 20 ? -3 : e < 30 ? -2 : e < 45 ? -1 : e > 95 ? 2 : e > 80 ? 1 : 0; };
+// energia no desempenho (todos os atributos): abaixo de 10 → −4, de 20 → −3, de 30 → −2, de 45 → −1; acima de 85 → +1
+const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -4 : e < 20 ? -3 : e < 30 ? -2 : e < 45 ? -1 : e > 85 ? 1 : 0; };
 function crFatigue() { const p = crEnergyMod(); const b = {}; for (const [k] of ATTRS) b[k] = p; return b; }
 function crMental() { const b = {}; if ($s.CR.staff.psico) for (const [k] of ATTRS) b[k] = 1; return b; }
-function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crGearBonus(), crFatigue(), crMental()) }); }
-const crMeOvr = () => overall(effA($s.CR.me.a, crGearBonus(), racketBonus($s.CR.racket), crFatigue(), crMental()));
+// equipamento (raquete + acessórios + psicólogo) somado por atributo, com retorno decrescente: até +2 vale cheio,
+// o que passa disso vale 25%, e nunca mais que +3 (os pontos fracos da raquete continuam valendo inteiros)
+function crEquipB() {
+  const g = crGearBonus(), r = racketBonus($s.CR.racket), m = crMental(), out = {};
+  for (const [k] of ATTRS) { const b = (g[k] || 0) + (r[k] || 0) + (m[k] || 0); out[k] = b > 2 ? Math.min(3, 2 + (b - 2) * .25) : b; }
+  return out;
+}
+// rkIn: a raquete já está somada (a partida não soma de novo)
+function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crEquipB(), crFatigue()), rkIn: true }); }
+const crMeOvr = () => overall(effA($s.CR.me.a, crEquipB(), crFatigue()));
 // fase de cada atleta: oscila semana a semana (−3 a +3 em todos os atributos); os profissionais reais também mudam de
 // nível de uma temporada para outra (até ±4), já que eles não envelhecem como os fictícios
 const crFormV = id => Math.round((($s.CR && $s.CR.form) || {})[id] || 0) + ((($s.CR && $s.CR.drift) || {})[id] || 0);
@@ -1236,6 +1246,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek() };

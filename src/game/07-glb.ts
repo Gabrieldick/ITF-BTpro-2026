@@ -169,7 +169,7 @@ function assignCharacters() {
     const c = charById(id);
     // atributos em jogo: base + raquete (a sua vem do menu/carreira; a dos outros, do equipamento de cada um)
     p.rkKey = rkp[slot] || (p === human ? S.settings.racket : c.look && c.look.racket) || 'proteo';
-    let a = effA(c.a, racketBonus(p.rkKey));
+    let a = c.rkIn ? Object.assign({}, c.a) : effA(c.a, racketBonus(p.rkKey)); // carreira: você já vem com a raquete (e o equipamento) somados
     if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .885)); a = m; }
     p.char = Object.assign({}, c, { a });
     const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
