@@ -583,7 +583,7 @@ const COURTS = {
   franca: { nome: 'Arena França', a: Object.assign({ size: 2, text: 'BEACH TENNIS FRANCE' }, ARENA_PAL.FRA) },
   portugal: { nome: 'Arena Portugal', a: Object.assign({ size: 2, text: 'BEACH TÉNIS PORTUGAL' }, ARENA_PAL.POR) },
   aruba: { nome: 'Arena Aruba', a: Object.assign({ size: 2, text: 'ARUBA BEACH TENNIS' }, ARENA_PAL.ARU) },
-  coberta: { nome: 'Arena coberta (sem vento)', a: Object.assign({ size: 1, indoor: true, text: 'ARENA COBERTA' }, ARENA_PAL.BRA) },
+  coberta: { nome: 'Arena coberta (sem vento)', a: Object.assign({ size: 0, amateur: true, indoor: true, text: 'ARENA COBERTA' }, ARENA_PAL.BRA) },
   estadio: { nome: 'Estádio do Mundial', a: Object.assign({ size: 3, text: 'CAMPEONATO MUNDIAL' }, ARENA_PAL.MUN) },
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)

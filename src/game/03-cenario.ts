@@ -473,6 +473,35 @@ function indoorHall(a) {
   const beamM = mat('#3b424c', { roughness: .8 }), lampM = new THREE.MeshBasicMaterial({ color: col('#fffbea') });
   for (let z = Z0 + 4; z < Z1; z += 6) { const bm = new THREE.Mesh(new THREE.BoxGeometry(HX * 2, .35, .25), beamM); bm.position.set(0, H - .2, z); ARENA.group.add(bm); }
   for (let x = -12; x <= 12; x += 6) for (let z = -18; z <= 20; z += 6) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, .08, .5), lampM); l.position.set(x, H - .45, z); ARENA.group.add(l); }
+  // piso de cimento: corredores entre as quadras, nas laterais e a área de convivência no fundo (bar e mesas)
+  const floorM = new THREE.MeshStandardMaterial({ color: col('#a3a7ab'), roughness: .95, polygonOffset: true, polygonOffsetFactor: -2 });
+  const floor = (x0, x1, z0, z1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), floorM); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, .035, (z0 + z1) / 2); m.receiveShadow = true; ARENA.group.add(m); };
+  const zb = -(C.halfL + 3.2);
+  [-1, 1].forEach(sd => { floor(sd > 0 ? 5.6 : -8.4, sd > 0 ? 8.4 : -5.6, Z0, Z1); floor(sd > 0 ? 17.8 : -HX, sd > 0 ? HX : -17.8, Z0, Z1); });
+  floor(-HX, HX, Z0, zb);
+  // bar no fundo: balcão, prateleira com garrafas, letreiro e banquetas
+  const bar = (bx, bz) => {
+    const wood = mat('#6b4a32', { roughness: .7 }), top = mat('#e9e4da', { roughness: .4 });
+    const ct = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.05, .8), wood); ct.position.set(bx, .52, bz); ARENA.group.add(ct);
+    const tp = new THREE.Mesh(new THREE.BoxGeometry(4.4, .06, 1), top); tp.position.set(bx, 1.08, bz); ARENA.group.add(tp);
+    const sh = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.2, .35), mat('#3b2a1f')); sh.position.set(bx, 1.1, bz - 1.6); ARENA.group.add(sh);
+    const bc = ['#2e7d32', '#c62828', '#f9a825', '#1565c0', '#ffffff'];
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 12; i++) { const bt = new THREE.Mesh(new THREE.CylinderGeometry(.045, .05, .3, 6), mat(bc[(i + r) % bc.length], { roughness: .3 })); bt.position.set(bx - 1.9 + i * .34, 1.0 + r * .6, bz - 1.38); ARENA.group.add(bt); }
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, .7), new THREE.MeshBasicMaterial({ map: canvasTex(256, 64, (x, w, h) => { x.fillStyle = a.board[0]; x.fillRect(0, 0, w, h); x.fillStyle = '#fff'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.fillText('BEACH BAR', w / 2, 46); }) }));
+    sign.position.set(bx, 2.75, bz - 1.4); ARENA.group.add(sign);
+    for (let i = 0; i < 5; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(.2, .14, .75, 10), mat('#2b2f35', { metalness: .4, roughness: .5 })); st.position.set(bx - 1.6 + i * .8, .38, bz + .75); ARENA.group.add(st); }
+  };
+  bar(-11, -22.5); bar(11, -22.5);
+  // mesas altas com gente em volta (convivência), mais gente nos corredores olhando os jogos
+  const tableM = mat('#f4f1ea', { roughness: .5 }), poleM = mat('#2b2f35', { metalness: .5, roughness: .4 }), spots = [];
+  for (const [tx, tz] of [[-5, -16], [0, -17.5], [5, -16], [-4, -20.5], [4, -20.5], [0, -23]]) {
+    const pl = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.05, 8), poleM); pl.position.set(tx, .53, tz); ARENA.group.add(pl);
+    const tt = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .05, 18), tableM); tt.position.set(tx, 1.07, tz); ARENA.group.add(tt);
+    const k = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < k; i++) { const an = i / k * Math.PI * 2 + Math.random(); spots.push([tx + Math.cos(an) * .75, tz + Math.sin(an) * .75]); }
+  }
+  for (let i = 0; i < 7; i++) spots.push([-11 + rand(-2, 2), -21 + rand(0, .8)], [11 + rand(-2, 2), -21 + rand(0, .8)]); // fila no bar
+  [-1, 1].forEach(sd => { for (let z = -18; z < 14; z += rand(1.5, 3.2)) if (Math.random() < .6) spots.push([sd * rand(18.3, 19.4), z]); });
+  standingCrowd(spots);
 }
 // confete do título: papéis coloridos caindo sobre a quadra
 const CONF = { mesh: null, items: [], t: 0 };
