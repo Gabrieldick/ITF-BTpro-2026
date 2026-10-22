@@ -648,3 +648,15 @@ body.in-replay #review { display: none; }
 .on-cc .cr-sel { flex: 1; min-width: 160px; }
 .on-file { cursor: pointer; display: inline-flex; align-items: center; }
 .app-ver { margin: 10px 0 0; font-size: 12px; opacity: .55; letter-spacing: .04em; text-align: right; }
+.ball-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ball-pick .bp { display: grid; justify-items: center; gap: 2px; width: 74px; padding: 6px 4px; border-radius: 10px; background: rgba(255,255,255,.05); border: 2px solid transparent; color: inherit; cursor: pointer; }
+.ball-pick .bp img { width: 40px; height: 40px; }
+.ball-pick .bp small { font-size: 10.5px; line-height: 1.1; text-align: center; opacity: .85; }
+.ball-pick .bp.sel { border-color: #ffd23f; background: rgba(255,210,63,.1); }
+#onCfg { z-index: 40; }
+.court-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.court-pick .cp { display: grid; justify-items: center; gap: 3px; width: 108px; padding: 5px; border-radius: 10px; background: rgba(255,255,255,.05); border: 2px solid transparent; color: inherit; cursor: pointer; }
+.court-pick .cp img { width: 96px; height: 64px; border-radius: 6px; }
+.court-pick .cp small { font-size: 10.5px; line-height: 1.1; text-align: center; opacity: .85; }
+.court-pick .cp.sel { border-color: #ffd23f; background: rgba(255,210,63,.1); }
+.court-pick .cp:disabled { cursor: default; opacity: .55; } .court-pick .cp.sel:disabled { opacity: 1; }

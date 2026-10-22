@@ -7,7 +7,7 @@ import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
-import { ball, BALL_STYLES, setBallStyle } from './07-glb';
+import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
 import { ac, surf } from './08-audio';
 import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback, COURTS } from './09-interface';
 import { startJump, startToss } from './11-mira';
@@ -289,20 +289,60 @@ const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
 // modelos de quadra (partida rápida/online) e de bolinha (todos os modos)
 function fillLooks() {
   const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + v.nome + '</option>').join('');
-  const cs = $('courtSel'); if (cs) cs.innerHTML = opt(COURTS, S.settings.court || 'praia');
-  ['ballSel', 'ballSel2'].forEach(id => { const e = $(id); if (e) e.innerHTML = opt(BALL_STYLES, S.settings.ballStyle || 'laranja'); });
+  renderCourtPickers();
+  renderBallPickers();
 }
-['ballSel', 'ballSel2'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', () => { S.settings.ballStyle = e.value; saveSettings(); setBallStyle(e.value); fillLooks(); }); });
-{ const cs = document.getElementById('courtSel'); if (cs) cs.addEventListener('change', () => { S.settings.court = cs.value; saveSettings(); }); }
+// bolinhas desenhadas para escolher (configurações, partida rápida e online)
+const BALL_PREV = {};
+function ballPreview(k) {
+  if (BALL_PREV[k]) return BALL_PREV[k];
+  const tex = document.createElement('canvas'); tex.width = 128; tex.height = 64; drawBall(tex.getContext('2d'), 128, 64, BALL_STYLES[k]);
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  x.save(); x.beginPath(); x.arc(32, 32, 28, 0, Math.PI * 2); x.clip(); x.drawImage(tex, 0, 0, 128, 64, -32, 4, 128, 56);
+  const sh = x.createRadialGradient(22, 20, 4, 32, 32, 30); sh.addColorStop(0, 'rgba(255,255,255,.45)'); sh.addColorStop(.5, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.35)');
+  x.fillStyle = sh; x.fillRect(0, 0, 64, 64); x.restore();
+  return (BALL_PREV[k] = c.toDataURL());
+}
+function renderBallPickers() {
+  const cur = S.settings.ballStyle || 'laranja';
+  document.querySelectorAll('[data-ballpick]').forEach(box => {
+    box.innerHTML = Object.entries(BALL_STYLES).map(([k, v]) => '<button type="button" class="bp' + (k === cur ? ' sel' : '') + '" data-ball="' + k + '" title="' + v.nome + '"><img alt="" src="' + ballPreview(k) + '"><small>' + v.nome.replace(' (padrão)', '').replace(' (costura azul)', '') + '</small></button>').join('');
+    box.querySelectorAll('[data-ball]').forEach(b => b.addEventListener('click', () => { S.settings.ballStyle = b.dataset.ball; saveSettings(); setBallStyle(b.dataset.ball); renderBallPickers(); }));
+  });
+}
+// miniaturas das quadras vistas de cima (partida rápida e sala online)
+const COURT_PREV = {};
+function courtPreview(k) {
+  if (COURT_PREV[k]) return COURT_PREV[k];
+  const a = COURTS[k].a, c = document.createElement('canvas'); c.width = 120; c.height = 80; const x = c.getContext('2d');
+  x.fillStyle = a.size ? (a.sand || '#f3e7cf') : '#ead8b4'; x.fillRect(0, 0, 120, 80);
+  if (!a.size) { x.fillStyle = '#5fb3d9'; x.fillRect(0, 0, 120, 10); }
+  const seat = a.seat || '#2457c5', ppl = n => { for (let i = 0; i < n; i++) { x.fillStyle = ['#ff5a1f', '#fbf6ea', '#17324d', '#ffd23f', '#e2364a'][i % 5]; x.fillRect(Math.random() * 120, Math.random() * 80, 2, 2); } };
+  if (a.size >= 1) { x.fillStyle = seat; x.fillRect(4, 14, 16, 56); }
+  if (a.size >= 2) { x.fillRect(100, 14, 16, 56); x.fillStyle = (a.board || ['#111'])[0]; x.fillRect(22, 14, 3, 56); x.fillRect(95, 14, 3, 56); }
+  if (a.size >= 3) { x.fillStyle = seat; x.fillRect(24, 2, 72, 9); }
+  if (a.amateur) { x.strokeStyle = '#1f4fb8'; x.lineWidth = 1; x.strokeRect(2, 22, 14, 46); x.strokeRect(104, 22, 14, 46); for (let i = 0; i < 26; i++) { x.fillStyle = ['#ff5a1f', '#fbf6ea', '#17324d', '#ffd23f'][i % 4]; x.fillRect(i % 2 ? 22 + Math.random() * 6 : 92 + Math.random() * 6, 22 + Math.random() * 40, 2, 2); } }
+  x.strokeStyle = a.line || '#1f4fb8'; x.lineWidth = 2; x.strokeRect(36, 18, 48, 54); x.beginPath(); x.moveTo(36, 45); x.lineTo(84, 45); x.strokeStyle = a.trim || '#ffffff'; x.lineWidth = 2.5; x.stroke();
+  return (COURT_PREV[k] = c.toDataURL());
+}
+function renderCourtPickers(onlineCur, canPick) {
+  document.querySelectorAll('[data-courtpick]').forEach(box => {
+    const online = box.dataset.courtpick === 'online', cur = online ? (onlineCur || S.settings.court || 'praia') : S.settings.court || 'praia', can = online ? canPick !== false : true;
+    box.innerHTML = Object.entries(COURTS).map(([k, v]) => '<button type="button" class="cp' + (k === cur ? ' sel' : '') + '" data-court="' + k + '"' + (can ? '' : ' disabled') + '><img alt="" src="' + courtPreview(k) + '"><small>' + v.nome.replace(' (padrão)', '').replace(' (público e quadras ao lado)', '') + '</small></button>').join('');
+    box.querySelectorAll('[data-court]').forEach(b => b.addEventListener('click', () => { S.settings.court = b.dataset.court; saveSettings(); renderCourtPickers(onlineCur && b.dataset.court, canPick); if (online && NET.onCourt) NET.onCourt(); }));
+  });
+}
 // tela de teclas: clicar numa ação e apertar a nova tecla (se já for de outra ação, as duas trocam)
 const BINDCAP = { on: null };
 function renderBinds() {
-  const box = document.getElementById('bindList'); if (!box) return;
+  const boxes = document.querySelectorAll('.bind-list'); if (!boxes.length) return;
   const b = S.settings.binds || {};
   const row = ([id, nm, def]) => '<div class="bind-row"><span>' + nm + '</span><button type="button" class="kcap' + (BINDCAP.on === id ? ' wait' : '') + ((b[id] && b[id] !== def) ? ' changed' : '') + '" data-bind="' + id + '">' + (BINDCAP.on === id ? 'aperte uma tecla…' : keyName(b[id] || def)) + '</button></div>';
   const grp = (t, ids) => '<div class="bind-grp"><p class="section-label">' + t + '</p>' + BIND_ACTIONS.filter(a => ids.includes(a[0])).map(row).join('') + '</div>';
-  box.innerHTML = grp('Movimento e mira', ['up', 'down', 'left', 'right']) + grp('Golpes', ['smash', 'lob', 'curta', 'defesa']) + grp('Outros', ['cam', 'pause', 'sound', 'aim']);
-  box.querySelectorAll('[data-bind]').forEach(x => x.addEventListener('click', () => { BINDCAP.on = x.dataset.bind; renderBinds(); }));
+  boxes.forEach(box => {
+    box.innerHTML = grp('Movimento e mira', ['up', 'down', 'left', 'right']) + grp('Golpes', ['smash', 'lob', 'curta', 'defesa']) + grp('Outros', ['cam', 'pause', 'sound', 'aim']);
+    box.querySelectorAll('[data-bind]').forEach(x => x.addEventListener('click', () => { BINDCAP.on = x.dataset.bind; renderBinds(); }));
+  });
 }
 addEventListener('keydown', e => {
   if (!BINDCAP.on) return;
@@ -381,7 +421,7 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
-  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.court = $('courtSel').value || 'praia'; S.settings.ballStyle = $('ballSel').value || 'laranja'; S.settings.tactic = $('tacticSel').value || 'normal';
+  S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal';
   saveSettings();
 }
 function syncMenu() {
@@ -435,4 +475,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };

@@ -134,8 +134,8 @@
         <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
         <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
         <label class="cr-field" style="margin:4px 0">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
-        <label class="cr-field" style="margin:4px 0">Quadra <select id="courtSel" class="cr-sel"></select></label>
-        <label class="cr-field" style="margin:4px 0">Bolinha <select id="ballSel" class="cr-sel"></select></label>
+        <div class="cr-field" style="margin:4px 0">Quadra <div class="court-pick" data-courtpick></div></div>
+        <div class="cr-field" style="margin:4px 0">Bolinha <div class="ball-pick" data-ballpick></div></div>
         <label class="cr-field" style="margin:4px 0">Nome do golpe na tela <select id="shotTextSel" class="cr-sel"><option value="completo">Completo</option><option value="discreto" selected>Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
         <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W funda / S curta) <kbd>V</kbd></label>
       </div>
@@ -159,7 +159,7 @@
         <input type="radio" name="uniforms" id="uniOn" value="uniforme"><label for="uniOn">Uniforme 3D</label>
         <input type="radio" name="uniforms" id="uniOff" value="simples" checked><label for="uniOff">Simples</label>
       </div></fieldset>
-      <label class="cr-field">Bolinha <select id="ballSel2" class="cr-sel"></select></label>
+      <div class="cr-field">Bolinha <div class="ball-pick" data-ballpick></div></div>
       <button type="button" class="ghost" data-goto="keys" style="justify-self:start">⌨️ Teclas…</button>
       </div>
       <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button></div>
@@ -294,6 +294,20 @@
   </div>
 </div>
 
+<!-- Configurações dentro do online -->
+<div id="onCfg" class="overlay" hidden>
+  <div class="card" style="width:min(100%,640px);display:grid;gap:12px">
+    <div><div class="eyebrow">Online</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CONFIGURAÇÕES</h2></div>
+    <div class="cr-field">Bolinha <div class="ball-pick" data-ballpick></div></div>
+    <label class="cr-field">Nome do golpe na tela <select id="shotTextSel2" class="cr-sel"><option value="completo">Completo</option><option value="discreto">Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
+    <label class="chk"><input type="checkbox" id="assistMark2"> Mostrar onde a bola cai e o seu alcance</label>
+    <label class="chk"><input type="checkbox" id="aimArrow2"> Mostrar a flecha de mira no chão</label>
+    <p class="section-label">Teclas</p>
+    <div class="bind-list"></div>
+    <div class="cta-row"><button type="button" class="cta" id="onCfgClose">Fechar</button></div>
+  </div>
+</div>
+
 <!-- Treino com desafios -->
 <div id="drillPick" class="overlay" hidden>
   <div class="card" style="width:min(100%,460px)">
@@ -312,6 +326,7 @@
   <div class="card" style="width:min(100%,640px)">
     <div><div class="eyebrow">Jogue com amigos pela internet</div><h2 class="title" style="font-size:44px">ONLINE</h2></div>
     <p id="onMsg" class="cr-msg" hidden></p>
+    <button type="button" class="ghost sm" id="onCfgBtn" style="justify-self:start">⚙️ Configurações</button>
     <div id="onStart" style="display:grid;gap:14px">
       <p class="lede">Um de vocês cria a sala e passa o código; os outros (até 7) entram com ele. Na sala cada um escolhe o personagem e o lugar na quadra: dá para jogar 2 contra 2, em dupla contra a CPU, 1 contra 1 ou fazer um campeonato.</p>
       <label class="cr-field">Seu nome na sala <input id="onName" maxlength="16" placeholder="Seu nome" autocomplete="off"></label>
@@ -334,7 +349,7 @@
         <input type="radio" name="onMode" id="onModeD" value="dupla" checked><label for="onModeD">Dupla · 2 × 2</label>
         <input type="radio" name="onMode" id="onModeS" value="simples"><label for="onModeS">Simples · 1 × 1</label>
       </div></fieldset>
-      <label class="cr-field">Quadra (escolhe quem criou a sala) <select id="onCourt" class="cr-sel"></select></label>
+      <div class="cr-field">Quadra (escolhe quem criou a sala) <div class="court-pick" data-courtpick="online"></div></div>
       <fieldset class="seg"><legend>Duração</legend><div class="pills">
         <input type="radio" name="onGames" id="onGames4" value="4" checked><label for="onGames4">Set curto · 4 games</label>
         <input type="radio" name="onGames" id="onGames6" value="6"><label for="onGames6">Set · 6 games</label>

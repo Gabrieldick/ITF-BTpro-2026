@@ -309,4 +309,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };

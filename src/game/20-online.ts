@@ -16,7 +16,7 @@ import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
 import { defenseFlash } from './11-mira';
-import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings } from './12-controles';
+import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
 import { sideOf } from './18-animacao';
 
@@ -750,7 +750,7 @@ function renderRoom(force) {
   const mine = memberOf(L, me), taken = new Set(L.members.filter(m => m.id !== me).map(m => m.pick));
   const pk = JSON.stringify([mine && mine.pick, [...taken], L.playing, mine && mine.cc && mine.cc.name]);
   fillCcSlots();
-  { const oc = $('onCourt'); if (oc && document.activeElement !== oc) { if (!oc.options.length) oc.innerHTML = Object.entries(COURTS).map(([k, v]) => '<option value="' + k + '">' + esc(v.nome) + '</option>').join(''); oc.value = L.court || 'praia'; oc.disabled = NET.role !== 'host' || !!L.playing; } }
+  { const ck = (L.court || 'praia') + (NET.role === 'host' && !L.playing); if (ON.courtKey !== ck) { ON.courtKey = ck; renderCourtPickers(L.court || 'praia', NET.role === 'host' && !L.playing); } }
   { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + '</option>').join(''); rs.value = want; } }
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
@@ -820,7 +820,16 @@ $('onCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom()
 $('onCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
 $('onPick').addEventListener('change', e => doAct(['pick', e.target.value]));
 $('onRk').addEventListener('change', e => doAct(['racket', e.target.value]));
-$('onCourt').addEventListener('change', e => { if (NET.role !== 'host') return; S.settings.court = e.target.value; saveSettings(); broadcast(); });
+// configurações dentro do online (bolinha, nome do golpe, marcações e teclas)
+$('onCfgBtn').addEventListener('click', () => {
+  $('shotTextSel2').value = S.settings.shotText || 'discreto'; $('assistMark2').checked = !!S.settings.assistMark; $('aimArrow2').checked = S.settings.aimArrow !== false;
+  renderBallPickers(); renderBinds(); $('onCfg').hidden = false;
+});
+$('onCfgClose').addEventListener('click', () => { $('onCfg').hidden = true; });
+$('shotTextSel2').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
+$('assistMark2').addEventListener('change', e => { S.settings.assistMark = e.target.checked; saveSettings(); });
+$('aimArrow2').addEventListener('change', e => { S.settings.aimArrow = e.target.checked; saveSettings(); });
+NET.onCourt = () => { if (NET.role === 'host') broadcast(); }; // quem criou a sala trocou a quadra: avisa todos
 // personagem da carreira: de um save deste navegador ou de um arquivo .json
 function fillCcSlots() {
   const sel = $('onCcSlot'); if (!sel || document.activeElement === sel) return;
