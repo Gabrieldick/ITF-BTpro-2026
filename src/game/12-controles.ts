@@ -207,9 +207,12 @@ function pressShot(type, c) {
     if (M.active && (M.kind === 'smash' || M.kind === 'lob')) cancelMeter(c);
     const sw = p.swing;
     if (sw.t >= 0 && sw.t < sw.dur * .8) return;
-    if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
-    if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !p.dive) tryDive(type, p);
+    // lob numa bola baixa (uma curta, bola no pé ou longe): sai direto, sem barra, e pode dar o pulo/abaixada como a curta e a defesa
+    const lowLob = type === 'lob' && S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team && contactY(p) < .9;
+    if ((type === 'smash' || type === 'lob') && S.mode === 'rally' && !lowLob) { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
+    if ((type === 'curta' || type === 'defesa' || lowLob) && S.mode === 'rally' && !p.dive) tryDive(type, p);
     sw.t = 0; sw.type = type; sw.dur = type === 'curta' ? .5 : SWING_DUR; sw.hit = false; sw.meter = null; sw.lob = null;
+    if (lowLob) sw.lob = { power: .85, word: 'LOB DE RECUPERAÇÃO', kick: false };
     sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team ? timeToReach(p) : null; // para o timing: quanto faltava a bola chegar
     if (sw.pressT !== null && c.remote) sw.pressT += c.lag; // o convidado apertou vendo a bola um pouco atrasada
     sw.side = sideOf(p, plan.id === S.hitId && plan.plan ? plan.plan.pt : null);
