@@ -1150,8 +1150,9 @@ function crPotGain(rating, tier) {
   // potencial muito acima do seu overall quase não sobe mais (os pontos de evolução precisam alcançar)
   const ahead = clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1);
   // quanto mais alto o potencial, mais devagar ele sobe (≈7 por temporada no começo, ≈4 perto dos 85)
-  const hiK = clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1);
-  const g = Math.min(lim - $s.CR.potCur, (rating - 5.5) * .045 * (.8 + (tier || 0) * .05) * room * ahead * hiK);
+  const hiK = clamp(1 - ($s.CR.potCur - 65) / 50, .45, 1);
+  // ~+0,6 a +1 num torneio jogado muito bem (notas ~9); nota média rende bem menos
+  const g = Math.min(lim - $s.CR.potCur, (rating - 5.5) * .075 * (.8 + (tier || 0) * .05) * room * ahead * hiK);
   if (g <= 0) return 0;
   $s.CR.potCur += g;
   return g;
