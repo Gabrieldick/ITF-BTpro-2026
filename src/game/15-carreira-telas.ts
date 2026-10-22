@@ -182,13 +182,15 @@ function crSponsorHTML() {
 let crRankView = 'geral';
 function crRankingHTML() {
   const uf = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null;
-  const tabs = uf ? '<div class="pills" style="margin-bottom:6px"><button type="button" class="ghost sm' + (crRankView === 'geral' ? ' sel' : '') + '" data-rkview="geral">Mundial</button><button type="button" class="ghost sm' + (crRankView === 'uf' ? ' sel' : '') + '" data-rkview="uf">' + esc(STATES.find(x => x[0] === uf)[1]) + '</button><button type="button" class="ghost sm' + (crRankView === 'sel' ? ' sel' : '') + '" data-rkview="sel">Seleção estadual</button></div>' : '';
+  const ptsBtn = '<button type="button" class="ghost sm' + (crRankView === 'pts' ? ' sel' : '') + '" data-rkview="pts">Meus pontos</button>';
+  const tabs = !uf ? '<div class="pills" style="margin-bottom:6px"><button type="button" class="ghost sm' + (crRankView === 'geral' ? ' sel' : '') + '" data-rkview="geral">Mundial</button>' + ptsBtn + '</div>' : '<div class="pills" style="margin-bottom:6px"><button type="button" class="ghost sm' + (crRankView === 'geral' ? ' sel' : '') + '" data-rkview="geral">Mundial</button>' + ptsBtn + '<button type="button" class="ghost sm' + (crRankView === 'uf' ? ' sel' : '') + '" data-rkview="uf">' + esc(STATES.find(x => x[0] === uf)[1]) + '</button><button type="button" class="ghost sm' + (crRankView === 'sel' ? ' sel' : '') + '" data-rkview="sel">Seleção estadual</button></div>';
   if (crRankView === 'sel' && uf) return tabs + crSelRankHTML(uf);
   if (crRankView === 'uf' && uf) {
     const r = crStateRanking(uf), me = r.findIndex(x => x.id === 'crme');
     const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
     return tabs + '<p class="section-label">Ranking de ' + esc(STATES.find(x => x[0] === uf)[1]) + ' · ' + r.length + ' atletas · você é o ' + (me + 1) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + uf + ' · OVR ' + crCharOvr(c) + ' · ' + (crRanking().findIndex(y => y.id === x.id) + 1) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
   }
+  if (crRankView === 'pts') return tabs + crMyPtsHTML();
   return tabs + crRankingGeral();
 }
 // rankings das categorias do Brasileiro de Seleções Estaduais (C, B, A e Profissional) do seu estado
@@ -206,6 +208,23 @@ function crSelRankHTML(uf) {
     + '<div class="cr-list">' + (show.length ? show.map(x => { const i = r.indexOf(x), c = x.c, pick = sq.includes(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + (pick ? ' <small>· convocado</small>' : '') + '</b><small>OVR ' + x.ovr + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') : '<p class="cr-note">Ninguém nesta categoria.</p>') + '</div>'
     + (sq.some(id => !r.find(x => x.id === id)) ? '<p class="cr-note">Faltou gente na categoria: completa com ' + sq.filter(id => !r.find(x => x.id === id)).map(id => esc(nameOf(crChar(id)))).join(' e ') + ' (de uma categoria abaixo).</p>' : '')
     + status;
+}
+// seus pontos: os resultados das últimas 52 semanas, os 10 que contam e quando cada um sai da conta
+function crMyPtsHTML() {
+  const now = ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
+  const hist = $s.CR.history || [];
+  const list = $s.CR.results.filter(r => r.w > now - SEASON_WEEKS && r.pts > 0).map(r => {
+    const h = hist.find(x => (x.s - 1) * SEASON_WEEKS + x.w === r.w && x.pts === r.pts);
+    return { pts: r.pts, left: r.w + SEASON_WEEKS - now, name: h ? h.name : 'Torneio', sub: h ? h.tier + ' · ' + h.place : '', when: h ? 'T' + h.s + ' S' + h.w : '' };
+  }).sort((x, y) => y.pts - x.pts || x.left - y.left);
+  if (!list.length) return '<p class="section-label">Seus pontos</p><p class="cr-note">Nenhum resultado com pontos nas últimas ' + SEASON_WEEKS + ' semanas.</p>';
+  const row = (x, i, on) => '<div class="cr-row' + (on ? ' me' : '') + '"><span class="cr-pos">' + (on ? i + 1 : '–') + '</span><div><b>' + esc(x.name) + '</b><small>' + (x.when ? x.when + ' · ' : '') + esc(x.sub) + ' · sai da conta em ' + x.left + (x.left === 1 ? ' semana' : ' semanas') + '</small></div><b class="cr-pts">' + x.pts + '</b></div>';
+  const top = list.slice(0, RANK_BEST), rest = list.slice(RANK_BEST);
+  const next = top.slice().sort((x, y) => x.left - y.left)[0];
+  return '<p class="section-label">Seus pontos · ' + crPts() + ' (soma dos ' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p>'
+    + '<p class="cr-note">Cada resultado vale por ' + SEASON_WEEKS + ' semanas. O próximo a sair é ' + esc(next.name) + ' (' + next.pts + ' pts) em ' + next.left + (next.left === 1 ? ' semana' : ' semanas') + (rest.length ? '; quando um sair, entra o melhor dos que estão de fora' : '') + '.</p>'
+    + '<div class="cr-list">' + top.map((x, i) => row(x, i, true)).join('') + '</div>'
+    + (rest.length ? '<p class="section-label">Fora da conta (só valem se ficarem entre os ' + RANK_BEST + ' melhores)</p><div class="cr-list">' + rest.map(x => row(x, 0, false)).join('') + '</div>' : '');
 }
 function crRankingGeral() {
   const r = crRanking(), me = r.findIndex(x => x.id === 'crme');
