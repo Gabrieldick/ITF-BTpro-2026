@@ -69,9 +69,9 @@ const COUNTRY_W = [['BRA', .42], ['ITA', .2], ['ESP', .1], ['FRA', .06], ['RUS',
 const SKINS = ['#f1cfae', '#e2b48f', '#d2a07a', '#c68a5e', '#a8704a', '#8d5a3b', '#6b4229'];
 const HAIRS = ['#120c08', '#2b1d14', '#3a2615', '#5a3a1e', '#6a3f1d', '#a8743a', '#c99a5a', '#7a5a3a'];
 const STYLES = {
-  atacante: { nome: 'Atacante', d: { forca: 5, smash: 6, saque: 4, def: -4, curta: -4, lob: -3, backhand: -2, vel: 0, leitura: -2 } },
-  defensor: { nome: 'Defensor', d: { def: 6, vel: 5, backhand: 3, smash: -4, forca: -4, saque: -3, curta: 0, lob: 0, leitura: 2 } },
-  tatico: { nome: 'Tático', d: { curta: 6, lob: 6, backhand: 3, forca: -5, smash: -4, saque: -2, def: 0, vel: -1, leitura: 4 } },
+  atacante: { nome: 'Atacante', d: { forca: 5, smash: 6, saque: 4, def: -4, curta: -4, lob: -3, backhand: -2, vel: 0 } },
+  defensor: { nome: 'Defensor', d: { def: 6, vel: 5, backhand: 3, smash: -4, forca: -4, saque: -3, curta: 0, lob: 0 } },
+  tatico: { nome: 'Tático', d: { curta: 6, lob: 6, backhand: 3, forca: -5, smash: -4, saque: -2, def: 0, vel: -1 } },
   completo: { nome: 'Completo', d: {} },
 };
 // criação: overall inicial pela categoria e o perfil, e os atributos de um estilo (sem sorteio) para a tela de criação
@@ -1076,8 +1076,8 @@ function crNextDay(note) {
 // custo de +1 num atributo: começa barato (amador) e fica bem caro perto do topo; um pouco mais lento que antes
 const crUpCostBase = v => v < 45 ? 1 : v < 55 ? 2 : v < 62 ? 3 : v < 68 ? 4 : v < 72 ? 5 : v < 76 ? 7 : v < 80 ? 10 : v < 84 ? 14 : v < 88 ? 20 : v < 90 ? 28 : v < 92 ? 40 : v < 94 ? 56 : v < 96 ? 78 : 100;
 // atributos naturais de cada estilo vão até 99 no custo normal; os outros custam o dobro a partir de 90 (o Completo, 1,4×)
-const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque'], Defensor: ['def', 'vel', 'backhand'], 'Tático': ['curta', 'lob', 'backhand', 'leitura'] };
-const crNatural = k => { const n = STYLE_NAT[$s.CR.me.estilo]; return n ? n.includes(k) : null; }; // null: Completo
+const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque'], Defensor: ['def', 'vel', 'backhand'], 'Tático': ['curta', 'lob', 'backhand'] };
+const crNatural = k => { const n = STYLE_NAT[$s.CR.me.estilo]; return n ? n.includes(k) || k === 'leitura' : null; }; // null: Completo; noção de jogo vale para todos os estilos
 const crStyleK = (v, k) => v < 90 ? 1 : crNatural(k) === null ? 1.4 : crNatural(k) ? 1 : 2;
 const crUpCost = (v, k) => Math.max(1, Math.round(crUpCostBase(v) * crStyleK(v, k) * (crStaffList().some(x => x.cheap && x.cheap.includes(k)) ? .75 : 1)));
 // potencial atual: teto do overall (não adianta ter pontos de evolução acima dele). Só sobe jogando bem:
