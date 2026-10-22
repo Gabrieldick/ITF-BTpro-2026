@@ -735,6 +735,7 @@ function crEnterNation(opt) {
   $s.CR.tour = { tier: sp.tier, special: kind, mate: opt.mate, name: opt.name, teams, me, star: null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
+  crSkipByes();
   $s.CR.lastMsg = 'Convocado! Você joga o ' + sp.nome + ' ao lado de ' + nameOf(crChar(opt.mate)) + '.'; crTourDays(); saveCareer();
   return true;
 }
@@ -781,17 +782,29 @@ function crAfterMyMatch(won) {
   t.lastRating = null;
   crAdvance();
   if (!t.alive) while (t.champion === null) crAdvance();
-  if (t.champion !== null) crFinishTour();
+  else crSkipByes();
+  if (t.champion !== null && !t.done) crFinishTour();
   // fim do sábado num torneio profissional: semifinal e final ficam para o domingo (descanso da noite: +12 de energia)
   else if (t.day === 1 && t.round >= crDay1Rounds(t)) { t.day = 2; t.night = true; $s.CR.day = 7; $s.CR.energy = Math.min(100, $s.CR.energy + 12); crWlog(6, 'Torneio'); }
   saveCareer();
 }
 function crAdvance() {
   const t = $s.CR.tour, cur = t.rounds[t.round];
+  cur.forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = m.w < 0 ? '' : 'passa direto'; } }); // vaga vazia: passa direto
   cur.forEach(m => { if (m.w === null) crSimOne(m, false); });
   if (cur.length === 1) { t.champion = cur[0].w; t.round = crNRounds(); return; }
   const nx = []; for (let k = 0; k < cur.length; k += 2) nx.push({ a: cur[k].w, b: cur[k + 1].w, w: null, score: '' });
   t.rounds.push(nx); t.round++;
+}
+// chave com menos duplas que vagas: rodadas só de "passa direto" andam sozinhas até ter jogo seu (ou até o fim)
+function crSkipByes() {
+  const t = $s.CR.tour; if (!t || t.done || !t.rounds) return;
+  let g = 0;
+  const bye = () => t.rounds[t.round] && t.rounds[t.round].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = m.w < 0 ? '' : 'passa direto'; } });
+  bye();
+  while (!crMyMatch() && t.champion === null && t.round < crNRounds() && t.alive && g++ < 6) { crAdvance(); bye(); }
+  if (t.champion !== null && !t.done) crFinishTour();
+  if (g) saveCareer();
 }
 function crPlaySim() {
   const mm = crMyMatch(); if (!mm) return;
@@ -1223,6 +1236,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek() };
