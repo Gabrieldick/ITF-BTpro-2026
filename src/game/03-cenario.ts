@@ -418,7 +418,8 @@ function updateSideGames(dt) {
 function applyArena(a) {
   a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#0b1d3f', '#33c3ff'], text: 'ITF-BT PRO 2026' }, a || {});
   const key = JSON.stringify(a); if (key === ARENA.key) return; ARENA.key = key;
-  tapeMat.color.copy(col(a.line)); padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
+  // linha da quadra nunca amarela (nem amarelada): se vier uma cor assim, usa o azul padrão
+  { const lc = col(a.line), hsl = {}; lc.getHSL(hsl); tapeMat.color.copy(hsl.h > .08 && hsl.h < .2 && hsl.s > .3 && hsl.l > .25 ? col('#1f4fb8') : lc); } padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
   const bc = bandTex.image.getContext('2d'); drawBand(a.trim)(bc, bandTex.image.width, bandTex.image.height); bandTex.needsUpdate = true;
   sandMat.color.copy(col(a.sand));
   // arquibancadas
