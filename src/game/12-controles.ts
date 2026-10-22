@@ -303,6 +303,15 @@ function ballPreview(k) {
   x.fillStyle = sh; x.fillRect(0, 0, 64, 64); x.restore();
   return (BALL_PREV[k] = c.toDataURL());
 }
+// aparência da barra de força (tamanho e opacidade), escolhida nas configurações
+function applyMeterLook() {
+  const st = document.documentElement.style;
+  st.setProperty('--msc', String({ pequena: .72, normal: 1, grande: 1.25 }[S.settings.meterSize || 'normal'] || 1));
+  st.setProperty('--mop', String((+(S.settings.meterOp || 100)) / 100));
+  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? (e.dataset.setting === 'meterOp' ? '100' : 'normal')); });
+}
+document.querySelectorAll('select[data-setting]').forEach(e => e.addEventListener('change', () => { S.settings[e.dataset.setting] = e.value; saveSettings(); applyMeterLook(); }));
+applyMeterLook();
 function renderBallPickers() {
   const cur = S.settings.ballStyle || 'laranja';
   document.querySelectorAll('[data-ballpick]').forEach(box => {
@@ -475,4 +484,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };

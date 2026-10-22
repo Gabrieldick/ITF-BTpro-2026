@@ -823,7 +823,7 @@ $('onRk').addEventListener('change', e => doAct(['racket', e.target.value]));
 // configurações dentro do online (bolinha, nome do golpe, marcações e teclas)
 $('onCfgBtn').addEventListener('click', () => {
   $('shotTextSel2').value = S.settings.shotText || 'discreto'; $('assistMark2').checked = !!S.settings.assistMark; $('aimArrow2').checked = S.settings.aimArrow !== false;
-  renderBallPickers(); renderBinds(); $('onCfg').hidden = false;
+  renderBallPickers(); renderBinds(); applyMeterLook(); $('onCfg').hidden = false;
 });
 $('onCfgClose').addEventListener('click', () => { $('onCfg').hidden = true; });
 $('shotTextSel2').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
