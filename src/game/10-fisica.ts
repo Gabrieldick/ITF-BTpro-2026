@@ -217,9 +217,11 @@ function doHit(p, type, q, isServe, mod) {
   let curtaK = 0;
   if (key === 'curta' && !pop && !isServe) {
     const tq = mod.timing === undefined ? q : q * .4 + mod.timing * .6; // o toque na hora certa (anel verde) é o que mais conta
-    curtaK = clamp((tq - .45) / .4, 0, 1) * lerp(.65, 1, clamp((attrK(p, 'curta') - .55) / .4, 0, 1));
-    spec.gk = lerp(.95, 1.6, curtaK) * (vr === 'baixa' ? .93 : 1);
-    spec.margin = lerp(.14, .07, curtaK);
+    curtaK = clamp((tq - .45) / .4, 0, 1) * lerp(.65, 1, clamp((attrK(p, 'curta') - .35) / .6, 0, 1));
+    // curta boa (mais ainda a matadora) cai mais perto da rede e despenca mais rápido: difícil de buscar para qualquer um
+    spec.gk = lerp(.95, 1.65, Math.pow(curtaK, 1.2)) * (vr === 'baixa' ? .93 : 1);
+    spec.margin = lerp(.14, .09, curtaK);
+    spec.depth = [lerp(1.1, 1.05, curtaK), lerp(2.5, 2.3, curtaK)];
     if (curtaK > .86 && !finisher) spec.label = 'CURTA MATADORA';
   }
   const err = 1.15 - q;
