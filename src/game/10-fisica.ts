@@ -1,6 +1,7 @@
 // @ts-nocheck
 // física da bola, trajetórias e o golpe (doHit)
 import './09-interface';
+import { perfHitHook } from './09-interface';
 import { $s } from '../state';
 import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN } from './00-base';
 import { S, NET } from './01-estado';
@@ -70,6 +71,7 @@ function hitQuality(p, type) {
   return clamp(q, .1, 1);
 }
 function doHit(p, type, q, isServe, mod) {
+  perfHitHook(p);
   mod = mod || {};
   let key = type;
   // smash da barra (perfeito/cedo/tarde) continua smash até 1,5 m; o golpe rápido sem barra vira drive abaixo de 1,9 m

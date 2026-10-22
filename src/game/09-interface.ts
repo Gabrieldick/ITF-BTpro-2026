@@ -176,19 +176,21 @@ const PERF_TXT = { defBoa: 'defesas boas', defLevantou: 'defesas que levantaram'
   furou: 'bolas furadas', erroF: 'erros forçados', e_curta: 'erros de curta', e_lob: 'erros de lob', e_smash: 'erros de smash', e_defesa: 'erros de defesa',
   e_drive: 'erros de drive', e_voleio: 'erros de voleio', e_saque: 'saques errados' };
 const WIN_V = { smash: .6, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .5, saque: .5 };
-const ERR_V = { curta: -.8, lob: -.65, smash: -.65, defesa: -.6, drive: -.55, voleio: -.55, saque: -.5 }; // erros (vermelho) pesam um pouco mais
+const ERR_V = { curta: -.6, lob: -.5, smash: -.5, defesa: -.45, drive: -.42, voleio: -.42, saque: -.38 }; // erros (vermelho) pesam um pouco mais
 const perfOn = p => !!p && p === human && !p.netHuman && !S.spectate && !NET.role && !S.drill && !!S.perf;
 function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; if (S.careerActive && S.mode === 'rally') updateLiveRating(); }
+// sua defesa e seu lob contam no painel (DEF / LOB) quando passam e ficam dentro: o adversário rebate ou a bola cai do lado dele
+function perfHitHook(p) { const d = S.defPend; if (!d) return; S.defPend = null; if (p.team !== d.team) perfAdd(d.p, 0, d.key); }
 // golpe dado pelo seu jogador (chamado na hora da batida)
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
+  if (sw.type === 'defesa' || sw.type === 'lob') S.defPend = { p, team: p.team, key: sw.type === 'lob' ? 'lobIn' : 'defIn' };
   // defesa: verde soma bem, amarelo soma um pouco, laranja (levantou) tira pouco, vermelho (descontrolou) tira mais
-  if (sw.type === 'defesa' && r.pressure > .25) { if (r.wild) perfAdd(p, -.3, 'defDescontrolou'); else if (r.pop) perfAdd(p, -.15, 'defLevantou'); else perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa'); }
+  if (sw.type === 'defesa' && r.pressure > .25) { if (r.wild) perfAdd(p, -.15, 'defDescontrolou'); else if (r.pop) perfAdd(p, -.1, 'defLevantou'); else perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa'); }
   // curta: verde soma, amarela (lenta) não tira; descontrolada (vermelho) tira
-  if (sw.type === 'curta' && !r.pop) { if (r.wild) perfAdd(p, -.3, 'curtaRuim'); else if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
-  if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.2, 'smashRuim'); }
+  if (sw.type === 'curta' && !r.pop) { if (r.wild) perfAdd(p, -.15, 'curtaRuim'); else if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
+  if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.15, 'smashRuim'); }
   if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
-  else if (sw.lob && sw.lob.word === 'ALTO' && !r.wild && !r.pop) perfAdd(p, 0, 'lobBom'); // só conta no painel
   if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
 }
 // conta da nota (a mesma ao vivo e no fim): jogadas pesam menos que antes e, acima de 8, a nota sobe devagar
@@ -213,8 +215,8 @@ function updateLiveRating() {
   const r = rateFrom(0);
   // estilo NBA 2K: a nota no hexágono (cor pela nota, com a subida/descida embaixo) e os números do seu jogo ao lado
   const ev = S.perf.ev, sum = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
-  // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · DEF: defesas boas · LOB: lobs chutados e altos · ERR: erros
-  const vals = { nota: r, pts: sum(/^w_/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), def: ev.defBoa || 0, lob: (ev.lobChutado || 0) + (ev.lobBom || 0), err: sum(/^(e_|furou|erroF)/) };
+  // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · DEF: defesas que passaram e ficaram dentro · LOB: lobs que passaram e ficaram dentro · ERR: erros
+  const vals = { nota: r, pts: sum(/^w_/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), def: ev.defIn || 0, lob: ev.lobIn || 0, err: sum(/^(e_|furou|erroF)/) };
   e.style.setProperty('--nh', String(Math.round(clamp((r - 4) / 4.5, 0, 1) * 125)));
   for (const [k, v] of Object.entries(vals)) {
     const c = e.querySelector('[data-k="' + k + '"]'); if (!c) continue;
@@ -262,7 +264,7 @@ function creditPoint(w, kind) {
   const st = statOf(lh.p), where = kind === 'net' ? 'na rede' : 'fora';
   if (lh.cat === 'saque') { st.ue++; perfAdd(lh.p, ERR_V.saque, 'e_saque'); return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
   if (lh.hard) st.fe++; else st.ue++;
-  if (lh.hard) perfAdd(lh.p, -.2, 'erroF'); else perfAdd(lh.p, ERR_V[lh.cat] || -.5, 'e_' + lh.cat);
+  if (lh.hard) perfAdd(lh.p, -.15, 'erroF'); else perfAdd(lh.p, ERR_V[lh.cat] || -.5, 'e_' + lh.cat);
   const tail = ' (' + CAT_NAME[lh.cat] + ' ' + where + ')';
   if (lh.forcedBy && lh.forcedBy.p.team === w) return forcedTxt(creditForcer(lh.forcedBy), lh.p, tail);
   return phrase(lh.hard ? 'Erro forçado' : 'Erro não forçado', lh.p, false, tail);
@@ -451,6 +453,7 @@ function drillEnd() {
 function pointTo(w, reason, kind) {
   if (S.mode === 'dead') return;
   if (S.drill) { drillResult(w, kind); return; }
+  if (S.defPend) { const d = S.defPend; S.defPend = null; if (kind === 'in' && w === d.team) { perfAdd(d.p, 0, d.key); updateLiveRating(); } }
   if (S.perf) S.perf.n++;
   S.streak = S.streak && S.streak.team === w ? { team: w, n: S.streak.n + 1 } : { team: w, n: 1 };
   const credit = creditPoint(w, kind);
@@ -493,6 +496,7 @@ function pointShow(w, ev, reason, isTitle) {
   banner(title, sub, 0, ev === 'match' || ev === 'game');
 }
 function setupPoint() {
+  S.defPend = null;
   S.celebrate = null; S.pressure = decisive(); S.hadDive = false;
   S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; ball.state = 'held'; ball.vel.set(0, 0, 0);
   S.assign = [null, null]; S.assignId = [-1, -1];
@@ -644,4 +648,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
