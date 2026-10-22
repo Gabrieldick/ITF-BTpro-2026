@@ -164,10 +164,12 @@ function assignCharacters() {
   // partida mista (homens e mulheres em quadra): a mulher joga com ~88% dos atributos (95 → 84), pela diferença física
   const ids = S.settings.mode === 'dupla' ? [pk.me, pk.mate, pk.o1, pk.o2] : [pk.me, pk.o1], fems = ids.map(id => !!charById(id).fem);
   const mixed = fems.includes(true) && fems.includes(false);
-  [[human, pk.me, 0, 0], [partner, pk.mate, 0, 1], [cpuA, pk.o1, 1, 0], [cpuB, pk.o2, 1, 1]].forEach(([p, id, team, idx]) => {
+  const rkp = S.rkPick || {}; // online: raquete escolhida por quem joga com cada boneco
+  [[human, pk.me, 0, 0, 'me'], [partner, pk.mate, 0, 1, 'mate'], [cpuA, pk.o1, 1, 0, 'o1'], [cpuB, pk.o2, 1, 1, 'o2']].forEach(([p, id, team, idx, slot]) => {
     const c = charById(id);
     // atributos em jogo: base + raquete (a sua vem do menu/carreira; a dos outros, do equipamento de cada um)
-    let a = effA(c.a, racketBonus(p === human ? S.settings.racket : c.look && c.look.racket));
+    p.rkKey = rkp[slot] || (p === human ? S.settings.racket : c.look && c.look.racket) || 'proteo';
+    let a = effA(c.a, racketBonus(p.rkKey));
     if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .885)); a = m; }
     p.char = Object.assign({}, c, { a });
     const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
@@ -182,7 +184,7 @@ function assignCharacters() {
 }
 function applyRackets() {
   const mine = RACKETS[S.settings.racket] ? S.settings.racket : 'proteo';
-  [[human, mine], [partner, partner.char ? partner.char.look.racket : 'medusa'], [cpuA, cpuA.char ? cpuA.char.look.racket : 'kronos'], [cpuB, cpuB.char ? cpuB.char.look.racket : 'supercarbon']].forEach(([p, key]) => {
+  [[human, human.rkKey || mine], [partner, partner.rkKey || (partner.char ? partner.char.look.racket : 'medusa')], [cpuA, cpuA.rkKey || (cpuA.char ? cpuA.char.look.racket : 'kronos')], [cpuB, cpuB.rkKey || (cpuB.char ? cpuB.char.look.racket : 'supercarbon')]].forEach(([p, key]) => {
     p.look.racket = key; p.model.racket.userData.setStyle(key); if (p.skin) p.skin.racket.userData.setStyle(key);
   });
   if (fpRacket) fpRacket.userData.setStyle(mine);

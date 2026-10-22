@@ -176,7 +176,7 @@ function fixCpu() {
 function lobbyState() {
   return {
     code: ON.code, kind: ON.room.kind, mode: ON.room.mode, games: S.settings.games, diff: S.settings.diff,
-    members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt), cc: m.cc || null })),
+    members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt), cc: m.cc || null, rk: m.rk || '' })),
     seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing,
   };
 }
@@ -200,6 +200,8 @@ function act(mid, m) {
     if ((ROSTER.some(c => c.id === id) || (mem.cc && id === mem.cc.id)) && !members().some(x => x !== mem && x.pick === id)) mem.pick = id;
   }
   // personagem da carreira de quem está na sala: o anfitrião confere os valores e passa a valer para todos
+  // raquete escolhida por quem está na sala ('' = a do personagem)
+  if (m[0] === 'racket' && !room.playing) mem.rk = RACKET_STATS[m[1]] && m[1] !== 'assinatura' ? m[1] : '';
   if (m[0] === 'cchar' && !room.playing) { const cc = sanitizeCC(m[1], mid); if (cc) { mem.cc = cc; mem.pick = cc.id; regOnlineChars(); } }
   if (mid === 'host' && m[0] === 'cpu' && SEATS.includes(m[1]) && ROSTER.some(c => c.id === m[2]) && !members().some(x => x.pick === m[2])) {
     const other = SEATS.find(s => s !== m[1] && room.cpu[s] === m[2]); if (other) room.cpu[other] = room.cpu[m[1]];
@@ -284,7 +286,10 @@ function startMatch(owners, picks, mode, champM) {
   S.settings.pick = { me: pickByPl[0], mate: pickByPl[1], o1: pickByPl[2], o2: pickByPl[3] };
   const c0 = charById(pickByPl[0]); S.settings.racket = (c0.look && c0.look.racket) || S.settings.racket;
   S.careerActive = false; S.champActive = false;
-  ON.match = { plSeat, ownerByPl, pickByPl, champM, teamOfSim: [t0, t1] };
+  // raquete de cada boneco: a escolhida por quem joga com ele (ou a do personagem)
+  const rkByPl = ownerByPl.map(o => { const m = o && (o === 'host' ? ON.self : guestById(o)); return (m && m.rk) || ''; });
+  S.rkPick = { me: rkByPl[0], mate: rkByPl[1], o1: rkByPl[2], o2: rkByPl[3] };
+  ON.match = { plSeat, ownerByPl, pickByPl, rkByPl, champM, teamOfSim: [t0, t1] };
   ON.room.playing = true; broadcast();
   $('online').hidden = true; ON.outq = [];
   newMatch(); // chama onNewMatch (manda a configuração a cada um) e depois monta o primeiro ponto
@@ -308,7 +313,7 @@ function hostPlay() {
 function hostCfg(g) {
   const M = ON.match, names = {}, heights = {};
   M.pickByPl.forEach(id => { if (NAMES[id]) names[id] = NAMES[id]; if (HEIGHTS[id]) heights[id] = HEIGHTS[id]; });
-  return { me: g.plIdx, picks: M.pickByPl, humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
+  return { me: g.plIdx, picks: M.pickByPl, rackets: M.rkByPl || [], humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
 }
 function meterOf(c) { const m = c && c.m; return m && m.active ? [m.kind, m.type, r3(m.t), r3(m.v), m.center, m.half] : null; }
 function hostState(now) {
@@ -545,7 +550,7 @@ function guestStart(cfg) {
   ON.myIdx = me; ON.mirror = me >= 2; ON.G = VIEW[Math.max(0, me)];
   S.spectate = me < 0; document.body.classList.toggle('spectate', S.spectate);
   Object.assign(S.settings, cfg.settings);
-  const pick = {}; ON.G.forEach((p, i) => { pick[SLOT.get(p)] = cfg.picks[i]; }); S.settings.pick = pick;
+  const pick = {}, rk = {}; ON.G.forEach((p, i) => { pick[SLOT.get(p)] = cfg.picks[i]; rk[SLOT.get(p)] = (cfg.rackets || [])[i] || ''; }); S.settings.pick = pick; S.rkPick = rk;
   const mine = charById(pick.me); S.settings.racket = (mine.look && mine.look.racket) || S.settings.racket;
   // nomes e alturas personalizados do anfitrião (só na memória; voltam ao sair)
   restoreNames(); ON.nameBak = {};
@@ -712,7 +717,7 @@ function leave(text) {
   if (was === 'guest') { send(['bye']); const c = ON.conn; setTimeout(() => { try { c && c.close(); } catch (e) {} }, 150); }
   const p = ON.peer; if (p) setTimeout(() => { try { p.destroy(); } catch (e) {} }, 200);
   clearInterval(ON.hb);
-  $s.ONLINE_CHARS = [];
+  $s.ONLINE_CHARS = []; S.rkPick = null;
   Object.assign(ON, { peer: null, conn: null, open: false, code: '', rtt: 0, guests: [], room: null, outq: [], match: null, inMatch: false, L: null, G: null, mirror: false, myIdx: -1, buf: [], evq: [], offs: [], off: null, myId: '', seatsKey: '', pickKey: '', champKey: '', fast: null, interp: 0, gap: 0 });
   NET.role = null;
   clearRemote(); restoreNames();
@@ -742,6 +747,7 @@ function renderRoom(force) {
   const mine = memberOf(L, me), taken = new Set(L.members.filter(m => m.id !== me).map(m => m.pick));
   const pk = JSON.stringify([mine && mine.pick, [...taken], L.playing, mine && mine.cc && mine.cc.name]);
   fillCcSlots();
+  { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + '</option>').join(''); rs.value = want; } }
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
     $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + mine.cc.id + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
@@ -809,6 +815,7 @@ $('onJoin').addEventListener('click', joinRoom);
 $('onCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 $('onCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
 $('onPick').addEventListener('change', e => doAct(['pick', e.target.value]));
+$('onRk').addEventListener('change', e => doAct(['racket', e.target.value]));
 // personagem da carreira: de um save deste navegador ou de um arquivo .json
 function fillCcSlots() {
   const sel = $('onCcSlot'); if (!sel || document.activeElement === sel) return;
