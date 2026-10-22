@@ -125,6 +125,23 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
   });
   return out;
 }
+// atletas locais dos amadores (C, B e A) de cada estado: completam os rankings estaduais para ~30 por categoria.
+// Saem da semente da carreira (sempre os mesmos) e não vão no save: só os resultados deles ficam guardados
+const LOCALS = { key: '', list: [], map: null };
+const LOCAL_N = 22, LOCAL_OVR = [[36, 44], [45, 51], [52, 58]];
+function crLocals() {
+  if (!$s.CR) return [];
+  if (LOCALS.key === String($s.CR.seed)) return LOCALS.list;
+  const out = [], rnd = mulberry($s.CR.seed + 90917), bank = NAME_BANK.BRA, pick = arr => arr[Math.floor(rnd() * arr.length)];
+  for (const [uf] of STATES) for (let k = 0; k < 3; k++) for (const g of ['m', 'f']) for (let i = 0; i < LOCAL_N; i++) {
+    const [o0, o1] = LOCAL_OVR[k], ovr = o0 + Math.floor(rnd() * (o1 - o0 + 1)), style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']), fem = g === 'f';
+    const look = { skin: pick(SKINS), hair: pick(HAIRS), num: String(10 + Math.floor(rnd() * 89)), racket: pick(ovr < 45 ? ['basica', 'tropic'] : ovr < 52 ? ['tropic', 'brisa', 'fibra'] : ['fibra', 'areia', 'mare']) };
+    if (rnd() < .35) look.cap = pick(['#fbf6ea', '#17324d', '#0b7a83']); else if (rnd() < .5) look.visor = pick(['#fbf6ea', '#17324d']); if (fem) look.tank = true;
+    out.push({ id: 'l' + g + uf + k + '_' + i, name: pick(bank[g]) + ' ' + pick(bank.s), alt: Math.round(fem ? 168 + (rnd() - .5) * 14 : 181 + (rnd() - .5) * 16), pais: 'BRA', uf, estilo: STYLES[style].nome, build: pick(['atletico', 'esguio', 'compacto', 'forte']), fem, canhoto: rnd() < .12 || undefined, a: makeAttrs(ovr, style, rnd), look, local: true });
+  }
+  LOCALS.key = String($s.CR.seed); LOCALS.list = out; LOCALS.map = new Map(out.map(c => [c.id, c]));
+  return out;
+}
 // ---------- estado ----------
 // ---------- saves: várias carreiras no navegador + arquivo .json ----------
 // localStorage: 'pdo-careers' = índice { v: 2, active, ids }; cada carreira na sua chave 'pdo-career-<id>' (comprimida).
@@ -218,7 +235,7 @@ function crSyncChars() {
   // o parceiro joga melhor quando está contente e pior quando está insatisfeito
   const mb = $s.CR && $s.CR.partner ? crMoodBonus() : 0, mbB = {}; if (mb) for (const [k] of ATTRS) mbB[k] = mb;
   // na partida cada um joga com a sua fase (e os reais com a evolução da carreira)
-  $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
+  $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER, crLocals()).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
 function crGearBonus() { const b = {}; ($s.CR.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = (b[k] || 0) + g.b[k]; }); return b; }
@@ -251,13 +268,13 @@ function crDriftSeason(rnd) {
 }
 const crCharOvr = c => c.id === 'crme' ? crMeOvr() : overall(effA(c.a, racketBonus(c.look && c.look.racket), crFormB(c.id)));
 // mundo do seu gênero (fictícios + astros reais)
-const crWorld = () => $s.CR.pool.filter(c => !!c.fem === !!$s.CR.me.fem).concat(ROSTER.filter(c => !!c.fem === !!$s.CR.me.fem));
+const crWorld = () => $s.CR.pool.filter(c => !!c.fem === !!$s.CR.me.fem).concat(ROSTER.filter(c => !!c.fem === !!$s.CR.me.fem), crLocals().filter(c => !!c.fem === !!$s.CR.me.fem));
 const POOL_IDX = { pool: null, len: 0, map: null };
 function poolGet(id) {
   if (POOL_IDX.pool !== $s.CR.pool || POOL_IDX.len !== $s.CR.pool.length) { POOL_IDX.pool = $s.CR.pool; POOL_IDX.len = $s.CR.pool.length; POOL_IDX.map = new Map($s.CR.pool.map(c => [c.id, c])); }
   return POOL_IDX.map.get(id);
 }
-const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || ROSTER.find(c => c.id === id));
+const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || (id[0] === 'l' && (crLocals(), LOCALS.map.get(id))) || ROSTER.find(c => c.id === id));
 const absWeek = () => ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
 const crPts = () => bestN($s.CR.results.filter(r => r.w > absWeek() - SEASON_WEEKS).map(r => r.pts));
 // resultados dos outros: lista compacta (semana absoluta * 10000 + pontos), só os 12 melhores ainda válidos
@@ -325,7 +342,7 @@ function crSimWorld(rnd, list, aw, ovrs) {
   if (aw === undefined) aw = absWeek();
   const season = Math.floor((aw - 1) / SEASON_WEEKS) + 1, wk = aw - (season - 1) * SEASON_WEEKS;
   const cal = crSeasonCal(season)[wk] || [], lim = aw - SEASON_WEEKS, R = $s.CR.npcR = $s.CR.npcR || {};
-  (list || $s.CR.pool.concat(ROSTER)).forEach(c => {
+  (list || $s.CR.pool.concat(ROSTER, crLocals())).forEach(c => {
     const o = ovrs ? ovrs.get(c.id) : crCharOvr(c);
     const mt = crMinTier(c.id);
     let t = Math.max(npcTier(o), mt); while (t >= 3 && !cal.includes(t)) t--;
@@ -345,7 +362,7 @@ function crSimWorld(rnd, list, aw, ovrs) {
 }
 // um ano inteiro de resultados do mundo (criação da carreira e migração dos saves antigos)
 function crSimYear(seedK, list) {
-  const r = mulberry($s.CR.seed + seedK), L = list || $s.CR.pool.concat(ROSTER), ovrs = new Map(L.map(c => [c.id, crCharOvr(c)])), now = absWeek();
+  const r = mulberry($s.CR.seed + seedK), L = list || $s.CR.pool.concat(ROSTER, crLocals()), ovrs = new Map(L.map(c => [c.id, crCharOvr(c)])), now = absWeek();
   for (let aw = now - SEASON_WEEKS + 1; aw <= now; aw++) crSimWorld(r, L, aw, ovrs);
 }
 function gaussR(rnd) { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
@@ -421,6 +438,7 @@ function crCreate(o) {
   if (st >= 2) { const rk = st >= 5 ? 'proteo' : st >= 3 ? 'coral' : 'mare'; $s.CR.rackets.push(rk); $s.CR.racket = rk; } // começando mais alto, já tem uma raquete melhor
   me.look.racket = $s.CR.racket;
   $s.CR.v = 2; $s.CR.potCur = Math.min($s.CR.pot, overall(me.a) + 6);
+  $s.CR.localV = 1; // os locais entram no ano simulado da criação (crSimYear abaixo)
   crMigrate();
   crSimYear(11);
   $s.CR.ovrLog.push({ s: 1, w: 1, o: overall($s.CR.me.a) });
@@ -539,7 +557,7 @@ function crAmateurPlace(uf, rnd) {
 }
 const AMERICAS = ['BRA', 'ARG', 'VEN', 'URU', 'CHI', 'PAR', 'COL', 'PER', 'MEX', 'USA', 'CAN', 'ARU'];
 const hashId = id => { let h = 2166136261; for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
-const crUf = c => c.id === 'crme' ? ($s.CR.me.uf || 'SP') : c.pais === 'BRA' ? STATES[hashId(c.id) % STATES.length][0] : null;
+const crUf = c => c.id === 'crme' ? ($s.CR.me.uf || 'SP') : c.uf ? c.uf : c.pais === 'BRA' ? STATES[hashId(c.id) % STATES.length][0] : null;
 const ufName = uf => (STATES.find(x => x[0] === uf) || [uf, uf])[1];
 // torneios especiais: estaduais (desde o Amador C), seleções estaduais e seleções nacionais (com convocação)
 const SPECIAL = {
@@ -696,6 +714,11 @@ function crEnter(opt) {
     const localOnly = opt.special === 'estadual' || !!opt.uf;
     field = crWorld().filter(c => !busy.has(c.id) && (!localOnly || crUf(c) === (opt.uf || $s.CR.me.uf || 'SP') || (lo < T.ovr[0] - 6 && c.pais === 'BRA') || (!opt.special && lo < T.ovr[0] - 9))).filter(c => { const o = crCharOvr(c); return o >= lo && o <= hi; });
     lo -= 3; hi += 3;
+  }
+  // amadores no seu estado: o campo vem do ranking estadual da categoria (quem está no ranking e pode jogar nela)
+  if (opt.tier <= 2 && (opt.special === 'estadual' || !!opt.uf)) {
+    const rk = crCatRanking(opt.tier, opt.uf || $s.CR.me.uf || 'SP').filter(x => !busy.has(x.id)).map(x => x.c);
+    if (rk.length >= need) field = rk.slice(0, Math.max(need + 6, 30));
   }
   field.sort(() => rnd() - .5); field = field.slice(0, need).sort((x, y) => crCharOvr(y) - crCharOvr(x));
   // de vez em quando um astro de nível mais alto joga um BT10/BT50 com um parceiro bem mais fraco (no máximo a cada 6 semanas)
@@ -1209,6 +1232,7 @@ function crMigrate() {
   // profissionais reais novos na lista: ganham um ano de resultados para entrar no ranking com pontos
   if ($s.CR.npcR && $s.CR.rosterN !== ROSTER.length) { const miss = ROSTER.filter(c => !$s.CR.npcR[c.id]); if (miss.length) crSimYear(7717, miss); $s.CR.rosterN = ROSTER.length; }
   if ($s.CR.catV !== 1 && $s.CR.npcR) { crCatSeed(); saveCareer(); }
+  if ($s.CR.npcR && $s.CR.localV !== 1) { crSimYear(9191, crLocals()); $s.CR.localV = 1; saveCareer(); } // atletas locais: um ano de resultados
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);
