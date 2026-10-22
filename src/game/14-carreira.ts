@@ -767,12 +767,15 @@ function crAfterMyMatch(won) {
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
   const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
   $s.CR.pe += Math.round((won ? 1 + t.tier * .3 : .5) * crXpMul());
+  // nota alta rende um pouco mais de evolução (a partir de 8; nota 10 ≈ +60% de uma vitória)
+  const rb = t.lastRating && t.lastRating.r > 8 ? Math.round((t.lastRating.r - 8) * (.3 + t.tier * .09) * crXpMul() * 10) / 10 : 0;
+  if (rb > 0) $s.CR.pe += rb;
   { const wasRival = crRivalOf(opp); $s.CR.h2h = $s.CR.h2h || {}; const k = h2hKey(opp), h = $s.CR.h2h[k] || { w: 0, l: 0, name: crTeamName(opp) }; won ? h.w++ : h.l++; h.name = crTeamName(opp); $s.CR.h2h[k] = h;
     if (won && wasRival) { const bon = Math.round(crTourT(t).prize[0] * .1 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 2; crAddFama(2); t.log.push('Clássico vencido contra rivais: +' + money(bon) + ', +2 PE, +2 fama'); }
     else if (!wasRival && crRivalOf(opp)) t.log.push('Nasce uma rivalidade com ' + crTeamName(opp) + ' (' + h.w + '–' + h.l + ')'); }
   if (won) { [opp.a, opp.b].filter(Boolean).forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
   else t.alive = false;
-  t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp) + (t.lastRating ? ' · nota ' + t.lastRating.r.toFixed(1).replace('.', ',') + (t.lastRating.g > .005 ? ' · potencial +' + t.lastRating.g.toFixed(2).replace('.', ',') : '') : ''));
+  t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp) + (t.lastRating ? ' · nota ' + t.lastRating.r.toFixed(1).replace('.', ',') + (rb > 0 ? ' (+' + String(rb).replace('.', ',') + ' PE pela nota)' : '') + (t.lastRating.g > .005 ? ' · potencial +' + t.lastRating.g.toFixed(2).replace('.', ',') : '') : ''));
   t.lastRating = null;
   crAdvance();
   if (!t.alive) while (t.champion === null) crAdvance();
