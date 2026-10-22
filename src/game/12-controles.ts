@@ -205,7 +205,9 @@ function pressShot(type, c) {
     if (M.active && (M.kind === 'smash' || M.kind === 'lob')) cancelMeter(c);
     const sw = p.swing;
     if (sw.t >= 0 && sw.t < sw.dur * .8) return;
-    if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
+    // barra do smash/lob: pode ser desligada nas configurações (só para quem joga neste aparelho; no treino fica sempre ligada)
+    const noBar = !c.remote && !S.drill && ((type === 'smash' && S.settings.barSmash === 'off') || (type === 'lob' && S.settings.barLob === 'off'));
+    if ((type === 'smash' || type === 'lob') && S.mode === 'rally' && !noBar) { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
     if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !p.dive) tryDive(type, p);
     sw.t = 0; sw.type = type; sw.dur = type === 'curta' ? .5 : SWING_DUR; sw.hit = false; sw.meter = null; sw.lob = null;
     sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team ? timeToReach(p) : null; // para o timing: quanto faltava a bola chegar
@@ -308,7 +310,7 @@ function applyMeterLook() {
   const st = document.documentElement.style;
   st.setProperty('--msc', String({ pequena: .72, normal: 1, grande: 1.25 }[S.settings.meterSize || 'normal'] || 1));
   st.setProperty('--mop', String((+(S.settings.meterOp || 100)) / 100));
-  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? (e.dataset.setting === 'meterOp' ? '100' : 'normal')); });
+  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on' }[e.dataset.setting] || 'normal')); });
 }
 document.querySelectorAll('select[data-setting]').forEach(e => e.addEventListener('change', () => { S.settings[e.dataset.setting] = e.value; saveSettings(); applyMeterLook(); }));
 applyMeterLook();
