@@ -46,7 +46,8 @@ function gapX(team, jitter) {
 function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
-  const adj = p.team === 1 ? (!S.careerActive ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : [-.14, -.07, 0, .06, .12][(S.careerStars || 3) - 1]) : 0;
+  // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
+  const adj = S.careerActive ? [-.14, -.07, 0, .06, .12][(S.careerStars || 3) - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
   const k = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)) + adj, 0, 1.1);
   const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
@@ -113,6 +114,11 @@ function assignee(team) {
       if (Math.abs(ball.vel.z) > .5) { const t = (zLine - ball.pos.z) / ball.vel.z; if (t > 0) { const lx = ball.pos.x + ball.vel.x * t, lt = Math.abs((land.z - ball.pos.z) / ball.vel.z); if (t < lt) bx = lx; } }
       if (Math.abs(bx - split) < .3) who = Math.abs(bx - m.pos.x) < Math.abs(bx - h.pos.x) ? m : h;
       else who = Math.sign(bx - split) === Math.sign(m.pos.x - split) ? m : h;
+      // bola cruzada que passa pelo parceiro mas cairia do seu lado: se ele alcança e você está longe dela, ele pega
+      if (who === h) {
+        const pm = planIntercept(m, skillOf(m).speed, 0), ph = planIntercept(h, P_SPEED, 0);
+        if (pm && pm.ok && (!ph || !ph.ok || Math.hypot(ph.pt.x - h.pos.x, ph.pt.z - h.pos.z) > Math.hypot(pm.pt.x - m.pos.x, pm.pt.z - m.pos.z) + 1.4)) who = m;
+      }
     } else {
       // dupla da IA: vai quem está do lado onde a bola chega (na linha da dupla, ou onde cai se cair antes);
       // o outro só assume se o primeiro não alcança e ele sim (antes a curta cruzada ia para quem estava reto)
