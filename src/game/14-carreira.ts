@@ -1009,6 +1009,27 @@ function crRestUntil() {
   if (n > 1) $s.CR.lastMsg = n + ' dias de descanso. ' + ($s.CR.lastMsg || '');
   saveCareer();
 }
+// semana automática: treina enquanto a energia permite e descansa o necessário para chegar inteiro ao torneio
+// (sem torneio: treina com energia acima de 40 e vai até o fim da semana)
+function crAutoDays() {
+  const wk = $s.CR.week, pe0 = $s.CR.pe; let n = 0, tr = 0, rs = 0;
+  while ($s.CR.week === wk && !($s.CR.tour && !$s.CR.tour.pending) && !$s.CR.event && n < 7) {
+    const cost = crInv('quadra') ? 0 : 20 * (crMaxTier() + 1), pend = $s.CR.tour && $s.CR.tour.pending;
+    const after = Math.max(0, 5 - $s.CR.day); // dias livres depois de hoje antes do sábado
+    const can = !$s.CR.injury && $s.CR.money >= cost && $s.CR.energy >= 10;
+    const ok = pend ? $s.CR.energy - 6 + 14 * after >= 88 : $s.CR.energy >= 40;
+    if (can && ok) { crTrain(); tr++; } else { crRest(); rs++; }
+    n++;
+  }
+  $s.CR.lastMsg = 'Dias automáticos: ' + tr + ' treino(s) e ' + rs + ' descanso(s) · +' + fmt1($s.CR.pe - pe0) + ' pontos de evolução. ' + ($s.CR.lastMsg || '');
+  saveCareer();
+}
+// simula as suas partidas que faltam no torneio (inclusive a virada para o domingo)
+function crSimTour() {
+  const t = $s.CR.tour; let g = 0;
+  while (t && !t.done && g++ < 12) { if (t.night) t.night = false; if (!crMyMatch()) break; crPlaySim(); }
+  saveCareer();
+}
 // passa o dia; no sábado o torneio inscrito começa; depois do domingo, vira a semana
 function crNextDay(note) {
   if ($s.CR.day >= 7) return crNextWeek(note);
@@ -1202,6 +1223,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek() };

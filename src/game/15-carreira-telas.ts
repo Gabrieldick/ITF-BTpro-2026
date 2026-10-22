@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -54,7 +54,7 @@ function crAgendaHTML() {
     + '<div class="cr-card"><div class="eyebrow">Treino físico e técnico</div><b>Treinar</b><span>+' + (Math.round((.9 + (crInv('quadra') ? .6 : 0)) * crXpMul() * 10) / 10).toString().replace('.', ',') + ' ponto de evolução · −6 energia</span><span>Custo: ' + money(crInv('quadra') ? 0 : 20 * (crMaxTier() + 1)) + '</span><button class="ghost sm" id="crTrain"' + ($s.CR.injury ? ' disabled' : '') + '>Treinar hoje</button></div>'
     + '<div class="cr-card"><div class="eyebrow">Treino com desafio</div><b>Treinar na quadra</b><span>Curtas, defesa, smash, saque ou combinados: evolução por acerto; cumprindo a meta, um pouco de potencial · −5 energia</span><button class="ghost sm" id="crDrill"' + ($s.CR.injury ? ' disabled' : '') + '>Escolher desafio</button></div>'
     + '<div class="cr-card"><div class="eyebrow">Renda extra</div><b>Dar aulas</b><span>+' + money(Math.round(crLessonIncome() * .3 / 10) * 10) + ' · −2 energia</span><button class="ghost sm" id="crCoach">Dar aulas hoje</button></div>'
-    + '<div class="cr-card"><div class="eyebrow">Recuperação</div><b>Descansar</b><span>+14 de energia' + (crLife('crio') ? ' (+6 da crioterapia)' : '') + '. 3 dias de descanso na semana aceleram a volta de lesão.</span><div class="cta-row"><button class="ghost sm" id="crRest">Descansar hoje</button><button class="ghost sm" id="crRestUntil">' + (reg ? 'Descansar até o torneio' : 'Descansar até o fim da semana') + '</button></div></div></div>';
+    + '<div class="cr-card"><div class="eyebrow">Recuperação</div><b>Descansar</b><span>+14 de energia' + (crLife('crio') ? ' (+6 da crioterapia)' : '') + '. 3 dias de descanso na semana aceleram a volta de lesão.</span><div class="cta-row"><button class="ghost sm" id="crRest">Descansar hoje</button><button class="ghost sm" id="crRestUntil">' + (reg ? 'Descansar até o torneio' : 'Descansar até o fim da semana') + '</button><button class="ghost sm" id="crAuto" title="Treina enquanto a energia deixa e descansa o necessário para chegar inteiro ao torneio">' + (reg ? 'Dias automáticos até o torneio' : 'Semana automática') + '</button></div></div></div>';
   const regC = reg ? '<div class="cr-card gold"><div class="eyebrow">Inscrito · ' + (crTourT(reg).pro ? 'sábado e domingo' : 'sábado') + '</div><b>' + esc(reg.name) + '</b><span>' + (crTourT(reg).pro ? 'Sábado: primeiras rodadas. Domingo: semifinal e final (se chegar lá).' : 'Todas as rodadas no sábado.') + '</span></div>' : '';
   // inscrições da semana: até sexta
   const open = !reg && d <= 5;
@@ -273,20 +273,21 @@ function crTourHTML() {
       + '<p class="lede">' + names[t.round] + ': ' + (t.singles ? 'você' : 'vocês') + ' contra <b>' + crTeamName(opp) + '</b> (OVR ' + crTeamOvr(opp) + '): ' + esc(shortOf(crChar(opp.a))) + ' é ' + sty(opp.a) + (opp.b ? ', ' + esc(shortOf(crChar(opp.b))) + ' é ' + sty(opp.b) + '. Sua dupla: OVR ' : '. Você: OVR ') + crTeamOvr(t.teams[t.me]) + '.</p>';
   }
   const dayTxt = '<p class="cr-note"><b>Dia ' + (t.day || 1) + ' · ' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day) + '</b>' + (T.pro && !t.done ? (t.day === 2 ? ' · semifinal e final hoje' : ' · semifinal e final no domingo') : '') + '</p>';
-  if (t.night && !t.done) return '<div class="eyebrow">' + esc(t.name) + '</div>' + br + '<div class="cr-sum"><b>Fim do sábado: ' + (t.singles ? 'você está' : 'vocês estão') + ' na semifinal!</b><span>Amanhã (domingo) tem semifinal e, vencendo, a final. A noite de descanso recuperou 12 de energia.</span><span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div><div class="cta-row"><button class="cta" id="crSunday">Ir para o domingo</button></div>';
+  if (t.night && !t.done) return '<div class="eyebrow">' + esc(t.name) + '</div>' + br + '<div class="cr-sum"><b>Fim do sábado: ' + (t.singles ? 'você está' : 'vocês estão') + ' na semifinal!</b><span>Amanhã (domingo) tem semifinal e, vencendo, a final. A noite de descanso recuperou 12 de energia.</span><span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div><div class="cta-row"><button class="cta" id="crSunday">Ir para o domingo</button><button class="ghost" id="crSimAll">Simular o resto do torneio</button></div>';
   return dayTxt + '<div class="eyebrow">' + (t.special ? esc(T.nome) : t.singles ? esc(t.name) + ' · ' + esc(TIERS[t.tier].nome) : esc(T.nome) + ' · ' + esc(t.name)) + (crIsFinalT(t) && T.pro ? ' · final em 2 sets de ' + $s.CR.games + ' games + super tie-break' : '') + '</div>' + br + msg
-    + '<div class="cta-row">' + (t.done ? '<button class="cta" id="crDone">Continuar</button>' : mm ? '<button class="cta" id="crPlay">Jogar partida</button><button class="ghost" id="crSim">Simular partida</button>' : '') + '</div>';
+    + '<div class="cta-row">' + (t.done ? '<button class="cta" id="crDone">Continuar</button>' : mm ? '<button class="cta" id="crPlay">Jogar partida</button><button class="ghost" id="crSim">Simular partida</button><button class="ghost" id="crSimAll">Simular o resto do torneio</button>' : '') + '</div>';
 }
 function bindTour() {
   const b = id => $(id) && $(id).addEventListener('click', fn[id]);
   const fn = {
     crPlay: () => { const ts = $('crTactic'); if (ts) { S.settings.tactic = ts.value; saveSettings(); } crPlayMatch(); },
     crSim: () => { crPlaySim(); renderCareer(); },
+    crSimAll: () => { crSimTour(); renderCareer(); },
     // acabou no sábado: o domingo fica livre; acabou no domingo: vira a semana
     crDone: () => { if ($s.CR.day < 7) { $s.CR.tour = null; crNextDay(); } else crNextWeek(); crTab = 'agenda'; renderCareer(); },
     crSunday: () => { $s.CR.tour.night = false; saveCareer(); renderCareer(); },
   };
-  ['crPlay', 'crSim', 'crDone', 'crSunday'].forEach(b);
+  ['crPlay', 'crSim', 'crSimAll', 'crDone', 'crSunday'].forEach(b);
   const ts = $('crTactic'); if (ts) ts.value = S.settings.tactic || 'normal';
   const sd = $('crSide'); if (sd) { sd.value = $s.CR.side || 'direita'; sd.addEventListener('change', () => { $s.CR.side = sd.value; saveCareer(); }); }
 }
@@ -296,6 +297,7 @@ function bindCareerBody() {
   const tr = $('crTrain'); if (tr) tr.addEventListener('click', () => { crTrain(); renderCareer(); });
   const rs = $('crRest'); if (rs) rs.addEventListener('click', () => { crRest(); renderCareer(); });
   const ru = $('crRestUntil'); if (ru) ru.addEventListener('click', () => { crRestUntil(); renderCareer(); });
+  const au = $('crAuto'); if (au) au.addEventListener('click', () => { crAutoDays(); renderCareer(); });
   const dr = $('crDrill'); if (dr) dr.addEventListener('click', openDrillFromCareer);
   const co = $('crCoach'); if (co) co.addEventListener('click', () => { crCoach(); renderCareer(); });
   body.querySelectorAll('[data-up]').forEach(bt => bt.addEventListener('click', () => { crUpgrade(bt.dataset.up); renderCareer(); }));
