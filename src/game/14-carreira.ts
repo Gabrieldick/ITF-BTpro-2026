@@ -777,8 +777,9 @@ function crAfterMyMatch(won) {
   const t = $s.CR.tour; $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
   const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
-  // evolução por partida: vitória ≈ 2 no Amador C até ≈ 10 no BT200; derrota rende 30% disso
-  const winPE = 2 + t.tier * 1.33;
+  // evolução por partida: vitória ≈ 4 no Amador C, ≈ 9 no BT200 e ≈ 11 no Sand Series (sobe bem menos que o custo dos atributos);
+  // derrota rende 30% disso
+  const winPE = 4 + t.tier * .9;
   $s.CR.pe += Math.round((won ? winPE : winPE * .3) * crXpMul());
   // nota alta rende mais (a partir de 8; nota 10 dobra o que a vitória dá)
   const rb = t.lastRating && t.lastRating.r > 8 ? Math.round((t.lastRating.r - 8) / 2 * winPE * crXpMul() * 10) / 10 : 0;
@@ -895,7 +896,9 @@ function crFinishTour() {
   t.done = true;
   crWlog(6, 'Torneio'); if ($s.CR.day === 7) crWlog(7, 'Torneio');
 }
-const crXpMul = () => 1 + crStaffList().reduce((t, x) => t + (x.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0);
+// multiplicador de evolução: os bônus (técnico, mentor, idade, CT, embalo) somam com retorno decrescente
+// (+90% sozinho vale ~+62%; tudo junto não passa muito de ×2,2), para os ganhos não crescerem tanto quanto os custos
+const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0); return 1 + x / (1 + x * .5); };
 // ---------- negócios: investimentos permanentes para o fim da carreira ----------
 // cada linha tem níveis; cada nível exige o anterior e algo da carreira (fama, títulos, ranking)
 const crTitlesAt = t => Object.entries($s.CR.titles || {}).reduce((n, [k, v]) => n + (+k >= t ? v : 0), 0);
