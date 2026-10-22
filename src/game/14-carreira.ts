@@ -985,7 +985,7 @@ function crDrillReward(ok, pass, rew) {
   rew = rew || 1; // nível do desafio: mais difícil, mais recompensa
   const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew;
   $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
-  const pg = pass ? Math.min(.07 * rew * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
+  const pg = pass ? Math.min(.03 * rew * clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1) * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), $s.CR.pot - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
   crWlog($s.CR.day, 'Quadra');
   crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
   return fmt1(g);
@@ -1030,7 +1030,9 @@ function crPotGain(rating, tier) {
   const room = clamp(($s.CR.pot - $s.CR.potCur) / 8, .15, 1);
   // potencial muito acima do seu overall quase não sobe mais (os pontos de evolução precisam alcançar)
   const ahead = clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1);
-  const g = Math.min($s.CR.pot - $s.CR.potCur, (rating - 5.5) * .07 * (.7 + (tier || 0) * .08) * room * ahead);
+  // quanto mais alto o potencial, mais devagar ele sobe (≈7 por temporada no começo, ≈4 perto dos 85)
+  const hiK = clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1);
+  const g = Math.min($s.CR.pot - $s.CR.potCur, (rating - 5.5) * .03 * (.8 + (tier || 0) * .05) * room * ahead * hiK);
   if (g <= 0) return 0;
   $s.CR.potCur += g;
   return g;
