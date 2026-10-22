@@ -468,16 +468,14 @@ const SHOT_TXT = { completo: 'completo', discreto: 'discreto', off: 'desligado' 
 $('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT), cur = S.settings.shotText || 'discreto'; S.settings.shotText = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); syncAssistButtons(); });
 $('shotTextSel').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
 // barra de força na pausa: tamanho e opacidade (alternam)
-const MTR_SIZES = ['pequena', 'normal', 'grande'], MTR_OPS = ['100', '75', '50', '35'];
-$('btnMtrSize').addEventListener('click', () => { const c = S.settings.meterSize || 'normal'; S.settings.meterSize = MTR_SIZES[(MTR_SIZES.indexOf(c) + 1) % MTR_SIZES.length]; saveSettings(); applyMeterLook(); syncAssistButtons(); });
-$('btnMtrOp').addEventListener('click', () => { const c = String(S.settings.meterOp || '100'); S.settings.meterOp = MTR_OPS[(MTR_OPS.indexOf(c) + 1) % MTR_OPS.length]; saveSettings(); applyMeterLook(); syncAssistButtons(); });
+// barra de golpe: menu próprio (configurações, online e pausa)
+document.querySelectorAll('[data-barcfg]').forEach(b => b.addEventListener('click', () => { $('barCfg').hidden = false; }));
+$('barCfgClose').addEventListener('click', () => { $('barCfg').hidden = true; });
 $('btnBall').addEventListener('click', () => { const l = Object.keys(BALL_STYLES), cur = S.settings.ballStyle || 'laranja'; S.settings.ballStyle = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); setBallStyle(S.settings.ballStyle); syncAssistButtons(); });
 function syncAssistButtons() {
   $('btnAsMove').textContent = 'Seguir a bola: ' + (S.settings.assistMove ? 'ligado' : 'desligado');
   $('btnAsMark').textContent = 'Onde a bola cai: ' + (S.settings.assistMark ? 'ligado' : 'desligado');
   $('btnShotTxt').textContent = 'Nome do golpe: ' + SHOT_TXT[S.settings.shotText || 'discreto'];
-  $('btnMtrSize').textContent = 'Tamanho da barra: ' + (S.settings.meterSize || 'normal');
-  $('btnMtrOp').textContent = 'Opacidade da barra: ' + (S.settings.meterOp || '100') + '%';
   $('btnBall').textContent = 'Bolinha: ' + (BALL_STYLES[S.settings.ballStyle || 'laranja'] || BALL_STYLES.laranja).nome.replace(' (padrão)', '').toLowerCase();
 }
 function adjustFov(d) {
