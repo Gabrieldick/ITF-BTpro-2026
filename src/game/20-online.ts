@@ -11,7 +11,7 @@ import { $s } from '../state';
 import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle } from './07-glb';
+import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
@@ -358,6 +358,7 @@ NET.ev = (k, a, b) => {
   if (k === 'hit') ON.outq.push(['hit', PL.indexOf(a), b]);
   else if (k === 'sand') ON.outq.push(['sand', r3(a), r3(b)]);
   else if (k === 'spark') ON.outq.push(['spark', r3(a.x), r3(a.y), r3(a.z)]);
+  else if (k === 'wave') ON.outq.push(['wave', r3(a.x), r3(a.z)]);
   else if (k === 'review') ON.outq.push(['rev', a.x, a.z, a.axis, a.inB ? 1 : 0, a.mg]);
 };
 NET.onNewMatch = () => { if (NET.role !== 'host') return; ON.inMatch = true; ON.outq.push(['cfg']); };
@@ -604,6 +605,7 @@ function guestEvent(e) {
     if (e[2] === 1) { const me = ON.G[e[1]] === human && !S.spectate; S.shake = me ? .25 : .1; if (me) ON.mySmashes++; }
   } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); }
   else if (k === 'spark') sparkle({ x: e[1] * m, y: e[2], z: e[3] * m });
+  else if (k === 'wave') greenWave({ x: e[1] * m, z: e[2] * m });
   else if (k === 'rev') showReview({ x: e[1] * m, z: e[2] * m, axis: e[3], inB: !!e[4], mg: e[5] });
   else if (k === 'fb') shotFeedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);

@@ -294,7 +294,12 @@ function sparkle(p) {
   }
   sGeo.attributes.color.needsUpdate = true; sLife = .85; sparks.visible = true;
 }
+// golpe perfeito (smash ou lob chutado): ondinha verde que se abre no chão em volta de quem bateu
+const WAVES = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.RingGeometry(.42, .5, 48), new THREE.MeshBasicMaterial({ color: col('#39ff7a'), transparent: true, opacity: 0, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; m.userData.t = 0; scene.add(m); return m; });
+let waveI = 0;
+function greenWave(p) { const m = WAVES[waveI++ % WAVES.length]; m.position.set(p.x, .03, p.z); m.userData.t = .6; m.visible = true; }
 function updateParticles(dt) {
+  for (const m of WAVES) if (m.visible) { m.userData.t -= dt; const u = 1 - Math.max(0, m.userData.t) / .6; const sc = .4 + u * 2.4; m.scale.set(sc, sc, 1); m.material.opacity = (1 - u) * .95; if (m.userData.t <= 0) m.visible = false; }
   if (sLife > 0) {
     sLife -= dt; sparks.material.opacity = Math.min(1, Math.max(0, sLife / .85) * 1.4);
     for (let i = 0; i < SN; i++) { sVel[i * 3 + 1] -= 1.2 * dt; sPos[i * 3] += sVel[i * 3] * dt; sPos[i * 3 + 1] += sVel[i * 3 + 1] * dt; sPos[i * 3 + 2] += sVel[i * 3 + 2] * dt; }
@@ -309,4 +314,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };

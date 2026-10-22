@@ -6,7 +6,7 @@ import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, bG, cla
 import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
-import { ball, sparkle } from './07-glb';
+import { ball, sparkle, greenWave } from './07-glb';
 import { decisive, dupla, feedback, momentum, perfShot, shotFeedback } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
@@ -245,7 +245,7 @@ function updateHuman(dt, c = localCtl()) {
       const sp = ball.pos.clone();
       const r = doHit(p, ps.type, ps.q, true, ps.mod);
       if (S.drill) S.drill.lastR = Object.assign({}, r, { serveRes: ps.res });
-      if (ps.res === 'perfeito' && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); } // saque perfeito: estrelinhas no contato
+      if (ps.res === 'perfeito' && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); if (p.isHuman) { const wp = { x: p.pos.x, z: p.pos.z }; greenWave(wp); if (NET.ev) NET.ev('wave', wp); } } // saque perfeito: estrelinhas no contato (e a ondinha para quem joga)
       ctlFeedback(c, r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
     } else if (!sw.hit && !p.pendingServe && S.mode === 'rally' && contact) {
       let q = hitQuality(p, sw.type), mod = {};
@@ -281,6 +281,8 @@ function updateHuman(dt, c = localCtl()) {
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
       perfShot(p, sw, r);
+      // perfeito (mesmo com a barra invisível): ondinha verde no chão de quem bateu
+      if (p.isHuman && !r.mis && ((sw.meter && sw.meter.res === 'perfeito' && !mod.volley) || (sw.lob && sw.lob.kick))) { const wp = { x: p.pos.x, z: p.pos.z }; greenWave(wp); if (NET.ev) NET.ev('wave', wp); }
       if (S.drill) S.drill.lastR = Object.assign({}, r, { meterRes: sw.meter ? sw.meter.res : null });
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r, c);
       // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)
