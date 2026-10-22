@@ -67,6 +67,8 @@ function startMeter(kind, type, c = localCtl()) {
 function meterDom(M) {
   const kind = M.kind;
   el.meter.className = kind === 'lob' ? 'lobm' : ''; el.meter.hidden = false; el.mRes.textContent = '';
+  // barra invisível (opção): continua valendo igual, só não aparece — você se guia pela altura da bola
+  el.meter.style.visibility = (kind === 'smash' && S.settings.barSmash === 'off') || (kind === 'lob' && S.settings.barLob === 'off') ? 'hidden' : '';
   el.mLbl.textContent = kind === 'smash' ? 'SMASH' : kind === 'lob' ? 'LOB' : 'SAQUE';
   if (kind === 'lob') {
     const LM = M.lmax || LOB_MAX;
@@ -205,9 +207,7 @@ function pressShot(type, c) {
     if (M.active && (M.kind === 'smash' || M.kind === 'lob')) cancelMeter(c);
     const sw = p.swing;
     if (sw.t >= 0 && sw.t < sw.dur * .8) return;
-    // barra do smash/lob: pode ser desligada nas configurações (só para quem joga neste aparelho; no treino fica sempre ligada)
-    const noBar = !c.remote && !S.drill && ((type === 'smash' && S.settings.barSmash === 'off') || (type === 'lob' && S.settings.barLob === 'off'));
-    if ((type === 'smash' || type === 'lob') && S.mode === 'rally' && !noBar) { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
+    if ((type === 'smash' || type === 'lob') && S.mode === 'rally') { sw.t = -1; sw.lob = null; startMeter(type, type, c); return; }
     if ((type === 'curta' || type === 'defesa') && S.mode === 'rally' && !p.dive) tryDive(type, p);
     sw.t = 0; sw.type = type; sw.dur = type === 'curta' ? .5 : SWING_DUR; sw.hit = false; sw.meter = null; sw.lob = null;
     sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team ? timeToReach(p) : null; // para o timing: quanto faltava a bola chegar
