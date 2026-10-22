@@ -188,6 +188,7 @@ function perfShot(p, sw, r) {
   if (sw.type === 'curta' && !r.pop) { if (r.wild) perfAdd(p, -.3, 'curtaRuim'); else if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
   if (sw.meter) { if (sw.meter.res === 'perfeito') perfAdd(p, .25, 'smashPerf'); else if (sw.meter.amt > .85 && sw.meter.res !== 'voleio') perfAdd(p, -.2, 'smashRuim'); }
   if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
+  else if (sw.lob && sw.lob.word === 'ALTO' && !r.wild && !r.pop) perfAdd(p, 0, 'lobBom'); // só conta no painel
   if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
 }
 // conta da nota (a mesma ao vivo e no fim): jogadas pesam menos que antes e, acima de 8, a nota sobe devagar
@@ -212,8 +213,8 @@ function updateLiveRating() {
   const r = rateFrom(0);
   // estilo NBA 2K: a nota no hexágono (cor pela nota, com a subida/descida embaixo) e os números do seu jogo ao lado
   const ev = S.perf.ev, sum = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
-  // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · ERR: erros
-  const vals = { nota: r, pts: sum(/^w_/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), err: sum(/^(e_|furou|erroF)/) };
+  // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · DEF: defesas boas · LOB: lobs chutados e altos · ERR: erros
+  const vals = { nota: r, pts: sum(/^w_/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), def: ev.defBoa || 0, lob: (ev.lobChutado || 0) + (ev.lobBom || 0), err: sum(/^(e_|furou|erroF)/) };
   e.style.setProperty('--nh', String(Math.round(clamp((r - 4) / 4.5, 0, 1) * 125)));
   for (const [k, v] of Object.entries(vals)) {
     const c = e.querySelector('[data-k="' + k + '"]'); if (!c) continue;

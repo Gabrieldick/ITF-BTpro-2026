@@ -94,6 +94,7 @@ svg.flag, .flag-txt { width: 18px; height: 12px; flex: none; border-radius: 2px;
 #liveNota .ln-st small { font-size: 8.5px; letter-spacing: .1em; opacity: .7; font-weight: 700; margin-top: 2px; color: #fff; }
 #liveNota .pulse { animation: notaPulse .45s ease; }
 @keyframes notaPulse { 40% { transform: scale(1.15); } }
+@media (max-width: 600px) { #liveNota .ln-st { gap: 3px; } #liveNota .ln-st span { min-width: 30px; padding: 0 4px; } #liveNota .ln-st b { font-size: 13px; } }
 #liveNota .nd { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); font-style: normal; font-family: var(--f-num); font-weight: 800; font-size: 14px; white-space: nowrap;
   text-shadow: 0 2px 6px rgba(0,0,0,.7); animation: notaDelta 1.3s ease-out forwards; }
 #liveNota .nd.up { color: #6ff0a8; }
