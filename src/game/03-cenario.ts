@@ -3,7 +3,7 @@
 import './02-render';
 import * as THREE from 'three';
 import { C, HALF_W, SHORE_Z, V3, WATERLINE, ZONE3, clamp, fbm, rand, smooth } from './00-base';
-import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene } from './02-render';
+import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene, sun } from './02-render';
 const PROPS = []; // guarda-sóis e palmeiras perto da quadra (somem quando há arquibancada)
 // ---------- Céu procedural com nuvens e sol ----------
 const SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 w = modelMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*w; }';
@@ -444,6 +444,35 @@ function applyArena(a) {
   }
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
+  indoorHall(a);
+}
+// ambiente fechado (points e arenas cobertas): paredes, telhado com fileiras de luz; sem céu, mar, palmeiras nem sol forte
+const LIGHT0 = { sun: null, hemi: null, hemiC: null, hemiG: null };
+function indoorHall(a) {
+  if (LIGHT0.sun === null) { LIGHT0.sun = sun.intensity; LIGHT0.hemi = hemi.intensity; LIGHT0.hemiC = hemi.color.clone(); LIGHT0.hemiG = hemi.groundColor.clone(); }
+  const on = !!a.indoor;
+  sky.visible = !on; sea.visible = !on;
+  if (on) PROPS.forEach(g => { g.visible = false; });
+  sun.intensity = on ? LIGHT0.sun * .62 : LIGHT0.sun; hemi.intensity = on ? LIGHT0.hemi * 1.35 : LIGHT0.hemi;
+  hemi.color.copy(on ? col('#f4f1ea') : LIGHT0.hemiC); hemi.groundColor.copy(on ? col('#cdbf9f') : LIGHT0.hemiG);
+  if (!on) return;
+  const HX = 20, Z0 = -26, Z1 = 32, H = 11, len = Z1 - Z0;
+  // parede: faixa de baixo com as cores do evento, painéis claros com nervuras e uma fileira de janelas altas
+  const wallTex = canvasTex(512, 256, (x, w, h) => {
+    x.fillStyle = '#d9dde3'; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < w; i += 32) { x.fillStyle = 'rgba(0,0,0,.06)'; x.fillRect(i, 0, 3, h); }
+    x.fillStyle = '#8fb7d6'; for (let i = 8; i < w; i += 64) x.fillRect(i, 26, 48, 22); // janelas altas
+    x.fillStyle = a.board[0]; x.fillRect(0, h - 46, w, 46); x.fillStyle = a.board[1]; x.fillRect(0, h - 50, w, 5);
+  });
+  wallTex.wrapS = THREE.RepeatWrapping;
+  const wall = (wd, rx, ry, px, pz, rep) => { const t = wallTex.clone(); t.needsUpdate = true; t.repeat.set(rep, 1); const m = new THREE.Mesh(new THREE.PlaneGeometry(wd, H), new THREE.MeshStandardMaterial({ map: t, roughness: .9 })); m.rotation.set(rx, ry, 0); m.position.set(px, H / 2, pz); ARENA.group.add(m); };
+  wall(len, 0, Math.PI / 2, -HX, (Z0 + Z1) / 2, 6); wall(len, 0, -Math.PI / 2, HX, (Z0 + Z1) / 2, 6);
+  wall(HX * 2, 0, 0, 0, Z0, 4); wall(HX * 2, 0, Math.PI, 0, Z1, 4);
+  // telhado (visto de baixo) com estrutura e luminárias
+  const roof = new THREE.Mesh(new THREE.PlaneGeometry(HX * 2, len), mat('#5b6470', { roughness: 1 })); roof.rotation.x = Math.PI / 2; roof.position.set(0, H, (Z0 + Z1) / 2); ARENA.group.add(roof);
+  const beamM = mat('#3b424c', { roughness: .8 }), lampM = new THREE.MeshBasicMaterial({ color: col('#fffbea') });
+  for (let z = Z0 + 4; z < Z1; z += 6) { const bm = new THREE.Mesh(new THREE.BoxGeometry(HX * 2, .35, .25), beamM); bm.position.set(0, H - .2, z); ARENA.group.add(bm); }
+  for (let x = -12; x <= 12; x += 6) for (let z = -18; z <= 20; z += 6) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, .08, .5), lampM); l.position.set(x, H - .45, z); ARENA.group.add(l); }
 }
 // confete do título: papéis coloridos caindo sobre a quadra
 const CONF = { mesh: null, items: [], t: 0 };
