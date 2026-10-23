@@ -259,6 +259,11 @@ const FPKF = {
   lob:    { sh: [.5, -.5, -.4, 2.4, .5],  ph: [.2, .5, .5, .2, .2],    tw: [0, -.6, -.6, .4, 0],   fw: [0, -.3, 0, .5, 0] },
   curta:  { sh: [.5, .65, .75, 1.1, .5],  ph: [.2, .45, .45, .3, .2],  tw: [0, -.3, -.3, .15, 0],  fw: [0, .15, -.1, .2, 0] },
   defesa: { sh: [.5, 1.0, 1.1, 1.5, .5],  ph: [.2, 1.0, 1.0, .5, .2],  tw: [0, -.8, -.8, .2, 0],   fw: [0, 1.1, 1.2, 1.3, 0] },
+  // curta alta de forehand: braço à frente e alto, raquete em pé com a face para a rede
+  curta_alta_fh: { sh: [.5, 1.6, 1.75, 1.55, .5], ph: [.2, .25, .25, .2, .2], tw: [0, -.1, .1, .15, 0], fw: [0, 1.45, 1.57, 1.5, 0] },
+  // ventaglio: começa cruzado do lado do backhand com a raquete baixa, sobe pela frente girando o punho e termina
+  // com a mão na frente do corpo e a raquete apontando para a frente
+  smash_ventaglio: { sh: [.5, 1.25, 1.85, 1.6, .5], ph: [.2, .3, .3, .15, .2], tw: [0, .75, .7, .35, 0], fw: [0, .1, 1.57, .2, 0] },
 };
 function kf(arr, u, rest) {
   for (let i = 0; i < 4; i++) {
@@ -271,12 +276,18 @@ function kf(arr, u, rest) {
   }
   return rest;
 }
+// variação do golpe na 1ª pessoa (a mesma escolha da animação do corpo)
+function fpKey(p) {
+  const ak = swingKey(p), bh = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15;
+  return ak === 'curta_alta' && !bh ? 'curta_alta_fh' : ak;
+}
 function animateFP() {
   const p = human; let th = 1.2, ph = .12, ry = -.35, fw = FP_UP;
   if (p.charging) { const c = clamp(MTR.t / .18, 0, 1); th = lerp(1.2, MTR.type === 'lob' ? -.4 : 3.0, c); fw = lerp(FP_UP, MTR.type === 'lob' ? -.2 : .2, c); }
   else if (S.mode === 'toss' && S.serverPlayer === p) { const c = clamp(p.tossT / (p.tossDur || TOSS_T) / .75, 0, 1); th = lerp(1.2, 3.0, c); fw = lerp(FP_UP, .2, c); }
+  else if (p.fpDebug) { const k = FPKF[p.fpDebug.key], u = p.fpDebug.u; th = kf(k.sh, u, 1.2); ph = kf(k.ph, u, .12) * .6; ry = -.35 + kf(k.tw, u, 0) * .5; fw = kf(k.fw, u, FP_UP); }
   else if (p.swing.t >= 0) {
-    const u = clamp(p.swing.t / p.swing.dur, 0, 1); const k = FPKF[p.swing.type];
+    const u = clamp(p.swing.t / p.swing.dur, 0, 1), ak = fpKey(p), k = FPKF[ak] || FPKF[p.swing.type];
     th = kf(k.sh, u, 1.2); ph = kf(k.ph, u, .12) * .6; ry = -.35 + kf(k.tw, u, 0) * .5; fw = kf(k.fw, u, FP_UP);
   } else { th += Math.sin(p.gait) * .04 * Math.min(1, Math.hypot(p.vel.x, p.vel.z) / 4); }
   fpArm.rotation.set(th, ry, ph);

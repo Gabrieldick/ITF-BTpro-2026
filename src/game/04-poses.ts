@@ -1,8 +1,9 @@
 // @ts-nocheck
 // poses-chave dos golpes e variações
 import './03-cenario';
-import { C, clamp, lerp } from './00-base';
+import { C, clamp, lerp, attrK } from './00-base';
 import { ball } from './07-glb';
+import { S } from './01-estado';
 // ---------- Poses ----------
 const P = o => Object.assign({ rh: [.2, .42, -.42], rp: [.9, -.6, .3], wx: 1.15, wr: 1.2, lh: [-.03, .34, -.37], lp: [-.9, -.6, .2], tw: 0, lean: .22, bend: 0, crouch: .12, lunge: 0 }, o);
 function newPose() { return P({}); }
@@ -81,6 +82,16 @@ Object.assign(ACT, {
     P({ rh: [.12, 1.05, -.05], rp: [.5, .5, .7], wx: .1, wr: .3, lh: [-.2, .5, -.1], lp: [-.8, -.3, .3], tw: .05, lean: -.25, bend: -.05, crouch: .08 }),
     P({ rh: [-.15, .3, -.25], rp: [.7, .2, -.3], wx: .5, wr: .9, lh: [-.25, .3, .05], lp: [-.8, -.5, 0], tw: .5, lean: .25, crouch: .2 }),
     READY],
+  // ventaglio (leque / rainbow): bola alta flutuando no lado do backhand batida forte — uma varrida do backhand de baixo até
+  // apontar para a frente: começa com o braço cruzado na altura do peito e a raquete baixa (como se fosse de backhand),
+  // encontra a bola na altura da cabeça e termina com a mão na frente do corpo e a raquete apontando para a rede;
+  // quem gira é o punho (troca o lado da face e escova a bola em topspin), o braço quase não sai do lugar
+  smash_ventaglio: [READY,
+    P({ rh: [-.28, .48, -.3], rp: [-.32, -.3, -.5], wx: -.8, wr: -3.1, lh: [.12, .42, -.3], lp: [-.9, -.4, 0], tw: .5, lean: .18, bend: -.06, crouch: .2, lunge: -.25 }),
+    P({ rh: [-.32, .6, -.45], rp: [-.5, .2, -.2], wx: -.2, wr: -3.1, lh: [.05, .42, -.3], lp: [-.9, -.4, 0], tw: .42, lean: .14, bend: -.03, crouch: .16, lunge: -.2 }),
+    P({ rh: [-.25, .72, -.55], rp: [-.4, .5, .1], wx: -1, wr: -2.5, lh: [-.1, .4, -.25], lp: [-.9, -.3, .1], tw: .25, lean: .1, crouch: .1, lunge: -.1 }),
+    P({ rh: [0, .58, -.62], rp: [.2, .3, .2], wx: -.4, wr: .3, lh: [-.22, .35, -.1], lp: [-.8, -.5, 0], tw: -.1, lean: .22, crouch: .14 }),
+    READY],
 });
 ACT.smash_salto = ACT.smash;
 // efeito de cada variação no golpe
@@ -89,6 +100,7 @@ const VAR_FX = {
   smash_lateral: { label: 'SMASH ANGULADO', speed: .95, depth: [3.0, 5.4], gk: 1.45, wide: true },
   smash_costas: { label: 'SMASH DE COSTAS', speed: .86, noise: 1.3, gk: 1.25 },
   smash_salto: { label: 'SMASH EM SALTO', speed: 1.05, gk: 1.4, jump: true },
+  smash_ventaglio: { label: 'VENTAGLIO', speed: .97, noise: 1.12, gk: 1.35 },
   curta_alta: { label: 'CURTA DE VOLEIO', depth: [.9, 2.0], T: .75 },
   curta_baixa: { label: 'CURTA POR BAIXO', T: 1.05, gk: 1.4, noise: 1.1 },
   defesa_alta: { label: 'DEFESA ALTA', T: 1.1 },
@@ -96,6 +108,12 @@ const VAR_FX = {
 };
 function swingVar(type, y, p, aimX) {
   if (type === 'curta' || type === 'defesa') return y >= 1.3 ? 'alta' : y < .62 ? 'baixa' : '';
+  // bola flutuando no lado do backhand e batida forte (smash/voleio): ventaglio; fraca (defesa/curta) segue o backhand normal
+  // golpe difícil e pouco comum: quanto maior o voleio, mais vezes sai (sorteio fixo por bola, para a animação e o efeito
+  // do golpe baterem); no resto vira o smash/drive normal
+  // bola que passa não tão rápida, no lado do backhand, um pouco acima da cabeça (bola mais alta vira smash)
+  if (type === 'smash' && y >= 1.55 && y < 2.15 && p && Math.hypot(ball.vel.x, ball.vel.z) < 15 && (ball.pos.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1) < -.45 && (ball.pos.z - p.pos.z) * (p.team === 0 ? 1 : -1) <= .3
+    && ((S.hitId * 37 + p.team * 11 + (p.slot > 0 ? 5 : 0)) % 100) < 100 * clamp(.04 + (attrK(p, 'voleio') - .3) * .7, .04, .6)) return 'ventaglio';
   if (type !== 'smash' || y < 1.9) return '';
   const behind = (ball.pos.z - p.pos.z) * (p.team === 0 ? 1 : -1);
   if (behind > .3) return 'costas';

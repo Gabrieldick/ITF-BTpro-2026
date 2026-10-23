@@ -37,12 +37,15 @@ const DIFF = {
 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // elenco com nomes que lembram jogadores do circuito; atributos são estimativas do jogo e os nomes podem ser trocados no menu
-const ATTRS = [['forca', 'Força'], ['vel', 'Velocidade'], ['def', 'Defesa'], ['backhand', 'Backhand'], ['curta', 'Curta'], ['lob', 'Lob'], ['smash', 'Smash'], ['saque', 'Saque'], ['leitura', 'Noção de jogo']];
+const ATTRS = [['forca', 'Força'], ['vel', 'Velocidade'], ['def', 'Defesa'], ['backhand', 'Backhand'], ['curta', 'Curta'], ['lob', 'Lob'], ['smash', 'Smash'], ['saque', 'Saque'], ['leitura', 'Noção de jogo'], ['voleio', 'Voleio']];
 const ATTR_W0 = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob: .11, smash: .15, saque: .12 };
 // noção de jogo (leitura): pesa 8% no overall; quem não tem (jogadores antigos) fica com a média dos outros atributos
-const ATTR_W = Object.assign(Object.fromEntries(Object.entries(ATTR_W0).map(([k, w]) => [k, w * .92])), { leitura: .08 });
+// voleio: bola no ar perto da rede (drive, voleio da barra, bloqueio) mais rápida e consistente, e o ventaglio; pesa 6%;
+// quem não tem fica com uma mistura de defesa, velocidade, backhand e smash (os voleadores ganham um pouco mais, abaixo)
+const ATTR_W = Object.assign(Object.fromEntries(Object.entries(ATTR_W0).map(([k, w]) => [k, w * .86])), { leitura: .08, voleio: .06 });
 const leituraOf = a => Math.round(Object.keys(ATTR_W0).reduce((t, k) => t + (a[k] ?? 50) * ATTR_W0[k], 0));
-const attrOf = (a, k) => a[k] ?? (k === 'leitura' ? leituraOf(a) : 50);
+const voleioOf = a => Math.round((a.def ?? 50) * .3 + (a.vel ?? 50) * .25 + (a.backhand ?? 50) * .25 + (a.smash ?? 50) * .2);
+const attrOf = (a, k) => a[k] ?? (k === 'leitura' ? leituraOf(a) : k === 'voleio' ? voleioOf(a) : 50);
 // raquetes e equipamentos: alteram os atributos de quem usa (também fora da carreira)
 // raquetes: a soma dos bônus cresce com o preço; as especializadas têm picos maiores com algum ponto fraco
 const RACKET_STATS = {
@@ -131,7 +134,7 @@ const PLAY_STYLES = {
 const styleOf = p => PLAY_STYLES[p.playStyle] || PLAY_STYLES.completo;
 const racketBonus = key => (RACKET_STATS[key] || RACKET_STATS.proteo).b;
 // resumo do efeito de uma raquete para listas: "+5 força, +4 smash, −2 curta"
-const RK_ABBR = { forca: 'força', vel: 'velocidade', def: 'defesa', backhand: 'backhand', curta: 'curta', lob: 'lob', smash: 'smash', saque: 'saque', leitura: 'noção' };
+const RK_ABBR = { forca: 'força', vel: 'velocidade', def: 'defesa', backhand: 'backhand', curta: 'curta', lob: 'lob', smash: 'smash', saque: 'saque', leitura: 'noção', voleio: 'voleio' };
 const rkSummary = key => { const b = (RACKET_STATS[key] || {}).b || {}; const l = Object.entries(b).filter(([, v]) => v).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1]) || y[1] - x[1]); return l.length ? l.map(([k, v]) => (v > 0 ? '+' : '−') + Math.abs(v) + ' ' + (RK_ABBR[k] || k)).join(', ') : 'sem bônus'; };
 // atributos com bônus somados (limitados entre 30 e 99)
 function effA(a, ...bonuses) {
@@ -232,6 +235,9 @@ const ROSTER = [
     ROSTER.push({ id: 'q' + i, jogo: JOGO[st], name, alt: fem ? 160 + Math.round(r() * 18) : 174 + Math.round(r() * 20), pais, estilo: EST[st], build: ['atletico', 'esguio', 'compacto', 'forte'][Math.floor(r() * 4)], fem: !!fem, canhoto: !!lefty || undefined, a, look, extra: true });
   });
 }
+// voleio de quem ainda não tem: voleadores (jogo de rede) +6, táticos +2, paredões −3
+ROSTER.forEach(c => { if (c.a.voleio !== undefined) return; const e = (c.estilo || '').toLowerCase(), rede = c.jogo === 'rede' || /rede|voleio|bloqueio|reflexo/.test(e);
+  c.a.voleio = Math.max(30, Math.min(99, voleioOf(c.a) + (rede ? 6 : c.jogo === 'tatico' ? 2 : c.jogo === 'paredao' ? -3 : 0))); });
 const overall = a => Math.round(Object.keys(ATTR_W).reduce((t, k) => t + attrOf(a, k) * ATTR_W[k], 0));
 let NAMES = {};
 try { NAMES = JSON.parse(localStorage.getItem('pdo-names') || '{}') || {}; } catch (e) { NAMES = {}; }
@@ -272,4 +278,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { voleioOf, attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

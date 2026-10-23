@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, NAMES, HEIGHTS } from './00-base';
+import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -1221,7 +1221,7 @@ function crNextDay(note) {
 // custo de +1 num atributo: começa barato (amador) e fica bem caro perto do topo; um pouco mais lento que antes
 const crUpCostBase = v => v < 45 ? 1 : v < 55 ? 2 : v < 62 ? 3 : v < 68 ? 4 : v < 72 ? 5 : v < 76 ? 7 : v < 80 ? 10 : v < 84 ? 14 : v < 88 ? 20 : v < 90 ? 28 : v < 92 ? 40 : v < 94 ? 56 : v < 96 ? 78 : 100;
 // atributos naturais de cada estilo vão até 99 no custo normal; os outros custam o dobro a partir de 90 (o Completo, 1,4×)
-const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque'], Defensor: ['def', 'vel', 'backhand'], 'Tático': ['curta', 'lob', 'backhand'] };
+const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque', 'voleio'], Defensor: ['def', 'vel', 'backhand'], 'Tático': ['curta', 'lob', 'backhand'] };
 const crNatural = k => { const n = STYLE_NAT[$s.CR.me.estilo]; return n ? n.includes(k) || k === 'leitura' : null; }; // null: Completo; noção de jogo vale para todos os estilos
 const crStyleK = (v, k) => v < 90 ? 1 : crNatural(k) === null ? 1.4 : crNatural(k) ? 1 : 2;
 const crUpCost = (v, k) => Math.max(1, Math.round(crUpCostBase(v) * crStyleK(v, k) * (crStaffList().some(x => x.cheap && x.cheap.includes(k)) ? .75 : 1)));
@@ -1338,6 +1338,7 @@ function crMigrate() {
     $s.CR.lastMsg = 'Carreira atualizada: agora o ano tem 52 semanas com dias, torneios em datas do calendário, pontos no padrão ITF (ranking = 10 melhores resultados do último ano) e potencial que sobe com a sua nota em cada partida.';
   } else if (extra) crSimYear(31, extra);
   if ($s.CR.me.a.leitura === undefined) $s.CR.me.a.leitura = leituraOf($s.CR.me.a); // atributo novo: noção de jogo
+  if ($s.CR.me.a.voleio === undefined) $s.CR.me.a.voleio = voleioOf($s.CR.me.a); // atributo novo: voleio
   if ($s.CR.potCur === undefined) $s.CR.potCur = Math.max(Math.min($s.CR.pot, overall($s.CR.me.a) + 3), Math.max(...Object.values($s.CR.me.a)));
   if ($s.CR.day === undefined) $s.CR.day = 1;
   if (nM < POOL_N || $s.CR.v === 2 && !$s.CR.migr2) { $s.CR.migr2 = true; saveCareer(); }

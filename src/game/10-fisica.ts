@@ -3,7 +3,7 @@
 import './09-interface';
 import { perfHitHook } from './09-interface';
 import { $s } from '../state';
-import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN } from './00-base';
+import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN, attrOf } from './00-base';
 import { S, NET } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
@@ -198,6 +198,10 @@ function doHit(p, type, q, isServe, mod) {
   if (spec.speed) spec.speed *= mod.speedMul || 1;
   if (spec.T) spec.T /= mod.speedMul || 1;
   spec.noise *= mod.noiseMul || 1;
+  // voleio: bola batida no ar perto da rede (drive, voleio da barra, bloqueio/curta/defesa a menos de 3,2 m da rede)
+  const volleyish = !isServe && (key === 'drive' || !!mod.volley || (netD < 3.2 && key !== 'smash' && key !== 'lob'));
+  const vlK = volleyish ? attrK(p, 'voleio') : 0;
+  if (volleyish) { if (spec.speed) spec.speed *= lerp(.94, 1.08, vlK); if (spec.T) spec.T /= lerp(.97, 1.04, vlK); spec.noise *= lerp(1.2, .8, vlK); if (mod.misBoost) mod.misBoost *= lerp(1.3, .7, vlK); }
   if (p.char) {
     const A = p.char.a;
     // atributos pesam na faixa que existe no jogo (35 a 95): 50 → bem impreciso, 75 → normal, 95 → muito preciso
@@ -281,7 +285,7 @@ function doHit(p, type, q, isServe, mod) {
   } else v = solveShot(ball.pos, tgt, spec);
   let mis = false;
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
-  const riskK = { smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1; // golpes arriscados erram mais
+  const riskK = ({ smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1) * (volleyish ? lerp(1.3, .7, vlK) : 1); // golpes arriscados erram mais
   const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err * riskK + prs;
   // finalização de perto (menos de 2 m da rede) em cima de quem está colado na rede: com a barra perfeita, mesmo a defesa
   // perfeita volta para dentro no máximo 1 em 5; sem o perfeito, metade (o reflexo salva a bola, mas sem controle)

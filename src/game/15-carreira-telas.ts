@@ -141,7 +141,7 @@ function crPartnersHTML() {
     + '<div class="cr-list">' + list.map(x => crPersonRow(x.c, x.w.why + ' · ' + npcPts(x.c.id) + ' pts', x.w.ok ? '<button class="ghost sm" data-partner="' + x.c.id + '">Formar dupla</button>' : '<span class="cr-lock">🔒</span>')).join('') + '</div>';
 }
 // ícone de cada atributo nos bônus de raquetes e equipamentos
-const ATTR_IC = { forca: '💪', vel: '👟', def: '🛡️', backhand: '↩️', curta: '🪶', lob: '🌈', smash: '💥', saque: '🎾' };
+const ATTR_IC = { forca: '💪', vel: '👟', def: '🛡️', backhand: '↩️', curta: '🪶', lob: '🌈', smash: '💥', saque: '🎾', leitura: '🧠', voleio: '⚡' };
 const bonusChips = b => Object.entries(b).map(([a, v]) => '<em class="' + (v > 0 ? 'up' : 'dn') + '" title="' + ATTRS.find(x => x[0] === a)[1] + '">' + ATTR_IC[a] + ' ' + (v > 0 ? '+' : '') + v + ' ' + ATTRS.find(x => x[0] === a)[1] + '</em>').join(' ');
 const rkKind = b => { const pos = k => Math.max(0, b[k] || 0), atk = pos('forca') + pos('smash') + pos('saque'), ctl = pos('def') + pos('curta') + pos('lob') + pos('backhand') + pos('vel'); return atk + ctl <= 2 ? ['🪵', 'Básica'] : atk > ctl + 2 ? ['⚡', 'Potência'] : ctl > atk + 2 ? ['🎯', 'Controle'] : ['⚖️', 'Equilíbrio']; };
 function crShopHTML() {

@@ -8,7 +8,7 @@
 // Também dá para fazer um campeonato: chave com todos da sala (completada com CPU), uma partida por vez.
 import './19-loop';
 import { $s } from '../state';
-import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
+import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, voleioOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
@@ -198,6 +198,7 @@ function sanitizeCC(c, mid) {
   if (!c || typeof c !== 'object' || !c.a) return null;
   const a = {}; for (const k of ['forca', 'vel', 'def', 'backhand', 'curta', 'lob', 'smash', 'saque']) a[k] = clamp(Math.round(+c.a[k] || 50), 30, 99);
   a.leitura = clamp(Math.round(+c.a.leitura || leituraOf(a)), 30, 99);
+  a.voleio = clamp(Math.round(+c.a.voleio || voleioOf(a)), 30, 99);
   const L = c.look || {}, look = {};
   for (const k of ['skin', 'hair', 'hairStyle', 'beard', 'cap', 'visor', 'headband', 'glasses', 'band', 'tank', 'num', 'glassStyle', 'lens']) if (L[k] !== undefined && typeof L[k] !== 'object') look[k] = typeof L[k] === 'string' ? L[k].slice(0, 24) : L[k];
   look.racket = RACKET_STATS[L.racket] ? L.racket : 'proteo';
