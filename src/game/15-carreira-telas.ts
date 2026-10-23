@@ -469,6 +469,8 @@ $('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT
 $('shotTextSel').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
 // barra de força na pausa: tamanho e opacidade (alternam)
 // barra de golpe: menu próprio (configurações, online e pausa)
+$('btnGameCfg').addEventListener('click', () => { $('gameCfg').hidden = false; });
+$('gameCfgClose').addEventListener('click', () => { $('gameCfg').hidden = true; });
 // nomes sobre os jogadores (pausa): alterna normal → pequenos → simples → escondidos
 const TAG_STYLES = ['normal', 'pequena', 'simples', 'off'], TAG_TXT = { normal: 'normal', pequena: 'pequenos', simples: 'simples', off: 'escondidos' };
 const syncTagsBtn = () => { $('btnTags').textContent = 'Nomes: ' + TAG_TXT[S.settings.tagStyle || 'normal']; };
