@@ -527,7 +527,7 @@ function localShot(type, down) {
   if (type === 'smash' || type === 'lob') {
     LS.charge = type; LS.c0 = now; LS.t = -1;
     if (type === 'smash') MTR.center = LS.smC || .78; // o verde já começa no lugar certo
-    if (type === 'lob') { LS.meter = { kind: 'lob', type, t0: now, fill: .55 }; Object.assign(MTR, { active: true, kind: 'lob', type, t: 0, v: 0, center: -1, half: 0, lmax: 1 + lerp(.25, .1, Math.min(1, attrK(human, 'lob'))) }); meterDom(MTR); }
+    if (type === 'lob') { const tk = [1.45, 1.2, 1, .87, .75, .66][clamp(Math.round(+S.settings.playerDiff || 3), 1, 6) - 1]; LS.meter = { kind: 'lob', type, t0: now, fill: .45 }; Object.assign(MTR, { active: true, kind: 'lob', type, t: 0, v: 0, center: -1, half: 0, tk, altoLo: clamp(.75 - (tk - 1) * .4, .55, .86), lmax: 1 + lerp(.25, .1, Math.min(1, attrK(human, 'lob'))) / tk }); meterDom(MTR); }
     return;
   }
   LS.type = type; LS.dur = type === 'curta' ? .5 : SWING_DUR; LS.t = 0; LS.side = sideOf(human);
@@ -646,7 +646,7 @@ function guestEvent(e) {
   else if (k === 'rev') showReview({ x: e[1] * m, z: e[2] * m, axis: e[3], inB: !!e[4], mg: e[5] });
   else if (k === 'fb') shotFeedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);
-  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], pw: e[5] || .2, lmax: e[6] || undefined }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
+  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], pw: e[5] || .2, lmax: e[6] || undefined, tk: e[7] || 1, altoLo: e[8] || undefined }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
   else if (k === 'mr') {
     MTR.active = false; human.charging = false; LS.meter = null;
     el.meter.className = e[1]; el.mRes.textContent = e[2]; el.mFill.style.height = e[3] + '%'; el.meter.hidden = false;

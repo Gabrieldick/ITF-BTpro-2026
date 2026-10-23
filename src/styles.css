@@ -565,6 +565,8 @@ body.spectate #shots, body.spectate #stick, body.spectate #hint, body.spectate #
 /* faixa do lob chutado perfeito (começo da barra do lob) */
 #meter .kz { position: absolute; left: 0; right: 0; background: #4FD18B; opacity: .9; display: none; }
 #meter.lobm .kz { display: block; }
+#meter .az { position: absolute; left: 0; right: 0; background: #4FD18B; opacity: .45; display: none; } /* faixa do lob alto */
+#meter.lobm .az { display: block; }
 
 /* carreira: semana em dias */
 .cr-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 10px 0 12px; }

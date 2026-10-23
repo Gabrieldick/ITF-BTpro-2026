@@ -58,7 +58,8 @@ function startMeter(kind, type, c = localCtl()) {
     M.fill = .75; M.half = half * .8; M.center = c.smC || (.5 + Math.random() * .42); p.charging = true; M.ideal = smashIdealPoint();
   }
   // lob: a barra sobe um pouco mais rápido que antes (.45 s até o fim da faixa normal) e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
-  else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))); p.charging = true; }
+  // dificuldade de timing: com menos estrelas, faixas do chutado e do alto maiores e a do lob longo (ruim) menor
+  else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))) / M.tk; M.altoLo = clamp(.75 - (M.tk - 1) * .4, .55, .86); p.charging = true; }
   else { M.fill = .9; M.center = (p.tossDur || TOSS_T) / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
@@ -66,7 +67,7 @@ function startMeter(kind, type, c = localCtl()) {
   // tolerância em volta do verde (amarelo/laranja): com atributo baixo fica estreita, errar por pouco já custa caro
   M.pw = .2 * lerp(.45, 1.1, Math.pow(attrN(kind === 'smash' ? p.char.a.smash : p.char.a.saque), 1.5));
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
-  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw, M.lmax]); else meterDom(M);
+  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw, M.lmax, M.tk, M.altoLo]); else meterDom(M);
 }
 // desenha a barra recém-armada (local, ou do convidado com os dados vindos do anfitrião)
 function meterDom(M) {
@@ -78,6 +79,7 @@ function meterDom(M) {
   if (kind === 'lob') {
     const LM = M.lmax || LOB_MAX;
     el.mZone.style.bottom = (100 / LM) + '%'; el.mZone.style.height = (100 - 100 / LM) + '%'; el.mZone.style.background = '';
+    const az = el.meter.querySelector('.az'); if (az) { const lo = M.altoLo || .75; az.style.bottom = (lo / LM * 100) + '%'; az.style.height = ((1 - lo) / LM * 100) + '%'; }
     const kz = el.meter.querySelector('.kz'); if (kz) { const kc = (KICK[0] + KICK[1]) / 2, kh = (KICK[1] - KICK[0]) / 2 * (M.tk || 1); kz.style.bottom = ((kc - kh) / LM * 100) + '%'; kz.style.height = (kh * 2 / LM * 100) + '%'; }
   }
   else {
@@ -163,11 +165,14 @@ function releaseMeter(c = localCtl()) {
     const LM = M.lmax || LOB_MAX, lv = Math.min(v, LM);
     // começo da barra: lob chutado (perfeito só na faixa verde de baixo); meio: médio; fim: alto; passou: longo
     const kc = (KICK[0] + KICK[1]) / 2, kh = (KICK[1] - KICK[0]) / 2 * (M.tk || 1), kick = lv >= kc - kh && lv <= kc + kh; // lob chutado: faixa pela dificuldade de timing
-    const word = kick ? 'CHUTADO PERFEITO' : lv < kc - kh ? 'CHUTADO FRACO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
+    const aLo = M.altoLo || .75, kHi = kc + kh;
+    const word = kick ? 'CHUTADO PERFEITO' : lv < kc - kh ? 'CHUTADO FRACO' : lv < aLo ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
+    // força do lob: a faixa do alto (maior com menos estrelas) sempre vira um lob alto de verdade
+    const power = kick || lv > 1 || lv <= kHi ? lv : lv >= aLo ? .75 + (lv - aLo) / Math.max(.01, 1 - aLo) * .25 : kHi + (lv - kHi) / Math.max(.01, aLo - kHi) * (.75 - kHi);
     M.active = false; M.showT = .9;
-    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < kc - kh ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LM * 100);
+    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < kc - kh ? 'cedo' : lv <= 1 ? (lv >= aLo ? 'perfeito' : '') : 'tarde'), word, lv / LM * 100);
     p.charging = false;
-    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word, kick }; sw.side = sideOf(p); sw.var = '';
+    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power, word, kick }; sw.side = sideOf(p); sw.var = '';
     return;
   }
   let res = Math.abs(diff) <= M.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
