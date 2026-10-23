@@ -303,11 +303,11 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPl
 document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay() && !NET.role) setPaused(true); });
 const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
 // ---------- controle de Xbox / PS4 (Gamepad API, mapeamento padrão) ----------
-// jogo: analógico/direcional movem; A/✕ defesa, B/○ curta, X/□ lob, Y/△ smash (RT/R2 smash, LT/L2 lob);
+// jogo: analógico/direcional movem; LT/L2 defesa, B/○ curta, Y/△ lob (A/✕ também), X/□ smash (RT/R2 também);
 // Start/Options pausa, Back/Share câmera, RB/R1 flecha de mira. Menus: direcional/analógico escolhem, A/✕ confirma, B/○ volta
 const PADB = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
 // ações do controle e o botão padrão de cada uma (trocáveis em Teclas/Controle: S.settings.padBinds)
-const PAD_ACTIONS = [['defesa', 'Defesa', PADB.a], ['curta', 'Curta', PADB.b], ['lob', 'Lob', PADB.x], ['smash', 'Smash', PADB.y], ['smash2', 'Smash (2º botão)', PADB.rt], ['lob2', 'Lob (2º botão)', PADB.lt],
+const PAD_ACTIONS = [['defesa', 'Defesa', PADB.lt], ['curta', 'Curta', PADB.b], ['lob', 'Lob', PADB.y], ['smash', 'Smash', PADB.x], ['smash2', 'Smash (2º botão)', PADB.rt], ['lob2', 'Lob (2º botão)', PADB.a],
   ['pause', 'Pausa', PADB.start], ['cam', 'Trocar câmera', PADB.back], ['aim', 'Flecha de mira', PADB.rb]];
 const PAD_NAMES = { 0: 'A / ✕', 1: 'B / ○', 2: 'X / □', 3: 'Y / △', 4: 'LB / L1', 5: 'RB / R1', 6: 'LT / L2', 7: 'RT / R2', 8: 'Back / Share', 9: 'Start / Options', 10: 'L3', 11: 'R3', 12: '↑', 13: '↓', 14: '←', 15: '→', 16: 'Xbox / PS' };
 const padBtn = id => { const b = S.settings.padBinds || {}, a = PAD_ACTIONS.find(x => x[0] === id); return b[id] !== undefined ? +b[id] : a ? a[2] : -1; };
