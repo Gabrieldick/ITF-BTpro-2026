@@ -472,7 +472,8 @@ function crStart() {
   crCreate({ uf: $('crUf') ? $('crUf').value : 'SP', hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, attrs: crForm.attrs, start: +($('crStart') ? $('crStart').value : 0) || 0, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
   crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo ' + TIERS[$s.CR.startTier || 0].nome + ', ache um parceiro e suba no ranking.'; saveCareer(); renderCareer();
 }
-$('btnCareer').addEventListener('click', openCareer);
+// pelo menu principal sempre abre a tela de escolher/criar (a carreira aberta é salva e fechada); a volta de uma partida continua indo direto
+$('btnCareer').addEventListener('click', () => { if ($s.CR) { saveCareer(); crCloseSlot(); } crEntry = null; crSaveMsg(''); openCareer(); });
 $('crBack').addEventListener('click', () => { $('career').hidden = true; toMenu(); });
 $('crCreate').addEventListener('click', crStart);
 $('crNat').innerHTML = COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === 'BRA' ? ' selected' : '') + '>' + c.nome + '</option>').join('');
