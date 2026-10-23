@@ -346,7 +346,7 @@ function padStep() {
   if (!gp) { PAD.x = PAD.z = 0; padOn = false; return; }
   if (!padOn) { padOn = true; padName = /dualshock|playstation|054c|wireless controller/i.test(gp.id) ? 'PlayStation' : /xbox|xinput|045e/i.test(gp.id) ? 'Xbox' : 'controle'; feedback('CONTROLE', padName.toUpperCase() + ' CONECTADO', null); }
   // trocando um botão (tela de teclas): o próximo botão apertado vira o dessa ação
-  if (PADCAP.on) { for (let i = 0; i < gp.buttons.length; i++) { const d = padDown(gp, i); if (d && !padPrev[i]) { const id = PADCAP.on, old = padBtn(id), nb = Object.assign({}, S.settings.padBinds, { [id]: i }); const other = PAD_ACTIONS.find(x => x[0] !== id && padBtn(x[0]) === i); if (other) nb[other[0]] = old; S.settings.padBinds = nb; PADCAP.on = null; // botão já usado: as duas ações trocam saveSettings(); padPrev[i] = true; renderBinds(); return; } padPrev[i] = d; } return; }
+  if (PADCAP.on) { for (let i = 0; i < gp.buttons.length; i++) { const d = padDown(gp, i); if (d && !padPrev[i]) { const id = PADCAP.on, old = padBtn(id), nb = Object.assign({}, S.settings.padBinds, { [id]: i }); const other = PAD_ACTIONS.find(x => x[0] !== id && padBtn(x[0]) === i); if (other) nb[other[0]] = old; S.settings.padBinds = nb; PADCAP.on = null; /* botão já usado: as duas ações trocam */ saveSettings(); padPrev[i] = true; renderBinds(); return; } padPrev[i] = d; } return; }
   const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, dz = .22;
   let x = Math.abs(ax) > dz ? (ax - Math.sign(ax) * dz) / (1 - dz) : 0, z = Math.abs(ay) > dz ? (ay - Math.sign(ay) * dz) / (1 - dz) : 0;
   if (padDown(gp, PADB.left)) x = -1; if (padDown(gp, PADB.right)) x = 1; if (padDown(gp, PADB.up)) z = -1; if (padDown(gp, PADB.down)) z = 1;
