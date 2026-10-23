@@ -19,6 +19,7 @@ function openCareer() { readMenu(); el.menu.hidden = true; $('career').hidden = 
 function renderCareer() {
   $('crNew').hidden = !!$s.CR; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR;
   $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
+  { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
   const meO = overall($s.CR.me.a), inGame = crMeOvr(), rank = crRank(), pts = crPts();
   $('crHead').innerHTML = '<div class="cr-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><span>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · potencial ' + crCap() + ' (máx. ' + $s.CR.pot + ') · em jogo ' + inGame + ' · fama ' + Math.round($s.CR.fama || 0) + '</span></div></div>'
@@ -413,6 +414,8 @@ $('crRepo').addEventListener('click', async () => {
 });
 $('crExport').addEventListener('click', () => { saveCareer(); const fn = crDownload(); if (fn) { $s.CR.lastMsg = 'Save baixado: ' + fn + '. Coloque na pasta ' + SAVE_DIR + '/ do repositório e faça o push para abrir em outro lugar.'; renderCareer(); } });
 $('crSwitch').addEventListener('click', () => { saveCareer(); crCloseSlot(); crSaveMsg(''); renderCareer(); });
+// botão da nuvem: abre a lista de carreiras com a conta no topo (logado, a carreira já sobe sozinha)
+$('crCloudBtn').addEventListener('click', () => { saveCareer(); if (CL.sess) clFlush(); crCloseSlot(); crSaveMsg(''); renderCareer(); const c = $('crCloud'); if (c) c.scrollIntoView({ block: 'start' }); });
 // criação
 const crForm = { fem: false, style: 'completo', perfil: 'promessa', skin: SKINS[2], hair: HAIRS[1], acc: 'cap', canhoto: false, alt: 182, attrs: null, key: '' };
 // atributos na criação: o estilo distribui os pontos; dá para mexer com − e + (o total não passa o do estilo)
