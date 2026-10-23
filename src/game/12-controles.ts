@@ -27,6 +27,11 @@ const localCtl = () => LOCAL || (LOCAL = { p: human, m: MTR, plan: humanPlan, re
 function makeRemoteCtl(p) { const m = newMeter(); p.mtr = m; return { p, m, plan: { id: -1, plan: null }, remote: true, ix: 0, iz: 0, assistMove: false, lag: 0, out: [] }; }
 function ctlFeedback(c, main, small, kind) { if (c && c.remote) c.out.push(['fb', main, small || null, kind || null]); else shotFeedback(main, small, kind); }
 const ZONE = { facil: .095, medio: .068, dificil: .048 };
+// dificuldade de timing de quem joga (1 a 6 estrelas): janela do perfeito maior com menos estrelas, menor com mais.
+// Carreira: as estrelas da carreira; fora dela: a configuração de cada um (no online, a de cada jogador)
+const TIMING_K = [1.45, 1.2, 1, .87, .75, .66];
+function timingLv(c) { const v = c && c.remote ? c.pd : S.careerActive ? S.careerStars : S.settings.playerDiff; return clamp(Math.round(+v || 3), 1, 6); }
+const timingK = c => TIMING_K[timingLv(c) - 1];
 const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE', voleio: 'VOLEIO' };
 const LOB_MAX = 1.25;
 const KICK = [.15, .32]; // faixa do lob chutado perfeito, no começo da barra (~75 ms)
@@ -46,7 +51,7 @@ function startMeter(kind, type, c = localCtl()) {
   const M = c.m, p = c.p;
   Object.assign(M, { active: true, kind, type, t: 0, v: 0, rate: 0, tr: null, seen: false, armedTap: false, showT: 0 });
   // carreira: dificuldade em estrelas (3 = padrão) deixa a faixa verde maior ou menor
-  const half = ZONE[S.settings.diff] * (S.careerActive ? [1.35, 1.15, 1, .87, .75, .66][(S.careerStars || 3) - 1] : 1);
+  M.tk = timingK(c); const half = ZONE[S.settings.diff] * M.tk; // janela do perfeito pela dificuldade de timing de quem joga
   if (kind === 'smash') {
     // a faixa verde fica parada; a velocidade da barra se ajusta para o verde coincidir com a chegada da bola
     // a faixa verde muda de lugar a cada smash (a velocidade da barra se ajusta para ela coincidir com a chegada da bola)
@@ -73,7 +78,7 @@ function meterDom(M) {
   if (kind === 'lob') {
     const LM = M.lmax || LOB_MAX;
     el.mZone.style.bottom = (100 / LM) + '%'; el.mZone.style.height = (100 - 100 / LM) + '%'; el.mZone.style.background = '';
-    const kz = el.meter.querySelector('.kz'); if (kz) { kz.style.bottom = (KICK[0] / LM * 100) + '%'; kz.style.height = ((KICK[1] - KICK[0]) / LM * 100) + '%'; }
+    const kz = el.meter.querySelector('.kz'); if (kz) { const kc = (KICK[0] + KICK[1]) / 2, kh = (KICK[1] - KICK[0]) / 2 * (M.tk || 1); kz.style.bottom = ((kc - kh) / LM * 100) + '%'; kz.style.height = (kh * 2 / LM * 100) + '%'; }
   }
   else {
     // faixa inteira em degradê: verde no ponto certo, amarelo e laranja perto, vermelho longe (a penalidade cresce junto)
@@ -157,10 +162,10 @@ function releaseMeter(c = localCtl()) {
   if (M.kind === 'lob') {
     const LM = M.lmax || LOB_MAX, lv = Math.min(v, LM);
     // começo da barra: lob chutado (perfeito só na faixa verde de baixo); meio: médio; fim: alto; passou: longo
-    const kick = lv >= KICK[0] && lv <= KICK[1];
-    const word = kick ? 'CHUTADO PERFEITO' : lv < KICK[0] ? 'CHUTADO FRACO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
+    const kc = (KICK[0] + KICK[1]) / 2, kh = (KICK[1] - KICK[0]) / 2 * (M.tk || 1), kick = lv >= kc - kh && lv <= kc + kh; // lob chutado: faixa pela dificuldade de timing
+    const word = kick ? 'CHUTADO PERFEITO' : lv < kc - kh ? 'CHUTADO FRACO' : lv < .75 ? 'MÉDIO' : lv <= 1 ? 'ALTO' : 'LONGO';
     M.active = false; M.showT = .9;
-    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < KICK[0] ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LM * 100);
+    meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < kc - kh ? 'cedo' : lv <= 1 ? (lv >= .75 ? 'perfeito' : '') : 'tarde'), word, lv / LM * 100);
     p.charging = false;
     const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power: lv, word, kick }; sw.side = sideOf(p); sw.var = '';
     return;
@@ -315,9 +320,9 @@ function applyMeterLook() {
   st.setProperty('--mop', String((+(S.settings.meterOp || 100)) / 100));
   // nomes sobre os jogadores: tamanho/estilo e opacidade
   st.setProperty('--tagop', String((+(S.settings.tagOp || 100)) / 100)); document.body.dataset.tags = S.settings.tagStyle || 'normal'; { const bt = document.getElementById('btnTags'); if (bt) bt.textContent = 'Nomes: ' + ({ normal: 'normal', pequena: 'pequenos', simples: 'simples', off: 'escondidos' }[S.settings.tagStyle || 'normal']); }
-  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on', landArrow: 'on', lineWarn: 'on', tagStyle: 'normal', tagOp: '100' }[e.dataset.setting] || 'normal')); });
+  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on', landArrow: 'on', lineWarn: 'on', tagStyle: 'normal', tagOp: '100', playerDiff: '3' }[e.dataset.setting] || 'normal')); });
 }
-document.querySelectorAll('select[data-setting]').forEach(e => e.addEventListener('change', () => { S.settings[e.dataset.setting] = e.value; saveSettings(); applyMeterLook(); }));
+document.querySelectorAll('select[data-setting]').forEach(e => e.addEventListener('change', () => { S.settings[e.dataset.setting] = e.value; saveSettings(); applyMeterLook(); if (e.dataset.setting === 'playerDiff' && S.onPd) S.onPd(e.value); }));
 applyMeterLook();
 function renderBallPickers() {
   const cur = S.settings.ballStyle || 'laranja';
@@ -494,4 +499,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };

@@ -237,6 +237,7 @@ function act(mid, m) {
   }
   // personagem da carreira de quem está na sala: o anfitrião confere os valores e passa a valer para todos
   // raquete escolhida por quem está na sala ('' = a do personagem)
+  if (m[0] === 'pd') { mem.pd = clamp(Math.round(+m[1] || 3), 1, 6); const g = guestById(mid); if (g && g.ctl) { g.ctl.pd = mem.pd; g.ctl.p.pdRemote = mem.pd; } } // dificuldade de timing de cada jogador
   if (m[0] === 'racket' && !room.playing) mem.rk = RACKET_STATS[m[1]] && m[1] !== 'assinatura' ? m[1] : '';
   if (m[0] === 'cchar' && !room.playing) { const cc = sanitizeCC(m[1], mid); if (cc) { mem.cc = cc; mem.pick = cc.id; regOnlineChars(); } }
   if (mid === 'host' && m[0] === 'cpu' && SEATS.includes(m[1]) && ROSTER.some(c => c.id === m[2]) && !members().some(x => x.pick === m[2])) {
@@ -264,7 +265,7 @@ function hostData(g, d) {
     msg(g.name + ' entrou na sala.', true);
     fixCpu(); broadcast(); return;
   }
-  if (k === 'seat' || k === 'pick' || k === 'cchar' || k === 'racket') { act(g.id, d); return; } // ações da sala vindas de quem entrou
+  if (k === 'seat' || k === 'pick' || k === 'cchar' || k === 'racket' || k === 'pd') { act(g.id, d); return; } // ações da sala vindas de quem entrou
   if (!c) return;
   if (k === 'i') {
     if (d[4] <= g.inSeq) return; g.inSeq = d[4]; // chegou fora de ordem: já há uma mais nova
@@ -315,7 +316,7 @@ function startMatch(owners, picks, mode, champM) {
     p.isHuman = !!o; p.netHuman = !!o && o !== 'host';
     const g = p.netHuman && guestById(o);
     p.netName = o ? (o === 'host' ? ON.self.name : (g && g.name) || '') : ''; // nome de quem joga com este boneco (aparece na etiqueta)
-    if (g) { g.ctl = makeRemoteCtl(p); g.ctl.lag = lagOf(g); g.plIdx = i; NET.remote.push(g.ctl); }
+    if (g) { g.ctl = makeRemoteCtl(p); g.ctl.lag = lagOf(g); g.plIdx = i; g.ctl.pd = g.pd || 3; p.pdRemote = g.pd || 3; NET.remote.push(g.ctl); }
   });
   if (!human.netHuman) human.mtr = MTR;
   S.spectate = !hostSeat; document.body.classList.toggle('spectate', S.spectate);
@@ -484,6 +485,7 @@ async function joinRoom() {
     });
     NET.role = 'guest'; ON.open = true; backupSettings();
     send(['hello', { v: PROTO, name, pick: S.settings.pick.me }]);
+    send(['pd', S.settings.playerDiff || 3]); // a sua dificuldade de timing vale nas suas barras e golpes
     clearInterval(ON.hb);
     ON.hb = setInterval(() => {
       send(['ping', performance.now()]);
@@ -849,6 +851,7 @@ function renderChamp(L, me, host, force) {
   const nb = $('onChampNew'); if (nb) nb.addEventListener('click', () => { ON.room.champ = null; broadcast(); });
 }
 // ação na sala: o convidado pede ao anfitrião; o anfitrião aplica direto
+S.onPd = v => { if (NET.role === 'guest') send(['pd', v]); }; // mudou a dificuldade de timing durante a sala
 function doAct(m) { if (NET.role === 'host') act('host', m); else send(m); }
 
 // ---------- botões e atalhos ----------

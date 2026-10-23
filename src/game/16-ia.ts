@@ -165,7 +165,9 @@ function clampPos(p) {
   }
 }
 // janela ideal do aperto: 0,05 a 0,30 s antes da bola entrar no alcance (sinal verde)
-const pressTiming = t => t < .05 ? lerp(.45, 1, clamp(t / .05, 0, 1)) : t <= .3 ? 1 : lerp(1, .4, clamp((t - .3) / .3, 0, 1));
+// janela boa do aperto (curta/defesa sem barra): .05–.3 s antes da bola chegar no padrão; maior/menor pela dificuldade de timing
+const TIMING_K = [1.45, 1.2, 1, .87, .75, .66];
+const pressTiming = (t, tk = 1) => { const c = .175, h = .125 * tk, lo = c - h, hi = c + h; return t < lo ? lerp(.45, 1, clamp((t - (lo - .05)) / .05, 0, 1)) : t <= hi ? 1 : lerp(1, .4, clamp((t - hi) / (.3 * Math.min(1.3, tk)), 0, 1)); };
 // a raquete espera a bola chegar mais perto do corpo, em vez de bater na ponta do alcance
 function waitCloser(p, su, dt) {
   if (su > .7) return false;
@@ -284,7 +286,7 @@ function updateHuman(dt, c = localCtl()) {
       // timing: o miolo do movimento (15%–60%) é perfeito; cedo/tarde demais perde, mas não zera
       // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
       if (sw.meter && !mod.volley) mod.meterSmash = true;
-      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
+      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp((p.netHuman ? p.pdRemote : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3, 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
       perfShot(p, sw, r);
@@ -305,10 +307,10 @@ function oppAllDeep(team) { return $s.teams[1 - team].every(o => Math.abs(o.pos.
 // jogada mais eficaz para a situação (posição, altura da bola, onde estão os adversários e os seus atributos)
 function bestPlay(p, y) {
   const netD = Math.abs(p.pos.z), opp = $s.teams[1 - p.team], near = opp.filter(o => Math.abs(o.pos.z) < 3.4).length, deep = opp.filter(o => Math.abs(o.pos.z) > 5.4).length;
-  if (y >= 2.1) return netD < 4 || attrK(p, 'smash') > .62 ? 'smash' : near ? 'lob' : 'defesa';
+  if (y >= 2.1) return netD < 4 || attrK(p, 'smash') > .62 ? 'smash' : near && attrK(p, 'lob') > .6 ? 'lob' : 'defesa';
   if (y >= 1.45 && netD < 3.2) return 'smash';
-  if (deep === opp.length && attrK(p, 'curta') > .45) return 'curta';
-  if (near === opp.length && attrK(p, 'lob') > .4) return 'lob';
+  if (deep === opp.length && attrK(p, 'curta') > .5) return 'curta';
+  if (near === opp.length && attrK(p, 'lob') > .6) return 'lob'; // lob só com lob bom (lob curto vira smash do outro lado)
   if (deep && near && attrK(p, 'curta') > .55 && netD < 4.5) return 'curta';
   return 'defesa';
 }
