@@ -41,6 +41,13 @@ Object.assign(ACT, {
     P({ rh: [.24, .66, -.52], rp: [.9, -.3, .2], wx: .75, wr: .5, lh: [-.2, .45, -.2], lp: [-.9, -.3, .1], tw: 0, lean: .26, crouch: .14, lunge: .45 }),
     P({ rh: [.2, .55, -.6], rp: [.9, -.4, .2], wx: .95, wr: .5, lh: [-.22, .4, -.15], lp: [-.9, -.4, 0], tw: .05, lean: .3, crouch: .16, lunge: .4 }),
     READY],
+  // curta alta de forehand: raquete alta e em pé, cotovelo para baixo e a face virada para a rede (para onde vai a curta);
+  // a de backhand continua sendo a curta_alta espelhada
+  curta_alta_fh: [READY,
+    P({ rh: [.3, .72, -.3], rp: [0, -1, 0], wx: 1.0, wr: .15, lh: [-.12, .5, -.3], lp: [-.9, -.3, .1], tw: -.2, lean: .18, crouch: .1, lunge: .25 }),
+    P({ rh: [.24, .68, -.5], rp: [0, -1, 0], wx: 1.2, wr: 0, lh: [-.2, .45, -.2], lp: [-.9, -.3, .1], tw: 0, lean: .26, crouch: .14, lunge: .45 }),
+    P({ rh: [.2, .6, -.6], rp: [0, -1, 0], wx: 1.25, wr: 0, lh: [-.22, .4, -.15], lp: [-.9, -.4, 0], tw: .05, lean: .3, crouch: .16, lunge: .4 }),
+    READY],
   curta_baixa: [READY,
     P({ rh: [.34, .08, -.25], rp: [.9, -.6, .4], wx: 1.95, wr: .6, lh: [-.15, .3, -.3], lp: [-.9, -.5, 0], tw: -.25, lean: .48, crouch: .32, lunge: .5 }),
     P({ rh: [.28, -.04, -.5], rp: [.9, -.6, .3], wx: 2.15, wr: .75, lh: [-.25, .28, -.12], lp: [-.9, -.5, 0], tw: -.05, lean: .58, crouch: .38, lunge: .85 }),
@@ -97,6 +104,7 @@ function swingVar(type, y, p, aimX) {
   if (y > 2.55) return 'salto';
   return '';
 }
+if (typeof window !== 'undefined') window.__pdoACT = ACT;
 const swingKey = p => p.swing.var && ACT[p.swing.type + '_' + p.swing.var] ? p.swing.type + '_' + p.swing.var : p.swing.type;
 // saque: bola na mão, lançamento, posição de troféu
 const SERVE_U = [0, .35, .75, 1];
