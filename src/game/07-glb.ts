@@ -171,6 +171,8 @@ function assignCharacters() {
     p.rkKey = rkp[slot] || (p === human ? S.settings.racket : c.look && c.look.racket) || 'proteo';
     let a = c.rkIn ? Object.assign({}, c.a) : effA(c.a, racketBonus(p.rkKey)); // carreira: você já vem com a raquete (e o equipamento) somados
     if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .885)); a = m; }
+    // carreira: as estrelas também mudam os atributos em jogo da CPU — adversários e o seu parceiro no mesmo nível (você não muda)
+    if (S.careerActive && p !== human) { const sb = [-4, -2, 0, 3, 6][(S.careerStars || 3) - 1]; if (sb) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.min(99, a[k] + sb)); a = m; } }
     p.char = Object.assign({}, c, { a });
     const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
     const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
