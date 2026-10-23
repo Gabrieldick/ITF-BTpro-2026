@@ -17,6 +17,7 @@ import { CAM3, sideOf } from './18-animacao';
 // ---------- Controles ----------
 const keys = {};
 const touch = { x: 0, z: 0, id: null };
+const PAD = { x: 0, z: 0 }; // controle (Xbox/PS): analógico esquerdo e direcional
 const newMeter = () => ({ active: false, kind: null, type: null, t: 0, v: 0, rate: 0, fill: .75, center: .78, half: .068, armedTap: false, showT: 0 });
 const MTR = newMeter();
 human.mtr = MTR;
@@ -301,6 +302,70 @@ addEventListener('keyup', e => { const k = bindKey(e.key.toLowerCase()); keys[k]
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPlay() && !NET.role) setPaused(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay() && !NET.role) setPaused(true); });
 const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
+// ---------- controle de Xbox / PS4 (Gamepad API, mapeamento padrão) ----------
+// jogo: analógico/direcional movem; A/✕ defesa, B/○ curta, X/□ lob, Y/△ smash (RT/R2 smash, LT/L2 lob);
+// Start/Options pausa, Back/Share câmera, RB/R1 flecha de mira. Menus: direcional/analógico escolhem, A/✕ confirma, B/○ volta
+const PADB = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
+const PAD_SHOT = [[PADB.a, 'defesa'], [PADB.b, 'curta'], [PADB.x, 'lob'], [PADB.y, 'smash'], [PADB.rt, 'smash'], [PADB.lt, 'lob']];
+const padPrev = {}; let padOn = false, padNavT = 0, padName = '';
+const padDown = (gp, i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > .5));
+function padFirst() { const l = navigator.getGamepads ? navigator.getGamepads() : []; for (const g of l) if (g && g.connected) return g; return null; }
+function topOverlay() { const l = [...document.querySelectorAll('.overlay')].filter(o => !o.hidden && getComputedStyle(o).display !== 'none'); return l.length ? l[l.length - 1] : null; }
+function padFocusables(root) { return [...root.querySelectorAll('button, select, input, label.cr-file, [data-goto]')].filter(e => !e.disabled && e.offsetParent !== null && !(e.tagName === 'INPUT' && e.type === 'file')); }
+// navegação espacial: o mais próximo na direção apertada
+function padMove(dx, dy) {
+  const root = topOverlay(); if (!root) return; const list = padFocusables(root); if (!list.length) return;
+  const cur = list.includes(document.activeElement) ? document.activeElement : null;
+  if (!cur) { list[0].focus(); list[0].classList.add('pad-focus'); return; }
+  const r0 = cur.getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+  let best = null, bs = Infinity;
+  for (const e of list) { if (e === cur) continue; const r = e.getBoundingClientRect(), ex = r.left + r.width / 2 - cx, ey = r.top + r.height / 2 - cy;
+    const along = ex * dx + ey * dy, side = Math.abs(ex * dy - ey * dx); if (along <= 4) continue;
+    const sc = along + side * 2.2; if (sc < bs) { bs = sc; best = e; } }
+  if (best) { cur.classList.remove('pad-focus'); best.focus(); best.classList.add('pad-focus'); best.scrollIntoView({ block: 'nearest' }); }
+}
+function padConfirm() {
+  const e = document.activeElement; if (!e || e === document.body) { padMove(0, 1); return; }
+  if (e.tagName === 'SELECT') { e.selectedIndex = (e.selectedIndex + 1) % e.options.length; e.dispatchEvent(new Event('change', { bubbles: true })); }
+  else e.click();
+}
+function padBack() {
+  if (!el.pause.hidden) { setPaused(false); return; }
+  const root = topOverlay(); if (!root) return;
+  const b = [...root.querySelectorAll('button')].filter(x => x.offsetParent !== null && !x.disabled).find(x => /^(voltar|fechar|continuar|menu|sair)/i.test(x.textContent.trim()));
+  if (b) b.click();
+}
+function padLoop() { try { padStep(); } catch (e) { console.warn('controle', e); } requestAnimationFrame(padLoop); }
+function padStep() {
+  const gp = padFirst();
+  if (!gp) { PAD.x = PAD.z = 0; padOn = false; return; }
+  if (!padOn) { padOn = true; padName = /dualshock|playstation|054c|wireless controller/i.test(gp.id) ? 'PlayStation' : /xbox|xinput|045e/i.test(gp.id) ? 'Xbox' : 'controle'; feedback('CONTROLE', padName.toUpperCase() + ' CONECTADO', null); }
+  const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, dz = .22;
+  let x = Math.abs(ax) > dz ? (ax - Math.sign(ax) * dz) / (1 - dz) : 0, z = Math.abs(ay) > dz ? (ay - Math.sign(ay) * dz) / (1 - dz) : 0;
+  if (padDown(gp, PADB.left)) x = -1; if (padDown(gp, PADB.right)) x = 1; if (padDown(gp, PADB.up)) z = -1; if (padDown(gp, PADB.down)) z = 1;
+  const playing = inPlay() && el.pause.hidden && S.mode !== 'replay';
+  const edge = i => { const d = padDown(gp, i), was = !!padPrev[i]; padPrev[i] = d; return d && !was ? 1 : !d && was ? -1 : 0; };
+  if (playing) {
+    PAD.x = x; PAD.z = z;
+    for (const [i, t] of PAD_SHOT) { const e = edge(i); if (e === 1) pressShot(t); else if (e === -1) releaseShot(t); }
+    if (edge(PADB.start) === 1) togglePause();
+    if (edge(PADB.back) === 1) toggleCam();
+    if (edge(PADB.rb) === 1) { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
+    [PADB.up, PADB.down, PADB.left, PADB.right, PADB.lb].forEach(edge);
+  } else {
+    PAD.x = PAD.z = 0;
+    PAD_SHOT.forEach(([i, t]) => { if (padPrev[i] && !padDown(gp, i) && MTR.active) releaseShot(t); });
+    const now = performance.now(), dir = Math.abs(x) > .5 || Math.abs(z) > .5;
+    if (dir && now > padNavT) { if (Math.abs(x) > Math.abs(z)) padMove(Math.sign(x), 0); else padMove(0, Math.sign(z)); padNavT = now + 190; }
+    if (!dir) padNavT = 0;
+    if (edge(PADB.a) === 1) padConfirm();
+    if (edge(PADB.b) === 1) padBack();
+    if (edge(PADB.start) === 1) { if (inPlay()) togglePause(); else padConfirm(); }
+    [PADB.x, PADB.y, PADB.lb, PADB.rb, PADB.lt, PADB.rt, PADB.back, PADB.up, PADB.down, PADB.left, PADB.right].forEach(edge);
+  }
+}
+if (typeof window !== 'undefined' && navigator.getGamepads) { requestAnimationFrame(padLoop); window.__padStep = () => padStep(); }
+
 // modelos de quadra (partida rápida/online) e de bolinha (todos os modos)
 function fillLooks() {
   const opt = (obj, cur) => Object.entries(obj).map(([k, v]) => '<option value="' + k + '"' + (k === cur ? ' selected' : '') + '>' + v.nome + '</option>').join('');
@@ -504,4 +569,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
