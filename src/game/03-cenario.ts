@@ -159,12 +159,15 @@ scene.add(sand);
 // ---------- Quadra ----------
 const tapeMat = mat('#1f4fb8', { roughness: .55 });
 const linesGroup = { simples: new THREE.Group(), dupla: new THREE.Group() };
+const tapeFaint = new THREE.MeshStandardMaterial({ color: col('#1f4fb8'), roughness: .6, transparent: true, opacity: .28, depthWrite: false });
 function tape(group, w, l, x, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.008, l), tapeMat); m.position.set(x, 0.004, z); m.receiveShadow = true; group.add(m); }
 Object.entries(HALF_W).forEach(([k, hw]) => {
   const g = linesGroup[k];
   tape(g, hw * 2 + .05, .05, 0, C.halfL); tape(g, hw * 2 + .05, .05, 0, -C.halfL);
   tape(g, .05, C.halfL * 2 + .05, hw, 0); tape(g, .05, C.halfL * 2 + .05, -hw, 0);
-  tape(g, hw * 2 + .05, .05, 0, ZONE3); tape(g, hw * 2 + .05, .05, 0, -ZONE3);
+  // linha dos 3 m: não é uma linha de verdade na quadra; só um traço apagado por dentro e marcas na lateral (3 m e 5 m)
+  [ZONE3, -ZONE3].forEach(z => { const m = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 - .1, 0.006, .035), tapeFaint); m.position.set(0, 0.003, z); g.add(m); });
+  [ZONE3, 5].forEach(d => [1, -1].forEach(sz => [1, -1].forEach(sx => { const m = new THREE.Mesh(new THREE.BoxGeometry(.32, 0.008, .05), tapeMat); m.position.set(sx * (hw + .16), 0.004, sz * d); g.add(m); })));
   [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => {
     const p = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .03, 8), mat('#f4f1ea')); p.position.set(a * hw, .015, b * C.halfL); g.add(p);
   });
@@ -419,7 +422,7 @@ function applyArena(a) {
   a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#0b1d3f', '#33c3ff'], text: 'ITF-BT PRO 2026' }, a || {});
   const key = JSON.stringify(a); if (key === ARENA.key) return; ARENA.key = key;
   // linha da quadra nunca amarela (nem amarelada): se vier uma cor assim, usa o azul padrão
-  { const lc = col(a.line), hsl = {}; lc.getHSL(hsl); tapeMat.color.copy(hsl.h > .08 && hsl.h < .2 && hsl.s > .3 && hsl.l > .25 ? col('#1f4fb8') : lc); } padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
+  { const lc = col(a.line), hsl = {}; lc.getHSL(hsl); tapeMat.color.copy(hsl.h > .08 && hsl.h < .2 && hsl.s > .3 && hsl.l > .25 ? col('#1f4fb8') : lc); tapeFaint.color.copy(tapeMat.color); } padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
   const bc = bandTex.image.getContext('2d'); drawBand(a.trim)(bc, bandTex.image.width, bandTex.image.height); bandTex.needsUpdate = true;
   sandMat.color.copy(col(a.sand));
   // arquibancadas
