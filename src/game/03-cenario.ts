@@ -445,9 +445,67 @@ function applyArena(a) {
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
   indoorHall(a);
+  if (!a.indoor && (a.amateur || a.size >= 1)) beachDecor(a);
 }
 // ambiente fechado (points e arenas cobertas): paredes, telhado com fileiras de luz; sem céu, mar, palmeiras nem sol forte
 const LIGHT0 = { sun: null, hemi: null, hemiC: null, hemiG: null };
+// ---------- patrocínios e decoração dos eventos (marcas fictícias) ----------
+const ADS = [['AREIA FINA', '#ffd23f', '#17324d'], ['SOLAR MAX', '#ff5a1f', '#ffffff'], ['MARAZUL SEGUROS', '#1f4fb8', '#ffffff'], ['COCO GELADO', '#2e9e57', '#ffffff'], ['ONDAS TELECOM', '#7b2ff7', '#ffffff'],
+  ['BRISA ENERGÉTICO', '#e2364a', '#ffe14d'], ['DUNA ÓCULOS', '#111111', '#ffd23f'], ['LITORAL BANK', '#0b7a83', '#ffffff'], ['SALINA ISOTÔNICO', '#33c3ff', '#0b1d3f'], ['FAROL VIAGENS', '#ff8a00', '#17324d'], ['MARESIA RELÓGIOS', '#fbf6ea', '#17324d'], ['SOL & SAL', '#ffb3c1', '#7a1630']];
+const AD_TEX = new Map();
+function adTex(i, wide) {
+  const k = i + (wide ? 'w' : ''); if (AD_TEX.has(k)) return AD_TEX.get(k);
+  const [name, bg, fg] = ADS[i % ADS.length], W = wide ? 512 : 256, H = wide ? 128 : 128;
+  const t = canvasTex(W, H, (x, w, h) => { x.fillStyle = bg; x.fillRect(0, 0, w, h); x.fillStyle = fg; x.fillRect(0, h - 10, w, 4);
+    x.font = 'bold ' + (wide ? 54 : Math.min(44, Math.floor(w / name.length * 1.7))) + 'px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(name, w / 2, h / 2 - 4); });
+  AD_TEX.set(k, t); return t;
+}
+// placa de patrocínio em pé (frente para a quadra)
+function adBoard(x, z, w, h, i, ry) {
+  const t = adTex(i, w / h > 2.5), fm = mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .2 }), dk = mat('#2b2f35');
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, .05), [dk, dk, dk, dk, fm, dk]); b.position.set(x, h / 2 + .02, z); b.rotation.y = ry || 0; ARENA.group.add(b);
+}
+// bandeira "pena" (feather flag) com a cor de uma marca
+function featherFlag(x, z, i) {
+  const [, bg] = ADS[i % ADS.length], g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, 3.2, 6), mat('#d8dde2', { metalness: .5 })); pole.position.y = 1.6; g.add(pole);
+  const f = new THREE.Mesh(new THREE.PlaneGeometry(.7, 2.4), new THREE.MeshStandardMaterial({ map: adTex(i), color: col(bg), side: THREE.DoubleSide, roughness: .8 }));
+  f.position.set(.36, 1.95, 0); f.rotation.z = -.04; g.add(f);
+  g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z) + Math.PI / 2; ARENA.group.add(g);
+}
+// barraca (tenda com teto de lona, balcão com a marca e gente em volta)
+function tentStall(x, z, i, spots) {
+  const [, bg, fg] = ADS[i % ADS.length], g = new THREE.Group();
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.1, .9, 4, 1), new THREE.MeshStandardMaterial({ color: col(bg), roughness: .8 })); roof.rotation.y = Math.PI / 4; roof.position.y = 2.75; g.add(roof);
+  const legM = mat('#cfd4da', { metalness: .4 });
+  for (const [lx, lz] of [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, 2.3, 6), legM); l.position.set(lx, 1.15, lz); g.add(l); }
+  const valance = new THREE.Mesh(new THREE.BoxGeometry(2.9, .28, 2.9), new THREE.MeshStandardMaterial({ color: col(fg), roughness: .8 })); valance.position.y = 2.2; g.add(valance);
+  const t = adTex(i), cm = mat('#ffffff', { map: t }), wm = mat('#f4f1ea');
+  const ct = new THREE.Mesh(new THREE.BoxGeometry(2.4, .95, .6), [wm, wm, wm, wm, cm, wm]); ct.position.set(0, .48, .9); g.add(ct);
+  g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z) * .3; ARENA.group.add(g);
+  for (let k = 0; k < 3; k++) spots.push([x + rand(-1.2, 1.2), z + 1.9 + rand(0, 1)]);
+}
+// decoração dos torneios na praia: placas de patrocínio, bandeiras, barracas e um food truck
+function beachDecor(a) {
+  const hw = HALF_W.dupla, spots = [];
+  // placas baixas atrás do fundo do adversário e nas laterais (fora da área de jogo)
+  for (let i = 0, x = -7.5; x <= 7.6; x += 2.5, i++) adBoard(x, -(C.halfL + 2.6), 2.3, .62, i);
+  [-1, 1].forEach((sd, k) => { for (let i = 0, z = -C.halfL + 1; z <= 2; z += 3, i++) adBoard(sd * (hw + 1.9), z, 2.6, .55, i + 3 + k * 4, sd * -Math.PI / 2); });
+  // bandeiras nas pontas
+  [[-hw - 3, -C.halfL - 3.4], [hw + 3, -C.halfL - 3.4], [-hw - 3.6, 1.5], [hw + 3.6, 1.5]].forEach(([x, z], i) => featherFlag(x, z, i * 3 + 1));
+  // vila de barracas ao fundo
+  [-12, -6.5, 6.5, 12].forEach((x, i) => tentStall(x, -(C.halfL + 9.5) - (i % 2) * 1.5, i * 2 + (a.amateur ? 0 : 5), spots));
+  // food truck
+  const ft = new THREE.Group(), body = mat('#fbf6ea', { roughness: .5 }), trim = mat(ADS[(a.amateur ? 3 : 1)][1]);
+  const bx = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.2, 2), body); bx.position.y = 1.5; ft.add(bx);
+  const st = new THREE.Mesh(new THREE.BoxGeometry(4.22, .5, 2.02), trim); st.position.y = .7; ft.add(st);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(2.2, .8, .05), mat('#1b2a36')); win.position.set(-.3, 1.75, 1.01); ft.add(win);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, .45), new THREE.MeshBasicMaterial({ map: adTex(a.amateur ? 3 : 1, true) })); sign.position.set(-.3, 2.45, 1.02); ft.add(sign);
+  [[-1.4, .95], [1.4, .95], [-1.4, -.95], [1.4, -.95]].forEach(([wx, wz]) => { const wh = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, .25, 14), mat('#1a1a1a')); wh.rotation.x = Math.PI / 2; wh.position.set(wx, .35, wz); ft.add(wh); });
+  ft.position.set(0, 0, -(C.halfL + 12.5)); ARENA.group.add(ft);
+  for (let k = 0; k < 5; k++) spots.push([rand(-1.6, 1.6), -(C.halfL + 10.8) + rand(0, .8)]);
+  standingCrowd(spots);
+}
 function indoorHall(a) {
   if (LIGHT0.sun === null) { LIGHT0.sun = sun.intensity; LIGHT0.hemi = hemi.intensity; LIGHT0.hemiC = hemi.color.clone(); LIGHT0.hemiG = hemi.groundColor.clone(); }
   const on = !!a.indoor;
@@ -492,6 +550,27 @@ function indoorHall(a) {
     for (let i = 0; i < 5; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(.2, .14, .75, 10), mat('#2b2f35', { metalness: .4, roughness: .5 })); st.position.set(bx - 1.6 + i * .8, .38, bz + .75); ARENA.group.add(st); }
   };
   bar(-11, -22.5); bar(11, -22.5);
+  // paredes com patrocínios, portas, banheiros, vestiário, saída de emergência, máquinas de bebida e placar
+  for (let i = 0, z = -18; z <= 22; z += 7, i++) { [-1, 1].forEach(sd => { const t = adTex(i * 2 + (sd > 0 ? 1 : 0), true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(sd * (HX - .06), 3.4, z); ad.rotation.y = -sd * Math.PI / 2; ARENA.group.add(ad); }); }
+  for (let i = 0, x = -16; x <= 16; x += 8, i++) { const t = adTex(i + 5, true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(x, 4.6, Z0 + .06); ARENA.group.add(ad); }
+  const signTex = (txt, bg, fg, ic) => canvasTex(256, 64, (x, w, h) => { x.fillStyle = bg; x.fillRect(0, 0, w, h); x.fillStyle = fg; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((ic ? ic + ' ' : '') + txt, w / 2, h / 2 + 1); });
+  const door = (x, z, ry, w, txt, bg, fg, ic) => {
+    const g = new THREE.Group();
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(w + .16, 2.36, .08), mat('#8a9097')); fr.position.y = 1.18; g.add(fr);
+    const dm = mat('#4a5560', { roughness: .6 }); const n = w > 1.4 ? 2 : 1;
+    for (let k = 0; k < n; k++) { const d = new THREE.Mesh(new THREE.BoxGeometry(w / n - .04, 2.2, .1), dm); d.position.set(-w / 2 + w / n * (k + .5), 1.12, .03); g.add(d); const hd = new THREE.Mesh(new THREE.BoxGeometry(.04, .3, .06), mat('#d8dde2', { metalness: .6 })); hd.position.set(-w / 2 + w / n * (k + .5) + (n > 1 ? (k ? -1 : 1) * (w / n / 2 - .12) : w / 2 - .16), 1.1, .1); g.add(hd); }
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .3), new THREE.MeshBasicMaterial({ map: signTex(txt, bg, fg, ic) })); sg.position.set(0, 2.62, .06); g.add(sg);
+    g.position.set(x, 0, z); g.rotation.y = ry; ARENA.group.add(g);
+  };
+  door(-4.5, Z0 + .05, 0, 2.2, 'ENTRADA', '#17324d', '#ffffff');
+  door(4.5, Z0 + .05, 0, 1.0, 'SAÍDA', '#1b9e4b', '#ffffff', '🏃');
+  door(-HX + .05, -12, Math.PI / 2, 1.0, 'BANHEIRO', '#2457c5', '#ffffff', '🚹');
+  door(-HX + .05, -9.5, Math.PI / 2, 1.0, 'BANHEIRO', '#c2185b', '#ffffff', '🚺');
+  door(HX - .05, -12, -Math.PI / 2, 1.0, 'VESTIÁRIO', '#3b424c', '#ffffff');
+  door(HX - .05, -9.5, -Math.PI / 2, 1.0, 'SAÍDA', '#1b9e4b', '#ffffff', '🏃');
+  for (const [vx, vc] of [[-16.5, '#c62828'], [-15.4, '#1565c0'], [16.5, '#2e7d32']]) { const vm = new THREE.Mesh(new THREE.BoxGeometry(.95, 1.9, .75), [mat('#2b2f35'), mat('#2b2f35'), mat('#2b2f35'), mat('#2b2f35'), mat(vc, { emissive: col(vc), emissiveIntensity: .35 }), mat('#2b2f35')]); vm.position.set(vx, .95, Z0 + .5); ARENA.group.add(vm); }
+  const sbT = canvasTex(256, 96, (x, w, h) => { x.fillStyle = '#0b0f14'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffd23f'; x.font = 'bold 26px monospace'; x.textAlign = 'center'; x.fillText(a.text || 'ARENA', w / 2, 34); x.fillStyle = '#ff5a1f'; x.font = 'bold 34px monospace'; x.fillText('BEACH TENNIS', w / 2, 76); });
+  const sb = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.9), new THREE.MeshBasicMaterial({ map: sbT })); sb.position.set(0, 7.4, Z0 + .07); ARENA.group.add(sb);
   // mesas altas com gente em volta (convivência), mais gente nos corredores olhando os jogos
   const tableM = mat('#f4f1ea', { roughness: .5 }), poleM = mat('#2b2f35', { metalness: .5, roughness: .4 }), spots = [];
   for (const [tx, tz] of [[-5, -16], [0, -17.5], [5, -16], [-4, -20.5], [4, -20.5], [0, -23]]) {
