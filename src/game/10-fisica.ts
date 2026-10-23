@@ -9,7 +9,7 @@ import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
 import { sndHit } from './08-audio';
 import { humanAim, humanDepthT, skillOf, startJump } from './11-mira';
-import { aiAim } from './16-ia';
+import { aiAim, expectK } from './16-ia';
 import { sideOf } from './18-animacao';
 // ---------- Física ----------
 function solveShot(p0, tgt, spec) {
@@ -300,7 +300,7 @@ function doHit(p, type, q, isServe, mod) {
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
   sndHit(power); if (NET.ev) NET.ev('hit', p, power);
   if (key === 'smash') { const mine = p.isHuman && !p.netHuman; S.shake = mine ? .25 : .1; if (mine) S.stats.smashes++; }
-  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react; if (o.splitFor !== S.hitId - 1) o.split = .26; }); // quem já deu o split no smash não repete
+  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react * expectK(o, key); if (o.splitFor !== S.hitId - 1) o.split = .26; }); // quem já deu o split no smash não repete
   p.swing.type = isServe ? 'smash' : type; p.swing.hit = true;
   const hitAt = isServe ? .3 : .45;
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;

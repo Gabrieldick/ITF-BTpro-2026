@@ -43,7 +43,7 @@ function gapX(team, jitter) {
 }
 // o "cérebro" de cada robô vem do próprio overall (reação, erros, qualidade, leitura de jogo);
 // a dificuldade só ajusta os adversários na partida rápida/campeonato (na carreira o nível vem do overall de cada um)
-if (typeof window !== 'undefined') window.__pdoAI = { charSkill: p => charSkill(p) };
+if (typeof window !== 'undefined') window.__pdoAI = { charSkill: p => charSkill(p), homeOf: p => homeOf(p), expectK: (o, k) => expectK(o, k) };
 function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
@@ -311,6 +311,7 @@ function updateHuman(dt, c = localCtl()) {
       if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp((p.netHuman ? p.pdRemote : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3, 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
+      if (!r.mis) noteTend(p, sw.type);
       perfShot(p, sw, r);
       // perfeito (mesmo com a barra invisível): ondinha verde no chão de quem bateu
       if (p.isHuman && !r.mis && ((sw.meter && sw.meter.res === 'perfeito' && !mod.volley) || (sw.lob && sw.lob.kick))) { const wp = { x: p.pos.x, z: p.pos.z }; greenWave(wp); if (NET.ev) NET.ev('wave', wp); }
@@ -370,6 +371,22 @@ function chooseAIServe(p) {
   for (let i = 0; i < 4; i++) { if ((r -= ww[i]) <= 0) return types[i]; }
   return 'defesa';
 }
+// leitura do adversário: média móvel de quanto cada humano usa curta e lob na partida (zerada a cada partida)
+function noteTend(p, type) {
+  const t = p.mTend || (p.mTend = { c: .18, l: .22, n: 0 }), a = .14;
+  t.c += ((type === 'curta' ? 1 : 0) - t.c) * a; t.l += ((type === 'lob' ? 1 : 0) - t.l) * a; t.n++;
+}
+// quanto a dupla adversária está abusando (0..1) de curta e de lob; só conta depois de alguns golpes
+function oppTend(team) {
+  let c = 0, l = 0;
+  ($s.teams[1 - team] || []).forEach(o => { const t = o.mTend; if (!t || t.n < 5) return; c = Math.max(c, clamp((t.c - .22) / .3, 0, 1)); l = Math.max(l, clamp((t.l - .28) / .32, 0, 1)); });
+  return { c, l };
+}
+// CPU acima do padrão que já leu o vício do adversário sai mais rápido para a curta/o lob que ele esperava
+function expectK(o, key) {
+  const up = (o.skill && o.skill.up) || 0; if (up <= 0 || (key !== 'curta' && key !== 'lob')) return 1;
+  const t = oppTend(o.team); return 1 - (key === 'curta' ? t.c : t.l) * clamp(up * 3, 0, 1) * .45;
+}
 function homeOf(p) {
   const s = p.team === 0 ? 1 : -1;
   const hz = styleOf(p).home;
@@ -378,8 +395,10 @@ function homeOf(p) {
   // perto da rede ou numa bola baixa (cheiro de curta), dá um passo à frente
   const up = (p.skill && p.skill.up) || 0, deepMax = lerp(6.3, 5.05, clamp(up * 2.5, 0, 1));
   let ahead = 0;
-  if (up > 0 && ball.state === 'live' && S.lastTeam === p.team) { const opp = $s.teams[1 - p.team] || [], l = predictLanding(); if (opp.some(o => Math.abs(o.pos.z) < 3.6) || Math.abs(l.z) < 3.4) ahead = clamp(up * 2.4, 0, 1) * .7; }
-  if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * (Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up, 0, .4)), 3.4, 6.4)) - ahead)];
+  // dificuldades acima do padrão se adaptam: muita curta → joga mais à frente; muito lob → recua para cobrir o fundo
+  const ad = up > 0 ? oppTend(p.team) : { c: 0, l: 0 }, adK = clamp(up * 3, 0, 1), adZ = (ad.l * .75 - ad.c * .9) * adK;
+  if (up > 0 && ball.state === 'live' && S.lastTeam === p.team) { const opp = $s.teams[1 - p.team] || [], l = predictLanding(); if (opp.some(o => Math.abs(o.pos.z) < 3.6) || Math.abs(l.z) < 3.4) ahead = clamp(up * 2.4, 0, 1) * (.7 + ad.c * adK * .35) * (1 - ad.l * adK * .5); }
+  if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * (clamp(Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up, 0, .4)), 3.4, 6.4)) + adZ, 3.3, 6.6) - ahead)];
   // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
   // o parceiro também acompanha a posição real do companheiro
   const fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
@@ -387,7 +406,7 @@ function homeOf(p) {
   let x = center + p.slot * hw;
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
-  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (Math.min(deepMax, clamp(4.6 + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) - ahead)];
+  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (clamp(Math.min(deepMax, clamp(4.6 + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) + adZ, 3.2, 6.5) - ahead)];
 }
 // recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio
 function receiveX(p) {
@@ -496,4 +515,4 @@ function updateAI(p, dt) {
   }
 }
 
-export { localInput, tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
+export { expectK, localInput, tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };

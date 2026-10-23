@@ -590,7 +590,7 @@ const COURTS = {
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
-  S.drill = null; $s.players.forEach(q => { q.mErr = 0; });
+  S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; });
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
   configureMode();
