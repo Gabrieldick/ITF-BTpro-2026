@@ -306,7 +306,12 @@ const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
 // jogo: analógico/direcional movem; A/✕ defesa, B/○ curta, X/□ lob, Y/△ smash (RT/R2 smash, LT/L2 lob);
 // Start/Options pausa, Back/Share câmera, RB/R1 flecha de mira. Menus: direcional/analógico escolhem, A/✕ confirma, B/○ volta
 const PADB = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
-const PAD_SHOT = [[PADB.a, 'defesa'], [PADB.b, 'curta'], [PADB.x, 'lob'], [PADB.y, 'smash'], [PADB.rt, 'smash'], [PADB.lt, 'lob']];
+// ações do controle e o botão padrão de cada uma (trocáveis em Teclas/Controle: S.settings.padBinds)
+const PAD_ACTIONS = [['defesa', 'Defesa', PADB.a], ['curta', 'Curta', PADB.b], ['lob', 'Lob', PADB.x], ['smash', 'Smash', PADB.y], ['smash2', 'Smash (2º botão)', PADB.rt], ['lob2', 'Lob (2º botão)', PADB.lt],
+  ['pause', 'Pausa', PADB.start], ['cam', 'Trocar câmera', PADB.back], ['aim', 'Flecha de mira', PADB.rb]];
+const PAD_NAMES = { 0: 'A / ✕', 1: 'B / ○', 2: 'X / □', 3: 'Y / △', 4: 'LB / L1', 5: 'RB / R1', 6: 'LT / L2', 7: 'RT / R2', 8: 'Back / Share', 9: 'Start / Options', 10: 'L3', 11: 'R3', 12: '↑', 13: '↓', 14: '←', 15: '→', 16: 'Xbox / PS' };
+const padBtn = id => { const b = S.settings.padBinds || {}, a = PAD_ACTIONS.find(x => x[0] === id); return b[id] !== undefined ? +b[id] : a ? a[2] : -1; };
+const PADCAP = { on: null };
 const padPrev = {}; let padOn = false, padNavT = 0, padName = '';
 const padDown = (gp, i) => !!(gp.buttons[i] && (gp.buttons[i].pressed || gp.buttons[i].value > .5));
 function padFirst() { const l = navigator.getGamepads ? navigator.getGamepads() : []; for (const g of l) if (g && g.connected) return g; return null; }
@@ -340,6 +345,8 @@ function padStep() {
   const gp = padFirst();
   if (!gp) { PAD.x = PAD.z = 0; padOn = false; return; }
   if (!padOn) { padOn = true; padName = /dualshock|playstation|054c|wireless controller/i.test(gp.id) ? 'PlayStation' : /xbox|xinput|045e/i.test(gp.id) ? 'Xbox' : 'controle'; feedback('CONTROLE', padName.toUpperCase() + ' CONECTADO', null); }
+  // trocando um botão (tela de teclas): o próximo botão apertado vira o dessa ação
+  if (PADCAP.on) { for (let i = 0; i < gp.buttons.length; i++) { const d = padDown(gp, i); if (d && !padPrev[i]) { const id = PADCAP.on, old = padBtn(id), nb = Object.assign({}, S.settings.padBinds, { [id]: i }); const other = PAD_ACTIONS.find(x => x[0] !== id && padBtn(x[0]) === i); if (other) nb[other[0]] = old; S.settings.padBinds = nb; PADCAP.on = null; // botão já usado: as duas ações trocam saveSettings(); padPrev[i] = true; renderBinds(); return; } padPrev[i] = d; } return; }
   const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, dz = .22;
   let x = Math.abs(ax) > dz ? (ax - Math.sign(ax) * dz) / (1 - dz) : 0, z = Math.abs(ay) > dz ? (ay - Math.sign(ay) * dz) / (1 - dz) : 0;
   if (padDown(gp, PADB.left)) x = -1; if (padDown(gp, PADB.right)) x = 1; if (padDown(gp, PADB.up)) z = -1; if (padDown(gp, PADB.down)) z = 1;
@@ -347,14 +354,14 @@ function padStep() {
   const edge = i => { const d = padDown(gp, i), was = !!padPrev[i]; padPrev[i] = d; return d && !was ? 1 : !d && was ? -1 : 0; };
   if (playing) {
     PAD.x = x; PAD.z = z;
-    for (const [i, t] of PAD_SHOT) { const e = edge(i); if (e === 1) pressShot(t); else if (e === -1) releaseShot(t); }
-    if (edge(PADB.start) === 1) togglePause();
-    if (edge(PADB.back) === 1) toggleCam();
-    if (edge(PADB.rb) === 1) { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
-    [PADB.up, PADB.down, PADB.left, PADB.right, PADB.lb].forEach(edge);
+    for (const id of ['defesa', 'curta', 'lob', 'smash', 'smash2', 'lob2']) { const e = edge(padBtn(id)), t = id.replace('2', ''); if (e === 1) pressShot(t); else if (e === -1) releaseShot(t); }
+    if (edge(padBtn('pause')) === 1) togglePause();
+    if (edge(padBtn('cam')) === 1) toggleCam();
+    if (edge(padBtn('aim')) === 1) { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
+    for (let i = 0; i < 17; i++) edge(i); // atualiza o resto (sem ação)
   } else {
     PAD.x = PAD.z = 0;
-    PAD_SHOT.forEach(([i, t]) => { if (padPrev[i] && !padDown(gp, i) && MTR.active) releaseShot(t); });
+    ['defesa', 'curta', 'lob', 'smash', 'smash2', 'lob2'].forEach(id => { const i = padBtn(id); if (padPrev[i] && !padDown(gp, i) && MTR.active) releaseShot(id.replace('2', '')); });
     const now = performance.now(), dir = Math.abs(x) > .5 || Math.abs(z) > .5;
     if (dir && now > padNavT) { if (Math.abs(x) > Math.abs(z)) padMove(Math.sign(x), 0); else padMove(0, Math.sign(z)); padNavT = now + 190; }
     if (!dir) padNavT = 0;
@@ -433,6 +440,11 @@ function renderBinds() {
   boxes.forEach(box => {
     box.innerHTML = grp('Movimento e mira', ['up', 'down', 'left', 'right']) + grp('Golpes', ['smash', 'lob', 'curta', 'defesa']) + grp('Outros', ['cam', 'pause', 'sound', 'aim']);
     box.querySelectorAll('[data-bind]').forEach(x => x.addEventListener('click', () => { BINDCAP.on = x.dataset.bind; renderBinds(); }));
+    // controle (Xbox/PS): clique e aperte o botão no controle
+    const pb = S.settings.padBinds || {};
+    box.insertAdjacentHTML('beforeend', '<div class="bind-grp"><p class="section-label">🎮 Controle (Xbox / PS)</p>' + PAD_ACTIONS.map(([id, nm, def]) => '<div class="bind-row"><span>' + nm + '</span><button type="button" class="kcap' + (PADCAP.on === id ? ' wait' : '') + (pb[id] !== undefined && +pb[id] !== def ? ' changed' : '') + '" data-padbind="' + id + '">' + (PADCAP.on === id ? 'aperte no controle…' : PAD_NAMES[padBtn(id)] || 'botão ' + padBtn(id)) + '</button></div>').join('') + '<div class="cta-row"><button type="button" class="ghost sm" data-padreset>Botões padrão do controle</button></div></div>');
+    box.querySelectorAll('[data-padbind]').forEach(x => x.addEventListener('click', () => { PADCAP.on = PADCAP.on === x.dataset.padbind ? null : x.dataset.padbind; renderBinds(); }));
+    box.querySelectorAll('[data-padreset]').forEach(x => x.addEventListener('click', () => { S.settings.padBinds = {}; PADCAP.on = null; saveSettings(); renderBinds(); }));
   });
 }
 addEventListener('keydown', e => {
