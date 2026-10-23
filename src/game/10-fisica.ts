@@ -121,6 +121,21 @@ function doHit(p, type, q, isServe, mod) {
     const r0 = Math.random();
     if (r0 < pOut) wild = true; else if (r0 < pOut + pPop) pop = true;
   }
+  // finalização: vale para qualquer devolução (defesa, curta, lob e até contra-smash, que antes escapava da pressão);
+  // espirra para fora ou fica na rede, e cada finalização seguida que a mesma dupla segura deixa a próxima mais difícil
+  // (desequilibrado, sem tempo de voltar à base): ninguém segura 5 seguidas
+  let netFin = false;
+  if (!isServe) {
+    const fc = S.finChain || (S.finChain = { team: -1, n: 0 });
+    if (S.rally <= 1 || !ball.finisher) { if (fc.team === p.team || S.rally <= 1) { fc.team = p.team; fc.n = 0; } }
+    else {
+      if (fc.team !== p.team) { fc.team = p.team; fc.n = 0; }
+      const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), kf = { defesa: 1, lob: 1.2, curta: 1.45, smash: 1.6, drive: 1.4 }[key] || 1.2;
+      const pf = Math.min(.85, (lerp(.22, .11, dk) + fc.n * lerp(.1, .07, dk)) * kf), r1 = Math.random();
+      if (!wild && !pop && r1 < pf) { if (r1 < pf * .45) wild = true; else netFin = true; }
+      fc.n++;
+    }
+  }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
   // defesa: quanto melhor o golpe (timing/posição) e o atributo, mais baixa e rápida ela volta; só a ruim flutua
   if (!pop && key === 'defesa') {
@@ -271,9 +286,9 @@ function doHit(p, type, q, isServe, mod) {
   // finalização de perto (menos de 2 m da rede) em cima de quem está colado na rede: com a barra perfeita, mesmo a defesa
   // perfeita volta para dentro no máximo 1 em 5; sem o perfeito, metade (o reflexo salva a bola, mas sem controle)
   const closeFin = !isServe && !!ball.finNear && Math.abs(p.pos.z) < 3.2 && Math.random() < ball.finNear;
-  if (unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
+  if (netFin || unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
-    if (Math.random() < (p.isHuman ? .5 : skillOf(p).netK || .5)) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
+    if (netFin || Math.random() < (p.isHuman ? .5 : skillOf(p).netK || .5)) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado).
   // forcedBy: o golpe do adversário que forçou (smash, curta boa, lob chutado, bola rápida) — ele leva o crédito do ponto
