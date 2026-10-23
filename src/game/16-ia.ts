@@ -340,14 +340,20 @@ function bestPlay(p, y) {
   const weakOH = Math.min(...opp.map(o => (attrK(o, 'smash') + attrK(o, 'vel')) / 2)); // lob contra quem não volta bem
   const sc = {
     lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (.55 + lobK * .6) * (1.15 - weakOH * .3) - (y >= 2.1 && netD < 3.2 ? .5 : 0),
-    curta: clamp((dMin - 4.3) / 1.6, 0, 1) * (.5 + curK * .6) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
+    // curta: boa contra quem está no fundo e ainda viável contra quem parou no meio (~3–4,5 m)
+    curta: (clamp((dMin - 2.4) / 2.6, 0, 1) + .2 * clamp(1 - Math.abs(dMin - 3.6) / 1.2, 0, 1)) * (.5 + curK * .6) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
     smash: (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
     defesa: .33 + defK * .1
   };
   if (y >= 1.45 && netD > 4.6 && smK < .62) sc.smash *= .6;
   if (netD > 4.6 && allNet > .6 && lobK > .45) sc.smash *= .55; // do fundo contra quem está grudado na rede o smash volta no voleio: lob por cima // smash do fundo sem smash para isso: melhor devolver
-  let best = 'defesa', bv = -1; for (const k in sc) { const v = sc[k] + rand(0, .06); if (v > bv) { bv = v; best = k; } }
-  return best;
+  // duas (ou mais) jogadas quase igualmente boas (ex.: você nos 3 m — curta, lob ou bola no pé): decide o estilo de quem bate
+  const top = Math.max(...Object.values(sc)), opts = Object.keys(sc).filter(k => sc[k] >= top - .12);
+  if (opts.length === 1) return opts[0];
+  // na maioria das vezes (~70%) o golpe preferido do estilo; no resto varia entre as outras boas opções
+  const w = styleOf(p).w, fav = opts.reduce((a, k) => (w[k] || 0) > (w[a] || 0) ? k : a, opts[0]);
+  if (Math.random() < .7) return fav;
+  const rest = opts.filter(k => k !== fav); return rest[Math.floor(Math.random() * rest.length)];
 }
 function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
