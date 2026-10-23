@@ -8,7 +8,7 @@
 // Também dá para fazer um campeonato: chave com todos da sala (completada com CPU), uma partida por vez.
 import './19-loop';
 import { $s } from '../state';
-import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, ATTRS, attrOf, effA, racketBonus } from './00-base';
+import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
@@ -816,7 +816,7 @@ function renderRoom(force) {
   const pk = JSON.stringify([mine && mine.pick, [...taken], L.playing, mine && mine.cc && mine.cc.name]);
   fillCcSlots();
   { const ck = (L.court || 'praia') + (NET.role === 'host' && !L.playing); if (ON.courtKey !== ck) { ON.courtKey = ck; renderCourtPickers(L.court || 'praia', NET.role === 'host' && !L.playing); } }
-  { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + '</option>').join(''); rs.value = want; } }
+  { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + ' (' + rkSummary(k) + ')</option>').join(''); rs.value = want; } }
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
     $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + mine.cc.id + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');

@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf } from './00-base';
+import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac } from './08-audio';
@@ -489,7 +489,7 @@ function rkInfo() {
   const r = RACKET_STATS[$('rkSel').value]; if (!r) return;
   $('rkInfo').innerHTML = esc(r.desc) + ' ' + Object.entries(r.b).map(([a, v]) => '<em class="' + (v > 0 ? 'up' : 'dn') + '">' + (v > 0 ? '+' : '') + v + ' ' + ATTRS.find(x => x[0] === a)[1] + '</em>').join(' ');
 }
-$('rkSel').innerHTML = Object.entries(RACKET_STATS).sort((x, y) => x[1].preco - y[1].preco).map(([k, r]) => '<option value="' + k + '">' + r.nome + '</option>').join('');
+$('rkSel').innerHTML = Object.entries(RACKET_STATS).sort((x, y) => x[1].preco - y[1].preco).map(([k, r]) => '<option value="' + k + '">' + r.nome + ' (' + rkSummary(k) + ')</option>').join('');
 $('rkSel').addEventListener('change', () => { rkInfo(); readMenu(); });
 function startFromMenu() { ac(); readMenu(); newMatch(); }
 function toMenu() {

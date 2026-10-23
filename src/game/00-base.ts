@@ -130,6 +130,9 @@ const PLAY_STYLES = {
 };
 const styleOf = p => PLAY_STYLES[p.playStyle] || PLAY_STYLES.completo;
 const racketBonus = key => (RACKET_STATS[key] || RACKET_STATS.proteo).b;
+// resumo do efeito de uma raquete para listas: "+5 força, +4 smash, −2 curta"
+const RK_ABBR = { forca: 'força', vel: 'velocidade', def: 'defesa', backhand: 'backhand', curta: 'curta', lob: 'lob', smash: 'smash', saque: 'saque', leitura: 'noção' };
+const rkSummary = key => { const b = (RACKET_STATS[key] || {}).b || {}; const l = Object.entries(b).filter(([, v]) => v).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1]) || y[1] - x[1]); return l.length ? l.map(([k, v]) => (v > 0 ? '+' : '−') + Math.abs(v) + ' ' + (RK_ABBR[k] || k)).join(', ') : 'sem bônus'; };
 // atributos com bônus somados (limitados entre 30 e 99)
 function effA(a, ...bonuses) {
   const out = {}; for (const [k] of ATTRS) { let v = attrOf(a, k); bonuses.forEach(b => { if (b && b[k]) v += b[k]; }); out[k] = clamp(Math.round(v), 30, 99); }
@@ -269,4 +272,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf };
+export { attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
