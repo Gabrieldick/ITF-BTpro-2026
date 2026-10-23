@@ -47,16 +47,21 @@ function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
-  const adj = S.careerActive ? [-.16, -.08, 0, .16, .32, .5][(S.careerStars || 3) - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  const adj = S.careerActive ? [-.04, -.03, 0, .16, .32, .5][(S.careerStars || 3) - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
-  const k = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)) + adj, 0, 1.35); // acima de 1 só nas estrelas altas (joga além do próprio nível)
+  const kb = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)), 0, 1);
+  // estrelas: mudam a leitura de jogo (reação, posicionamento, escolha do golpe, não furar a bola);
+  // a técnica (qualidade, força, erro do golpe) continua sendo a do atributo: um 60 no Lendário ainda erra smash do fundo
+  const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .2, 0, 1.05);
   const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
     speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react, smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
-    miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(k, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
-    q: [clamp(lerp(.42, .78, k), .3, .9), clamp(lerp(.72, 1, k), .5, 1)],
-    pw: lerp(.84, 1, Math.min(1, k)), // nível baixo: golpes mais fracos (não mais bolas furadas)
-    netK: lerp(.8, .45, Math.min(1, k)), // erro de nível baixo vai mais na rede que para fora
+    miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
+    q: [clamp(lerp(.42, .78, kt), .3, .9), clamp(lerp(.72, 1, kt), .5, 1)],
+    pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)
+    netK: lerp(.8, .45, Math.min(1, kt)), // erro de nível baixo vai mais na rede que para fora
+    // estrelas baixas (carreira): a CPU troca bola sem pancada — golpes mais lentos, quase sem smash forte, lob baixo e saque sem força
+    soft: S.careerActive ? [.7, .84, 1, 1, 1, 1][(S.careerStars || 3) - 1] : 1,
   };
 }
 // tática da sua dupla: 'fraco' = mirar no adversário mais fraco, 'meio' = entre os dois, 'lobs' = mais lobs no fundo
@@ -297,6 +302,8 @@ function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z
 function oppAllDeep(team) { return $s.teams[1 - team].every(o => Math.abs(o.pos.z) > 6.2); }
 function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
+  // estrelas baixas: bola alta vira devolução controlada na maioria das vezes (pouco smash)
+  if (p.skill && p.skill.soft < 1 && y >= 1.45 && Math.random() < (1 - p.skill.soft) * 2.6) return Math.random() < .7 ? 'defesa' : 'lob';
   if (y >= 2.1 && r < st.high) return 'smash';
   if (y >= 1.45 && y < 2.1 && Math.random() < st.mid) return 'smash'; // drive na meia altura
   if (p.team === 0 && S.settings.tactic === 'lobs' && y < 2.1 && Math.random() < .45) return 'lob';
@@ -314,6 +321,7 @@ function chooseAIShot(p, y) {
   return 'defesa';
 }
 function chooseAIServe(p) {
+  if (p.skill && p.skill.soft < 1 && Math.random() < .6) return 'defesa'; // estrelas baixas: saque por baixo, para começar o rali
   const lvl = p.team === 0 ? 'medio' : S.settings.diff;
   // no beach tennis quase todo saque é por cima (smash); lob e curto são raros
   const w = { facil: [.62, .05, .05, .28], medio: [.8, .04, .04, .12], dificil: [.88, .03, .03, .06] }[lvl];
@@ -411,7 +419,8 @@ function updateAI(p, dt) {
           else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
-            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1), noiseMul: st.noise }, shot === 'lob' ? (oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
+            const sf = D.soft || 1, soft = sf < 1;
+            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, shot === 'lob' ? (!soft && oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: soft ? rand(.35, .6) : st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
             shotFeedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
         }
@@ -428,8 +437,8 @@ function updateAI(p, dt) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
       // CPU/parceira: de vez em quando o saque sai perfeito (mais com atributo de saque alto): mais forte, preciso e com estrelinhas
-      const svN = attrK(p, 'saque'), perf = ps.type === 'smash' && Math.random() < .06 + .16 * svN, sp = ball.pos.clone();
-      const r = doHit(p, ps.type, ps.q, true, perf ? { speedMul: lerp(1, 1.12, svN), noiseMul: lerp(.85, .6, svN), perfect: true } : undefined);
+      const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), perf = sf >= 1 && ps.type === 'smash' && Math.random() < .06 + .16 * svN, sp = ball.pos.clone();
+      const r = doHit(p, ps.type, ps.q, true, perf ? { speedMul: lerp(1, 1.12, svN), noiseMul: lerp(.85, .6, svN), perfect: true } : sf < 1 ? { speedMul: sf * .9 } : undefined); // estrelas baixas: saque sem força
       if (perf && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); }
       shotFeedback(whoTag(p) + r.label, perf ? 'PERFEITO' : null, whoKind(p));
     }
