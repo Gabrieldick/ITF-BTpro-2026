@@ -369,10 +369,9 @@
     <div id="onRoom" hidden style="display:grid;gap:14px">
       <div class="cta-row"><div><p class="section-label">Código da sala</p><div class="on-code" id="onCodeShow">-----</div></div><button class="ghost sm" id="onCopy">Copiar link</button></div>
       <p id="onStatus" class="on-status"></p>
+      <div class="on-tabs"><button type="button" class="ghost sm sel" data-ontab="sala">🏟️ Sala</button><button type="button" class="ghost sm" data-ontab="eu">🧍 Meu jogador</button><button type="button" class="ghost sm" data-ontab="todos">👥 Jogadores</button></div>
+      <div data-onpane="sala" style="display:grid;gap:14px">
       <div><p class="section-label">Na sala</p><div id="onMembers" class="on-members"></div></div>
-      <label class="cr-field">Seu personagem <select id="onPick" class="cr-sel"></select></label>
-      <label class="cr-field">Sua raquete <select id="onRk" class="cr-sel"></select></label>
-      <div class="on-cc"><span>Ou jogue com o personagem da sua carreira:</span><select id="onCcSlot" class="cr-sel"></select><button type="button" class="ghost sm" id="onCcUse">Usar</button><label class="ghost sm on-file">Enviar .json<input type="file" id="onCcFile" accept=".json,application/json" hidden></label></div>
       <fieldset class="seg"><legend>O que jogar</legend><div class="pills">
         <input type="radio" name="onKind" id="onKindM" value="match" checked><label for="onKindM">Partida</label>
         <input type="radio" name="onKind" id="onKindC" value="champ"><label for="onKindC">Campeonato</label>
@@ -392,6 +391,14 @@
         <label class="cr-field">Nível da CPU (lugares vazios) <select id="onCpuLv" class="cr-sel"><option value="1">★ Bem fácil</option><option value="2">★★ Fácil</option><option value="3">★★★ Padrão</option><option value="4">★★★★ Difícil</option><option value="5">★★★★★ Muito difícil</option><option value="6">★★★★★★ Lendário</option></select></label>
       </div>
       <div id="onChamp" hidden style="display:grid;gap:10px"></div>
+      </div>
+      <div data-onpane="eu" hidden style="display:grid;gap:12px">
+      <label class="cr-field">Seu personagem <select id="onPick" class="cr-sel"></select></label>
+      <label class="cr-field">Sua raquete <select id="onRk" class="cr-sel"></select></label>
+      <div class="on-cc"><span>Ou jogue com o personagem da sua carreira:</span><select id="onCcSlot" class="cr-sel"></select><button type="button" class="ghost sm" id="onCcUse">Usar</button><label class="ghost sm on-file">Enviar .json<input type="file" id="onCcFile" accept=".json,application/json" hidden></label></div>
+        <div id="onMyCard" class="on-card"></div>
+      </div>
+      <div data-onpane="todos" hidden style="display:grid;gap:10px"><div id="onAllCards" class="on-cards"></div></div>
       <div class="cta-row"><button class="cta" id="onPlay">Começar partida</button><button class="ghost" id="onLeave">Sair da sala</button></div>
     </div>
     <p class="keys">Conexão direta entre os navegadores (WebRTC). Alguns roteadores e redes de empresa bloqueiam; se não conectar, tente outra rede.</p>

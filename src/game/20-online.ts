@@ -8,7 +8,7 @@
 // Também dá para fazer um campeonato: chave com todos da sala (completada com CPU), uma partida por vez.
 import './19-loop';
 import { $s } from '../state';
-import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf } from './00-base';
+import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, ATTRS, attrOf, effA, racketBonus } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
@@ -782,8 +782,29 @@ function toLobbyScreen() {
 
 // ---------- tela da sala (igual para anfitrião e convidados; só o anfitrião muda tipo/modalidade/CPU) ----------
 function memberOf(L, id) { return L.members.find(m => m.id === id); }
+// ---------- fichas dos jogadores na sala (atributos de cada personagem, com a raquete escolhida) ----------
+function charCard(c, rk, who, small) {
+  if (!c) return '';
+  const a = effA(c.a, rk ? racketBonus(rk) : null), ov = overall(a);
+  const bars = ATTRS.map(([k, lbl]) => { const v = attrOf(a, k); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 60 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + '</b>'; }).join('');
+  return '<div class="on-cardi' + (small ? ' sm' : '') + '"><div class="on-cardh"><div class="ovr">' + ov + '<small>OVR</small></div><div><b>' + escHtml(nameOf(c)) + '</b><span>' + (who ? escHtml(who) + ' · ' : '') + (c.pais || '') + ' · ' + (c.canhoto ? 'canhoto' : 'destro') + ' · ' + escHtml(c.estilo || '') + (rk && RACKET_STATS[rk] ? ' · raquete ' + escHtml(RACKET_STATS[rk].nome) : '') + '</span></div></div><div class="bars">' + bars + '</div></div>';
+}
+function renderCards(L) {
+  const my = L.members.find(m => m.id === (ON.myId || 'host'));
+  if (my) $('onMyCard').innerHTML = charCard(charById(my.cc ? my.cc.id : my.pick), my.rk || null, 'você');
+  const seatOf = id => Object.entries(L.seats || {}).filter(([, v]) => v === id).map(([k]) => k)[0];
+  const cards = L.members.map(m => charCard(charById(m.cc ? m.cc.id : m.pick), m.rk || null, m.name + (seatOf(m.id) ? ' · lugar ' + seatOf(m.id) : ' · assistindo'), true));
+  // CPUs nos lugares vazios (partida)
+  if (L.kind === 'match') Object.entries(L.seats || {}).forEach(([k, v]) => { if (!v && L.cpu && L.cpu[k] && (L.mode === 'dupla' || /1$/.test(k))) cards.push(charCard(charById(L.cpu[k]), null, 'CPU · lugar ' + k, true)); });
+  $('onAllCards').innerHTML = cards.join('');
+}
+document.querySelectorAll('[data-ontab]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-ontab]').forEach(x => x.classList.toggle('sel', x === b));
+  document.querySelectorAll('[data-onpane]').forEach(pn => { pn.hidden = pn.dataset.onpane !== b.dataset.ontab; });
+}));
 function renderRoom(force) {
   const L = ON.L; if (!L) return;
+  try { renderCards(L); } catch (e) {}
   if (NET.role === 'host') rlAnnounce(); // atualiza a sala na lista pública (jogadores, em partida)
   const host = NET.role === 'host', me = ON.myId || (host ? 'host' : '');
   $('onCodeShow').textContent = L.code;
@@ -912,3 +933,4 @@ $('onCopy').addEventListener('click', () => {
 addEventListener('beforeunload', () => { if (NET.role === 'guest') send(['bye']); else if (NET.role === 'host') for (const g of ON.guests) sendTo(g.conn, ['bye']); });
 // para testes no console
 window.__pdoNet = { ON, NET };
+if (typeof window !== 'undefined') window.__pdoON = { ON, renderRoom: f => renderRoom(f), showPart: x => showPart(x) };
