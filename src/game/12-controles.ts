@@ -313,7 +313,9 @@ function applyMeterLook() {
   const st = document.documentElement.style;
   st.setProperty('--msc', String({ pequena: .72, normal: 1, grande: 1.25 }[S.settings.meterSize || 'normal'] || 1));
   st.setProperty('--mop', String((+(S.settings.meterOp || 100)) / 100));
-  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on', landArrow: 'on', lineWarn: 'on' }[e.dataset.setting] || 'normal')); });
+  // nomes sobre os jogadores: tamanho/estilo e opacidade
+  st.setProperty('--tagop', String((+(S.settings.tagOp || 100)) / 100)); document.body.dataset.tags = S.settings.tagStyle || 'normal'; { const bt = document.getElementById('btnTags'); if (bt) bt.textContent = 'Nomes: ' + ({ normal: 'normal', pequena: 'pequenos', simples: 'simples', off: 'escondidos' }[S.settings.tagStyle || 'normal']); }
+  document.querySelectorAll('select[data-setting]').forEach(e => { e.value = String(S.settings[e.dataset.setting] ?? ({ meterOp: '100', barSmash: 'on', barLob: 'on', landArrow: 'on', lineWarn: 'on', tagStyle: 'normal', tagOp: '100' }[e.dataset.setting] || 'normal')); });
 }
 document.querySelectorAll('select[data-setting]').forEach(e => e.addEventListener('change', () => { S.settings[e.dataset.setting] = e.value; saveSettings(); applyMeterLook(); }));
 applyMeterLook();

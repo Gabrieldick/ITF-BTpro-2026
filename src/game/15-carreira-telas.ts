@@ -469,6 +469,11 @@ $('btnShotTxt').addEventListener('click', () => { const l = Object.keys(SHOT_TXT
 $('shotTextSel').addEventListener('change', e => { S.settings.shotText = e.target.value; saveSettings(); });
 // barra de força na pausa: tamanho e opacidade (alternam)
 // barra de golpe: menu próprio (configurações, online e pausa)
+// nomes sobre os jogadores (pausa): alterna normal → pequenos → simples → escondidos
+const TAG_STYLES = ['normal', 'pequena', 'simples', 'off'], TAG_TXT = { normal: 'normal', pequena: 'pequenos', simples: 'simples', off: 'escondidos' };
+const syncTagsBtn = () => { $('btnTags').textContent = 'Nomes: ' + TAG_TXT[S.settings.tagStyle || 'normal']; };
+$('btnTags').addEventListener('click', () => { const c = S.settings.tagStyle || 'normal'; S.settings.tagStyle = TAG_STYLES[(TAG_STYLES.indexOf(c) + 1) % TAG_STYLES.length]; saveSettings(); applyMeterLook(); syncTagsBtn(); });
+syncTagsBtn();
 document.querySelectorAll('[data-barcfg]').forEach(b => b.addEventListener('click', () => { $('barCfg').hidden = false; }));
 $('barCfgClose').addEventListener('click', () => { $('barCfg').hidden = true; });
 $('btnBall').addEventListener('click', () => { const l = Object.keys(BALL_STYLES), cur = S.settings.ballStyle || 'laranja'; S.settings.ballStyle = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); setBallStyle(S.settings.ballStyle); syncAssistButtons(); });

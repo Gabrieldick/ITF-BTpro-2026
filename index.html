@@ -163,6 +163,8 @@
         <input type="radio" name="uniforms" id="uniOff" value="simples" checked><label for="uniOff">Simples</label>
       </div></fieldset>
       <div class="cr-field">Bolinha <div class="ball-pick" data-ballpick></div></div>
+      <label class="cr-field">Nomes sobre os jogadores <select data-setting="tagStyle" class="cr-sel"><option value="normal">Normal</option><option value="pequena">Pequenos</option><option value="simples">Simples (só o nome, sem caixa)</option><option value="off">Esconder</option></select></label>
+      <label class="cr-field">Opacidade dos nomes <select data-setting="tagOp" class="cr-sel"><option value="100">100%</option><option value="75">75%</option><option value="50">50%</option><option value="35">35%</option></select></label>
       <button type="button" class="ghost" data-barcfg style="justify-self:start">🎚️ Barra de golpe…</button>
       <button type="button" class="ghost" data-goto="keys" style="justify-self:start">⌨️ Teclas…</button>
       </div>
@@ -308,6 +310,8 @@
     <label class="cr-field">Flecha para onde a bola cai (quando fora da tela) <select data-setting="landArrow" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
     <label class="cr-field">Aviso de linha (perto ou fora da quadra) <select data-setting="lineWarn" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
     <label class="chk"><input type="checkbox" id="aimArrow2"> Mostrar a flecha de mira no chão</label>
+      <label class="cr-field">Nomes sobre os jogadores <select data-setting="tagStyle" class="cr-sel"><option value="normal">Normal</option><option value="pequena">Pequenos</option><option value="simples">Simples (só o nome, sem caixa)</option><option value="off">Esconder</option></select></label>
+      <label class="cr-field">Opacidade dos nomes <select data-setting="tagOp" class="cr-sel"><option value="100">100%</option><option value="75">75%</option><option value="50">50%</option><option value="35">35%</option></select></label>
       <button type="button" class="ghost" data-barcfg style="justify-self:start">🎚️ Barra de golpe…</button>
     <p class="section-label">Teclas</p>
     <div class="bind-list"></div>
@@ -395,6 +399,7 @@
       <button class="ghost" id="btnAsMark">Onde a bola cai</button>
       <button class="ghost" id="btnBall">Bolinha</button>
       <button class="ghost" data-barcfg>Barra de golpe</button>
+      <button class="ghost" id="btnTags">Nomes</button>
       <button class="ghost" id="btnShotTxt">Nome do golpe</button>
       <button class="ghost" id="btnQuit">Sair para o menu</button>
     </div>

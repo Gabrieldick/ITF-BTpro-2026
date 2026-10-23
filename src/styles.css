@@ -668,3 +668,14 @@ body.in-replay #review { display: none; }
 #lineWarn { position: fixed; z-index: 6; left: 50%; bottom: 96px; transform: translateX(-50%); pointer-events: none; padding: 5px 12px; border-radius: 14px; font: 800 12px/1 var(--f-num, sans-serif); letter-spacing: .12em; color: #fff; background: rgba(214, 160, 20, .9); }
 #lineWarn[data-s="out"] { background: rgba(214, 40, 40, .92); }
 #lineWarn[hidden] { display: none; }
+
+/* nomes sobre os jogadores: pequenos, simples (sem caixa) ou escondidos, e opacidade */
+.tag { opacity: var(--tagop, 1); }
+body[data-tags="pequena"] .tag { font-size: 10px; padding: 2px 6px 2px 5px; gap: 4px; border-width: 1px; }
+body[data-tags="pequena"] .tag::before { width: 6px; height: 6px; }
+body[data-tags="pequena"] .tag b { font-size: 9px; }
+body[data-tags="pequena"] .tag em { font-size: 8px; }
+body[data-tags="simples"] .tag { background: none; border: none; padding: 0; gap: 4px; font-size: 10px; backdrop-filter: none; -webkit-backdrop-filter: none; text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+body[data-tags="simples"] .tag::before { width: 5px; height: 5px; }
+body[data-tags="simples"] .tag em, body[data-tags="simples"] .tag b { display: none; }
+body[data-tags="off"] .tag { display: none; }
