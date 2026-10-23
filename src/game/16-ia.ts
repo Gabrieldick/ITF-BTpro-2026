@@ -43,6 +43,7 @@ function gapX(team, jitter) {
 }
 // o "cérebro" de cada robô vem do próprio overall (reação, erros, qualidade, leitura de jogo);
 // a dificuldade só ajusta os adversários na partida rápida/campeonato (na carreira o nível vem do overall de cada um)
+if (typeof window !== 'undefined') window.__pdoAI = { charSkill: p => charSkill(p) };
 function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
@@ -52,7 +53,7 @@ function charSkill(p) {
   const kb = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)), 0, 1);
   // estrelas: mudam a leitura de jogo (reação, posicionamento, escolha do golpe, não furar a bola);
   // a técnica (qualidade, força, erro do golpe) continua sendo a do atributo: um 60 no Lendário ainda erra smash do fundo
-  const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .2, 0, 1.05);
+  const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
   const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
     speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react, smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
@@ -61,6 +62,7 @@ function charSkill(p) {
     pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)
     netK: lerp(.8, .45, Math.min(1, kt)), // erro de nível baixo vai mais na rede que para fora
     // estrelas baixas (carreira): a CPU troca bola sem pancada — golpes mais lentos, quase sem smash forte, lob baixo e saque sem força
+    k, up: Math.max(0, adj), // up: quanto as estrelas sobem acima do padrão (0 no padrão: nada muda)
     soft: S.careerActive ? [.7, .84, 1, 1, 1, 1][(S.careerStars || 3) - 1] : 1,
   };
 }
@@ -300,10 +302,24 @@ function updateHuman(dt, c = localCtl()) {
 }
 function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z) < 3.2); }
 function oppAllDeep(team) { return $s.teams[1 - team].every(o => Math.abs(o.pos.z) > 6.2); }
+// jogada mais eficaz para a situação (posição, altura da bola, onde estão os adversários e os seus atributos)
+function bestPlay(p, y) {
+  const netD = Math.abs(p.pos.z), opp = $s.teams[1 - p.team], near = opp.filter(o => Math.abs(o.pos.z) < 3.4).length, deep = opp.filter(o => Math.abs(o.pos.z) > 5.4).length;
+  if (y >= 2.1) return netD < 4 || attrK(p, 'smash') > .62 ? 'smash' : near ? 'lob' : 'defesa';
+  if (y >= 1.45 && netD < 3.2) return 'smash';
+  if (deep === opp.length && attrK(p, 'curta') > .45) return 'curta';
+  if (near === opp.length && attrK(p, 'lob') > .4) return 'lob';
+  if (deep && near && attrK(p, 'curta') > .55 && netD < 4.5) return 'curta';
+  return 'defesa';
+}
 function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
+  // quanto melhor a leitura de jogo (estrelas altas), mais vezes escolhe a jogada certa em vez do estilo/sorteio
+  { const sp = clamp(((p.skill && p.skill.up) || 0) * 2.2, 0, .92); if (sp > 0 && Math.random() < sp) return bestPlay(p, y); } // só acima do padrão
   // estrelas baixas: bola alta vira devolução controlada na maioria das vezes (pouco smash)
   if (p.skill && p.skill.soft < 1 && y >= 1.45 && Math.random() < (1 - p.skill.soft) * 2.6) return Math.random() < .7 ? 'defesa' : 'lob';
+  // decisão: quem lê bem o jogo não arrisca smash do fundo sem ter smash para isso (devolve e espera a bola certa)
+  if (y >= 1.45 && p.skill && p.skill.up > 0 && Math.abs(p.pos.z) > 4.6 && Math.random() < p.skill.up * 2 * (1.3 - attrK(p, 'smash'))) return Math.random() < .6 ? 'lob' : 'defesa';
   if (y >= 2.1 && r < st.high) return 'smash';
   if (y >= 1.45 && y < 2.1 && Math.random() < st.mid) return 'smash'; // drive na meia altura
   if (p.team === 0 && S.settings.tactic === 'lobs' && y < 2.1 && Math.random() < .45) return 'lob';
@@ -401,8 +417,10 @@ function updateAI(p, dt) {
         if (p.ai.kickBeat && p.ai.shot === 'smash' && Math.random() < .7) p.ai.shot = Math.random() < .5 ? 'lob' : 'defesa'; // recuando, quase sempre só devolve
         p.ai.swung = false;
         const land = predictLanding();
-        const out = Math.abs(land.x) > C.halfW + .35 || Math.abs(land.z) > C.halfL + .35;
-        p.ai.letGo = out && Math.random() < D.letGo;
+        // deixar a bola que vai sair: leitura de jogo (estrelas) + noção de jogo; no topo, julga até bolas rente à linha e nunca pega bola fora
+        const rd = clamp((D.up || 0) * 2.2, 0, 1) * lerp(.55, 1, attrK(p, 'leitura')), marg = lerp(.35, .05, rd);
+        const out = Math.abs(land.x) > C.halfW + marg || Math.abs(land.z) > C.halfL + marg;
+        p.ai.letGo = out && Math.random() < (rd >= .9 ? 1 : lerp(D.letGo, 1, rd));
       }
       if (p.ai.letGo) { tx = p.pos.x; tz = p.pos.z; }
       else {
