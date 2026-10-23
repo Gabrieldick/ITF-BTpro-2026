@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -336,7 +336,53 @@ function crDownload(id) {
 }
 function crSaveMsg(t) { const m = $('crSaveMsg'); m.textContent = t || ''; m.hidden = !t; }
 const fmtDate = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : ' · salvo ' + d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+// conta na nuvem (Supabase): entrar/criar conta, status do salvamento e carreiras salvas online
+let clRows = null, clBusy = false;
+async function clRefresh() { if (!CL.sess) { clRows = null; return; } try { clRows = await clList(); } catch (e) { clRows = []; CL.msg = 'Nuvem: ' + e.message; } renderCloud(); }
+function renderCloud() {
+  const box = $('crCloud'); if (!box) return;
+  if (!CL.sess) {
+    box.innerHTML = '<div class="cr-cloud-in"><b>☁️ Salvar na nuvem</b><span>Crie uma conta (e-mail e senha) para as carreiras irem para a nuvem sozinhas e abrirem em qualquer aparelho.</span>'
+      + '<div class="cta-row"><input id="clEmail" class="cr-sel" type="email" placeholder="e-mail" autocomplete="email"><input id="clPw" class="cr-sel" type="password" placeholder="senha (mín. 6)" autocomplete="current-password">'
+      + '<button class="cta sm" id="clIn" type="button">Entrar</button><button class="ghost sm" id="clUp" type="button">Criar conta</button></div>'
+      + (CL.msg ? '<span class="cr-lbl">' + esc(CL.msg) + '</span>' : '') + '</div>';
+    const go = async (fn, up) => {
+      const em = $('clEmail').value.trim(), pw = $('clPw').value;
+      if (!em || pw.length < 6) { CL.msg = 'Preencha o e-mail e uma senha de pelo menos 6 caracteres.'; renderCloud(); return; }
+      if (clBusy) return; clBusy = true; CL.msg = up ? 'Criando a conta…' : 'Entrando…'; renderCloud();
+      try { const r = await fn(em, pw); CL.msg = r === 'confirm' ? 'Conta criada! Confirme o e-mail pelo link enviado e depois clique em Entrar.' : 'Conectado. Suas carreiras deste navegador estão subindo para a nuvem.'; }
+      catch (e) { CL.msg = e.message; }
+      clBusy = false; renderCloud(); clRefresh();
+    };
+    $('clIn').addEventListener('click', () => go(clSignIn)); $('clUp').addEventListener('click', () => go(clSignUp, true));
+    return;
+  }
+  const rows = clRows || [];
+  box.innerHTML = '<div class="cr-cloud-in"><b>☁️ Conta: ' + esc(CL.sess.email || '') + '</b><span>As carreiras sobem para a nuvem sozinhas a cada save.' + (CL.msg ? ' ' + esc(CL.msg) : '') + '</span>'
+    + '<div class="cta-row"><button class="ghost sm" id="clSync" type="button">Sincronizar agora</button><button class="ghost sm" id="clOut" type="button">Sair da conta</button></div>'
+    + (clRows === null ? '<span class="cr-lbl">Carregando as carreiras da nuvem…</span>' : rows.length ? '<div class="cr-slots">' + rows.map(r => {
+      const lt = clLocalTime(r.id), ct = clTime(r.updated_at), here = lt > 0, newer = ct > lt + 1000;
+      return '<div class="cr-slot"><div class="who"><b>' + esc(r.name || r.id) + '</b><span>T' + (r.season || 1) + ' S' + (r.week || 1) + ' · na nuvem' + fmtDate(r.updated_at) + (here ? (newer ? ' · mais nova que a deste aparelho' : ' · igual ou mais antiga que a deste aparelho') : ' · não está neste aparelho') + '</span></div>'
+        + '<div class="acts"><button class="' + (newer || !here ? 'cta' : 'ghost') + ' sm" data-cl-pull="' + esc(r.id) + '">' + (here ? 'Usar a da nuvem' : 'Baixar e continuar') + '</button><button class="ghost sm" data-cl-del="' + esc(r.id) + '">Apagar da nuvem</button></div></div>'; }).join('') + '</div>'
+      : '<span class="cr-lbl">Nenhuma carreira na nuvem ainda.</span>') + '</div>';
+  $('clOut').addEventListener('click', () => { clSignOut(); clRows = null; renderCloud(); });
+  $('clSync').addEventListener('click', async () => { CL.msg = 'Sincronizando…'; renderCloud(); await clSyncAll(); await clRefresh(); });
+  box.querySelectorAll('[data-cl-pull]').forEach(b => b.addEventListener('click', async () => {
+    const id = b.dataset.clPull, r = rows.find(x => x.id === id), lt = clLocalTime(id);
+    if (lt && r && clTime(r.updated_at) + 1000 < lt && !confirm('A versão deste aparelho é mais nova que a da nuvem. Substituir pela da nuvem mesmo assim?')) return;
+    b.disabled = true; b.textContent = 'Baixando…';
+    try { const cid = await clPull(id); if (crLoadSlot(cid)) { crTab = 'agenda'; $s.CR.lastMsg = 'Carreira baixada da nuvem.'; } renderCareer(); }
+    catch (e) { CL.msg = 'Falha ao baixar: ' + e.message; renderCloud(); }
+  }));
+  box.querySelectorAll('[data-cl-del]').forEach(b => b.addEventListener('click', async () => {
+    if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirmar'; return; }
+    try { await clRemove(b.dataset.clDel); CL.msg = 'Apagada da nuvem (a deste aparelho continua).'; } catch (e) { CL.msg = 'Falha ao apagar: ' + e.message; }
+    clRefresh();
+  }));
+}
+CL.onChange = () => { if (!$('crSaves').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {
+  renderCloud(); if (CL.sess && clRows === null) clRefresh();
   const list = crSlots();
   $('crSlotList').innerHTML = list.length ? list.map(c => '<div class="cr-slot"><div class="who"><b>' + esc(c.name) + ' · OVR ' + c.ovr + '</b><span>T' + c.season + ' S' + c.week + ' · ' + c.tier + ' · ' + money(c.money) + fmtDate(c.savedAt) + '</span></div>'
     + '<div class="acts"><button class="cta sm" data-slot-load="' + esc(c.id) + '">Continuar</button><button class="ghost sm" data-slot-exp="' + esc(c.id) + '">Exportar</button><button class="ghost sm" data-slot-del="' + esc(c.id) + '">Apagar</button></div></div>').join('')

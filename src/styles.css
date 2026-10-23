@@ -679,3 +679,9 @@ body[data-tags="simples"] .tag { background: none; border: none; padding: 0; gap
 body[data-tags="simples"] .tag::before { width: 5px; height: 5px; }
 body[data-tags="simples"] .tag em, body[data-tags="simples"] .tag b { display: none; }
 body[data-tags="off"] .tag { display: none; }
+
+/* conta na nuvem */
+.cr-cloud-in { display: grid; gap: 6px; padding: 10px 12px; margin-bottom: 8px; border-radius: 12px; background: rgba(51, 195, 255, .08); border: 1px solid rgba(51, 195, 255, .25); }
+.cr-cloud-in > span { font-size: 12.5px; opacity: .85; }
+.cr-cloud-in .cta-row { flex-wrap: wrap; gap: 6px; }
+.cr-cloud-in input.cr-sel { flex: 1 1 180px; min-width: 0; }

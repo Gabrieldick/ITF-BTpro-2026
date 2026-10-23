@@ -176,10 +176,71 @@ function flushSaves() {
 function writeSaves() { clearTimeout(saveT); saveT = setTimeout(flushSaves, 700); }
 if (typeof window !== 'undefined') { addEventListener('pagehide', flushSaves); addEventListener('beforeunload', flushSaves); document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) flushSaves(); }); }
 const saveCareer = () => {
-  if ($s.CR) { $s.CR.id = $s.CR.id || 'c' + $s.CR.seed; $s.CR.savedAt = new Date().toISOString(); SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; DIRTY.add($s.CR.id); }
+  if ($s.CR) { $s.CR.id = $s.CR.id || 'c' + $s.CR.seed; $s.CR.savedAt = new Date().toISOString(); SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; DIRTY.add($s.CR.id); clMark($s.CR.id); }
   else if (SAVES.active) { DIRTY.add(SAVES.active); delete SAVES.slots[SAVES.active]; SAVES.active = null; }
   writeSaves();
 };
+// ---------- nuvem (Supabase): conta por e-mail e senha; as carreiras sobem sozinhas a cada save ----------
+// a chave é a pública (publishable): cada usuário só lê e grava as próprias carreiras (RLS na tabela careers)
+const SB_URL = 'https://oantsbdmqdhaokzgfqki.supabase.co', SB_KEY = 'sb_publishable_Co99x5KdqV59ZdZrffHy5A_mqtIecse';
+const CL = { sess: null, dirty: new Set(), t: 0, busy: false, msg: '', onChange: null };
+try { CL.sess = JSON.parse(localStorage.getItem('pdo-cloud') || 'null'); } catch (e) {}
+const clStore = () => { try { if (CL.sess) localStorage.setItem('pdo-cloud', JSON.stringify(CL.sess)); else localStorage.removeItem('pdo-cloud'); } catch (e) {} };
+const clNote = m => { CL.msg = m; if (CL.onChange) CL.onChange(); };
+const AUTH_ERR = { 'Invalid login credentials': 'E-mail ou senha errados.', 'User already registered': 'Já existe uma conta com esse e-mail.', 'Email not confirmed': 'Confirme o e-mail (link enviado para a sua caixa de entrada) antes de entrar.' };
+async function sbAuth(path, body) {
+  const r = await fetch(SB_URL + '/auth/v1/' + path, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const m = j.msg || j.error_description || j.message || 'erro ' + r.status; throw new Error(AUTH_ERR[m] || m); }
+  return j;
+}
+function clSetSess(j, email) { CL.sess = { at: j.access_token, rt: j.refresh_token, exp: Date.now() + ((j.expires_in || 3600) - 60) * 1000, email: (j.user && j.user.email) || email || (CL.sess && CL.sess.email) }; clStore(); }
+async function clSignUp(email, pw) { const j = await sbAuth('signup', { email, password: pw }); if (!j.access_token) return 'confirm'; clSetSess(j, email); await clSyncAll(); return 'ok'; }
+async function clSignIn(email, pw) { clSetSess(await sbAuth('token?grant_type=password', { email, password: pw }), email); await clSyncAll(); }
+function clSignOut() { const tk = CL.sess && CL.sess.at; CL.sess = null; CL.dirty.clear(); clStore(); if (tk) fetch(SB_URL + '/auth/v1/logout', { method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tk } }).catch(() => {}); clNote(''); }
+async function clToken() {
+  if (!CL.sess) return null;
+  if (Date.now() > CL.sess.exp) { try { clSetSess(await sbAuth('token?grant_type=refresh_token', { refresh_token: CL.sess.rt })); } catch (e) { clSignOut(); clNote('Sessão expirou: entre de novo.'); return null; } }
+  return CL.sess.at;
+}
+async function sbRest(path, opt = {}) {
+  const tk = await clToken(); if (!tk) throw new Error('entre na sua conta');
+  const r = await fetch(SB_URL + '/rest/v1/' + path, Object.assign({}, opt, { headers: Object.assign({ apikey: SB_KEY, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, opt.headers || {}) }));
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || 'erro ' + r.status); }
+  return r.status === 204 || r.status === 201 ? null : r.json().catch(() => null);
+}
+const clPack = c => 'LZ64:' + LZString.compressToBase64(JSON.stringify(c));
+const clUnpack = d => d.startsWith('LZ64:') ? JSON.parse(LZString.decompressFromBase64(d.slice(5))) : JSON.parse(d);
+const clTime = t => { const v = Date.parse(t || ''); return isNaN(v) ? 0 : v; };
+async function clUpload(id) {
+  const c = SAVES.slots[id]; if (!c) return;
+  await sbRest('careers?on_conflict=user_id,id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ id, name: c.me.name, season: c.season, week: c.week, data: clPack(c), updated_at: c.savedAt || new Date().toISOString() }) });
+}
+async function clFlush() {
+  if (!CL.sess || CL.busy || !CL.dirty.size) return;
+  CL.busy = true; const ids = [...CL.dirty]; CL.dirty.clear();
+  try { for (const id of ids) await clUpload(id); clNote('Salvo na nuvem às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.'); }
+  catch (e) { ids.forEach(id => CL.dirty.add(id)); clNote('Não consegui salvar na nuvem (' + e.message + '). Tento de novo no próximo save.'); }
+  CL.busy = false;
+}
+// marca para subir (agrupa: sobe alguns segundos depois do último save)
+function clMark(id) { if (!CL.sess || !id) return; CL.dirty.add(id); clearTimeout(CL.t); CL.t = setTimeout(clFlush, 5000); }
+const clList = async () => (await sbRest('careers?select=id,name,season,week,updated_at&order=updated_at.desc')) || [];
+async function clFetch(id) { const r = await sbRest('careers?select=data&id=eq.' + encodeURIComponent(id)); if (!r || !r[0]) throw new Error('carreira não encontrada na nuvem'); return clUnpack(r[0].data); }
+const clRemove = id => sbRest('careers?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+// baixa da nuvem para este navegador (substitui a versão local)
+async function clPull(id) { const c = await clFetch(id); c.id = c.id || id; SAVES.slots[c.id] = c; DIRTY.add(c.id); flushSaves(); return c.id; }
+// ao entrar: sobe as carreiras locais que a nuvem não tem (ou tem mais antigas)
+async function clSyncAll() {
+  try {
+    const rows = await clList(), cloud = new Map(rows.map(r => [r.id, r]));
+    Object.values(SAVES.slots).forEach(c => { const r = cloud.get(c.id); if (!r || clTime(c.savedAt) > clTime(r.updated_at) + 1000) CL.dirty.add(c.id); });
+    await clFlush(); return rows;
+  } catch (e) { clNote('Nuvem: ' + e.message); return []; }
+}
+const clLocalTime = id => clTime(SAVES.slots[id] && SAVES.slots[id].savedAt);
+if (typeof window !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) clFlush(); });
 // lista para a tela de carreiras (mais recente primeiro)
 function crSlots() {
   return Object.values(SAVES.slots).map(c => ({ id: c.id, name: c.me.name, ovr: overall(c.me.a), season: c.season, week: c.week, tier: TIERS[c.maxTier || 0].curto, money: c.money, savedAt: c.savedAt || '' }))
@@ -1328,6 +1389,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek() };
