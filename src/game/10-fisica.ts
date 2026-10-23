@@ -86,7 +86,7 @@ function doHit(p, type, q, isServe, mod) {
     const bh = attrK(p, 'backhand');
     spec.noise *= lerp(1.6, 1.05, bh);
     q *= lerp(.72, .98, bh) * (1 - weakK(p, 'backhand') * .15);
-    mod.misBoost = (mod.misBoost || 0) + (1 - bh) * .18 + weakK(p, 'backhand') * .14; // backhand fraco: muito mais bola na rede/fora
+    mod.misBoost = (mod.misBoost || 0) + (1 - bh) * .25 + weakK(p, 'backhand') * .18; // backhand fraco: muito mais bola na rede/fora (pesa um pouco mais)
   }
   let contactWord = '';
   if (!isServe) {

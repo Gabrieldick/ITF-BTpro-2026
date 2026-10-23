@@ -425,7 +425,7 @@ function updateAI(p, dt) {
           if (pl) { const dd = Math.hypot(pl.pt.x - p.pos.x, pl.pt.z - p.pos.z), need = Math.max(0, dd - .9) / (D.speed * Math.max(.05, pl.t - D.react)); hardK += clamp((need - .8) / .4, 0, 1) * .15; if (!pl.ok) hardK += .3; p.ai.stretch = !pl.ok || need > .95; } else p.ai.stretch = true;
           // defesa fraca sofre com bola rápida/finalização; backhand fraco sofre quando a bola vem do lado dele
           hardK += weakK(p, 'def') * (sp > 15 || ball.finisher ? .16 : .05);
-          if (pl && pl.pt.y < 2 && sideOf(p, pl.pt) < -.15) hardK += weakK(p, 'backhand') * .12;
+          if (pl && pl.pt.y < 2 && sideOf(p, pl.pt) < -.15) hardK += weakK(p, 'backhand') * .16 + (1 - attrK(p, 'backhand')) * .06; // bola no backhand: erra mais quanto pior o backhand
           // lob chutado perfeito por cima de quem estava na frente dos 3 m: corre para trás e chega mal
           p.ai.kickBeat = !!ball.kick && Math.abs(p.pos.z) < 3.6;
           if (p.ai.kickBeat) hardK += lerp(.38, .22, attrK(p, 'vel'));
