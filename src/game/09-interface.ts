@@ -2,7 +2,7 @@
 // elementos da interface e placar
 import './08-audio';
 import { $s } from '../state';
-import { C, HALF_W, ZONE3, clamp, nameOf, rand, shortOf } from './00-base';
+import { C, HALF_W, ZONE3, clamp, nameOf, rand, shortOf, overall } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
 import { applyArena, cheerArena, confetti, linesGroup, setNetHeight } from './03-cenario';
@@ -627,6 +627,17 @@ function renderMatchStats() {
     + rows.map(r => line(r[0], r[1])).join('') + line('Pontos vencedores', win, 'sum')
     + line('Erros forçados', 'fe', 'err') + line('Erros não forçados', 'ue', 'err') + '</tbody></table>';
 }
+// carreira: simula o resto da partida ponto a ponto, pela força das duplas (e as estrelas); a nota fica a do que já foi jogado
+function simulateRest() {
+  if (!S.careerActive || NET.role || S.mode === 'over') return;
+  const str = t => { const l = $s.teams[t] || []; return l.reduce((x, p) => x + (p.char ? overall(p.char.a) : 70), 0) / Math.max(1, l.length); };
+  const stars = S.careerStars || 3, pA = clamp(1 / (1 + Math.exp(-(str(0) - str(1)) / 10)) - (stars - 3) * .03, .08, .92);
+  let r = null, n = 0;
+  while (r !== 'match' && n++ < 2000) r = awardPoint(Math.random() < pA ? 0 : 1);
+  if (S.matchWinner === null || S.matchWinner === undefined) return;
+  landRing.visible = false; S.mode = 'dead'; hideBanner();
+  showOver();
+}
 function showOver() {
   S.mode = 'over'; hideBanner();
   const w = S.matchWinner, g = S.score.games;
@@ -654,4 +665,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

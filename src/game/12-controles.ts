@@ -517,7 +517,7 @@ function toggleSound() {
   if (surf) surf.g.gain.value = 0;
 }
 // online: a partida não para (o outro jogador continua); a pausa só abre o menu por cima
-function setPaused(v) { if (!inPlay() && v) return; if (NET.role) { S.paused = false; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } return; } S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
+function setPaused(v) { if (!inPlay() && v) return; { const sr = document.getElementById('btnSimRest'); if (sr) sr.hidden = !(S.careerActive && !NET.role); } if (NET.role) { S.paused = false; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } return; } S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
 function togglePause() { if (!inPlay()) return; setPaused(NET.role ? el.pause.hidden : !S.paused); }
 function saveSettings() { if (NET.role) return; // online: as escolhas da sala não sobrescrevem as suas
   // só marca como alterado (e sobe para a conta) quando algo mudou de verdade
