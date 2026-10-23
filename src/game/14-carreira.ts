@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf } from './00-base';
+import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -226,7 +226,7 @@ async function clFlush() {
 }
 // marca para subir (agrupa: sobe alguns segundos depois do último save)
 function clMark(id) { if (!CL.sess || !id) return; CL.dirty.add(id); clearTimeout(CL.t); CL.t = setTimeout(clFlush, 5000); }
-const clList = async () => (await sbRest('careers?select=id,name,season,week,updated_at&order=updated_at.desc')) || [];
+const clList = async () => (await sbRest('careers?select=id,name,season,week,updated_at&id=neq.__prefs&order=updated_at.desc')) || [];
 async function clFetch(id) { const r = await sbRest('careers?select=data&id=eq.' + encodeURIComponent(id)); if (!r || !r[0]) throw new Error('carreira não encontrada na nuvem'); return clUnpack(r[0].data); }
 const clRemove = id => sbRest('careers?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
 // baixa da nuvem para este navegador (substitui a versão local)
@@ -236,10 +236,36 @@ async function clSyncAll() {
   try {
     const rows = await clList(), cloud = new Map(rows.map(r => [r.id, r]));
     Object.values(SAVES.slots).forEach(c => { const r = cloud.get(c.id); if (!r || clTime(c.savedAt) > clTime(r.updated_at) + 1000) CL.dirty.add(c.id); });
-    await clFlush(); return rows;
+    await clFlush(); clSyncPrefs(); return rows;
   } catch (e) { clNote('Nuvem: ' + e.message); return []; }
 }
 const clLocalTime = id => clTime(SAVES.slots[id] && SAVES.slots[id].savedAt);
+// configurações do jogo (e nomes/alturas editados) também ficam na conta: linha especial '__prefs' na mesma tabela.
+// A mais nova vence; a qualidade gráfica fica de cada aparelho
+const PREFS_ID = '__prefs';
+const prefsAt = () => +(localStorage.getItem('pdo-prefs-at') || 0);
+function prefsPack() { const st = Object.assign({}, S.settings); delete st.gfx; return { s: st, names: NAMES, heights: HEIGHTS, at: prefsAt() || Date.now() }; }
+async function clPushPrefs() {
+  if (!CL.sess) return;
+  const d = prefsPack();
+  await sbRest('careers?on_conflict=user_id,id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: PREFS_ID, name: 'Configurações', season: 0, week: 0, data: JSON.stringify(d), updated_at: new Date(d.at).toISOString() }) });
+}
+let prefsT = 0;
+S.onPrefsSaved = () => { if (!CL.sess) return; clearTimeout(prefsT); prefsT = setTimeout(() => clPushPrefs().catch(() => {}), 4000); };
+// ao entrar: se a da nuvem for mais nova, aplica aqui; senão, sobe a deste aparelho
+async function clSyncPrefs() {
+  try {
+    const r = await sbRest('careers?select=data,updated_at&id=eq.' + PREFS_ID), row = r && r[0];
+    const remote = row ? JSON.parse(row.data) : null;
+    if (remote && (remote.at || 0) > prefsAt()) {
+      const gfx = S.settings.gfx; Object.assign(S.settings, remote.s || {}); if (gfx) S.settings.gfx = gfx;
+      Object.keys(NAMES).forEach(k => delete NAMES[k]); Object.assign(NAMES, remote.names || {});
+      Object.keys(HEIGHTS).forEach(k => delete HEIGHTS[k]); Object.assign(HEIGHTS, remote.heights || {});
+      try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); localStorage.setItem('pdo-names', JSON.stringify(NAMES)); localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); localStorage.setItem('pdo-prefs-at', String(remote.at)); } catch (e) {}
+      if (CL.onPrefs) CL.onPrefs();
+    } else await clPushPrefs();
+  } catch (e) {}
+}
 // esqueci a senha: o Supabase manda um e-mail com link de volta para o jogo (abre com a sessão de recuperação)
 const clSiteUrl = () => location.origin + location.pathname;
 async function clRecover(email) { await sbAuth('recover?redirect_to=' + encodeURIComponent(clSiteUrl()), { email, redirect_to: clSiteUrl() }); }

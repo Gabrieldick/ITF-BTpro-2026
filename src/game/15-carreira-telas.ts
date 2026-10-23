@@ -396,6 +396,8 @@ function renderCloud() {
     clRefresh();
   }));
 }
+// configurações vindas da conta (outro aparelho): atualiza o menu, a barra, os nomes e a câmera
+CL.onPrefs = () => { try { syncMenu(); applyMeterLook(); applyCam(); } catch (e) {} CL.msg = 'Configurações da sua conta aplicadas.'; if (CL.onChange) CL.onChange(); };
 CL.onChange = () => { if (!$('crSaves').hidden || !$('crAccount').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {
   renderCloud(); if (CL.sess && clRows === null) clRefresh();

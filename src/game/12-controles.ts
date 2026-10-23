@@ -433,7 +433,10 @@ function toggleSound() {
 function setPaused(v) { if (!inPlay() && v) return; if (NET.role) { S.paused = false; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } return; } S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
 function togglePause() { if (!inPlay()) return; setPaused(NET.role ? el.pause.hidden : !S.paused); }
 function saveSettings() { if (NET.role) return; // online: as escolhas da sala não sobrescrevem as suas
-  try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); } catch (e) {} }
+  // só marca como alterado (e sobe para a conta) quando algo mudou de verdade
+  let changed = false;
+  try { const js = JSON.stringify(S.settings), old = localStorage.getItem('pdo-settings'); changed = js !== old; if (changed) { localStorage.setItem('pdo-settings', js); if (old !== null) localStorage.setItem('pdo-prefs-at', String(Date.now())); else changed = false; } } catch (e) {} // a 1ª gravação (aparelho novo) não conta como mudança
+  if (changed && S.onPrefsSaved) S.onPrefsSaved(); } // conta na nuvem: as configurações sobem junto
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; S.settings.diff = v('diff'); S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
@@ -473,10 +476,10 @@ function renderPick(slot) {
     + '<div class="pick-top"><div style="min-width:0"><input class="pnm" type="text" id="nm-' + slot + '" maxlength="28" aria-label="Nome do jogador"><div class="meta"><span>' + c.pais + ' · ' + c.estilo + ' · joga ' + PLAY_STYLES[playStyleOf(c)].nome.toLowerCase() + ' · ' + ({ compacto: 'compacto', forte: 'forte', esguio: 'esguio', atletico: 'atlético' }[c.build] || 'atlético') + (c.canhoto ? ' · canhoto' : ' · destro') + (c.fem ? ' · feminino' : ' · masculino') + '</span><label>Altura <input class="palt" type="number" min="150" max="215" id="alt-' + slot + '" value="' + Math.round(heightOf(c) * 100) + '"> cm</label></div></div>'
     + '<div class="ovr">' + overall(c.a) + '<small>OVR</small></div></div><div class="bars">' + bars + '</div>';
   const inp = box.querySelector('.pnm'); inp.value = nameOf(c);
-  inp.addEventListener('input', () => { NAMES[c.id] = inp.value; try { localStorage.setItem('pdo-names', JSON.stringify(NAMES)); } catch (e) {} });
+  inp.addEventListener('input', () => { NAMES[c.id] = inp.value; try { localStorage.setItem('pdo-names', JSON.stringify(NAMES)); localStorage.setItem('pdo-prefs-at', String(Date.now())); if (S.onPrefsSaved) S.onPrefsSaved(); } catch (e) {} });
   inp.addEventListener('change', renderRoster);
   const ai = box.querySelector('.palt');
-  ai.addEventListener('change', () => { const v = clamp(Math.round(+ai.value || 0), 150, 215); ai.value = v; HEIGHTS[c.id] = v; try { localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); } catch (e) {} });
+  ai.addEventListener('change', () => { const v = clamp(Math.round(+ai.value || 0), 150, 215); ai.value = v; HEIGHTS[c.id] = v; try { localStorage.setItem('pdo-prefs-at', String(Date.now())); if (S.onPrefsSaved) S.onPrefsSaved(); } catch (e) {} try { localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); } catch (e) {} });
   box.querySelector('.psel').addEventListener('change', e => { S.settings.pick[slot] = e.target.value; saveSettings(); renderRoster(); });
   box.querySelectorAll('.arw').forEach(b => b.addEventListener('click', () => cyclePick(slot, +b.dataset.d)));
 }
