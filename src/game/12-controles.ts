@@ -46,7 +46,7 @@ function startMeter(kind, type, c = localCtl()) {
   const M = c.m, p = c.p;
   Object.assign(M, { active: true, kind, type, t: 0, v: 0, rate: 0, tr: null, seen: false, armedTap: false, showT: 0 });
   // carreira: dificuldade em estrelas (3 = padrão) deixa a faixa verde maior ou menor
-  const half = ZONE[S.settings.diff] * (S.careerActive ? [1.35, 1.15, 1, .87, .75][(S.careerStars || 3) - 1] : 1);
+  const half = ZONE[S.settings.diff] * (S.careerActive ? [1.35, 1.15, 1, .87, .75, .66][(S.careerStars || 3) - 1] : 1);
   if (kind === 'smash') {
     // a faixa verde fica parada; a velocidade da barra se ajusta para o verde coincidir com a chegada da bola
     // a faixa verde muda de lugar a cada smash (a velocidade da barra se ajusta para ela coincidir com a chegada da bola)

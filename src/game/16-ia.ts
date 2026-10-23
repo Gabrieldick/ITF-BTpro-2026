@@ -47,13 +47,13 @@ function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
-  const adj = S.careerActive ? [-.16, -.08, 0, .12, .24][(S.careerStars || 3) - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  const adj = S.careerActive ? [-.16, -.08, 0, .16, .32, .5][(S.careerStars || 3) - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
-  const k = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)) + adj, 0, 1.1);
+  const k = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)) + adj, 0, 1.35); // acima de 1 só nas estrelas altas (joga além do próprio nível)
   const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: (2.9 + a.vel * .022) * dm, react: lerp(.3, .09, k) * styleOf(p).react, smart: lerp(.3, .92, k), letGo: lerp(.3, .9, k),
-    miss: lerp(.15, .018, k) * lerp(1.3, .7, a.def / 100), err: lerp(.2, .015, Math.pow(k, .8)) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
+    speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react, smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
+    miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(k, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, k), .3, .9), clamp(lerp(.72, 1, k), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, k)), // nível baixo: golpes mais fracos (não mais bolas furadas)
     netK: lerp(.8, .45, Math.min(1, k)), // erro de nível baixo vai mais na rede que para fora
