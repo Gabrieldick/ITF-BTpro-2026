@@ -78,8 +78,25 @@ function tacticAim(team) {
   return null;
 }
 TAC.aim = tacticAim;
+// mira de quem lê bem o jogo (estrelas acima do padrão): espaço aberto grande → ponto direto; lob → por cima de quem está na rede;
+// senão no backhand do adversário mais fraco (defesa + backhand), levando em conta canhoto/destro
+function smartAim(p) {
+  const opp = $s.teams[1 - p.team], lim = C.halfW - .6; if (!opp.length) return 0;
+  if (p.ai && p.ai.shot === 'lob') { const net = opp.filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (net) return clamp(net.pos.x + rand(-.3, .3), -lim, lim); }
+  const g = gapX(p.team, .15); let gm = Infinity; for (const o of opp) gm = Math.min(gm, Math.abs(o.pos.x - g));
+  if (gm > 2.1) return g;
+  // alvo por peso: o mais fraco só vira foco com diferença grande de habilidade e/ou se estiver errando mais na partida
+  const sk = o => (attrK(o, 'backhand') + attrK(o, 'def')) / 2, best = Math.max(...opp.map(sk)), errMin = Math.min(...opp.map(o => o.mErr || 0));
+  const w = opp.map(o => 1 + Math.max(0, best - sk(o) - .1) * 8 + Math.min(3, ((o.mErr || 0) - errMin) * .35));
+  let r = Math.random() * w.reduce((t, v) => t + v, 0), tgt = opp[0]; for (let i = 0; i < opp.length; i++) { if ((r -= w[i]) <= 0) { tgt = opp[i]; break; } }
+  const dir = (tgt.team === 0 ? 1 : -1) * (tgt.lefty ? -1 : 1); // lado do forehand dele no eixo x
+  // nem sempre o backhand: às vezes no corpo ou abrindo o forehand para variar
+  const bh = Math.random() < .7 ? -1 : Math.random() < .5 ? 0 : 1;
+  return clamp(tgt.pos.x + bh * dir * rand(.6, 1.05), -lim, lim);
+}
 function aiAim(p) {
   const st = styleOf(p), lim = C.halfW - .6;
+  { const up = skillOf(p).up || 0; if (up > 0 && Math.random() < Math.min(.85, up * 2)) return smartAim(p); }
   { const ta = tacticAim(p.team); if (ta !== null && Math.random() < .7) return ta; }
   if (st.aimBody && Math.random() < st.aimBody) { const opp = $s.teams[1 - p.team].slice().sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (opp) return clamp(opp.pos.x + rand(-.35, .35), -lim, lim); }
   if (st.corners && Math.random() < .8) { const g = gapX(p.team, .2); return Math.sign(g || rand(-1, 1)) * Math.max(Math.abs(g), lim * .75); }

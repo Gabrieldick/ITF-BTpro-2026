@@ -253,7 +253,7 @@ function creditPoint(w, kind) {
   const lh = S.lastHit, at = S.attempt;
   if (kind === 'in') {
     if (at && at.hitId === S.hitId && at.p.team !== w) {
-      const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++;
+      const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++; at.p.mErr = (at.p.mErr || 0) + 1; // erros na partida (a CPU esperta foca em quem erra mais)
       if (S.perf && at.p !== human && at.p.team === human.team) S.perf.mateErr = (S.perf.mateErr || 0) + 1;
       perfAdd(at.p, at.hard ? -.2 : -.45, at.hard ? 'erroF' : 'furou');
       if (at.hard && lh && lh.p.team === w) return forcedTxt(creditForcer({ p: lh.p, cat: lh.cat }), at.p);
@@ -265,8 +265,8 @@ function creditPoint(w, kind) {
   if (!lh || lh.p.team === w) return '';
   const st = statOf(lh.p), where = kind === 'net' ? 'na rede' : 'fora';
   if (S.perf && lh.p !== human && lh.p.team === human.team) S.perf.mateErr = (S.perf.mateErr || 0) + 1; // erro do parceiro: não pesa no seu saldo
-  if (lh.cat === 'saque') { st.ue++; perfAdd(lh.p, ERR_V.saque, 'e_saque'); return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
-  if (lh.hard) st.fe++; else st.ue++;
+  if (lh.cat === 'saque') { st.ue++; lh.p.mErr = (lh.p.mErr || 0) + 1; perfAdd(lh.p, ERR_V.saque, 'e_saque'); return isMe(lh.p) ? 'Seu saque ' + where : 'Saque ' + where + ' de ' + whoName(lh.p); }
+  if (lh.hard) st.fe++; else st.ue++; lh.p.mErr = (lh.p.mErr || 0) + 1;
   if (lh.hard) perfAdd(lh.p, -.15, 'erroF'); else perfAdd(lh.p, ERR_V[lh.cat] || -.5, 'e_' + lh.cat);
   const tail = ' (' + CAT_NAME[lh.cat] + ' ' + where + ')';
   if (lh.forcedBy && lh.forcedBy.p.team === w) return forcedTxt(creditForcer(lh.forcedBy), lh.p, tail);
@@ -590,7 +590,7 @@ const COURTS = {
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
-  S.drill = null;
+  S.drill = null; $s.players.forEach(q => { q.mErr = 0; });
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
   configureMode();
