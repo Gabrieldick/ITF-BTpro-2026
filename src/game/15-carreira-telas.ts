@@ -398,7 +398,14 @@ function renderCloud() {
 }
 // configurações vindas da conta (outro aparelho): atualiza o menu, a barra, os nomes e a câmera
 CL.onPrefs = () => { try { syncMenu(); applyMeterLook(); applyCam(); } catch (e) {} CL.msg = 'Configurações da sua conta aplicadas.'; if (CL.onChange) CL.onChange(); };
-CL.onChange = () => { if (!$('crSaves').hidden || !$('crAccount').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
+// conta no menu principal: usa o mesmo quadro (move o elemento para a janela da conta e devolve ao fechar)
+const acctBtnTxt = () => { const b = $('btnAcct'); if (b) b.textContent = CL.sess ? '👤 ' + (CL.sess.email || 'Conta') : '👤 Conta'; };
+$('btnAcct').addEventListener('click', () => { $('acctSlot').appendChild($('crCloud')); renderCloud(); $('acctOv').hidden = false; });
+$('acctClose').addEventListener('click', () => { $('acctOv').hidden = true; $('crAccount').appendChild($('crCloud')); acctBtnTxt(); });
+// login automático: a sessão fica guardada neste navegador; ao abrir o jogo ela é renovada e as carreiras/configurações sincronizam
+if (CL.sess) clSyncAll().then(() => acctBtnTxt());
+acctBtnTxt();
+CL.onChange = () => { acctBtnTxt(); if (!$('crSaves').hidden || !$('crAccount').hidden || !$('acctOv').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {
   renderCloud(); if (CL.sess && clRows === null) clRefresh();
   const list = crSlots();

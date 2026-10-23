@@ -70,7 +70,7 @@
       <button class="ghost tile" id="btnOnline"><small>Com amigos</small>Online</button>
       <button class="ghost tile" id="btnDrill"><small>Desafios</small>Treino</button>
     </div>
-      <div class="cta-row" style="margin-top:8px"><button class="ghost sm" data-goto="help">Como jogar</button><button class="ghost sm" data-goto="cfg">Configurações</button></div>
+      <div class="cta-row" style="margin-top:8px"><button class="ghost sm" data-goto="help">Como jogar</button><button class="ghost sm" data-goto="cfg">Configurações</button><button class="ghost sm" id="btnAcct" type="button">👤 Conta</button></div>
       <p id="appVer" class="app-ver"></p>
     </section>
     <!-- partida rápida, passo 1: elenco e modalidade -->
@@ -438,6 +438,14 @@
     <input id="clResetPw2" class="cr-sel" type="password" placeholder="repita a nova senha" autocomplete="new-password">
     <p class="cr-msg" id="clResetMsg" hidden></p>
     <div class="cta-row"><button type="button" class="cta" id="clResetOk">Salvar nova senha</button><button type="button" class="ghost" id="clResetClose">Fechar</button></div>
+  </div>
+</div>
+<!-- Conta (menu principal): o mesmo quadro de entrar/criar conta da carreira -->
+<div id="acctOv" class="overlay" hidden>
+  <div class="card" style="width:min(100%,560px);display:grid;gap:12px">
+    <div><div class="eyebrow">Salva suas carreiras e configurações na nuvem</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CONTA</h2></div>
+    <div id="acctSlot"></div>
+    <div class="cta-row"><button type="button" class="cta" id="acctClose">Fechar</button></div>
   </div>
 </div>
 <!-- Barra de golpe (smash, lob e saque) -->
