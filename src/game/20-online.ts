@@ -129,7 +129,8 @@ function errText(e) {
   if (t === 'peer-unavailable') return 'Sala não encontrada. Confira o código (e se a sala ainda está aberta).';
   if (t === 'browser-incompatible') return 'Este navegador não suporta WebRTC.';
   if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'timeout') return 'Não foi possível falar com o servidor de conexão. Verifique a internet e tente de novo.';
-  return 'Erro na conexão' + (t ? ' (' + t + ')' : '') + '.';
+  if (!t && e && e.message) console.warn('online', e);
+  return 'Erro na conexão' + (t ? ' (' + t + ')' : e && e.message ? ' (' + String(e.message).slice(0, 80) + ')' : '') + '. Tente de novo.';
 }
 const sendTo = (conn, m) => { if (conn && conn.open) { try { conn.send(m); } catch (e) {} } };
 // canal rápido: na mesma conexão WebRTC, sem ordem e sem retransmissão (estado da partida e direção).
