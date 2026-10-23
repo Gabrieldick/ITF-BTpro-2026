@@ -424,11 +424,20 @@ function startChamp() {
   const mode = ON.room.mode, mem = members();
   if (new Set(mem.map(m => m.pick)).size < mem.length) { msg('Cada um precisa de um personagem diferente.'); return; }
   const used = new Set(mem.map(m => m.pick));
-  const free = () => { const id = byOvr().find(c => !used.has(c.id)).id; used.add(id); return id; };
+  // CPUs do campeonato: mesmo gênero de quem joga (todas mulheres → feminino; homens e mulheres → misto, com duplas mistas)
+  // e nível perto do de quem joga (média dos personagens das pessoas na sala)
+  const hc = mem.map(m => charById(m.pick)), fems = hc.map(c => !!c.fem), mixed = fems.includes(true) && fems.includes(false), allF = !fems.includes(false);
+  const target = hc.reduce((t, c) => t + overall(c.a), 0) / Math.max(1, hc.length);
+  const free = fem => { // fem: true/false/undefined (qualquer, no misto)
+    const pool = ROSTER.filter(c => !used.has(c.id) && (fem === undefined ? (mixed || !!c.fem === allF) : !!c.fem === fem));
+    const pick = pool.map(c => ({ c, d: Math.abs(overall(c.a) - target) + Math.random() * 3 })).sort((x, y) => x.d - y.d)[0] || { c: byOvr().find(c => !used.has(c.id)) };
+    used.add(pick.c.id); return pick.c.id;
+  };
   const entries = mem.map(m => ({ mid: m.id, name: m.name, pick: m.pick }));
   let size = 2; while (size < entries.length) size *= 2;
-  while (entries.length < size) entries.push({ mid: null, name: '', pick: free() });
-  if (mode === 'dupla') entries.forEach(e => { e.mate = free(); }); // cada um joga com um parceiro da CPU
+  for (let i = 0; entries.length < size; i++) entries.push({ mid: null, name: '', pick: free(mixed ? i % 2 === 0 : undefined) });
+  // dupla: cada um joga com um parceiro da CPU (no misto, do outro gênero; nas CPUs, um homem e uma mulher)
+  if (mode === 'dupla') entries.forEach(e => { const f = !!charById(e.pick).fem; e.mate = free(mixed ? !f : undefined); });
   // sorteia a chave, separando as pessoas das CPUs o máximo possível
   const hum = entries.filter(e => e.mid).sort(() => Math.random() - .5), cpu = entries.filter(e => !e.mid);
   const order = [];
@@ -938,4 +947,4 @@ $('onCopy').addEventListener('click', () => {
 addEventListener('beforeunload', () => { if (NET.role === 'guest') send(['bye']); else if (NET.role === 'host') for (const g of ON.guests) sendTo(g.conn, ['bye']); });
 // para testes no console
 window.__pdoNet = { ON, NET };
-if (typeof window !== 'undefined') window.__pdoON = { ON, renderRoom: f => renderRoom(f), showPart: x => showPart(x) };
+if (typeof window !== 'undefined') window.__pdoON = { ON, renderRoom: f => renderRoom(f), showPart: x => showPart(x), startChamp: () => startChamp() };
