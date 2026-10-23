@@ -713,3 +713,11 @@ body[data-tags="off"] .tag { display: none; }
 .on-cardi .bars .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; }
 .on-cardi .bars .bar i { display: block; height: 100%; background: #33c3ff; } .on-cardi .bars .bar i.hi { background: #4fd18b; } .on-cardi .bars .bar i.lo { background: #ff8a5c; }
 .on-cardi.sm .bars { font-size: 11px; gap: 2px 6px; }
+
+/* fichas por equipe */
+.on-cardi.ta { border-color: rgba(255, 90, 31, .7); background: linear-gradient(180deg, rgba(255, 90, 31, .16), rgba(255, 255, 255, .04)); box-shadow: inset 4px 0 0 #ff5a1f; }
+.on-cardi.ta .on-cardh .ovr { background: #ff5a1f; }
+.on-cardi.tb { border-color: rgba(51, 195, 255, .7); background: linear-gradient(180deg, rgba(51, 195, 255, .16), rgba(255, 255, 255, .04)); box-shadow: inset 4px 0 0 #33c3ff; }
+.on-cardi.tb .on-cardh .ovr { background: #1b8fc0; }
+.on-team.ta { color: #ff8a5c; } .on-team.tb { color: #33c3ff; }
+#onAllCards { display: grid; gap: 8px; }

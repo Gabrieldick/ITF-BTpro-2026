@@ -783,20 +783,25 @@ function toLobbyScreen() {
 // ---------- tela da sala (igual para anfitrião e convidados; só o anfitrião muda tipo/modalidade/CPU) ----------
 function memberOf(L, id) { return L.members.find(m => m.id === id); }
 // ---------- fichas dos jogadores na sala (atributos de cada personagem, com a raquete escolhida) ----------
-function charCard(c, rk, who, small) {
+function charCard(c, rk, who, small, team) {
   if (!c) return '';
   const a = effA(c.a, rk ? racketBonus(rk) : null), ov = overall(a);
   const bars = ATTRS.map(([k, lbl]) => { const v = attrOf(a, k); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 60 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + '</b>'; }).join('');
-  return '<div class="on-cardi' + (small ? ' sm' : '') + '"><div class="on-cardh"><div class="ovr">' + ov + '<small>OVR</small></div><div><b>' + escHtml(nameOf(c)) + '</b><span>' + (who ? escHtml(who) + ' · ' : '') + (c.pais || '') + ' · ' + (c.canhoto ? 'canhoto' : 'destro') + ' · ' + escHtml(c.estilo || '') + (rk && RACKET_STATS[rk] ? ' · raquete ' + escHtml(RACKET_STATS[rk].nome) : '') + '</span></div></div><div class="bars">' + bars + '</div></div>';
+  return '<div class="on-cardi' + (small ? ' sm' : '') + (team ? ' t' + team : '') + '"><div class="on-cardh"><div class="ovr">' + ov + '<small>OVR</small></div><div><b>' + escHtml(nameOf(c)) + '</b><span>' + (who ? escHtml(who) + ' · ' : '') + (c.pais || '') + ' · ' + (c.canhoto ? 'canhoto' : 'destro') + ' · ' + escHtml(c.estilo || '') + (rk && RACKET_STATS[rk] ? ' · raquete ' + escHtml(RACKET_STATS[rk].nome) : '') + '</span></div></div><div class="bars">' + bars + '</div></div>';
 }
 function renderCards(L) {
-  const my = L.members.find(m => m.id === (ON.myId || 'host'));
-  if (my) $('onMyCard').innerHTML = charCard(charById(my.cc ? my.cc.id : my.pick), my.rk || null, 'você');
-  const seatOf = id => Object.entries(L.seats || {}).filter(([, v]) => v === id).map(([k]) => k)[0];
-  const cards = L.members.map(m => charCard(charById(m.cc ? m.cc.id : m.pick), m.rk || null, m.name + (seatOf(m.id) ? ' · lugar ' + seatOf(m.id) : ' · assistindo'), true));
-  // CPUs nos lugares vazios (partida)
-  if (L.kind === 'match') Object.entries(L.seats || {}).forEach(([k, v]) => { if (!v && L.cpu && L.cpu[k] && (L.mode === 'dupla' || /1$/.test(k))) cards.push(charCard(charById(L.cpu[k]), null, 'CPU · lugar ' + k, true)); });
-  $('onAllCards').innerHTML = cards.join('');
+  const my = L.members.find(m => m.id === (ON.myId || 'host')), seatOf = id => Object.entries(L.seats || {}).filter(([, v]) => v === id).map(([k]) => k)[0];
+  const teamOf = k => k ? (k[0] === 'A' ? 'a' : 'b') : '';
+  if (my) $('onMyCard').innerHTML = charCard(charById(my.cc ? my.cc.id : my.pick), my.rk || null, 'você', false, L.kind === 'match' ? teamOf(seatOf(my.id)) : '');
+  // cartões coloridos por equipe (time A laranja, time B azul; quem assiste fica neutro): time A, time B e depois quem assiste
+  const list = L.members.map(m => { const k = L.kind === 'match' ? seatOf(m.id) : null; return { k, html: charCard(charById(m.cc ? m.cc.id : m.pick), m.rk || null, m.name + (k ? ' · lugar ' + k : L.kind === 'match' ? ' · assistindo' : ''), true, teamOf(k)) }; });
+  if (L.kind === 'match') Object.entries(L.seats || {}).forEach(([k, v]) => { if (!v && L.cpu && L.cpu[k] && (L.mode === 'dupla' || /1$/.test(k))) list.push({ k, html: charCard(charById(L.cpu[k]), null, 'CPU · lugar ' + k, true, teamOf(k)) }); });
+  const ord = x => !x.k ? 3 : x.k[0] === 'A' ? 1 : 2;
+  const grp = t => list.filter(x => ord(x) === t).sort((x, y) => (x.k || '').localeCompare(y.k || '')).map(x => x.html).join('');
+  const head = (t, cls) => '<p class="section-label on-team ' + cls + '">' + t + '</p>';
+  $('onAllCards').innerHTML = L.kind === 'match'
+    ? (grp(1) ? head('Time A', 'ta') + '<div class="on-cards">' + grp(1) + '</div>' : '') + (grp(2) ? head('Time B', 'tb') + '<div class="on-cards">' + grp(2) + '</div>' : '') + (grp(3) ? head('Assistindo', '') + '<div class="on-cards">' + grp(3) + '</div>' : '')
+    : '<div class="on-cards">' + list.map(x => x.html).join('') + '</div>';
 }
 document.querySelectorAll('[data-ontab]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('[data-ontab]').forEach(x => x.classList.toggle('sel', x === b));
