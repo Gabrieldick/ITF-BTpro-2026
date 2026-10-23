@@ -193,6 +193,8 @@ function waitCloser(p, su, dt) {
   const d = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z), dn = Math.hypot(ball.pos.x + ball.vel.x * dt - p.pos.x, ball.pos.z + ball.vel.z * dt - p.pos.z);
   return d > .78 && dn < d - .002 && ball.pos.y > .2; // ainda vindo e longe: espera
 }
+// profissional masculino (rede 1,80) em dupla: o parceiro de quem saca só pode passar da linha dos 5 m depois do saque
+const proMascHold = p => dupla() && C.netH >= 1.79 && (S.mode === 'serve' || S.mode === 'toss') && p.team === S.server && p !== S.serverPlayer;
 // direção do teclado/joystick local (-1..1), no referencial de quem olha do próprio fundo de quadra
 function localInput() {
   let ix = 0, iz = 0;
@@ -250,6 +252,7 @@ function updateHuman(dt, c = localCtl()) {
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);
   if (serving && S.mode === 'serve') { p.pos.z = 8.6 * s; p.pos.x = clamp(p.pos.x, -C.halfW + .1, C.halfW - .1); }
+  if (proMascHold(p)) p.pos.z = s * Math.max(Math.abs(p.pos.z), 5.05); // parceiro do sacador atrás dos 5 m até o saque
   const sw = p.swing;
   if (sw.t >= 0) {
     const su = sw.t / sw.dur;
@@ -370,7 +373,9 @@ function chooseAIServe(p) {
 function homeOf(p) {
   const s = p.team === 0 ? 1 : -1;
   const hz = styleOf(p).home;
-  if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz, 3.4, 6.4)];
+  // estrelas altas: quem lê o jogo não fica plantado no fundo (onde a curta mata); no Lendário fica perto dos 4,4 m
+  const up = (p.skill && p.skill.up) || 0, deepMax = lerp(6.3, 4.5, clamp(up * 2.5, 0, 1));
+  if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up * 2, 0, .8)), 3.4, 6.4))];
   // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
   // o parceiro também acompanha a posição real do companheiro
   const fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
@@ -378,7 +383,7 @@ function homeOf(p) {
   let x = center + p.slot * hw;
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
-  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * clamp(4.6 + hz, 3.3, 6.2)];
+  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * Math.min(deepMax, clamp(4.6 + hz * (1 - clamp(up * 2, 0, .8)), 3.3, 6.2))];
 }
 // recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio
 function receiveX(p) {
@@ -406,6 +411,7 @@ function updateAI(p, dt) {
     tx = p.team !== S.server && dupla() ? receiveX(p) : p.pos.x; tz = p.pos.z;
     // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
     if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + 1.1);
+    if (proMascHold(p)) { tz = (p.team === 0 ? 1 : -1) * Math.max(Math.abs(tz), 5.3); if (Math.abs(p.pos.z) < 5.05) p.pos.z = (p.team === 0 ? 1 : -1) * 5.05; }
   }
   if (S.serverPlayer === p && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74) || p.pendingServe)) {
     tz = p.pos.z + (p.team === 0 ? -1 : 1) * .8;

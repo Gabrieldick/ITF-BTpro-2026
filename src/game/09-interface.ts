@@ -520,7 +520,7 @@ function setupPoint() {
     $s.players.forEach(p => {
       const s = sgn(p.team);
       if (p === sp) p.pos.set(p.slot * 1.4, 0, 8.6 * s);
-      else if (p.team === S.server) p.pos.set(p.slot * 1.9, 0, 4.4 * s);
+      else if (p.team === S.server) p.pos.set(p.slot * 1.9, 0, (C.netH >= 1.79 ? 5.3 : 4.4) * s); // profissional masculino: parceiro atrás dos 5 m até o saque
       else p.pos.set(receiveX(p), 0, (ZONE3 + .3) * s);
     });
   }
