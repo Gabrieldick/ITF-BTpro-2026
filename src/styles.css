@@ -685,3 +685,11 @@ body[data-tags="off"] .tag { display: none; }
 .cr-cloud-in > span { font-size: 12.5px; opacity: .85; }
 .cr-cloud-in .cta-row { flex-wrap: wrap; gap: 6px; }
 .cr-cloud-in input.cr-sel { flex: 1 1 180px; min-width: 0; }
+
+/* entrada da carreira: abas Conta / Carregar / Criar */
+.cr-entry { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.cr-entry button { flex: 1 1 160px; }
+.cr-entry button.sel { background: var(--buoy, #ff5a1f); color: #fff; border-color: transparent; }
+.cr-wrap { white-space: normal; overflow-wrap: anywhere; margin: 2px 0; }
+.cr-login { display: flex; flex-wrap: wrap; gap: 6px; }
+.cr-login input { flex: 1 1 200px; min-width: 0; }

@@ -15,9 +15,15 @@ import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
 let crTab = 'agenda';
 const money = v => '$' + Math.round(v).toLocaleString('pt-BR');
+let crEntry = '';
+document.querySelectorAll('[data-entry]').forEach(b => b.addEventListener('click', () => { crEntry = b.dataset.entry; renderCareer(); }));
 function openCareer() { readMenu(); el.menu.hidden = true; $('career').hidden = false; document.body.classList.add('in-menu'); if ($s.CR) { crMigrate(); crSyncChars(); } renderCareer(); }
 function renderCareer() {
-  $('crNew').hidden = !!$s.CR; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR;
+  // sem carreira aberta: três abas (conta, carregar, criar)
+  if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
+  $('crEntry').hidden = !!$s.CR;
+  document.querySelectorAll('[data-entry]').forEach(b => b.classList.toggle('sel', b.dataset.entry === crEntry));
+  $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
   $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
@@ -341,76 +347,62 @@ const fmtDate = iso => { if (!iso) return ''; const d = new Date(iso); return is
 let clRows = null, clBusy = false;
 async function clRefresh() { if (!CL.sess) { clRows = null; return; } try { clRows = await clList(); } catch (e) { clRows = []; CL.msg = 'Nuvem: ' + e.message; } renderCloud(); }
 function renderCloud() {
-  const box = $('crCloud'); if (!box) return;
+  const box = $('crCloud'), list = $('crCloudList'); if (!box) return;
+  const note = t => '<p class="cr-note cr-wrap">' + esc(t) + '</p>';
   if (!CL.sess) {
-    box.innerHTML = '<div class="cr-cloud-in"><b>☁️ Salvar na nuvem</b><span>Crie uma conta (e-mail e senha) para as carreiras irem para a nuvem sozinhas e abrirem em qualquer aparelho.</span>'
-      + '<div class="cta-row"><input id="clEmail" class="cr-sel" type="email" placeholder="e-mail" autocomplete="email"><input id="clPw" class="cr-sel" type="password" placeholder="senha (mín. 6)" autocomplete="current-password">'
-      + '<button class="cta sm" id="clIn" type="button">Entrar</button><button class="ghost sm" id="clUp" type="button">Criar conta</button><button class="ghost sm" id="clForgot" type="button">Esqueci a senha</button></div>'
-      + (CL.msg ? '<span class="cr-lbl">' + esc(CL.msg) + '</span>' : '') + '</div>';
+    box.innerHTML = '<div class="cr-cloud-in"><b>Entrar ou criar conta</b><span>Com uma conta, as carreiras vão para a nuvem sozinhas e abrem em qualquer aparelho.</span>'
+      + '<div class="cr-login"><input id="clEmail" class="cr-sel" type="email" placeholder="e-mail" autocomplete="email"><input id="clPw" class="cr-sel" type="password" placeholder="senha (mín. 6)" autocomplete="current-password"></div>'
+      + '<div class="cta-row"><button class="cta sm" id="clIn" type="button">Entrar</button><button class="ghost sm" id="clUp" type="button">Criar conta</button><button class="ghost sm" id="clForgot" type="button">Esqueci a senha</button></div>'
+      + (CL.msg ? note(CL.msg) : '') + '</div>';
+    if (list) list.innerHTML = note('Entre na sua conta (aba Conta) para ver e baixar as carreiras salvas na nuvem.');
     const go = async (fn, up) => {
       const em = $('clEmail').value.trim(), pw = $('clPw').value;
       if (!em || pw.length < 6) { CL.msg = 'Preencha o e-mail e uma senha de pelo menos 6 caracteres.'; renderCloud(); return; }
       if (clBusy) return; clBusy = true; CL.msg = up ? 'Criando a conta…' : 'Entrando…'; renderCloud();
-      try { const r = await fn(em, pw); CL.msg = r === 'confirm' ? 'Conta criada! Confirme o e-mail pelo link enviado e depois clique em Entrar.' : 'Conectado. Suas carreiras deste navegador estão subindo para a nuvem.'; }
+      try { const r = await fn(em, pw); CL.msg = r === 'confirm' ? 'Conta criada! Confirme o e-mail pelo link enviado e depois clique em Entrar.' : 'Conectado. Suas carreiras deste navegador já estão na nuvem.'; if (r !== 'confirm') { crEntry = 'load'; } }
       catch (e) { CL.msg = e.message; }
-      clBusy = false; renderCloud(); clRefresh();
+      clBusy = false; renderCareer(); clRefresh();
     };
     $('clIn').addEventListener('click', () => go(clSignIn)); $('clUp').addEventListener('click', () => go(clSignUp, true));
     $('clForgot').addEventListener('click', async () => {
       const em = $('clEmail').value.trim(); if (!em) { CL.msg = 'Digite o seu e-mail e clique em "Esqueci a senha".'; renderCloud(); return; }
-      try { await clRecover(em); CL.msg = 'Pronto: se houver uma conta com ' + em + ', chegou um e-mail com o link para criar uma nova senha (veja também o spam).'; }
+      try { await clRecover(em); CL.msg = 'Se houver uma conta com ' + em + ', chegou um e-mail com o link para criar uma nova senha (veja também o spam).'; }
       catch (e) { CL.msg = 'Não consegui enviar: ' + e.message; }
       renderCloud();
     });
     return;
   }
-  const rows = clRows || [];
-  box.innerHTML = '<div class="cr-cloud-in"><b>☁️ Conta: ' + esc(CL.sess.email || '') + '</b><span>As carreiras sobem para a nuvem sozinhas a cada save.' + (CL.msg ? ' ' + esc(CL.msg) : '') + '</span>'
-    + '<div class="cta-row"><button class="ghost sm" id="clSync" type="button">Sincronizar agora</button><button class="ghost sm" id="clOut" type="button">Sair da conta</button></div>'
-    + (clRows === null ? '<span class="cr-lbl">Carregando as carreiras da nuvem…</span>' : rows.length ? '<div class="cr-slots">' + rows.map(r => {
-      const lt = clLocalTime(r.id), ct = clTime(r.updated_at), here = lt > 0, newer = ct > lt + 1000;
-      return '<div class="cr-slot"><div class="who"><b>' + esc(r.name || r.id) + '</b><span>T' + (r.season || 1) + ' S' + (r.week || 1) + ' · na nuvem' + fmtDate(r.updated_at) + (here ? (newer ? ' · mais nova que a deste aparelho' : ' · igual ou mais antiga que a deste aparelho') : ' · não está neste aparelho') + '</span></div>'
-        + '<div class="acts"><button class="' + (newer || !here ? 'cta' : 'ghost') + ' sm" data-cl-pull="' + esc(r.id) + '">' + (here ? 'Usar a da nuvem' : 'Baixar e continuar') + '</button><button class="ghost sm" data-cl-del="' + esc(r.id) + '">Apagar da nuvem</button></div></div>'; }).join('') + '</div>'
-      : '<span class="cr-lbl">Nenhuma carreira na nuvem ainda.</span>') + '</div>';
-  $('clOut').addEventListener('click', () => { clSignOut(); clRows = null; renderCloud(); });
+  box.innerHTML = '<div class="cr-cloud-in"><b>Conectado: ' + esc(CL.sess.email || '') + '</b><span>As carreiras sobem para a nuvem sozinhas a cada save.</span>' + (CL.msg ? note(CL.msg) : '')
+    + '<div class="cta-row"><button class="ghost sm" id="clSync" type="button">Sincronizar agora</button><button class="ghost sm" id="clOut" type="button">Sair da conta</button></div></div>';
+  $('clOut').addEventListener('click', () => { clSignOut(); clRows = null; renderCareer(); });
   $('clSync').addEventListener('click', async () => { CL.msg = 'Sincronizando…'; renderCloud(); await clSyncAll(); await clRefresh(); });
-  box.querySelectorAll('[data-cl-pull]').forEach(b => b.addEventListener('click', async () => {
+  if (!list) return;
+  const rows = clRows || [];
+  list.innerHTML = clRows === null ? note('Carregando as carreiras da nuvem…') : rows.length ? rows.map(r => {
+      const lt = clLocalTime(r.id), ct = clTime(r.updated_at), here = lt > 0, newer = ct > lt + 1000;
+      return '<div class="cr-slot"><div class="who"><b>' + esc(r.name || r.id) + '</b><span>T' + (r.season || 1) + ' S' + (r.week || 1) + fmtDate(r.updated_at) + (here ? (newer ? ' · mais nova que a deste aparelho' : ' · já está neste aparelho') : ' · não está neste aparelho') + '</span></div>'
+        + '<div class="acts"><button class="' + (newer || !here ? 'cta' : 'ghost') + ' sm" data-cl-pull="' + esc(r.id) + '">' + (here ? 'Usar a da nuvem' : 'Baixar e continuar') + '</button><button class="ghost sm" data-cl-del="' + esc(r.id) + '">Apagar da nuvem</button></div></div>'; }).join('')
+    : note('Nenhuma carreira na nuvem ainda: elas sobem sozinhas quando você joga conectado.');
+  list.querySelectorAll('[data-cl-pull]').forEach(b => b.addEventListener('click', async () => {
     const id = b.dataset.clPull, r = rows.find(x => x.id === id), lt = clLocalTime(id);
     if (lt && r && clTime(r.updated_at) + 1000 < lt && !confirm('A versão deste aparelho é mais nova que a da nuvem. Substituir pela da nuvem mesmo assim?')) return;
     b.disabled = true; b.textContent = 'Baixando…';
     try { const cid = await clPull(id); if (crLoadSlot(cid)) { crTab = 'agenda'; $s.CR.lastMsg = 'Carreira baixada da nuvem.'; } renderCareer(); }
     catch (e) { CL.msg = 'Falha ao baixar: ' + e.message; renderCloud(); }
   }));
-  box.querySelectorAll('[data-cl-del]').forEach(b => b.addEventListener('click', async () => {
+  list.querySelectorAll('[data-cl-del]').forEach(b => b.addEventListener('click', async () => {
     if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirmar'; return; }
     try { await clRemove(b.dataset.clDel); CL.msg = 'Apagada da nuvem (a deste aparelho continua).'; } catch (e) { CL.msg = 'Falha ao apagar: ' + e.message; }
     clRefresh();
   }));
 }
-// voltou de um link do e-mail: recuperação abre a tela de nova senha; confirmação de conta já entra
-{
-  const onLink = () => {
-    const kind = clFromLink();
-    if (kind === 'recovery') { $('clResetWho').textContent = 'Conta: ' + ((CL.sess && CL.sess.email) || ''); $('clReset').hidden = false; }
-    else if (kind) { CL.msg = 'E-mail confirmado: você já está conectado.'; clSyncAll(); }
-  };
-  onLink(); addEventListener('hashchange', onLink);
-  $('clResetClose').addEventListener('click', () => { $('clReset').hidden = true; });
-  $('clResetOk').addEventListener('click', async () => {
-    const a = $('clResetPw').value, b = $('clResetPw2').value, m = $('clResetMsg'); m.hidden = false;
-    if (a.length < 6) { m.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
-    if (a !== b) { m.textContent = 'As duas senhas não são iguais.'; return; }
-    try { await clNewPassword(a); m.textContent = 'Senha trocada! Você já está conectado.'; clSyncAll(); setTimeout(() => { $('clReset').hidden = true; }, 1500); }
-    catch (e) { m.textContent = 'Não consegui trocar: ' + e.message; }
-  });
-}
-CL.onChange = () => { if (!$('crSaves').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
+CL.onChange = () => { if (!$('crSaves').hidden || !$('crAccount').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {
   renderCloud(); if (CL.sess && clRows === null) clRefresh();
   const list = crSlots();
   $('crSlotList').innerHTML = list.length ? list.map(c => '<div class="cr-slot"><div class="who"><b>' + esc(c.name) + ' · OVR ' + c.ovr + '</b><span>T' + c.season + ' S' + c.week + ' · ' + c.tier + ' · ' + money(c.money) + fmtDate(c.savedAt) + '</span></div>'
     + '<div class="acts"><button class="cta sm" data-slot-load="' + esc(c.id) + '">Continuar</button><button class="ghost sm" data-slot-exp="' + esc(c.id) + '">Exportar</button><button class="ghost sm" data-slot-del="' + esc(c.id) + '">Apagar</button></div></div>').join('')
-    : '<span class="cr-lbl">Nenhuma carreira salva neste navegador ainda. Crie uma abaixo ou importe um save.</span>';
+    : '<p class="cr-note cr-wrap">Nenhuma carreira salva neste navegador. Crie uma na aba Criar carreira, baixe da nuvem ou importe um arquivo.</p>';
   const L = $('crSlotList');
   L.querySelectorAll('[data-slot-load]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotLoad)) { crTab = 'agenda'; crSaveMsg(''); renderCareer(); } }));
   L.querySelectorAll('[data-slot-exp]').forEach(b => b.addEventListener('click', () => { const fn = crDownload(b.dataset.slotExp); if (fn) crSaveMsg('Baixado: ' + fn + '. Para abrir em outro lugar, coloque o arquivo na pasta ' + SAVE_DIR + '/ do repositório e use "Carregar do GitHub", ou use "Importar arquivo".'); }));
@@ -427,18 +419,18 @@ $('crFile').addEventListener('change', e => {
   file.text().then(t => crAfterImport(crImportData(t)), () => crSaveMsg('Não consegui ler o arquivo.'));
 });
 $('crRepo').addEventListener('click', async () => {
-  const box = $('crRepoList'); box.hidden = false; box.innerHTML = '<span class="cr-lbl">Procurando saves em github.com/' + SAVE_REPO + '/' + SAVE_DIR + ' …</span>';
+  const box = $('crRepoList'); box.hidden = false; box.innerHTML = '<p class="cr-note cr-wrap">Procurando saves em github.com/' + SAVE_REPO + '/' + SAVE_DIR + ' …</p>';
   try {
     const files = await crRepoSaves();
     box.innerHTML = files.length ? files.map((f, i) => '<div class="cr-slot"><div class="who"><b>' + esc(f.name) + '</b><span>pasta ' + SAVE_DIR + '/ do repositório</span></div><div class="acts"><button class="cta sm" data-repo="' + i + '">Carregar</button></div></div>').join('')
-      : '<span class="cr-lbl">Nenhum save na pasta ' + SAVE_DIR + '/ do repositório ainda.</span>';
+      : '<p class="cr-note cr-wrap">Nenhum save na pasta ' + SAVE_DIR + '/ do repositório ainda.</p>';
     box.querySelectorAll('[data-repo]').forEach(b => b.addEventListener('click', async () => { b.disabled = true; try { crAfterImport(await crImportUrl(files[+b.dataset.repo].url)); } catch (err) { crSaveMsg('Falha ao baixar: ' + err.message); b.disabled = false; } }));
-  } catch (err) { box.innerHTML = '<span class="cr-lbl">Não consegui acessar o GitHub (' + esc(err.message) + '). Sem internet? Use "Importar arquivo".</span>'; }
+  } catch (err) { box.innerHTML = '<p class="cr-note cr-wrap">Não consegui acessar o GitHub (' + esc(err.message) + '). Sem internet? Use "Importar arquivo".</p>'; }
 });
 $('crExport').addEventListener('click', () => { saveCareer(); const fn = crDownload(); if (fn) { $s.CR.lastMsg = 'Save baixado: ' + fn + '. Coloque na pasta ' + SAVE_DIR + '/ do repositório e faça o push para abrir em outro lugar.'; renderCareer(); } });
-$('crSwitch').addEventListener('click', () => { saveCareer(); crCloseSlot(); crSaveMsg(''); renderCareer(); });
+$('crSwitch').addEventListener('click', () => { saveCareer(); crCloseSlot(); crEntry = 'load'; crSaveMsg(''); renderCareer(); });
 // botão da nuvem: abre a lista de carreiras com a conta no topo (logado, a carreira já sobe sozinha)
-$('crCloudBtn').addEventListener('click', () => { saveCareer(); if (CL.sess) clFlush(); crCloseSlot(); crSaveMsg(''); renderCareer(); const c = $('crCloud'); if (c) c.scrollIntoView({ block: 'start' }); });
+$('crCloudBtn').addEventListener('click', () => { saveCareer(); if (CL.sess) clFlush(); crCloseSlot(); crEntry = CL.sess ? 'load' : 'conta'; crSaveMsg(''); renderCareer(); const c = $('crCloud'); if (c) c.scrollIntoView({ block: 'start' }); });
 // criação
 const crForm = { fem: false, style: 'completo', perfil: 'promessa', skin: SKINS[2], hair: HAIRS[1], acc: 'cap', canhoto: false, alt: 182, attrs: null, key: '' };
 // atributos na criação: o estilo distribui os pontos; dá para mexer com − e + (o total não passa o do estilo)
