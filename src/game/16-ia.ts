@@ -43,7 +43,7 @@ function gapX(team, jitter) {
 }
 // o "cérebro" de cada robô vem do próprio overall (reação, erros, qualidade, leitura de jogo);
 // a dificuldade só ajusta os adversários na partida rápida/campeonato (na carreira o nível vem do overall de cada um)
-if (typeof window !== 'undefined') window.__pdoAI = { charSkill: p => charSkill(p), homeOf: p => homeOf(p), expectK: (o, k) => expectK(o, k) };
+if (typeof window !== 'undefined') window.__pdoAI = { charSkill: p => charSkill(p), homeOf: p => homeOf(p), bestPlay: (p, y) => bestPlay(p, y), expectK: (o, k) => expectK(o, k) };
 function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
@@ -327,15 +327,27 @@ function updateHuman(dt, c = localCtl()) {
 }
 function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z) < 3.2); }
 function oppAllDeep(team) { return $s.teams[1 - team].every(o => Math.abs(o.pos.z) > 6.2); }
-// jogada mais eficaz para a situação (posição, altura da bola, onde estão os adversários e os seus atributos)
+// jogada mais eficaz para a situação: dá nota a cada golpe olhando onde os adversários estão e para onde estão indo
+// (quem vem subindo para a rede conta como já na rede), a altura da bola, a própria distância da rede e os atributos de quem bate
+// e de quem recebe; grudou na rede → lob por cima; ficou no fundo → curta; bola alta perto da rede → smash
 function bestPlay(p, y) {
-  const netD = Math.abs(p.pos.z), opp = $s.teams[1 - p.team], near = opp.filter(o => Math.abs(o.pos.z) < 3.4).length, deep = opp.filter(o => Math.abs(o.pos.z) > 5.4).length;
-  if (y >= 2.1) return netD < 4 || attrK(p, 'smash') > .62 ? 'smash' : near && attrK(p, 'lob') > .6 ? 'lob' : 'defesa';
-  if (y >= 1.45 && netD < 3.2) return 'smash';
-  if (deep === opp.length && attrK(p, 'curta') > .5) return 'curta';
-  if (near === opp.length && attrK(p, 'lob') > .6) return 'lob'; // lob só com lob bom (lob curto vira smash do outro lado)
-  if (deep && near && attrK(p, 'curta') > .55 && netD < 4.5) return 'curta';
-  return 'defesa';
+  const netD = Math.abs(p.pos.z), opp = $s.teams[1 - p.team]; if (!opp.length) return 'defesa';
+  const dPred = o => clamp(Math.abs(o.pos.z) + (o.vel ? -Math.sign(o.pos.z || 1) * o.vel.z : 0) * -.45, 0, 9); // indo para a rede encurta
+  const ds = opp.map(dPred), dMin = Math.min(...ds), dMax = Math.max(...ds);
+  const atNet = ds.map(d => clamp((3.9 - d) / 2.2, 0, 1)), allNet = Math.min(...atNet), anyNet = Math.max(...atNet);
+  const cover = clamp((dMax - 5.2) / 1.2, 0, 1) * (opp.length > 1 ? 1 : 0); // o parceiro do fundo cobre o lob
+  const lobK = attrK(p, 'lob'), curK = attrK(p, 'curta'), smK = attrK(p, 'smash'), defK = attrK(p, 'def');
+  const weakOH = Math.min(...opp.map(o => (attrK(o, 'smash') + attrK(o, 'vel')) / 2)); // lob contra quem não volta bem
+  const sc = {
+    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (.55 + lobK * .6) * (1.15 - weakOH * .3) - (y >= 2.1 && netD < 3.2 ? .5 : 0),
+    curta: clamp((dMin - 4.3) / 1.6, 0, 1) * (.5 + curK * .6) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
+    smash: (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
+    defesa: .33 + defK * .1
+  };
+  if (y >= 1.45 && netD > 4.6 && smK < .62) sc.smash *= .6;
+  if (netD > 4.6 && allNet > .6 && lobK > .45) sc.smash *= .55; // do fundo contra quem está grudado na rede o smash volta no voleio: lob por cima // smash do fundo sem smash para isso: melhor devolver
+  let best = 'defesa', bv = -1; for (const k in sc) { const v = sc[k] + rand(0, .06); if (v > bv) { bv = v; best = k; } }
+  return best;
 }
 function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
