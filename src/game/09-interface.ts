@@ -201,6 +201,10 @@ function rateFrom(wonB) {
   const pp = S.stats.pts, lost = Math.max(0, pp[1] - (S.perf.mateErr || 0)), bal = (pp[0] - lost) / Math.max(8, pp[0] + lost);
   // começo de jogo pesa menos (divide por pelo menos √20): poucos pontos bons não disparam a nota
   let r = 6 + S.perf.sum * 2 / Math.sqrt(Math.max(20, S.perf.n)) + wonB + bal * (dupla() ? .55 : 1.2);
+  // jogo limpo: muitas jogadas boas e (quase) nenhum erro seu ganha um bônus (até +1,2); cada erro seu tira 1/4 dele (forçado, 1/8)
+  { const ev = S.perf.ev, cnt = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
+    const errs = cnt(/^(e_|furou)/) + cnt(/^erroF$/) * .5, good = cnt(/^(w_|finaliz|ptBola|smashPerf|defBoa|curtaTop|curtaBoa|lobChutado)/);
+    r += Math.max(0, 1 - errs * .25) * clamp(good / 8, 0, 1) * 1.2; }
   if (r > 8) r = 8 + (r - 8) * .65;
   return Math.round(clamp(r, 1, 10) * 10) / 10;
 }
