@@ -424,6 +424,17 @@
     <div class="cta-row"><button type="button" class="cta" id="gameCfgClose">Fechar</button></div>
   </div>
 </div>
+<!-- Nova senha (volta do link de recuperação do e-mail) -->
+<div id="clReset" class="overlay" hidden>
+  <div class="card" style="width:min(100%,440px);display:grid;gap:12px">
+    <div><div class="eyebrow">Conta na nuvem</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">NOVA SENHA</h2></div>
+    <p class="cr-note" id="clResetWho"></p>
+    <input id="clResetPw" class="cr-sel" type="password" placeholder="nova senha (mín. 6)" autocomplete="new-password">
+    <input id="clResetPw2" class="cr-sel" type="password" placeholder="repita a nova senha" autocomplete="new-password">
+    <p class="cr-msg" id="clResetMsg" hidden></p>
+    <div class="cta-row"><button type="button" class="cta" id="clResetOk">Salvar nova senha</button><button type="button" class="ghost" id="clResetClose">Fechar</button></div>
+  </div>
+</div>
 <!-- Barra de golpe (smash, lob e saque) -->
 <div id="barCfg" class="overlay" hidden>
   <div class="card" style="width:min(100%,520px);display:grid;gap:12px">

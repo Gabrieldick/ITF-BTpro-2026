@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -345,7 +345,7 @@ function renderCloud() {
   if (!CL.sess) {
     box.innerHTML = '<div class="cr-cloud-in"><b>☁️ Salvar na nuvem</b><span>Crie uma conta (e-mail e senha) para as carreiras irem para a nuvem sozinhas e abrirem em qualquer aparelho.</span>'
       + '<div class="cta-row"><input id="clEmail" class="cr-sel" type="email" placeholder="e-mail" autocomplete="email"><input id="clPw" class="cr-sel" type="password" placeholder="senha (mín. 6)" autocomplete="current-password">'
-      + '<button class="cta sm" id="clIn" type="button">Entrar</button><button class="ghost sm" id="clUp" type="button">Criar conta</button></div>'
+      + '<button class="cta sm" id="clIn" type="button">Entrar</button><button class="ghost sm" id="clUp" type="button">Criar conta</button><button class="ghost sm" id="clForgot" type="button">Esqueci a senha</button></div>'
       + (CL.msg ? '<span class="cr-lbl">' + esc(CL.msg) + '</span>' : '') + '</div>';
     const go = async (fn, up) => {
       const em = $('clEmail').value.trim(), pw = $('clPw').value;
@@ -356,6 +356,12 @@ function renderCloud() {
       clBusy = false; renderCloud(); clRefresh();
     };
     $('clIn').addEventListener('click', () => go(clSignIn)); $('clUp').addEventListener('click', () => go(clSignUp, true));
+    $('clForgot').addEventListener('click', async () => {
+      const em = $('clEmail').value.trim(); if (!em) { CL.msg = 'Digite o seu e-mail e clique em "Esqueci a senha".'; renderCloud(); return; }
+      try { await clRecover(em); CL.msg = 'Pronto: se houver uma conta com ' + em + ', chegou um e-mail com o link para criar uma nova senha (veja também o spam).'; }
+      catch (e) { CL.msg = 'Não consegui enviar: ' + e.message; }
+      renderCloud();
+    });
     return;
   }
   const rows = clRows || [];
@@ -380,6 +386,23 @@ function renderCloud() {
     try { await clRemove(b.dataset.clDel); CL.msg = 'Apagada da nuvem (a deste aparelho continua).'; } catch (e) { CL.msg = 'Falha ao apagar: ' + e.message; }
     clRefresh();
   }));
+}
+// voltou de um link do e-mail: recuperação abre a tela de nova senha; confirmação de conta já entra
+{
+  const onLink = () => {
+    const kind = clFromLink();
+    if (kind === 'recovery') { $('clResetWho').textContent = 'Conta: ' + ((CL.sess && CL.sess.email) || ''); $('clReset').hidden = false; }
+    else if (kind) { CL.msg = 'E-mail confirmado: você já está conectado.'; clSyncAll(); }
+  };
+  onLink(); addEventListener('hashchange', onLink);
+  $('clResetClose').addEventListener('click', () => { $('clReset').hidden = true; });
+  $('clResetOk').addEventListener('click', async () => {
+    const a = $('clResetPw').value, b = $('clResetPw2').value, m = $('clResetMsg'); m.hidden = false;
+    if (a.length < 6) { m.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+    if (a !== b) { m.textContent = 'As duas senhas não são iguais.'; return; }
+    try { await clNewPassword(a); m.textContent = 'Senha trocada! Você já está conectado.'; clSyncAll(); setTimeout(() => { $('clReset').hidden = true; }, 1500); }
+    catch (e) { m.textContent = 'Não consegui trocar: ' + e.message; }
+  });
 }
 CL.onChange = () => { if (!$('crSaves').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {
