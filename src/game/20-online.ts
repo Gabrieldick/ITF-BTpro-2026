@@ -163,7 +163,7 @@ async function createRoom() {
       try { peer = await openPeer(Peer, PREFIX + code); } catch (e) { if (e.type !== 'unavailable-id') throw e; }
     }
     if (!peer) throw { type: 'unavailable-id' };
-    ON.peer = peer; ON.code = code; ON.open = true; NET.role = 'host'; backupSettings();
+    ON.peer = peer; ON.code = code; ON.open = true; NET.role = 'host'; backupSettings(); S.cpuLv = 3;
     ON.self = { id: 'host', name, pick: S.settings.pick.me };
     const pk = S.settings.pick;
     ON.room = { kind: 'match', mode: S.settings.mode === 'simples' ? 'simples' : 'dupla', seats: { A1: 'host', A2: null, B1: null, B2: null }, cpu: { A1: pk.mate, A2: pk.mate, B1: pk.o1, B2: pk.o2 }, champ: null, playing: false };
@@ -213,7 +213,7 @@ function lobbyState() {
   return {
     code: ON.code, kind: ON.room.kind, mode: ON.room.mode, games: S.settings.games, diff: S.settings.diff, court: S.settings.court || 'praia',
     members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt), cc: m.cc || null, rk: m.rk || '' })),
-    seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing,
+    seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing, cpuLv: ON.room.cpuLv || 3,
   };
 }
 function broadcast() {
@@ -244,6 +244,7 @@ function act(mid, m) {
     const other = SEATS.find(s => s !== m[1] && room.cpu[s] === m[2]); if (other) room.cpu[other] = room.cpu[m[1]];
     room.cpu[m[1]] = m[2];
   }
+  if (mid === 'host' && m[0] === 'cpulv' && !room.playing) { room.cpuLv = clamp(Math.round(+m[1] || 3), 1, 6); S.cpuLv = room.cpuLv; } // nível da CPU (estrelas)
   if (mid === 'host' && m[0] === 'kind' && !room.playing) room.kind = m[1] === 'champ' ? 'champ' : 'match';
   if (mid === 'host' && m[0] === 'games' && !room.playing) { S.settings.games = +m[1] === 6 ? 6 : 4; const r = document.querySelector('input[name=len][value="' + S.settings.games + '"]'); if (r) r.checked = true; } // duração escolhida na sala (o menu em passos não passa pela escolha de games)
   if (mid === 'host' && m[0] === 'mode' && !room.playing && !(room.champ && room.champ.champion === null)) room.mode = m[1] === 'simples' ? 'simples' : 'dupla';
@@ -803,6 +804,7 @@ function renderRoom(force) {
   const champRunning = L.champ && L.champ.champion === null;
   document.querySelectorAll('input[name=onMode]').forEach(r => { r.checked = r.value === L.mode; r.disabled = !host || L.playing || (L.kind === 'champ' && champRunning); });
   document.querySelectorAll('input[name=onGames]').forEach(r => { r.checked = +r.value === L.games; r.disabled = !host || L.playing; });
+  { const cl = $('onCpuLv'); cl.value = String(L.cpuLv || 3); cl.disabled = !host || L.playing; }
   $('onMatch').hidden = L.kind !== 'match'; $('onChamp').hidden = L.kind !== 'champ';
   if (L.kind === 'match') renderSeats(L, me, host, force); else renderChamp(L, me, host, force);
   const play = $('onPlay');
@@ -889,6 +891,7 @@ $('onCcFile').addEventListener('change', e => { const f = e.target.files && e.ta
 document.querySelectorAll('input[name=onKind]').forEach(r => r.addEventListener('change', () => doAct(['kind', r.value])));
 document.querySelectorAll('input[name=onMode]').forEach(r => r.addEventListener('change', () => doAct(['mode', r.value])));
 document.querySelectorAll('input[name=onGames]').forEach(r => r.addEventListener('change', () => doAct(['games', r.value])));
+$('onCpuLv').addEventListener('change', e => doAct(['cpulv', e.target.value]));
 $('onPlay').addEventListener('click', () => { ac(); if (NET.role === 'host') hostPlay(); });
 $('onLeave').addEventListener('click', () => { leave(''); closeOnline(); });
 $('onCopy').addEventListener('click', () => {

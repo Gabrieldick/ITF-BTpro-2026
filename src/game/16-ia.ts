@@ -48,13 +48,15 @@ function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
-  const adj = S.careerActive ? [-.04, -.03, 0, .16, .32, .5][(S.careerStars || 3) - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
+  const stars = S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
+  const adj = stars ? [-.04, -.03, 0, .16, .32, .5][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
   const kb = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)), 0, 1);
   // estrelas: mudam a leitura de jogo (reação, posicionamento, escolha do golpe, não furar a bola);
   // a técnica (qualidade, força, erro do golpe) continua sendo a do atributo: um 60 no Lendário ainda erra smash do fundo
   const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
-  const dm = p.team === 1 && !S.careerActive ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
+  const dm = p.team === 1 && !stars ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
     speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react, smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
@@ -63,7 +65,7 @@ function charSkill(p) {
     netK: lerp(.8, .45, Math.min(1, kt)), // erro de nível baixo vai mais na rede que para fora
     // estrelas baixas (carreira): a CPU troca bola sem pancada — golpes mais lentos, quase sem smash forte, lob baixo e saque sem força
     k, up: Math.max(0, adj), // up: quanto as estrelas sobem acima do padrão (0 no padrão: nada muda)
-    soft: S.careerActive ? [.7, .84, 1, 1, 1, 1][(S.careerStars || 3) - 1] : 1,
+    soft: stars ? [.7, .84, 1, 1, 1, 1][stars - 1] : 1,
   };
 }
 // tática da sua dupla: 'fraco' = mirar no adversário mais fraco, 'meio' = entre os dois, 'lobs' = mais lobs no fundo
