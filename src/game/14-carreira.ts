@@ -815,9 +815,9 @@ function crAfterMyMatch(won) {
   const t = $s.CR.tour; $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
   const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
-  // evolução por partida: vitória ≈ 5 no Amador C, ≈ 12 no BT200 e ≈ 14 no Sand Series (sobe bem menos que o custo dos atributos);
+  // evolução por partida: vitória ≈ 2 no Amador C, ≈ 12 no BT200 e ≈ 15 no Sand Series (sobe bem menos que o custo dos atributos);
   // derrota rende 30% disso
-  const winPE = (4 + t.tier * .9) * 1.25; // +25%: com torneio a cada ~2 semanas, cada partida vale mais
+  const winPE = (1.6 + t.tier * 1.3) * 1.25; // ≈2 no Amador C, ≈6,8 no BT10, ≈11,8 no BT200 (começo bem mais enxuto)
   $s.CR.pe += Math.round((won ? winPE : winPE * .3) * crXpMul());
   // nota alta rende mais (a partir de 8; nota 10 dobra o que a vitória dá)
   const rb = t.lastRating && t.lastRating.r > 8 ? Math.round((t.lastRating.r - 8) / 2 * winPE * crXpMul() * 10) / 10 : 0;
@@ -899,8 +899,10 @@ function crFinishTour() {
   let place = 0;
   if (t.champion !== t.me) { const lostAt = t.rounds.findIndex(rd => rd.some(m => (m.a === t.me || m.b === t.me) && m.w !== null && m.w !== t.me)); place = nR - lostAt; }
   // títulos e finais rendem bem mais evolução (bônus cresce com o nível do torneio)
-  const xpBonus = place === 0 ? 4 + t.tier * 1.6 : place === 1 ? 1.5 + t.tier * .6 : 0;
-  const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round(((T.xp[place] || 0) + xpBonus) * crXpMul());
+  const xpBonus = place === 0 ? 2 + t.tier * 1.8 : place === 1 ? .8 + t.tier * .7 : 0;
+  // amadores rendem menos evolução no fim do torneio (atributo ainda é barato nesse nível)
+  const xpLow = t.tier <= 2 ? .45 + t.tier * .2 : 1;
+  const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round(((T.xp[place] || 0) * xpLow + xpBonus) * crXpMul());
   $s.CR.money += prize; $s.CR.pe += xp;
   $s.CR.results.push({ w: absWeek(), pts });
   if (!nation) crCatAdd('crme', t.tier, pts, absWeek()); // conta para as categorias das seleções estaduais
