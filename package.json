@@ -14,6 +14,7 @@
     "simular": "npm run build:sim && node ferramentas/teste/simular.js ferramentas/teste/build/jogo-sim.js medio bot dupla"
   },
   "dependencies": {
+    "@supabase/realtime-js": "2.118.0",
     "lz-string": "^1.5.0",
     "peerjs": "1.5.5",
     "three": "0.170.0"

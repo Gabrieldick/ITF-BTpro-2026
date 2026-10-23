@@ -13,7 +13,7 @@ import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
-import { crSlots, crSlotChar, crCharFromJSON } from './14-carreira';
+import { crSlots, crSlotChar, crCharFromJSON, SB_URL, SB_KEY } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
 import { defenseFlash } from './11-mira';
 import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers, applyMeterLook } from './12-controles';
@@ -60,10 +60,45 @@ function chipStatus() {
   if (NET.role === 'host') chip.textContent = 'Online · ' + (ON.guests.length + 1) + ' na sala';
   else chip.textContent = 'Online' + (ON.rtt ? ' · ' + Math.round(ON.rtt) + ' ms' : '') + (S.spectate ? ' · assistindo' : '');
 }
+// ---------- lista de salas abertas (Supabase Realtime Presence: sem tabela; a sala some sozinha quando o anfitrião sai) ----------
+const RL = { client: null, ch: null, rooms: [], tracked: false, state: '', last: '' };
+async function rlChannel() {
+  if (RL.ch) return RL.ch;
+  const { RealtimeClient } = await import('@supabase/realtime-js');
+  RL.client = new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY } });
+  const ch = RL.client.channel('salas-v1', { config: { presence: { key: 'p' + Math.random().toString(36).slice(2, 9) } } });
+  ch.on('presence', { event: 'sync' }, () => { RL.rooms = Object.values(ch.presenceState()).flat().filter(x => x && x.code); renderRoomList(); });
+  RL.ch = ch; RL.state = 'conectando'; renderRoomList();
+  try { await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('tempo esgotado')), 12000); ch.subscribe(st => { if (st === 'SUBSCRIBED') { clearTimeout(t); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') { clearTimeout(t); rej(new Error(st)); } }); }); }
+  catch (e) { try { RL.client.disconnect(); } catch (e2) {} RL.client = null; RL.ch = null; RL.tracked = false; throw e; } // sem servidor: para de tentar (tenta de novo ao reabrir o online)
+  RL.state = 'ok'; renderRoomList();
+  return ch;
+}
+const rlPublic = () => !$('onPublic') || $('onPublic').checked;
+// anfitrião: anuncia (ou atualiza) a sala na lista; só quando o jogador deixou a sala pública
+async function rlAnnounce() {
+  if (NET.role !== 'host' || !ON.room || !ON.code) return;
+  if (!rlPublic()) { rlStop(); return; }
+  const info = { code: ON.code, host: (ON.self && ON.self.name) || 'Jogador', mode: ON.room.mode, n: members().length, playing: !!ON.room.playing };
+  const key = JSON.stringify(info); if (key === RL.last && RL.tracked) return; RL.last = key;
+  try { const ch = await rlChannel(); await ch.track(Object.assign({ at: Date.now() }, info)); RL.tracked = true; } catch (e) { RL.state = 'erro'; }
+}
+async function rlStop() { RL.last = ''; if (RL.ch && RL.tracked) { RL.tracked = false; try { await RL.ch.untrack(); } catch (e) {} } }
+function renderRoomList() {
+  const box = $('onRooms'); if (!box) return;
+  if (RL.state === 'erro') { box.innerHTML = '<p class="cr-note cr-wrap">Lista de salas indisponível agora (sem conexão com o servidor). Entre pelo código.</p>'; return; }
+  if (RL.state !== 'ok') { box.innerHTML = '<p class="cr-note cr-wrap">Procurando salas abertas…</p>'; return; }
+  const list = RL.rooms.filter(r => r.code !== ON.code).sort((a, b) => (a.playing - b.playing) || (b.at - a.at));
+  box.innerHTML = list.length ? list.map(r => '<div class="cr-slot"><div class="who"><b>Sala de ' + escHtml(r.host || 'Jogador') + '</b><span>' + (r.mode === 'simples' ? 'Simples' : 'Dupla') + ' · ' + (r.n || 1) + (r.n === 1 ? ' jogador' : ' jogadores') + ' · código ' + escHtml(r.code) + (r.playing ? ' · em partida' : '') + '</span></div><div class="acts"><button class="cta sm" data-room="' + escHtml(r.code) + '">Entrar</button></div></div>').join('')
+    : '<p class="cr-note cr-wrap">Nenhuma sala aberta agora. Crie uma e ela aparece aqui para os outros.</p>';
+  box.querySelectorAll('[data-room]').forEach(b => b.addEventListener('click', () => { $('onCode').value = b.dataset.room; joinRoom(); }));
+}
+const escHtml = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function openOnline() {
   ac(); readMenu(); // usa o que está marcado no menu (games, dificuldade, jogadores)
   msg('');
   if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); $('onName').value = ON.name; setTimeout(() => $('onCode').focus(), 0); }
+  if (!NET.role) { renderRoomList(); rlChannel().catch(() => { RL.state = 'erro'; renderRoomList(); }); }
 }
 function closeOnline() { $('online').hidden = true; el.menu.hidden = false; syncMenu(); }
 function myName() {
@@ -718,6 +753,7 @@ NET.guestTick = guestTick;
 // ---------- sair ----------
 // sai do online de vez (fecha a sala ou sai dela) e volta à tela inicial do online com o aviso
 function leave(text) {
+  rlStop();
   const was = NET.role;
   if (was === 'host') for (const g of ON.guests) { sendTo(g.conn, ['bye']); const c = g.conn; setTimeout(() => { try { c.close(); } catch (e) {} }, 150); }
   if (was === 'guest') { send(['bye']); const c = ON.conn; setTimeout(() => { try { c && c.close(); } catch (e) {} }, 150); }
@@ -744,6 +780,7 @@ function toLobbyScreen() {
 function memberOf(L, id) { return L.members.find(m => m.id === id); }
 function renderRoom(force) {
   const L = ON.L; if (!L) return;
+  if (NET.role === 'host') rlAnnounce(); // atualiza a sala na lista pública (jogadores, em partida)
   const host = NET.role === 'host', me = ON.myId || (host ? 'host' : '');
   $('onCodeShow').textContent = L.code;
   const myRtt = host ? '' : ON.rtt ? ' · ' + Math.round(ON.rtt) + ' ms' : '';
