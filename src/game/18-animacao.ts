@@ -424,7 +424,8 @@ function updateVisuals(dt) {
   if (incoming && S.settings.assistMark) {
     // noção de jogo de quem você controla: no 87 o anel é o normal; abaixo, maior e um pouco fora do lugar (no 40, ~2× o raio)
     const lv = human.char ? attrOf(human.char.a, 'leitura') : 87, rk = lv >= 87 ? lerp(1, .85, (lv - 87) / 12) : 1 + (87 - lv) / 47;
-    if (RING_ERR.id !== S.hitId) { const an = Math.random() * Math.PI * 2, d = Math.random() * Math.max(0, rk - 1) * .2; RING_ERR.id = S.hitId; RING_ERR.x = Math.cos(an) * d; RING_ERR.z = Math.sin(an) * d; }
+    // a bola cai em qualquer ponto dentro do anel (não só no meio): o anel é a área de incerteza; quanto maior, menos você sabe
+    if (RING_ERR.id !== S.hitId) { const an = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * .2 * rk; RING_ERR.id = S.hitId; RING_ERR.x = Math.cos(an) * d; RING_ERR.z = Math.sin(an) * d; }
     const l = predictLanding(); landRing.position.set(l.x + RING_ERR.x, .02, l.z + RING_ERR.z); landRing.visible = true;
     landRing.material.color.copy(mine ? RING_MINE : RING_MATE); landRing.material.opacity = mine ? .8 : 1; // o do parceiro mais forte
     const pulse = (1 + Math.sin(performance.now() / 90) * .12) * rk * (mine ? 1 : 1.12); landRing.scale.set(pulse, pulse, 1);
