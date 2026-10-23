@@ -1248,6 +1248,8 @@ function crBandStep(rating) {
   if (overall(a) > Math.floor($s.CR.potCur)) { const k = ATTRS.map(([k]) => k).sort((x, y) => a[y] - a[x])[0]; a[k]--; $s.CR.bandDrop = ($s.CR.bandDrop || 0) + 1; crSyncChars(); }
   return $s.CR.potCur - before;
 }
+// eventos que aceleram o potencial: mentor (+40%) e temporada na Itália (+20%)
+const crPotBoost = () => 1 + ($s.CR.mentor > 0 ? .4 : 0) + ($s.CR.boostW > 0 ? .2 : 0);
 function crPotGain(rating, tier) {
   const gate = crGate();
   if (gate.cap >= 99 && $s.CR.potCur >= 90) return crBandStep(rating);
@@ -1261,7 +1263,7 @@ function crPotGain(rating, tier) {
   // começo de carreira (amador) cresce bem mais rápido: ×2,2 até 50, caindo até ×1 no 66
   const lowK = 1 + 1.2 * clamp((66 - $s.CR.potCur) / 16, 0, 1);
   // ~+0,6 a +1 num torneio jogado muito bem (notas ~9); nota média rende bem menos
-  const g = Math.min(lim - $s.CR.potCur, (rating - 5.5) * .075 * (.8 + (tier || 0) * .05) * room * ahead * hiK * lowK);
+  const g = Math.min(lim - $s.CR.potCur, (rating - 5.5) * .075 * (.8 + (tier || 0) * .05) * room * ahead * hiK * lowK * crPotBoost());
   if (g <= 0) return 0;
   $s.CR.potCur += g;
   return g;
@@ -1406,10 +1408,10 @@ const EVENTS = {
     resolve: i => { if (i === 0) { $s.CR.chem = Math.min(5, $s.CR.chem + 1); return 'Conversa boa: entrosamento subiu.'; } $s.CR.chem = Math.max(0, $s.CR.chem - 2); if (Math.random() < .35) { const n = nameOf(crChar($s.CR.partner)); $s.CR.partner = null; $s.CR.chem = 0; return n + ' desfez a dupla.'; } return 'O clima esfriou: entrosamento caiu.'; } },
   beneficente: { w: 1.2, ok: () => true, choice: () => ({ text: 'Convite para um torneio beneficente de exibição.', opts: ['Jogar (−15 energia, +fama)', 'Recusar'] }),
     resolve: i => { if (i === 0) { $s.CR.energy = Math.max(0, $s.CR.energy - 15); crAddFama(7); crMaybeSponsor(); return 'Exibição lotada: +7 de fama.'; } return 'Você preferiu poupar energia.'; } },
-  mentor: { w: 1, ok: () => $s.CR.money > 400, choice: () => { const c = 300 * (crMaxTier() + 1); return { text: 'Um ex-campeão mundial se oferece para ser seu mentor por 4 semanas.', opts: ['Aceitar (' + money(c) + ', +50% de evolução)', 'Recusar'], data: { c } }; },
-    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; $s.CR.mentor = 4; return 'Mentoria começou: 4 semanas com +50% de evolução.'; } return 'Fica para a próxima.'; } },
-  europa: { w: .9, ok: () => crMaxTier() >= 3, choice: () => { const c = 400 * (crMaxTier() + 1); return { text: 'Uma academia na Itália te convida para treinar 4 semanas com a elite do circuito.', opts: ['Ir (' + money(c) + ', +40% de evolução por 4 semanas)', 'Ficar no Brasil'], data: { c } }; },
-    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; $s.CR.boostW = 4; return 'Temporada na Itália: 4 semanas com +40% de evolução.'; } return 'Você preferiu manter a rotina.'; } },
+  mentor: { w: 1, ok: () => $s.CR.money > 400, choice: () => { const c = 300 * (crMaxTier() + 1); return { text: 'Um ex-campeão mundial se oferece para ser seu mentor por 4 semanas.', opts: ['Aceitar (' + money(c) + ', +50% de evolução e +40% de potencial)', 'Recusar'], data: { c } }; },
+    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; $s.CR.mentor = 4; return 'Mentoria começou: 4 semanas com +50% de evolução e +40% de potencial por partida.'; } return 'Fica para a próxima.'; } },
+  europa: { w: .9, ok: () => crMaxTier() >= 3, choice: () => { const c = 400 * (crMaxTier() + 1); return { text: 'Uma academia na Itália te convida para treinar 4 semanas com a elite do circuito.', opts: ['Ir (' + money(c) + ', +40% de evolução e +20% de potencial por 4 semanas)', 'Ficar no Brasil'], data: { c } }; },
+    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; $s.CR.boostW = 4; return 'Temporada na Itália: 4 semanas com +40% de evolução e +20% de potencial por partida.'; } return 'Você preferiu manter a rotina.'; } },
   premiacao: { w: 1.1, ok: () => !!$s.CR.partner && crMaxTier() >= 2, choice: () => { const c = Math.round(TIERS[crMaxTier()].prize[0] * .15 / 10) * 10; return { text: nameOf(crChar($s.CR.partner)) + ' quer uma divisão maior das premiações daqui pra frente.', opts: ['Aceitar (' + money(c) + ' agora)', 'Negar'], data: { c } }; },
     resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; return crMood(15, 'Acordo fechado: seu parceiro ficou bem mais contente (+15 de humor).'); } return crMood(-14, 'Seu parceiro não gostou nada (−14 de humor).') || 'Seu parceiro não gostou nada (−14 de humor).'; } },
   serie: { w: .8, ok: () => $s.CR.fama >= 15, choice: () => ({ text: 'Uma série de TV quer acompanhar o seu dia a dia nas próximas semanas.', opts: ['Topar (+8 de fama, −15 de energia)', 'Manter a privacidade'] }),

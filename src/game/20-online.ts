@@ -16,7 +16,7 @@ import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
 import { defenseFlash } from './11-mira';
-import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers } from './12-controles';
+import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers, applyMeterLook } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
 import { sideOf } from './18-animacao';
 
