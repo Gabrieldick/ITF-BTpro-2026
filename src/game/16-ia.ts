@@ -374,8 +374,12 @@ function homeOf(p) {
   const s = p.team === 0 ? 1 : -1;
   const hz = styleOf(p).home;
   // estrelas altas: quem lê o jogo não fica plantado no fundo (onde a curta mata); no Lendário fica perto dos 4,4 m
-  const up = (p.skill && p.skill.up) || 0, deepMax = lerp(6.3, 4.5, clamp(up * 2.5, 0, 1));
-  if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up * 2, 0, .8)), 3.4, 6.4))];
+  // cada estilo mantém o seu jeito (paredão mais atrás, voleador na rede), só que sem exagero; e, quando o adversário vai bater
+  // perto da rede ou numa bola baixa (cheiro de curta), dá um passo à frente
+  const up = (p.skill && p.skill.up) || 0, deepMax = lerp(6.3, 5.05, clamp(up * 2.5, 0, 1));
+  let ahead = 0;
+  if (up > 0 && ball.state === 'live' && S.lastTeam === p.team) { const opp = $s.teams[1 - p.team] || [], l = predictLanding(); if (opp.some(o => Math.abs(o.pos.z) < 3.6) || Math.abs(l.z) < 3.4) ahead = clamp(up * 2.4, 0, 1) * .7; }
+  if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * (Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up, 0, .4)), 3.4, 6.4)) - ahead)];
   // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
   // o parceiro também acompanha a posição real do companheiro
   const fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
@@ -383,7 +387,7 @@ function homeOf(p) {
   let x = center + p.slot * hw;
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
-  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * Math.min(deepMax, clamp(4.6 + hz * (1 - clamp(up * 2, 0, .8)), 3.3, 6.2))];
+  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (Math.min(deepMax, clamp(4.6 + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) - ahead)];
 }
 // recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio
 function receiveX(p) {
