@@ -670,6 +670,8 @@ function showOver() {
   if (inChamp) champMatchEnded(w === 0);
   if (inCareer) careerMatchEnded(w === 0, rating === null ? undefined : rating);
   if (inCareer && rating !== null && $s.CR && $s.CR.tour && $s.CR.tour.log) { const last = $s.CR.tour.log[$s.CR.tour.log.length - 1] || ''; const m = last.match(/potencial \+[0-9,]+/); if (m) prependStats('<p class="cr-note perf-pot">Carreira: ' + m[0] + ' (o potencial é o teto dos seus atributos)</p>'); }
+  // nível da conta: XP por partida da carreira e do online (quem só assiste não ganha)
+  if (S.onMatchEnd && !S.spectate && (inCareer || NET.role)) S.onMatchEnd({ won: w === 0, career: inCareer, online: !!NET.role, rating, pts: S.stats.pts, addLine: prependStats });
   $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
   $('btnReplay').hidden = !(S.highlights && S.highlights.length);
   el.over.hidden = false;

@@ -765,3 +765,11 @@ body[data-tags="off"] .tag { display: none; }
 /* listas com textos longos (raquete com os bônus) não podem alargar a tela: o campo encolhe e corta o texto */
 #online .card > *, #onRoom, #onRoom > *, #onRoom .cr-field, .on-cc { min-width: 0; }
 #online select.cr-sel, .cr-field select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+.am-lv { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.am-lv b { padding: 2px 7px; border-radius: 10px; background: linear-gradient(90deg, #1e8bff, var(--ui-acc)); color: #041232; font: 700 12px var(--f-ui); letter-spacing: .04em; }
+.am-lv.wide { flex-basis: 100%; }
+.am-lv i { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.am-lv i u { display: block; height: 100%; background: var(--ui-acc2); text-decoration: none; }
+.am-lv small { color: var(--ui-sub); font-size: 11px; }
+.am-lvs { font-style: normal; font-size: 11px; color: var(--ui-acc); font-weight: 700; }
+.am-xpline b { color: var(--ui-acc2); }

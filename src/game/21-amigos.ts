@@ -30,6 +30,31 @@ const loadRead = () => { try { lastRead = JSON.parse(localStorage.getItem(readKe
 const saveRead = () => { try { localStorage.setItem(readKey(), JSON.stringify(lastRead)); } catch (e) {} };
 const errMsg = e => /relation .* does not exist|Could not find the table|schema cache/i.test(e.message) ? 'O servidor ainda não tem as tabelas de amigos (rode supabase/amigos.sql no Supabase).' : e.message;
 
+// ---------- nível da conta: XP por partida da carreira e do online ----------
+// guardado no aparelho (pend = ainda não enviado) e somado na conta pelo add_xp do servidor (supabase/nivel.sql)
+const LV = { xp: 0, pend: 0, srv: null };
+try { Object.assign(LV, JSON.parse(localStorage.getItem('pdo-xp') || '{}')); } catch (e) {}
+const lvSave = () => { try { localStorage.setItem('pdo-xp', JSON.stringify({ xp: LV.xp, pend: LV.pend })); } catch (e) {} };
+// do nível N para o N+1: 150 XP no 1, +50 a cada nível
+function lvOf(xp) { let L = 1, need = 150; xp = Math.max(0, xp | 0); while (xp >= need) { xp -= need; L++; need = 150 + 50 * (L - 1); } return { L, cur: xp, need }; }
+let xpBusy = false;
+async function syncXp() {
+  if (xpBusy || !CL.sess || !LV.pend || !AM.name || AM.hasXp === false) return;
+  xpBusy = true;
+  try { const n = Math.min(2000, LV.pend), r = await sbRest('rpc/add_xp', { method: 'POST', body: JSON.stringify({ n }) }); if (typeof r === 'number') { LV.pend -= n; LV.srv = r; LV.xp = r + LV.pend; lvSave(); render(); } } catch (e) {}
+  xpBusy = false;
+}
+const lvBar = (xp, wide) => { const v = lvOf(xp); return '<span class="am-lv' + (wide ? ' wide' : '') + '" title="' + v.cur + ' / ' + v.need + ' XP para o nível ' + (v.L + 1) + '"><b>Nv ' + v.L + '</b>' + (wide ? '<i><u style="width:' + Math.round(v.cur / v.need * 100) + '%"></u></i><small>' + v.cur + '/' + v.need + ' XP</small>' : '') + '</span>'; };
+S.onMatchEnd = o => {
+  const r = typeof o.rating === 'number' ? o.rating : null;
+  const gain = Math.round(o.career ? 40 + (o.won ? 30 : 0) + (r !== null ? clampN((r - 6) * 10, 0, 40) : 0) : 35 + (o.won ? 25 : 0) + Math.min(20, (o.pts && o.pts[0]) || 0));
+  const before = lvOf(LV.xp).L; LV.xp += gain; LV.pend += gain; lvSave();
+  const v = lvOf(LV.xp);
+  o.addLine('<p class="cr-note am-xpline">+' + gain + ' XP · ' + (v.L > before ? '<b>subiu para o nível ' + v.L + '!</b>' : 'nível ' + v.L) + ' (' + v.cur + '/' + v.need + ')' + (CL.sess ? '' : ' · entre na conta para guardar o nível') + '</p>');
+  syncXp(); badge();
+};
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+
 // meu status para os amigos: escolhido (não perturbe / offline) ou automático (online, ausente após 3 min fora da página)
 const myStatus = () => AM.mode === 'invis' ? 'off' : AM.mode === 'dnd' ? 'dnd' : AM.away ? 'away' : 'on';
 
@@ -42,13 +67,17 @@ async function loadAll0() {
   const me = uidOf(tk); if (me !== AM.me) { AM.me = me; AM.name = null; AM.nameLoaded = false; AM.msgs = {}; AM.unread = {}; loadRead(); }
   AM.lastLoad = Date.now();
   try {
-    const p = await sbRest('profiles?select=username&user_id=eq.' + me);
+    // xp só existe depois do supabase/nivel.sql: sem a coluna, segue sem nível
+    const XS = () => AM.hasXp === false ? '' : ',xp';
+    const p = await sbRest('profiles?select=username' + XS() + '&user_id=eq.' + me).catch(e => { if (/xp/.test(e.message)) { AM.hasXp = false; return sbRest('profiles?select=username&user_id=eq.' + me); } throw e; });
+    if (AM.hasXp !== false) AM.hasXp = true;
     AM.name = p && p[0] ? p[0].username : null; AM.nameLoaded = true; AM.setup = true; AM.err = '';
+    if (p && p[0] && typeof p[0].xp === 'number') { LV.srv = p[0].xp; LV.xp = p[0].xp + LV.pend; lvSave(); syncXp(); }
     const fr = await sbRest('friendships?select=requester,addressee,status') || [];
     const ids = [...new Set(fr.map(f => f.requester === me ? f.addressee : f.requester))];
-    const names = ids.length ? await sbRest('profiles?select=user_id,username&user_id=in.(' + ids.join(',') + ')') || [] : [];
-    const nm = Object.fromEntries(names.map(n => [n.user_id, n.username]));
-    AM.friends = fr.map(f => { const id = f.requester === me ? f.addressee : f.requester; return { id, name: nm[id] || '?', st: f.status === 'accepted' ? 'ok' : f.requester === me ? 'pending-out' : 'pending-in' }; })
+    const names = ids.length ? await sbRest('profiles?select=user_id,username' + XS() + '&user_id=in.(' + ids.join(',') + ')') || [] : [];
+    const nm = Object.fromEntries(names.map(n => [n.user_id, n.username])), nx = Object.fromEntries(names.map(n => [n.user_id, n.xp]));
+    AM.friends = fr.map(f => { const id = f.requester === me ? f.addressee : f.requester; return { id, name: nm[id] || '?', lv: typeof nx[id] === 'number' ? lvOf(nx[id]).L : 0, st: f.status === 'accepted' ? 'ok' : f.requester === me ? 'pending-out' : 'pending-in' }; })
       .sort((a, b) => a.name.localeCompare(b.name));
     await sbRest('rpc/purge_old_messages', { method: 'POST', body: '{}' }).catch(() => {});
     const ms = await sbRest('messages?select=id,sender,recipient,kind,body,created_at&order=created_at.asc&limit=1000') || [];
@@ -236,13 +265,13 @@ function render() {
     const inc = AM.friends.filter(f => f.st === 'pending-in'), out = AM.friends.filter(f => f.st === 'pending-out'), ok = AM.friends.filter(f => f.st === 'ok'), room = myRoom();
     const order = { on: 0, dnd: 1, away: 2, off: 3 };
     ok.sort((a, b) => (order[AM.pres[a.id] || 'off'] - order[AM.pres[b.id] || 'off']) || a.name.localeCompare(b.name));
-    h = '<div class="am-me"><span>Você: <b>@' + esc(AM.name) + '</b></span><button type="button" class="ghost xs" data-am="editname">trocar</button>'
+    h = '<div class="am-me"><span>Você: <b>@' + esc(AM.name) + '</b></span><button type="button" class="ghost xs" data-am="editname">trocar</button>' + lvBar(LV.xp, true)
       + '<select id="amSt"><option value="auto">🟢 Online (ausente após 3 min fora)</option><option value="dnd">⛔ Não perturbe (sem som)</option><option value="invis">⚪ Aparecer offline</option></select></div>'
       + '<div class="am-row"><input id="amAdd" type="text" maxlength="17" placeholder="Adicionar amigo pelo nome de usuário" autocomplete="off"><button type="button" class="cta sm" data-am="add">Adicionar</button></div>'
       + (inc.length ? '<div class="am-sec"><b>Pedidos de amizade</b>' + inc.map(f => '<div class="am-fr"><span>@' + esc(f.name) + '</span><span class="am-act"><button type="button" class="cta xs" data-am="accept" data-id="' + f.id + '">Aceitar</button><button type="button" class="ghost xs" data-am="decline" data-id="' + f.id + '">Recusar</button></span></div>').join('') + '</div>' : '')
       + '<div class="am-sec"><b>Amigos (' + ok.length + ')</b>' + (ok.length ? ok.map(f => {
         const n = AM.unread[f.id] || 0;
-        return '<div class="am-fr" data-am="chat" data-id="' + f.id + '">' + dot(f.id) + '<span class="am-nm">@' + esc(f.name) + '<small>' + actTxt(f.id) + '</small></span>'
+        return '<div class="am-fr" data-am="chat" data-id="' + f.id + '">' + dot(f.id) + '<span class="am-nm"><span>@' + esc(f.name) + (f.lv ? ' <em class="am-lvs">Nv ' + f.lv + '</em>' : '') + '</span><small>' + actTxt(f.id) + '</small></span>'
           + (n ? '<em class="am-badge">' + n + '</em>' : '') + '<span class="am-act">'
           + (fRoom(f.id) ? '<button type="button" class="cta xs" data-am="join" data-code="' + esc(fRoom(f.id)) + '" title="Entrar na sala ' + esc(fRoom(f.id)) + '">Entrar</button>' : '')
           + (room ? '<button type="button" class="ghost xs" data-am="invite1" data-id="' + f.id + '" title="Convidar para a sala ' + room + '">🎾</button>' : '')
@@ -262,6 +291,7 @@ function render() {
 }
 async function sendText() { const i = $('amText'); if (!i) return; const v = i.value; i.value = ''; if (!(await send(AM.chat, v))) i.value = v; const j = $('amText'); if (j) j.focus(); }
 function badge() {
+  const lv = $('amLvl'); if (lv) lv.textContent = 'Nv ' + lvOf(LV.xp).L;
   const n = Object.values(AM.unread).reduce((t, v) => t + v, 0) + AM.friends.filter(f => f.st === 'pending-in').length;
   const b = $('amBadge'); if (b) { b.textContent = n > 9 ? '9+' : String(n); b.hidden = !n && !(CL.sess && AM.nameLoaded && !AM.name && AM.setup); if (!n && !b.hidden) b.textContent = '!'; }
 }
@@ -281,7 +311,7 @@ function closePanel() { AM.open = false; $('amPanel').hidden = true; }
 // monta os elementos (botão flutuante, painel e aviso)
 {
   const wrap = document.createElement('div');
-  wrap.innerHTML = '<button type="button" id="amBtn" class="am-btn" title="Amigos e chat">👥 Amigos<em id="amBadge" class="am-badge" hidden></em></button>'
+  wrap.innerHTML = '<button type="button" id="amBtn" class="am-btn" title="Amigos, chat e nível">👥 Amigos<span id="amLvl" class="am-lvs"></span><em id="amBadge" class="am-badge" hidden></em></button>'
     + '<aside id="amPanel" class="am-panel card" hidden><div class="am-head"><div class="eyebrow">Amigos e chat</div><button type="button" class="ghost xs" id="amClose" aria-label="Fechar">✕</button></div><div id="amBody" class="am-body"></div></aside>'
     + '<div id="amToast" class="am-toast" hidden></div>';
   document.body.append(...wrap.children);
