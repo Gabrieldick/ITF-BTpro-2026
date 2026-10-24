@@ -1164,7 +1164,7 @@ function crDrillReward(ok, pass, rew) {
   rew = rew || 1; // nível do desafio: mais difícil, mais recompensa
   const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew;
   $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
-  const pg = pass && $s.CR.potCur < 90 ? Math.min(.03 * rew * clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1) * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), Math.min($s.CR.pot, crGate().cap) - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
+  const pg = pass && $s.CR.potCur < 90 ? Math.min(.03 * rew * clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1) * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), Math.min(crPotMax(), crGate().cap) - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
   crWlog($s.CR.day, 'Quadra');
   crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
   return fmt1(g);
@@ -1239,8 +1239,10 @@ const POT_GATES = [
 // teto que os títulos liberam hoje (e o próximo marco, se houver)
 // (começar a carreira num nível já vale os marcos até ele)
 function crGate() { for (const g of POT_GATES) if (crTitlesAt(g.tier) < g.n && ($s.CR.startTier || 0) < g.tier) return { cap: g.cap, next: g, have: crTitlesAt(g.tier) }; return { cap: 99, next: null }; }
-// do 90 ao 99 (estilo 2K): o potencial segue a média das últimas 15 notas — média 10 leva ao 99, média 5 ao 90
-const crBandTarget = l => { const a = l.slice(-15), m = a.length ? a.reduce((t, v) => t + v, 0) / a.length : 5; return 90 + clamp((m - 5) / 5, 0, 1) * 9; };
+// até o 90 vale o potencial sorteado na criação (quem tem menos de 90 sobe até o 90 do mesmo jeito);
+// do 90 ao 99 (estilo 2K) quem manda é a nota: o potencial segue a média das últimas 15 — média 9,5 leva ao 99, 8,5 ao 97, 7 ao 94, 5 ao 90
+const crPotMax = () => Math.max($s.CR.pot, 90);
+const crBandTarget = l => { const a = l.slice(-15), m = a.length ? a.reduce((t, v) => t + v, 0) / a.length : 5; return 90 + clamp((m - 5) / 4.5, 0, 1) * 9; };
 function crBandStep(rating) {
   const tg = crBandTarget(($s.CR.ratings || []).concat([rating])), before = $s.CR.potCur;
   $s.CR.potCur = clamp($s.CR.potCur + (tg - $s.CR.potCur) * .12, 90, 99);
@@ -1255,8 +1257,8 @@ function crPotGain(rating, tier) {
   const gate = crGate();
   if (gate.cap >= 99 && $s.CR.potCur >= 90) return crBandStep(rating);
   if (rating < 5.5) return 0;
-  const lim = Math.min($s.CR.pot, gate.cap);
-  const room = clamp(($s.CR.pot - $s.CR.potCur) / 2.5, .35, 1); // só freia nos últimos ~2 pontos antes do máximo
+  const lim = Math.min(crPotMax(), gate.cap);
+  const room = clamp((crPotMax() - $s.CR.potCur) / 2.5, .35, 1); // só freia nos últimos ~2 pontos antes do máximo
   // potencial muito acima do seu overall quase não sobe mais (os pontos de evolução precisam alcançar)
   const ahead = clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1);
   // quanto mais alto o potencial, mais devagar ele sobe (≈7 por temporada no começo, ≈4 perto dos 85)
