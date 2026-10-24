@@ -5,6 +5,7 @@
 // Tabelas e regras de acesso: supabase/amigos.sql. O status vai por Realtime Presence (só o id da conta e o status).
 import './20-online';
 import { S, NET } from './01-estado';
+import { $s } from '../state';
 import { ac } from './08-audio';
 import { CL, sbRest, clToken, SB_URL, SB_KEY } from './14-carreira';
 import { $, el } from './09-interface';
@@ -15,6 +16,7 @@ const AM = {
   me: '', name: null, nameLoaded: false, setup: false, // setup: tabelas existem no servidor
   friends: [], // { id, name, st: 'pending-in' | 'pending-out' | 'ok' }
   msgs: {}, unread: {}, pres: {}, view: 'list', chat: null, open: false, err: '', note: '',
+  act: {}, // o que cada amigo está fazendo: { act: 'sala' | 'carreira' | 'partida' | 'menu', room, pl (jogando) }
   rt: null, ch: null, mode: 'auto', away: false, awaySince: 0, tracked: '', lastLoad: 0,
 };
 try { AM.mode = localStorage.getItem('pdo-amigos-st') || 'auto'; } catch (e) {}
@@ -83,7 +85,7 @@ async function connect() {
     const ch = rt.channel('amigos-v1', { config: { presence: { key: AM.me } } });
     ch.on('presence', { event: 'sync' }, () => {
       const st = ch.presenceState(); AM.pres = {};
-      for (const [k, arr] of Object.entries(st)) { const last = arr[arr.length - 1]; if (last && last.st) AM.pres[k] = last.st; }
+      for (const [k, arr] of Object.entries(st)) { const last = arr[arr.length - 1]; if (last && last.st) { AM.pres[k] = last.st; AM.act[k] = last; } }
       render();
     });
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'recipient=eq.' + AM.me }, p => { addMsg(p.new, true); render(); badge(); });
@@ -95,12 +97,26 @@ async function connect() {
 }
 function disconnect() {
   if (AM.rt) { try { AM.rt.disconnect(); } catch (e) {} }
-  AM.rt = null; AM.ch = null; AM.tracked = ''; AM.pres = {};
+  AM.rt = null; AM.ch = null; AM.tracked = ''; AM.pres = {}; AM.act = {};
+}
+// o que eu estou fazendo (vai junto com o status; quem aparece offline não manda nada)
+function myAct() {
+  const pl = !!inPlay();
+  if (NET.role && ON.code) return { act: 'sala', room: ON.code, pl };
+  if (S.careerActive || ($s.CR && !$('career').hidden)) return { act: 'carreira', pl: pl && !!S.careerActive };
+  return pl ? { act: 'partida', pl } : { act: 'menu' };
 }
 async function track() {
   if (!AM.ch) return;
-  const st = myStatus(); if (st === AM.tracked) return; AM.tracked = st;
-  try { if (st === 'off') await AM.ch.untrack(); else await AM.ch.track({ st }); } catch (e) { AM.tracked = ''; }
+  const st = myStatus(), info = st === 'off' ? null : Object.assign({ st }, myAct()), key = JSON.stringify(info);
+  if (key === AM.tracked) return; AM.tracked = key;
+  try { if (!info) await AM.ch.untrack(); else await AM.ch.track(info); } catch (e) { AM.tracked = ''; }
+}
+// "Online · na sala ABCDE (jogando)"
+function actTxt(id) {
+  const s = AM.pres[id] || 'off', a = AM.act[id]; if (s === 'off' || !a) return ST_TXT[s];
+  const t = a.act === 'sala' ? 'na sala ' + esc(a.room || '') : a.act === 'carreira' ? 'na carreira' : a.act === 'partida' ? 'numa partida' : 'no menu';
+  return ST_TXT[s] + ' · ' + t + (a.pl && a.act !== 'partida' ? ' (jogando)' : '');
 }
 let refreshT = 0;
 function refresh() { clearTimeout(refreshT); refreshT = setTimeout(loadAll, 400); }
@@ -110,13 +126,14 @@ setInterval(() => {
   const out = document.hidden || !document.hasFocus();
   if (out) { if (!AM.awaySince) AM.awaySince = Date.now(); } else AM.awaySince = 0;
   const away = !!AM.awaySince && Date.now() - AM.awaySince > 180000;
-  if (away !== AM.away) { AM.away = away; track(); render(); }
+  if (away !== AM.away) { AM.away = away; render(); }
+  track(); // status e atividade (só manda se mudou)
   // sessão mudou (entrou/saiu da conta) ou passou o dia
   const logged = !!CL.sess;
   if (!logged && AM.me) { AM.me = ''; AM.friends = []; AM.msgs = {}; AM.unread = {}; disconnect(); render(); badge(); }
   else if (logged && (!AM.me || Date.now() - AM.lastLoad > 10 * 60000)) loadAll(); // renova o token do tempo real e os dados
   syncBtn();
-}, 5000);
+}, 3000);
 addEventListener('focus', () => { if (AM.awaySince) { AM.awaySince = 0; if (AM.away) { AM.away = false; track(); render(); } } });
 
 // ---------- som e aviso ----------
@@ -179,6 +196,8 @@ async function send(to, body, kind = 'msg') {
     render(); return true;
   } catch (e) { AM.note = /row-level|policy/i.test(e.message) ? 'Só dá para mandar mensagem para amigos.' : errMsg(e); render(); return false; }
 }
+// sala do amigo em que dá para entrar (ele não está offline e eu não estou nela)
+const fRoom = id => { const a = AM.act[id]; return AM.pres[id] && AM.pres[id] !== 'off' && a && a.act === 'sala' && a.room && a.room !== ON.code ? a.room : ''; };
 const myRoom = () => NET.role && ON.code ? ON.code : '';
 function joinInvite(code) {
   if (NET.role) { AM.note = ON.code === code ? 'Você já está nessa sala.' : 'Saia da sala atual antes de entrar em outra.'; render(); return; }
@@ -205,7 +224,7 @@ function render() {
       + (AM.name ? '<button type="button" class="ghost sm" data-am="cancelname">Cancelar</button>' : '') + '</div>';
   } else if (AM.view === 'chat' && AM.chat) {
     const f = AM.friends.find(x => x.id === AM.chat) || { name: '?' }, l = AM.msgs[AM.chat] || [], room = myRoom();
-    h = '<div class="am-chathead"><button type="button" class="ghost sm" data-am="back">‹ Amigos</button>' + dot(AM.chat) + '<b>' + esc(f.name) + '</b><span class="am-sub">' + ST_TXT[AM.pres[AM.chat] || 'off'] + '</span></div>'
+    h = '<div class="am-chathead"><button type="button" class="ghost sm" data-am="back">‹ Amigos</button>' + dot(AM.chat) + '<b>' + esc(f.name) + '</b><span class="am-sub">' + actTxt(AM.chat) + '</span></div>' + (fRoom(AM.chat) ? '<button type="button" class="cta sm" data-am="join" data-code="' + esc(fRoom(AM.chat)) + '">Entrar na sala ' + esc(fRoom(AM.chat)) + '</button>' : '')
       + '<div class="am-msgs" id="amMsgs">' + (l.length ? l.map(m => {
         const mine = m.sender === AM.me;
         if (m.kind === 'invite') return '<div class="am-msg inv ' + (mine ? 'me' : '') + '"><span>' + (mine ? 'Você convidou para a sala ' : 'Convite para a sala ') + '<b>' + esc(m.body) + '</b></span>' + (mine ? '' : '<button type="button" class="cta sm" data-am="join" data-code="' + esc(m.body) + '">Entrar</button>') + '<small>' + hhmm(m.created_at) + '</small></div>';
@@ -223,8 +242,9 @@ function render() {
       + (inc.length ? '<div class="am-sec"><b>Pedidos de amizade</b>' + inc.map(f => '<div class="am-fr"><span>@' + esc(f.name) + '</span><span class="am-act"><button type="button" class="cta xs" data-am="accept" data-id="' + f.id + '">Aceitar</button><button type="button" class="ghost xs" data-am="decline" data-id="' + f.id + '">Recusar</button></span></div>').join('') + '</div>' : '')
       + '<div class="am-sec"><b>Amigos (' + ok.length + ')</b>' + (ok.length ? ok.map(f => {
         const n = AM.unread[f.id] || 0;
-        return '<div class="am-fr" data-am="chat" data-id="' + f.id + '">' + dot(f.id) + '<span class="am-nm">@' + esc(f.name) + '<small>' + ST_TXT[AM.pres[f.id] || 'off'] + '</small></span>'
+        return '<div class="am-fr" data-am="chat" data-id="' + f.id + '">' + dot(f.id) + '<span class="am-nm">@' + esc(f.name) + '<small>' + actTxt(f.id) + '</small></span>'
           + (n ? '<em class="am-badge">' + n + '</em>' : '') + '<span class="am-act">'
+          + (fRoom(f.id) ? '<button type="button" class="cta xs" data-am="join" data-code="' + esc(fRoom(f.id)) + '" title="Entrar na sala ' + esc(fRoom(f.id)) + '">Entrar</button>' : '')
           + (room ? '<button type="button" class="ghost xs" data-am="invite1" data-id="' + f.id + '" title="Convidar para a sala ' + room + '">🎾</button>' : '')
           + '<button type="button" class="ghost xs" data-am="remove" data-id="' + f.id + '" title="Desfazer amizade">✕</button></span></div>';
       }).join('') : '<p class="am-note">Ainda sem amigos. Adicione pelo nome de usuário.</p>') + '</div>'
