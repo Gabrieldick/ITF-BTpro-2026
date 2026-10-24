@@ -29,5 +29,5 @@ declare const __APP_VER__: string, __APP_BUILD__: string, __APP_DATE__: string, 
 }
 
 // Carrega modelos, texturas e som antes de montar a cena; depois executa os módulos do jogo,
-// na mesma ordem do arquivo original (cada módulo importa o anterior; o último é o do modo online).
-preloadAssets().then(() => import('./game/20-online'));
+// na mesma ordem do arquivo original (cada módulo importa o anterior; o último é o de amigos e chat).
+preloadAssets().then(() => import('./game/21-amigos'));

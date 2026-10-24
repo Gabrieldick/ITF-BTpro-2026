@@ -948,4 +948,5 @@ $('onCopy').addEventListener('click', () => {
 addEventListener('beforeunload', () => { if (NET.role === 'guest') send(['bye']); else if (NET.role === 'host') for (const g of ON.guests) sendTo(g.conn, ['bye']); });
 // para testes no console
 window.__pdoNet = { ON, NET };
+export { ON, openOnline, joinRoom };
 if (typeof window !== 'undefined') window.__pdoON = { ON, renderRoom: f => renderRoom(f), showPart: x => showPart(x), startChamp: () => startChamp() };
