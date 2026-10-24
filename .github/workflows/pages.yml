@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 60 # histórico para a lista de últimas mudanças
       - uses: actions/setup-node@v4
         with:
           node-version: 20

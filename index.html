@@ -71,7 +71,7 @@
       <button class="ghost tile" id="btnDrill"><small>Desafios</small>Treino</button>
     </div>
       <div class="cta-row" style="margin-top:8px"><button class="ghost sm" data-goto="help">Como jogar</button><button class="ghost sm" data-goto="cfg">Configurações</button><button class="ghost sm" id="btnAcct" type="button">👤 Conta</button></div>
-      <p id="appVer" class="app-ver"></p>
+      <p class="app-ver"><span id="appVer"></span> <button type="button" id="btnLog" class="info-btn" title="Últimas mudanças" aria-label="Últimas mudanças" hidden>i</button></p>
     </section>
     <!-- partida rápida, passo 1: elenco e modalidade -->
     <section data-step="q1" hidden>
@@ -459,6 +459,13 @@
     <div><div class="eyebrow">Salva suas carreiras e configurações na nuvem</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CONTA</h2></div>
     <div id="acctSlot"></div>
     <div class="cta-row"><button type="button" class="cta" id="acctClose">Fechar</button></div>
+  </div>
+</div>
+<div id="logOv" class="overlay" hidden>
+  <div class="card" style="width:min(100%,620px);display:grid;gap:12px">
+    <div><div class="eyebrow">O que mudou no jogo</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">ÚLTIMAS MUDANÇAS</h2></div>
+    <div id="logList" class="log-list"></div>
+    <div class="cta-row"><button type="button" class="cta" id="logClose">Fechar</button></div>
   </div>
 </div>
 <!-- Barra de golpe (smash, lob e saque) -->

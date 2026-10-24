@@ -6,7 +6,9 @@ import pkg from './package.json';
 
 // versão do jogo mostrada no menu: número do package.json + commit + data do build
 const sh = c => { try { return execSync(c, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return ''; } };
-const define = { __APP_VER__: JSON.stringify(pkg.version), __APP_BUILD__: JSON.stringify(sh('git rev-parse --short HEAD')), __APP_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)) };
+// últimas mudanças (botão "i" ao lado da versão): título dos commits recentes, sem os de merge
+const log = sh('git log -40 --no-merges --format=%cs%x09%s').split('\n').filter(Boolean).map(l => l.split('\t'));
+const define = { __APP_VER__: JSON.stringify(pkg.version), __APP_BUILD__: JSON.stringify(sh('git rev-parse --short HEAD')), __APP_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)), __APP_LOG__: JSON.stringify(log) };
 
 // "npm run build" gera o site (dist/) com os recursos em arquivos, para o GitHub Pages.
 // "npm run build:single" usa o modo "single": tudo num HTML só, que abre com dois cliques.
