@@ -792,3 +792,16 @@ body[data-tags="off"] .tag { display: none; }
 .tut-m { font-size: 26px; min-width: 30px; text-align: center; }
 .tut-how p { margin: 0 0 8px; line-height: 1.45; color: var(--ui-text); }
 .tut-how b { color: var(--ui-acc); }
+/* sala de troféus */
+.tr-shelf { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; border-radius: 6px; background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); border-bottom: 4px solid #6b4a32; }
+.tr-cup { display: grid; justify-items: center; min-width: 74px; padding: 8px 6px; border-radius: 6px; background: var(--ui-tile); }
+.tr-cup .tr-ic { font-size: 30px; filter: grayscale(.6) sepia(.6) hue-rotate(-20deg); } .tr-cup.silver .tr-ic { filter: grayscale(1) brightness(1.3); } .tr-cup.gold .tr-ic { filter: none; }
+.tr-cup b { font: 700 16px var(--f-ui); } .tr-cup small { color: var(--ui-sub); font-size: 11px; letter-spacing: .06em; }
+.tr-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.tr-stats div { padding: 8px 10px; border-radius: 6px; background: var(--ui-tile); display: grid; } .tr-stats b { font: 700 20px var(--f-ui); } .tr-stats small { color: var(--ui-sub); font-size: 11px; }
+.tr-ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.tr-a { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 6px; background: var(--ui-tile); opacity: .62; }
+.tr-a.ok { opacity: 1; border: 1px solid rgba(182, 255, 59, .35); }
+.tr-a > div { display: grid; flex: 1; min-width: 0; } .tr-a small { color: var(--ui-sub); font-size: 11px; }
+.tr-ai { font-size: 24px; width: 30px; text-align: center; }
+.tr-a .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 4px; } .tr-a .bar i { display: block; height: 100%; background: var(--ui-acc); }

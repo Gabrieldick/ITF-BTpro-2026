@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -39,7 +39,7 @@ function renderCareer() {
   const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
   if ($s.CR.tour && !$s.CR.tour.pending) { body.innerHTML = crTourHTML(); bindTour(); return; }
-  body.innerHTML = ({ agenda: crAgendaHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML }[crTab])();
+  body.innerHTML = ({ agenda: crAgendaHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML, trofeus: crTrophyHTML }[crTab])();
   bindCareerBody();
 }
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -251,6 +251,23 @@ function crRivalsHTML() {
   return '<p class="section-label">Rivais (confronto direto)</p>' + (l.length ? '<div class="cr-list">' + l.map(([id, h]) => { const c = crChar(id), nem = crNemesis(id);
     return '<div class="cr-row"><span class="cr-ic">' + (nem ? '💀' : '🔥') + '</span><div><b>' + esc(h.name) + (c ? ' <small>(' + crCharOvr(c) + ')</small>' : '') + '</b><small>' + (nem ? 'Carrasco · ' : '') + h.w + ' vitórias · ' + h.l + ' derrotas</small></div></div>'; }).join('') + '</div>'
     : '<p class="cr-note">Ninguém ainda. Rival é quem você enfrentou 3 vezes ou mais, com vitória e derrota dos dois lados; quem te vence 3 vezes sem perder vira carrasco. Contra rival a CPU joga mais focada, e vencer rende bônus.</p>');
+}
+// sala de troféus: estante com os títulos por nível, honrarias, números da carreira e as conquistas
+function crTrophyHTML() {
+  crAchCheck();
+  const T = $s.CR.titles || {}, got = $s.CR.ach || {};
+  const shelf = TIERS.map((t, i) => T[i] ? '<div class="tr-cup' + (i >= 7 ? ' gold' : i >= 3 ? ' silver' : '') + '"><span class="tr-ic">🏆</span><b>' + T[i] + '×</b><small>' + esc(t.curto) + '</small></div>' : '').join('');
+  const hon = ($s.CR.honors || []).slice(0, 12);
+  const mw = $s.CR.mw || 0, ml = $s.CR.ml || 0;
+  const stats = [['Títulos', crTitlesN()], ['Vitórias', mw], ['Derrotas', ml], ['Aproveitamento', mw + ml ? Math.round(mw / (mw + ml) * 100) + '%' : '—'], ['Melhor nota', $s.CR.bestR ? String($s.CR.bestR).replace('.', ',') : '—'], ['Ventaglios', $s.CR.vent || 0]];
+  const done = ACH.filter(a => got[a[0]]).length;
+  return '<p class="section-label">Estante</p>' + (shelf ? '<div class="tr-shelf">' + shelf + '</div>' : '<p class="cr-note">Nenhum título ainda. O primeiro troféu vai aqui.</p>')
+    + (hon.length ? '<p class="section-label">Honrarias</p><div class="cr-list">' + hon.map(h => '<div class="cr-row"><span class="cr-ic">' + (h.place === 'Campeão' ? '🥇' : '🥈') + '</span><div><b>' + esc(h.name) + '</b><small>' + esc(h.place) + ' · temporada ' + h.s + '</small></div></div>').join('') + '</div>' : '')
+    + '<p class="section-label">Números da carreira</p><div class="tr-stats">' + stats.map(([k, v]) => '<div><b>' + v + '</b><small>' + k + '</small></div>').join('') + '</div>'
+    + '<p class="section-label">Conquistas (' + done + ' de ' + ACH.length + ')</p><div class="tr-ach">' + ACH.map(([id, ic, nome, desc, f, goal]) => {
+      const ok = !!got[id]; let v = 0; try { v = f(); } catch (e) {} const pc = Math.min(100, Math.round(v / goal * 100));
+      return '<div class="tr-a' + (ok ? ' ok' : '') + '"><span class="tr-ai">' + (ok ? ic : '🔒') + '</span><div><b>' + nome + '</b><small>' + desc + (ok ? ' · ' + got[id] : '') + '</small>' + (!ok && goal > 1 ? '<span class="bar"><i style="width:' + pc + '%"></i></span>' : '') + '</div></div>';
+    }).join('') + '</div>';
 }
 function crHistoryHTML() {
   return crRivalsHTML() + '<p class="section-label">Últimos torneios</p><div class="cr-list">' + ($s.CR.history.length ? $s.CR.history.map(h => '<div class="cr-row"><span class="cr-pos">T' + h.s + '<br>S' + h.w + '</span><div><b>' + esc(h.name) + '</b><small>' + h.tier + ' · ' + h.place + (h.partner ? ' · com ' + esc(h.partner) : '') + '</small></div><b class="cr-pts">' + money(h.prize) + '<br>' + h.pts + ' pts</b></div>').join('') : '<p class="cr-note">Nenhum torneio ainda.</p>') + '</div>';

@@ -314,6 +314,7 @@ function updateHuman(dt, c = localCtl()) {
       const r = doHit(p, sw.type, q, false, mod);
       if (!r.mis) noteTend(p, sw.type);
       perfShot(p, sw, r);
+      if (p.isHuman && !r.mis && sw.var === 'ventaglio' && S.perf) S.perf.ev.ventaglio = (S.perf.ev.ventaglio || 0) + 1; // conta para as conquistas
       // perfeito (mesmo com a barra invisível): ondinha verde no chão de quem bateu
       if (p.isHuman && !r.mis && ((sw.meter && sw.meter.res === 'perfeito' && !mod.volley) || (sw.lob && sw.lob.kick))) { const wp = { x: p.pos.x, z: p.pos.z }; greenWave(wp); if (NET.ev) NET.ev('wave', wp); }
       if (S.drill) S.drill.lastR = Object.assign({}, r, { meterRes: sw.meter ? sw.meter.res : null });

@@ -570,6 +570,41 @@ const crChemLv = id => { const v = crChem(id); return v >= 80 ? 3 : v >= 50 ? 2 
 const CHEM_NOME = ['Nova dupla', 'Se conhecendo', 'Boa química', 'Entrosados'];
 // em jogo: boa química +1 e entrosados +2 em todos os atributos (para você e o parceiro, só na dupla)
 function crChemB() { const v = [0, 0, 1, 2][crChemLv()], b = {}; if (v && $s.CR.partner && !($s.CR.tour && $s.CR.tour.singles)) for (const [k] of ATTRS) b[k] = v; return b; }
+// ---------- conquistas (sala de troféus) ----------
+const crTitlesN = () => Object.values($s.CR.titles || {}).reduce((t, v) => t + v, 0);
+const ACH = [
+  ['vit1', '🎾', 'Primeira vitória', 'Vença uma partida', () => $s.CR.mw || 0, 1],
+  ['vit50', '💪', 'Cinquentona', 'Vença 50 partidas', () => $s.CR.mw || 0, 50],
+  ['vit200', '🦾', 'Máquina de vencer', 'Vença 200 partidas', () => $s.CR.mw || 0, 200],
+  ['tit1', '🏆', 'Primeiro título', 'Seja campeão de um torneio', crTitlesN, 1],
+  ['tit10', '🏆', 'Colecionador', 'Ganhe 10 títulos', crTitlesN, 10],
+  ['tit30', '👑', 'Lenda das areias', 'Ganhe 30 títulos', crTitlesN, 30],
+  ['bt10', '🥉', 'Profissional', 'Campeão de um ITF BT10', () => ($s.CR.titles || {})[3] || 0, 1],
+  ['bt100', '🥈', 'Gente grande', 'Campeão de um ITF BT100', () => ($s.CR.titles || {})[5] || 0, 1],
+  ['bt400', '🥇', 'Elite', 'Campeão de um ITF BT400', () => ($s.CR.titles || {})[7] || 0, 1],
+  ['ss', '🌟', 'Sand Series', 'Campeão de um Sand Series', () => ($s.CR.titles || {})[8] || 0, 1],
+  ['wc', '🌍', 'Campeão do mundo', 'Ganhe o Campeonato Mundial', () => ($s.CR.titles || {})[9] || 0, 1],
+  ['top100', '📈', 'Top 100', 'Entre no top 100 do ranking', () => { const r = crRank(); return r && r <= 100 ? 1 : 0; }, 1],
+  ['top10', '🔝', 'Top 10', 'Entre no top 10 do ranking', () => { const r = crRank(); return r && r <= 10 ? 1 : 0; }, 1],
+  ['n1', '🥇', 'Número 1 do mundo', 'Chegue ao 1º lugar do ranking', () => crRank() === 1 ? 1 : 0, 1],
+  ['ovr80', '⭐', 'Overall 80', 'Chegue a 80 de overall', () => overall($s.CR.me.a), 80],
+  ['ovr90', '🌠', 'Overall 90', 'Chegue a 90 de overall', () => overall($s.CR.me.a), 90],
+  ['ovr99', '💎', 'Perfeição', 'Chegue a 99 de overall', () => overall($s.CR.me.a), 99],
+  ['nota', '✨', 'Partida perfeita', 'Tire nota 9,5 ou mais numa partida', () => ($s.CR.bestR || 0) >= 9.5 ? 1 : 0, 1],
+  ['quimica', '🤝', 'Entrosados', 'Chegue a 80 de química com um parceiro', () => Math.max(0, ...Object.values($s.CR.chemBy || {})), 80],
+  ['rival', '🔥', 'Clássico', 'Tenha um rival', () => Object.keys($s.CR.h2hP || {}).filter(crRivalP).length ? 1 : 0, 1],
+  ['vinganca', '⚔️', 'Vingança', 'Vença alguém que já te derrotou 3 vezes', () => Object.values($s.CR.h2hP || {}).some(h => h.l >= 3 && h.w >= 1) ? 1 : 0, 1],
+  ['vent', '🌈', 'Leque', 'Acerte 10 ventaglios na carreira', () => $s.CR.vent || 0, 10],
+  ['fama', '📸', 'Famoso', 'Chegue a 50 de fama', () => Math.round($s.CR.fama || 0), 50],
+  ['milhao', '💰', 'Milionário', 'Junte $1.000.000', () => $s.CR.money || 0, 1e6],
+];
+// confere as conquistas e guarda a data das novas (devolve as novas para avisar)
+function crAchCheck() {
+  if (!$s.CR) return [];
+  const got = $s.CR.ach = $s.CR.ach || {}, novas = [];
+  for (const [id, , nome, , f, goal] of ACH) { if (got[id]) continue; let v = 0; try { v = f(); } catch (e) {} if (v >= goal) { got[id] = 'T' + $s.CR.season + ' · S' + $s.CR.week; novas.push(nome); } }
+  return novas;
+}
 function crSetPartner(id) { if ($s.CR.partner !== id) { $s.CR.partner = id; $s.CR.mood = 60; } /* a química fica guardada por parceiro */ $s.CR.offers = $s.CR.offers.filter(x => x !== id); saveCareer(); }
 // humor do parceiro (0–100): sobe com vitórias e com o que você faz por ele, cai com derrotas; muito baixo, ele desfaz a dupla
 const crMoodWord = () => { const m = $s.CR.mood; return m >= 80 ? 'empolgado' : m >= 60 ? 'contente' : m >= 40 ? 'neutro' : m >= 25 ? 'insatisfeito' : 'quer sair'; };
@@ -940,6 +975,8 @@ function crRivalsIn(tm) { return [tm.a, tm.b].filter(id => id && id !== 'crme' &
 function crRivalOf(tm) { const h = crH2H(tm); return (h.w + h.l >= 3 && h.w >= 1 && h.l >= 1) || crRivalsIn(tm).length > 0; }
 function crAfterMyMatch(won) {
   const t = $s.CR.tour;
+  won ? $s.CR.mw = ($s.CR.mw || 0) + 1 : $s.CR.ml = ($s.CR.ml || 0) + 1; // para as conquistas
+  if (S.perf && S.perf.ev && S.perf.ev.ventaglio) $s.CR.vent = ($s.CR.vent || 0) + S.perf.ev.ventaglio;
   // química: cada partida juntos aproxima (vitória mais); os outros parceiros esfriam um pouco
   if (!t.singles && $s.CR.partner) { crChemAdd(won ? 4.5 : 2.5); const c = $s.CR.chemBy || {}; for (const id in c) if (id !== $s.CR.partner) c[id] = Math.round(c[id] * .985 * 10) / 10; } $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
@@ -1065,6 +1102,7 @@ function crFinishTour() {
   const placeName = place === 0 ? 'Campeão' : place === 1 ? 'Vice-campeão' : place === 2 ? 'Semifinal' : place === 3 ? 'Quartas' : 'Oitavas';
   t.summary = { place, placeName, prize, pts, xp, offers };
   $s.CR.history.unshift({ s: $s.CR.season, w: $s.CR.week, name: t.name, tier: T.curto, place: placeName, prize, pts, partner: $s.CR.partner ? nameOf(crChar($s.CR.partner)) : '' });
+  crAchCheck().forEach(n => t.log.push('🏅 Conquista: ' + n));
   $s.CR.history = $s.CR.history.slice(0, 60);
   t.done = true;
   crWlog(6, 'Torneio'); if ($s.CR.day === 7) crWlog(7, 'Torneio');
@@ -1298,7 +1336,7 @@ function crPotGain(rating, tier) {
   $s.CR.potCur += g;
   return g;
 }
-function crRate(r) { $s.CR.ratings = ($s.CR.ratings || []).concat([Math.round(r * 10) / 10]).slice(-20); }
+function crRate(r) { $s.CR.ratings = ($s.CR.ratings || []).concat([Math.round(r * 10) / 10]).slice(-20); $s.CR.bestR = Math.max($s.CR.bestR || 0, Math.round(r * 10) / 10); }
 const crAvgRating = () => { const l = ($s.CR.ratings || []).slice(-10); return l.length ? l.reduce((t, v) => t + v, 0) / l.length : null; };
 // o potencial limita o OVERALL: cada atributo pode ir até 99, desde que o overall não passe do potencial atual
 const crCanUp = k => { const a = $s.CR.me.a; if (a[k] >= 99) return false; return overall(Object.assign({}, a, { [k]: a[k] + 1 })) <= crCap(); };
@@ -1471,6 +1509,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; } };
