@@ -782,3 +782,13 @@ body[data-tags="off"] .tag { display: none; }
 .side-wipe i { font-style: normal; color: var(--ui-acc2); display: inline-block; }
 .side-wipe.go i { animation: sideSpin 1.6s ease-in-out; }
 @keyframes sideSpin { 0%, 30% { transform: rotateY(0); } 70%, 100% { transform: rotateY(360deg); } }
+/* tutorial */
+.tut-list { display: grid; gap: 8px; }
+.tut-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--ui-line); background: var(--ui-tile); color: var(--ui-text); text-align: left; cursor: pointer; font: inherit; }
+.tut-item:hover:not(:disabled) { border-color: var(--ui-acc); background: var(--ui-tile2); }
+.tut-item.lock { opacity: .5; cursor: not-allowed; }
+.tut-n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(90deg, #1e8bff, var(--ui-acc)); color: #041232; font: 700 14px var(--f-ui); flex: none; }
+.tut-t { flex: 1; display: grid; } .tut-t small { color: var(--ui-sub); font-size: 12px; }
+.tut-m { font-size: 26px; min-width: 30px; text-align: center; }
+.tut-how p { margin: 0 0 8px; line-height: 1.45; color: var(--ui-text); }
+.tut-how b { color: var(--ui-acc); }

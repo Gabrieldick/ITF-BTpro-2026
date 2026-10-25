@@ -532,6 +532,57 @@ document.querySelectorAll('[data-drill]').forEach(b => b.addEventListener('click
   else startDrill(b.dataset.drill, null, lvl);
 }));
 $('btnAgain').addEventListener('click', e => { if (S.lastDrill && $('overEyebrow').textContent.startsWith('Treino')) { e.stopImmediatePropagation(); el.over.hidden = true; startDrill(S.lastDrill, null, S.lastDrillLvl); } }, true);
+// ---------- tutorial: lições em ordem (os treinos no nível fácil) com medalha ----------
+const TUT = [
+  { kind: 'saque', t: 'Saque', how: ['Segure o golpe para lançar a bola e <b>solte quando o marcador estiver na faixa verde</b>.', '<b>J</b> saque forte (smash) · <b>K</b> alto · <b>L</b> curto · <b>Espaço</b> seguro (por baixo).', 'No controle: <b>X</b> smash, <b>Y</b> lob, <b>B</b> curta, <b>LT</b> defesa.', 'Meta: saques bons dentro da quadra.'] },
+  { kind: 'defesa', t: 'Defesa', how: ['O lançador vai mandar smashes em você.', 'Corra com <b>WASD</b> (ou as setas) até a bola e aperte <b>Espaço</b> quando o anel no chão ficar <b>verde</b>.', 'Cedo ou tarde demais a bola sobe ou espirra.', 'Meta: defesas que passam e ficam dentro.'] },
+  { kind: 'curtas', t: 'Curta', how: ['A curta é um toque que morre perto da rede: ótima quando o adversário está no fundo.', 'Aperte <b>L</b> no tempo verde. Na hora do golpe, <b>S</b> deixa mais curta e <b>A/D</b> escolhem o lado.', 'Meta: curtas boas (amarelas valem; verdes são matadoras).'] },
+  { kind: 'smash', t: 'Smash', how: ['Bola alta perto da rede é hora de finalizar.', 'Segure <b>J</b>: a barra enche; <b>solte na faixa verde</b> para o smash perfeito.', 'Perto da rede (até os 3 m) o smash vira finalização: muito mais difícil de defender.', 'Meta: smashes perfeitos.'] },
+  { kind: 'ataque', t: 'Curta e smash', how: ['Duas bolas seguidas: primeiro uma <b>curta</b> (L), depois um <b>smash</b> (J) na bola que volta alta.', 'A sequência só vale se as duas saírem certas.'] },
+  { kind: 'contra', t: 'Defesa e contra-ataque', how: ['Defenda o smash (<b>Espaço</b> no verde) e, na bola seguinte, ataque com <b>smash</b> (J).', 'É o ritmo de um ponto de verdade: segurar e virar o jogo.'] },
+];
+const TUT_MED = ['', '🥉', '🥈', '🥇'], TUT_NOME = ['—', 'bronze', 'prata', 'ouro'];
+let tutMed = {}; try { tutMed = JSON.parse(localStorage.getItem('pdo-tutorial') || '{}'); } catch (e) {}
+// medalha: bronze = cumpriu a meta; prata = metade do caminho entre a meta e o total; ouro = quase todas
+function tutMedal(ok, goal, max) { if (ok < goal) return 0; if (ok >= max - 1) return 3; return ok >= goal + Math.ceil((max - goal) / 2) ? 2 : 1; }
+function renderTut() {
+  $('tutList').innerHTML = TUT.map((l, i) => {
+    const m = tutMed[l.kind] || 0, open = i === 0 || (tutMed[TUT[i - 1].kind] || 0) > 0 || m > 0;
+    return '<button type="button" class="tut-item' + (open ? '' : ' lock') + '" data-tut="' + i + '"' + (open ? '' : ' disabled') + '><span class="tut-n">' + (i + 1) + '</span><span class="tut-t"><b>' + l.t + '</b><small>' + (open ? (m ? 'Medalha de ' + TUT_NOME[m] + (m < 3 ? ' · tente o ouro' : '') : 'Não feita') : '🔒 Faça a lição anterior') + '</small></span><span class="tut-m">' + (TUT_MED[m] || '') + '</span></button>';
+  }).join('') + '<p class="cr-note">Medalha: 🥉 cumprir a meta · 🥈 passar bem da meta · 🥇 acertar quase todas.</p>';
+}
+let tutCur = -1;
+function tutShowHow(i) {
+  const l = TUT[i]; tutCur = i;
+  $('tutHowN').textContent = 'Lição ' + (i + 1) + ' de ' + TUT.length; $('tutHowT').textContent = l.t.toUpperCase();
+  const G = DRILL_LVL[0].goal[l.kind], M = DRILLS[l.kind].max;
+  $('tutHowB').innerHTML = l.how.map(x => '<p>' + x + '</p>').join('') + '<p class="cr-note">Meta: ' + G + ' de ' + M + ' bolas (🥉 ' + G + ' · 🥈 ' + (G + Math.ceil((M - G) / 2)) + ' · 🥇 ' + (M - 1) + ').</p>';
+  $('tutPick').hidden = true; $('tutHow').hidden = false;
+}
+function tutStart() {
+  const i = tutCur, l = TUT[i]; if (!l) return;
+  $('tutHow').hidden = true; ac(); readMenu(); S.careerDrill = false;
+  startDrill(l.kind, (ok, pass) => {
+    const m = tutMedal(ok, DRILL_LVL[0].goal[l.kind], DRILLS[l.kind].max), best = Math.max(m, tutMed[l.kind] || 0);
+    tutMed[l.kind] = best; try { localStorage.setItem('pdo-tutorial', JSON.stringify(tutMed)); } catch (e) {}
+    $('overEyebrow').textContent = 'Tutorial · lição ' + (i + 1) + ' · ' + l.t;
+    $('overTitle').textContent = m ? 'MEDALHA DE ' + TUT_NOME[m].toUpperCase() + ' ' + TUT_MED[m] : 'QUASE LÁ';
+    const nx = TUT[i + 1];
+    $('stTable').innerHTML += '<div class="cta-row" style="margin-top:10px">' + (m && nx ? '<button type="button" class="cta" data-tutnext="' + (i + 1) + '">Próxima lição: ' + nx.t + '</button>' : '') + '<button type="button" class="ghost sm" data-tutagain="' + i + '">' + (m ? 'Tentar ' + (m < 3 ? 'medalha melhor' : 'de novo') : 'Tentar de novo') + '</button><button type="button" class="ghost sm" data-tutlist="1">Lições</button></div>';
+    $('btnOverCareer').hidden = true; $('btnAgain').hidden = true;
+  }, 0);
+}
+$('btnTut').addEventListener('click', () => { el.menu.hidden = true; renderTut(); $('tutPick').hidden = false; });
+$('tutBack').addEventListener('click', () => { $('tutPick').hidden = true; el.menu.hidden = false; });
+$('tutHowBack').addEventListener('click', () => { $('tutHow').hidden = true; renderTut(); $('tutPick').hidden = false; });
+$('tutGo').addEventListener('click', tutStart);
+$('tutList').addEventListener('click', e => { const b = e.target.closest('[data-tut]'); if (b && !b.disabled) tutShowHow(+b.dataset.tut); });
+$('stTable').addEventListener('click', e => {
+  const n = e.target.closest('[data-tutnext]'), a = e.target.closest('[data-tutagain]'), l = e.target.closest('[data-tutlist]');
+  if (!n && !a && !l) return;
+  el.over.hidden = true; S.mode = 'menu';
+  if (n) tutShowHow(+n.dataset.tutnext); else if (a) tutShowHow(+a.dataset.tutagain); else { renderTut(); $('tutPick').hidden = false; }
+});
 function openDrillFromCareer() { drillFromCareer = true; $('career').hidden = true; $('drillPick').hidden = false; drillInfo(); }
 $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnSimRest').addEventListener('click', () => { setPaused(false); simulateRest(); }); // carreira: termina a partida no simulador (nota do que já foi jogado)
