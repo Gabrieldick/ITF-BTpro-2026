@@ -844,7 +844,12 @@ function crEnter(opt) {
   const pairs = star ? field.slice(0, -2) : field;
   // duplas com variedade: o mais forte que sobrou escolhe parceiro numa janela dos próximos (geralmente perto do nível dele,
   // às vezes bem mais fraco: um 61 com um 57); antes era sempre o vizinho da lista e todas ficavam iguais
-  { const left = pairs.slice(); while (left.length >= 2) { const a = left.shift(), k = Math.min(left.length - 1, Math.floor(Math.pow(rnd(), 1.6) * Math.min(9, left.length))), b = left.splice(k, 1)[0]; teams.push({ a: a.id, b: b.id }); } }
+  // diferença grande (mais de 6) é rara: na maioria das vezes volta para um parceiro mais próximo
+  { const left = pairs.slice(); while (left.length >= 2) {
+    const a = left.shift(), oa = crCharOvr(a);
+    let k = Math.min(left.length - 1, Math.floor(Math.pow(rnd(), 2.2) * Math.min(7, left.length)));
+    if (oa - crCharOvr(left[k]) > 6 && rnd() > .15) while (k > 0 && oa - crCharOvr(left[k]) > 4) k--;
+    const b = left.splice(k, 1)[0]; teams.push({ a: a.id, b: b.id }); } }
   if (star) teams.push({ a: star.id, b: field[field.length - 1].id, star: true });
   teams.sort((x, y) => crTeamOvr(y) - crTeamOvr(x));
   const me = teams.findIndex(t => t.me);
