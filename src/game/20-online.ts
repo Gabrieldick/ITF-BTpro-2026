@@ -947,9 +947,22 @@ $('onCopy').addEventListener('click', () => {
 // Na dupla, depois de 30 s com pelo menos 2 na fila, completa com CPU.
 const QQ = { on: false, mode: 'dupla', id: '', client: null, ch: null, at: 0, leading: false, auto: null, t: 0 };
 const qStatus = t => { const e = $('onQStatus'); e.textContent = t || ''; e.hidden = !t; };
-function queueUi() { $('onQueue').hidden = QQ.on; $('onQMode').disabled = QQ.on; $('onQCancel').hidden = !QQ.on; }
+function queueUi() { $('onQueue').hidden = QQ.on; ['onQMode', 'onQCat', 'onQPick', 'onQRk', 'onQCpu'].forEach(id => { $(id).disabled = QQ.on; }); $('onQCancel').hidden = !QQ.on; }
+// escolhas da fila: categoria (masculino/feminino/misto), personagem (da categoria) e raquete; ficam salvas no aparelho
+let QPREF = { cat: 'masc', pick: '', rk: '', cpu: false }; try { Object.assign(QPREF, JSON.parse(localStorage.getItem('pdo-fila') || '{}')); } catch (e) {}
+function qFill() {
+  const cat = $('onQCat').value, list = byOvr().filter(c => cat === 'misto' || !!c.fem === (cat === 'fem'));
+  if (!list.some(c => c.id === QPREF.pick)) QPREF.pick = (list.find(c => c.id === S.settings.pick.me) || list[0] || {}).id || '';
+  $('onQPick').innerHTML = list.map(c => '<option value="' + c.id + '">' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + (cat === 'misto' ? ' · ' + (c.fem ? 'fem' : 'masc') : '') + ')</option>').join('');
+  $('onQPick').value = QPREF.pick;
+  const rs = $('onQRk'); if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + ' (' + rkSummary(k) + ')</option>').join('');
+  rs.value = QPREF.rk || '';
+}
+function qSave() { QPREF = { cat: $('onQCat').value, pick: $('onQPick').value, rk: $('onQRk').value, cpu: $('onQCpu').checked }; try { localStorage.setItem('pdo-fila', JSON.stringify(QPREF)); } catch (e) {} }
 async function queueStart() {
   if (QQ.on || NET.role) return;
+  qSave(); if (!QPREF.pick) return; S.settings.pick.me = QPREF.pick; // entra na sala com esse personagem
+  QQ.cat = QPREF.cat; QQ.fem = !!(charById(QPREF.pick) || {}).fem;
   QQ.on = true; QQ.mode = $('onQMode').value === 'simples' ? 'simples' : 'dupla'; QQ.id = 'q' + Math.random().toString(36).slice(2, 10); QQ.at = Date.now(); QQ.leading = false;
   queueUi(); qStatus('Conectando à fila…');
   try {
@@ -960,7 +973,7 @@ async function queueStart() {
     ch.on('broadcast', { event: 'go' }, ({ payload }) => { if (QQ.on && payload && Array.isArray(payload.ids) && payload.ids.includes(QQ.id) && payload.code) queueGo(payload.code); });
     QQ.ch = ch;
     await new Promise((res, rej) => { const to = setTimeout(() => rej(new Error('tempo esgotado')), 9000); ch.subscribe(st => { if (st === 'SUBSCRIBED') { clearTimeout(to); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') { clearTimeout(to); rej(new Error(st)); } }); });
-    await ch.track({ mode: QQ.mode, at: QQ.at, name: myName() });
+    await ch.track({ mode: QQ.mode, cat: QQ.cat, fem: QQ.fem, cpu: !!QPREF.cpu, at: QQ.at, name: myName() });
     clearInterval(QQ.t); QQ.t = setInterval(queueSync, 2000); // o tempo de espera conta mesmo sem mudança na fila
   } catch (e) { queueStop(); qStatus('Fila indisponível agora (sem conexão com o servidor). Crie uma sala ou entre pelo código.'); }
 }
@@ -973,13 +986,15 @@ function queueStop(keepMsg) {
 function queueSync() {
   if (!QQ.on || !QQ.ch || QQ.leading) return;
   const st = QQ.ch.presenceState(), need = QQ.mode === 'simples' ? 2 : 4;
-  const list = Object.entries(st).map(([k, a]) => Object.assign({ k }, a[a.length - 1])).filter(x => x && x.mode === QQ.mode).sort((a, b) => (a.at - b.at) || (a.k < b.k ? -1 : 1));
+  const list = Object.entries(st).map(([k, a]) => Object.assign({ k }, a[a.length - 1])).filter(x => x && x.mode === QQ.mode && (x.cat || 'masc') === QQ.cat).sort((a, b) => (a.at - b.at) || (a.k < b.k ? -1 : 1));
   const waited = (Date.now() - (list[0] ? list[0].at : QQ.at)) / 1000;
   let group = null;
-  if (list.length >= need) group = list.slice(0, need);
-  else if (QQ.mode === 'dupla' && list.length >= 2 && waited >= 30) group = list.slice(0, 3); // completa com CPU
+  if (QQ.cat === 'misto' && QQ.mode === 'dupla') { const M = list.filter(x => !x.fem), F = list.filter(x => x.fem); if (M.length >= 2 && F.length >= 2) group = M.slice(0, 2).concat(F.slice(0, 2)).sort((a, b) => a.at - b.at); } // mista: dois homens e duas mulheres
+  else if (list.length >= need) group = list.slice(0, need);
+  else if (QQ.mode === 'dupla' && waited >= 30) { const ok = list.filter(x => x.cpu); if (ok.length >= 2) group = ok.slice(0, 3); } // completa com CPU só entre quem aceitou
   const me = list.findIndex(x => x.k === QQ.id);
-  qStatus('Procurando partida (' + (QQ.mode === 'simples' ? 'simples' : 'dupla') + '): ' + list.length + ' de ' + need + ' na fila' + (QQ.mode === 'dupla' ? (list.length >= 2 ? ' · completa com CPU em ' + Math.max(0, Math.ceil(30 - waited)) + ' s' : ' · com 2 ou mais, completa com CPU depois de 30 s') : '') + '…');
+  const cnt = QQ.cat === 'misto' && QQ.mode === 'dupla' ? list.filter(x => !x.fem).length + ' homens e ' + list.filter(x => x.fem).length + ' mulheres na fila (precisa de 2 de cada)' : list.length + ' de ' + need + ' na fila';
+  qStatus('Procurando partida (' + (QQ.mode === 'simples' ? 'simples' : 'dupla') + ' ' + { masc: 'masculina', fem: 'feminina', misto: 'mista' }[QQ.cat] + '): ' + cnt + (QQ.mode === 'dupla' && QPREF.cpu ? (list.filter(x => x.cpu).length >= 2 ? ' · completa com CPU em ' + Math.max(0, Math.ceil(30 - waited)) + ' s' : ' · com 2 ou mais que aceitam CPU, completa depois de 30 s') : QQ.mode === 'dupla' ? ' · só jogadores de verdade' : '') + '…');
   if (group && group[0].k === QQ.id && me >= 0) queueLead(group.map(x => x.k));
 }
 // o primeiro da fila cria a sala e chama os outros
@@ -988,24 +1003,39 @@ async function queueLead(ids) {
   const pub = $('onPublic'); const pubWas = pub ? pub.checked : true; if (pub) pub.checked = false; // sala da fila não aparece na lista
   S.settings.mode = QQ.mode; await createRoom(); if (pub) pub.checked = pubWas;
   if (!ON.code || NET.role !== 'host') { QQ.leading = false; qStatus('Não consegui criar a sala; tentando de novo…'); return; }
-  ON.room.mode = QQ.mode; broadcast();
-  QQ.auto = { n: ids.length, until: Date.now() + 25000 };
+  ON.room.mode = QQ.mode; if (QPREF.rk) act('host', ['racket', QPREF.rk]); broadcast();
+  QQ.auto = { n: ids.length, until: Date.now() + 25000, cat: QQ.cat };
   try { await QQ.ch.send({ type: 'broadcast', event: 'go', payload: { ids: ids.filter(i => i !== QQ.id), code: ON.code } }); } catch (e) {}
   queueStop(true); qStatus('');
 }
-function queueGo(code) { queueStop(true); qStatus('Partida encontrada! Entrando na sala ' + code + '…'); $('onCode').value = code; joinRoom(); }
+function queueGo(code) {
+  queueStop(true); qStatus('Partida encontrada! Entrando na sala ' + code + '…'); $('onCode').value = code; joinRoom();
+  if (QPREF.rk) { let n = 0; const iv = setInterval(() => { n++; if (NET.role === 'guest' && ON.L) { send(['racket', QPREF.rk]); clearInterval(iv); } else if (n > 40) clearInterval(iv); }, 500); } // raquete escolhida, assim que entrar
+}
 // anfitrião da fila: senta todo mundo intercalando os times (CPU nos lugares vazios) e começa quando todos chegarem
 function queueHostTick() {
   const room = ON.room, A = QQ.auto; if (!room || room.playing) { QQ.auto = null; return; }
   const here = members().filter(m => m === ON.self || m.open);
   if (here.length < A.n && Date.now() < A.until) { msg('Esperando os jogadores da fila: ' + here.length + ' de ' + A.n + '…', true); return; }
-  const order = room.mode === 'simples' ? ['A1', 'B1'] : ['A1', 'B1', 'A2', 'B2'];
-  room.seats = { A1: null, A2: null, B1: null, B2: null }; here.slice(0, order.length).forEach((m, i) => { room.seats[order[i]] = m === ON.self ? 'host' : m.id; });
+  const order = room.mode === 'simples' ? ['A1', 'B1'] : ['A1', 'B1', 'A2', 'B2'], fem = m => !!(charById(m.pick) || {}).fem;
+  // mista: homens primeiro (A1, B1) e mulheres depois (A2, B2) → cada time com um de cada
+  const ppl = here.slice(0, order.length); if (A.cat === 'misto') ppl.sort((x, y) => fem(x) - fem(y));
+  room.seats = { A1: null, A2: null, B1: null, B2: null }; ppl.forEach((m, i) => { room.seats[order[i]] = m === ON.self ? 'host' : m.id; });
+  // CPU nos lugares vazios: da categoria (na mista, o oposto do parceiro) e perto do nível de quem está jogando
+  const used = new Set(members().map(m => m.pick)), avg = ppl.reduce((t, m) => t + overall((charById(m.pick) || { a: {} }).a), 0) / Math.max(1, ppl.length);
+  for (const st of order) { if (room.seats[st]) continue;
+    const mate = room.seats[st[0] + (st[1] === '1' ? '2' : '1')], mm = mate && (mate === 'host' ? ON.self : guestById(mate));
+    const wantF = A.cat === 'fem' ? true : A.cat === 'masc' ? false : mm ? !fem(mm) : st[1] === '2';
+    const c = byOvr().filter(x => !!x.fem === wantF && !used.has(x.id)).sort((x, y) => Math.abs(overall(x.a) - avg) - Math.abs(overall(y.a) - avg))[0];
+    if (c) { room.cpu[st] = c.id; used.add(c.id); } }
   fixCpu(); broadcast(); QQ.auto = null; msg('');
   setTimeout(() => { if (NET.role === 'host' && !ON.room.playing) hostPlay(); }, 1200);
 }
 if (typeof window !== 'undefined') window.__pdoQQ = { QQ, queueSync };
 $('onQueue').addEventListener('click', queueStart);
+$('onQCat').addEventListener('change', () => { qSave(); qFill(); qSave(); });
+$('onQPick').addEventListener('change', qSave); $('onQRk').addEventListener('change', qSave);
+$('onQCat').value = QPREF.cat || 'masc'; $('onQCpu').checked = !!QPREF.cpu; $('onQCpu').addEventListener('change', qSave); qFill();
 $('onQCancel').addEventListener('click', () => queueStop());
 // link com #sala=CÓDIGO: abre a tela do online com o código preenchido
 {

@@ -374,7 +374,12 @@
     <button type="button" class="ghost sm" id="onCfgBtn" style="justify-self:start">⚙️ Configurações</button>
     <div id="onStart" style="display:grid;gap:14px">
       <p class="lede">Um de vocês cria a sala e passa o código; os outros (até 7) entram com ele. Na sala cada um escolhe o personagem e o lugar na quadra: dá para jogar 2 contra 2, em dupla contra a CPU, 1 contra 1 ou fazer um campeonato.</p>
-      <div class="on-queue"><div class="cta-row"><button class="cta" id="onQueue">🎯 Procurar partida</button><select id="onQMode" class="cr-sel" aria-label="Modalidade da fila"><option value="dupla">Dupla 2×2</option><option value="simples">Simples 1×1</option></select><button class="ghost sm" id="onQCancel" hidden>Cancelar</button></div><p id="onQStatus" class="cr-note" hidden></p></div>
+      <div class="on-queue"><p class="section-label" style="margin:0">Partida rápida</p>
+        <div class="on-qrow"><select id="onQMode" class="cr-sel" aria-label="Modalidade da fila"><option value="dupla">Dupla 2×2</option><option value="simples">Simples 1×1</option></select><select id="onQCat" class="cr-sel" aria-label="Categoria"><option value="masc">Masculino</option><option value="fem">Feminino</option><option value="misto">Misto</option></select></div>
+        <label class="cr-field">Seu personagem <select id="onQPick" class="cr-sel"></select></label>
+        <label class="cr-field">Sua raquete <select id="onQRk" class="cr-sel"></select></label>
+        <label class="chk"><input type="checkbox" id="onQCpu"> Completar com CPU depois de 30 s (dupla)</label>
+        <div class="cta-row"><button class="cta" id="onQueue">🎯 Procurar partida</button><button class="ghost sm" id="onQCancel" hidden>Cancelar</button></div><p id="onQStatus" class="cr-note" hidden></p></div>
       <label class="cr-field">Seu nome na sala <input id="onName" maxlength="16" placeholder="Seu nome" autocomplete="off"></label>
       <div class="cta-row"><button class="cta" id="onCreate">Criar sala</button><label class="chk"><input type="checkbox" id="onPublic" checked> Mostrar a minha sala na lista</label></div>
       <div class="cta-row"><input id="onCode" class="on-code-in" maxlength="5" placeholder="CÓDIGO" autocomplete="off" spellcheck="false" aria-label="Código da sala"><button class="cta" id="onJoin">Entrar na sala</button></div>
