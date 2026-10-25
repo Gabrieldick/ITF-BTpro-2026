@@ -84,10 +84,22 @@ function sidesFlipped(sc) {
 }
 if (typeof window !== 'undefined') window.__pdoSide = { sidesFlipped: sc => sidesFlipped(sc), update: () => updateSides() };
 function updateSides() {
+  if (S.matchWinner != null) return; // ponto final: só comemora, ninguém troca de lado
   const f = !S.drill && sidesFlipped(S.score);
   if (f === !!S.sideFlip) return;
-  S.sideFlip = f; setSide(f);
-  if (S.score && (S.score.games[0] + S.score.games[1] + S.score.pts[0] + S.score.pts[1]) > 0) S.sideNote = true; // avisa no próximo saque
+  S.sideFlip = f;
+  const mid = S.score && (S.score.games[0] + S.score.games[1] + S.score.pts[0] + S.score.pts[1]) > 0;
+  if (mid) S.sideNote = true; // avisa no próximo saque
+  // logo depois do ponto (partida seguindo): faixa "troca de lado" atravessa a tela e o ambiente troca no meio dela
+  if (mid && S.mode === 'dead') sideWipe(f); else setSide(f);
+}
+let wipeT = 0;
+function sideWipe(f) {
+  S.deadT = (S.deadT || 0) + 1.4; // a pausa antes do próximo saque cresce para caber a animação
+  let w = document.getElementById('sideWipe');
+  if (!w) { w = document.createElement('div'); w.id = 'sideWipe'; w.className = 'side-wipe'; w.innerHTML = '<b><i>↔</i> TROCA DE LADO</b>'; document.body.append(w); }
+  clearTimeout(wipeT);
+  wipeT = setTimeout(() => { w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); wipeT = setTimeout(() => setSide(f), 800); }, 900);
 }
 function renderBoard() {
   const sc = S.score;
