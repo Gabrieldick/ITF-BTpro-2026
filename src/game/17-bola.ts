@@ -17,7 +17,7 @@ function updateBall(dt) {
   if (ball.state === 'held') { placeHeldBall(); return; }
   const prev = ball.pos.clone();
   ball.vel.y -= bG() * dt;
-  if (ball.state === 'live' && S.wind) { ball.vel.x += S.wind.x * .07 * dt; ball.vel.z += S.wind.z * .07 * dt; } // vento: bolas lentas e altas desviam mais
+  if (ball.state === 'live' && S.wind) { const ws = S.sideFlip ? -.07 : .07; ball.vel.x += S.wind.x * ws * dt; ball.vel.z += S.wind.z * ws * dt; } // vento: bolas lentas e altas desviam mais (na troca de lado ele passa a soprar ao contrário para cada time)
   ball.pos.addScaledVector(ball.vel, dt);
   if (ball.state === 'toss') {
     const sp = S.serverPlayer;

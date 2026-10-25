@@ -5,7 +5,7 @@ import { $s } from '../state';
 import { C, HALF_W, ZONE3, clamp, nameOf, rand, shortOf, overall } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
-import { applyArena, cheerArena, confetti, linesGroup, setNetHeight } from './03-cenario';
+import { applyArena, cheerArena, confetti, linesGroup, setNetHeight, setSide } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail, setBallStyle } from './07-glb';
 import { swingVar } from './04-poses';
@@ -75,8 +75,23 @@ function feedback(main, small, kind, soft) {
 }
 // ---------- Placar ----------
 const PT = ['0', '15', '30', '40'];
+// troca de lado: depois dos games 1, 3, 5…; no tie-break a cada 4 pontos (depois do 1º, 5º, 9º…)
+function sidesFlipped(sc) {
+  if (!sc || !sc.games) return false;
+  let n = Math.floor((sc.games[0] + sc.games[1] + 1) / 2);
+  if (sc.tb) { const p = sc.pts[0] + sc.pts[1]; if (p >= 1) n += Math.floor((p - 1) / 4) + 1; }
+  return n % 2 === 1;
+}
+if (typeof window !== 'undefined') window.__pdoSide = { sidesFlipped: sc => sidesFlipped(sc), update: () => updateSides() };
+function updateSides() {
+  const f = !S.drill && sidesFlipped(S.score);
+  if (f === !!S.sideFlip) return;
+  S.sideFlip = f; setSide(f);
+  if (S.score && (S.score.games[0] + S.score.games[1] + S.score.pts[0] + S.score.pts[1]) > 0) S.sideNote = true; // avisa no próximo saque
+}
 function renderBoard() {
   const sc = S.score;
+  updateSides();
   // "🏳 M. SPOTO / 🏳 N. GIANOTTI", como nas transmissões
   const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   const pn = p => {
@@ -302,7 +317,7 @@ function setWeather() {
   const v = Math.random() * max, a = Math.random() * Math.PI * 2; S.wind = { x: Math.cos(a) * v, z: Math.sin(a) * v }; S.heat = heat;
 }
 function weatherText() {
-  const w = S.wind || { x: 0, z: 0 }, v = Math.hypot(w.x, w.z), kmh = Math.round(v * 3.6);
+  const w0 = S.wind || { x: 0, z: 0 }, ws = S.sideFlip ? -1 : 1, w = { x: w0.x * ws, z: w0.z * ws }, v = Math.hypot(w.x, w.z), kmh = Math.round(v * 3.6);
   if (kmh < 3 && !S.heat) return '';
   const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']; // ↑ = na direção do adversário
   const ang = Math.atan2(w.x, -w.z), idx = ((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8;
@@ -540,7 +555,13 @@ function setupPoint() {
   if (NET.onSetupPoint) NET.onSetupPoint();
 }
 // aviso de quem saca (o convidado do online chama com o sacador do lado dele)
+// na troca de lado o banner do saque avisa
 function serveBanner(sp) {
+  const note = S.sideNote; S.sideNote = false;
+  serveBanner0(sp);
+  if (note) el.bSub.textContent = '↔ Troca de lado: vento e sol agora do outro lado' + (el.bSub.textContent ? ' · ' + el.bSub.textContent : '');
+}
+function serveBanner0(sp) {
   const gold = isGolden();
   if (S.spectate) { banner(gold ? 'Ponto de ouro' : 'Saque de ' + whoName(sp), '', 1500, gold); return; }
   if (sp === human) {

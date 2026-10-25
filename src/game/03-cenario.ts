@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import { C, HALF_W, SHORE_Z, V3, WATERLINE, ZONE3, clamp, fbm, rand, smooth } from './00-base';
 import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene, sun } from './02-render';
 const PROPS = []; // guarda-sóis e palmeiras perto da quadra (somem quando há arquibancada)
+// ambiente (mar, areia, quadra, decoração e arena): gira 180° na troca de lado; o céu fica (só o sol muda de lado)
+const ENV = new THREE.Group(); ENV.name = 'ambiente'; scene.add(ENV);
 // ---------- Céu procedural com nuvens e sol ----------
 const SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 w = modelMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*w; }';
 const SKY_FS = [
@@ -57,10 +59,10 @@ try {
 // ---------- Mar ----------
 const seaMat = new THREE.ShaderMaterial({
   toneMapped: false, fog: false,
-  uniforms: { time: { value: 0 }, sunDir: { value: SUN_DIR }, hor: { value: HORIZON }, shore: { value: WATERLINE } },
+  uniforms: { time: { value: 0 }, sunDir: { value: SUN_DIR }, hor: { value: HORIZON }, shore: { value: WATERLINE }, zs: { value: 1 } },
   vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }',
   fragmentShader: [
-    'uniform float time; uniform vec3 sunDir; uniform vec3 hor; uniform float shore; varying vec3 vW;',
+    'uniform float time; uniform vec3 sunDir; uniform vec3 hor; uniform float shore; uniform float zs; varying vec3 vW;',
     'vec2 wv(vec2 p, vec2 d, float k, float a, float s){ float ph = dot(p, d)*k + time*s; return d*(a*k*cos(ph)); }',
     'void main(){',
     ' vec2 p = vW.xz; vec2 g = vec2(0.);',
@@ -76,7 +78,7 @@ const seaMat = new THREE.ShaderMaterial({
     ' float fres = 0.02 + 0.98*pow(1. - max(dot(n, V), 0.), 5.);',
     ' vec3 R = reflect(-V, n);',
     ' vec3 skyc = mix(hor, vec3(0.10, 0.28, 0.70), pow(clamp(R.y, 0., 1.), 0.45));',
-    ' float dist = shore - vW.z;',
+    ' float dist = shore - vW.z*zs;',
     ' vec3 shallow = vec3(0.10, 0.42, 0.40); vec3 deep = vec3(0.012, 0.09, 0.16);',
     ' vec3 water = mix(shallow, deep, smoothstep(0., 70., dist));',
     ' vec3 c = mix(water, skyc, fres);',
@@ -92,7 +94,7 @@ const seaMat = new THREE.ShaderMaterial({
     '}'].join('\n')
 });
 const sea = new THREE.Mesh(new THREE.PlaneGeometry(6000, 3000, 1, 1), seaMat);
-sea.rotation.x = -Math.PI / 2; sea.position.set(0, -0.02, SHORE_Z + 4 - 1500); scene.add(sea);
+sea.rotation.x = -Math.PI / 2; sea.position.set(0, -0.02, SHORE_Z + 4 - 1500); ENV.add(sea);
 // ---------- Areia ----------
 function makeSandTextures(N) {
   const H = new Float32Array(N * N);
@@ -155,7 +157,7 @@ const sandMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sandTex.t
 const sand = new THREE.Mesh(sandGeo, sandMat);
 sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0, 90);
 sand.receiveShadow = true;
-scene.add(sand);
+ENV.add(sand);
 // ---------- Quadra ----------
 const tapeMat = mat('#1f4fb8', { roughness: .55 });
 const linesGroup = { simples: new THREE.Group(), dupla: new THREE.Group() };
@@ -171,7 +173,7 @@ Object.entries(HALF_W).forEach(([k, hw]) => {
   [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => {
     const p = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .03, 8), mat('#f4f1ea')); p.position.set(a * hw, .015, b * C.halfL); g.add(p);
   });
-  scene.add(g);
+  ENV.add(g);
 });
 // Rede
 const netTex = canvasTex(64, 64, (x, w, h) => {
@@ -180,27 +182,27 @@ const netTex = canvasTex(64, 64, (x, w, h) => {
 netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping; netTex.repeat.set(C.netHalf * 2 / .045, 1 / .045);
 const netMat = new THREE.MeshStandardMaterial({ color: col('#0e1216'), map: netTex, transparent: true, alphaTest: .12, side: THREE.DoubleSide, roughness: .9 });
 const net = new THREE.Mesh(new THREE.PlaneGeometry(C.netHalf * 2, 1.0), netMat);
-net.position.set(0, C.netH - .5, 0); scene.add(net);
+net.position.set(0, C.netH - .5, 0); ENV.add(net);
 const drawBand = c => (x, w, h) => { x.fillStyle = '#f6f4ee'; x.fillRect(0, 0, w, h); x.fillStyle = c; for (let i = 0; i < w; i += 64) x.fillRect(i, 0, 32, h); };
 const bandTex = canvasTex(512, 16, drawBand('#1f4fb8'));
 bandTex.wrapS = THREE.RepeatWrapping; bandTex.repeat.set(3, 1);
 const band = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .07, .012), mat('#ffffff', { map: bandTex, roughness: .6 }));
-band.position.set(0, C.netH - .035, 0); band.castShadow = true; scene.add(band);
+band.position.set(0, C.netH - .035, 0); band.castShadow = true; ENV.add(band);
 const padMat = mat('#1f4fb8', { roughness: .7 });
 const band2 = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .035, .01), mat('#1f4fb8'));
-band2.position.set(0, C.netH - 1.0, 0); scene.add(band2);
+band2.position.set(0, C.netH - 1.0, 0); ENV.add(band2);
 // altura da rede da partida: 1,80 m no profissional masculino, 1,70 m no feminino, misto e amador
 function setNetHeight(h) { C.netH = h; net.position.y = h - .5; band.position.y = h - .035; band2.position.y = h - 1.0; }
 [-1, 1].forEach(s => {
   const px = s * (C.netHalf + .12);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(.045, .05, 1.95, 16), mat('#e9edf0', { roughness: .25, metalness: .7 }));
-  post.position.set(px, .975, 0); post.castShadow = true; scene.add(post);
+  post.position.set(px, .975, 0); post.castShadow = true; ENV.add(post);
   const pad = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 1.4, 16), padMat);
-  pad.position.set(px, .7, 0); pad.castShadow = true; scene.add(pad);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), mat('#d8dde0', { metalness: .7, roughness: .3 })); cap.position.set(px, 1.96, 0); scene.add(cap);
+  pad.position.set(px, .7, 0); pad.castShadow = true; ENV.add(pad);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), mat('#d8dde0', { metalness: .7, roughness: .3 })); cap.position.set(px, 1.96, 0); ENV.add(cap);
   const rope = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, 2.6, 4), mat('#e8e2d0'));
-  rope.position.set(px + s * .65, .95, 0); rope.rotation.z = s * .62; scene.add(rope);
-  const peg = new THREE.Mesh(new THREE.CylinderGeometry(.02, .03, .12, 6), mat('#6b4b2e')); peg.position.set(px + s * 1.3, .05, 0); scene.add(peg);
+  rope.position.set(px + s * .65, .95, 0); rope.rotation.z = s * .62; ENV.add(rope);
+  const peg = new THREE.Mesh(new THREE.CylinderGeometry(.02, .03, .12, 6), mat('#6b4b2e')); peg.position.set(px + s * 1.3, .05, 0); ENV.add(peg);
 });
 // ---------- Cenário ----------
 const barkTex = canvasTex(64, 256, (x, w, h) => {
@@ -254,7 +256,7 @@ function palm(x, z, h, lean) {
     piv.add(f); g.add(piv);
   }
   for (let i = 0; i < 5; i++) { const nut = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), mat('#5a3f22', { roughness: .6 })); nut.position.copy(top).add(new V3(rand(-.2, .2), -.2, rand(-.2, .2))); g.add(nut); }
-  g.position.set(x, -.05, z); g.rotation.y = Math.random() * Math.PI * 2; scene.add(g); PROPS.push(g);
+  g.position.set(x, -.05, z); g.rotation.y = Math.random() * Math.PI * 2; ENV.add(g); PROPS.push(g);
 }
 palm(-10.5, -6, 7.5, .25); palm(-12.5, 5, 8.5, -.2); palm(11, -9, 8, .3); palm(13, 6, 7, -.25);
 palm(-15, -22, 9, .2); palm(16, -23, 8.5, .15); palm(-9.5, 18, 7, .2); palm(10.5, 20, 8, -.3);
@@ -275,7 +277,7 @@ function umbrella(x, z, c1, c2) {
   const seat = new THREE.Mesh(new THREE.PlaneGeometry(.5, .55), mat(c1, { side: THREE.DoubleSide })); seat.position.set(0, .3, .1); seat.rotation.x = -1.2; chair.add(seat);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(.5, .7), mat(c1, { side: THREE.DoubleSide })); back.position.set(0, .55, -.25); back.rotation.x = -.45; chair.add(back);
   chair.position.set(-.8, 0, .4); chair.rotation.y = rand(-.6, .6); chair.traverse(m => { if (m.isMesh) m.castShadow = true; }); g.add(chair);
-  g.position.set(x, 0, z); g.rotation.y = rand(0, Math.PI * 2); scene.add(g); PROPS.push(g);
+  g.position.set(x, 0, z); g.rotation.y = rand(0, Math.PI * 2); ENV.add(g); PROPS.push(g);
 }
 umbrella(-8.2, 1.5, '#ff5a1f', '#fbf6ea'); umbrella(8.6, -3, '#ffd23f', '#1f4fb8'); umbrella(-9, -15, '#1f4fb8', '#fbf6ea');
 umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); umbrella(19, -12, '#ff5a1f', '#ffd23f');
@@ -288,7 +290,7 @@ umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); 
   const roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, .7, 4), red); roof.position.y = 4.7; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
   const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.82, .25, 1.82), red); stripe.position.y = 3.6; g.add(stripe);
   const ramp = new THREE.Mesh(new THREE.BoxGeometry(.7, .06, 3.6), wood); ramp.position.set(0, 1.5, 2.4); ramp.rotation.x = .95; g.add(ramp);
-  g.position.set(-26, 0, -30); g.rotation.y = .4; scene.add(g);
+  g.position.set(-26, 0, -30); g.rotation.y = .4; ENV.add(g);
 }
 // morros ao longe
 {
@@ -298,14 +300,14 @@ umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); 
     const pa = geo.attributes.position;
     for (let i = 0; i < pa.count; i++) { const y = pa.getY(i); const n = fbm(pa.getX(i) * .02 + 3, pa.getZ(i) * .02 + 3, 4096, 3, 5); pa.setY(i, y * (h / r) * (.7 + n * .6)); }
     geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, hillMat); m.position.set(x, -2, z); scene.add(m);
+    const m = new THREE.Mesh(geo, hillMat); m.position.set(x, -2, z); ENV.add(m);
   });
 }
 
 // ---------- Arenas: cores da quadra por local e arquibancadas conforme o tamanho do torneio ----------
 // size 0 = praia aberta · 1 = arquibancada pequena num lado · 2 = dos dois lados com placas · 3 = estádio (lados + fundo)
 const ARENA = { group: new THREE.Group(), key: '', crowd: [], cheerT: 0 };
-scene.add(ARENA.group);
+ENV.add(ARENA.group);
 const SKIN_C = ['#f1cfae', '#e2b48f', '#d2a07a', '#c68a5e', '#a8704a', '#8d5a3b', '#6b4229'];
 function bleachers(side, x0, z0, len, rows, seatCol, along) {
   // along = 'z' (arquibancada lateral, de frente para a quadra em x) ou 'x' (no fundo, de frente em z)
@@ -631,4 +633,11 @@ function updateArena(dt) {
   });
 }
 
-export { setNetHeight, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
+// troca de lado: o ambiente gira em volta da quadra e o sol vai para o outro lado (o jogo continua com o seu time embaixo)
+const SUN_BASE = SUN_DIR.clone();
+function setSide(flip) {
+  const k = flip ? -1 : 1; ENV.rotation.y = flip ? Math.PI : 0;
+  SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
+  seaMat.uniforms.zs.value = k;
+}
+export { ENV, setSide, setNetHeight, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
