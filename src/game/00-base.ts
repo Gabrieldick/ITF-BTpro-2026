@@ -43,9 +43,11 @@ const ATTR_W0 = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob
 // voleio: bola no ar perto da rede (drive, voleio da barra, bloqueio) mais rápida e consistente, e o ventaglio; pesa 6%;
 // quem não tem fica com uma mistura de defesa, velocidade, backhand e smash (os voleadores ganham um pouco mais, abaixo)
 const ATTR_W = Object.assign(Object.fromEntries(Object.entries(ATTR_W0).map(([k, w]) => [k, w * .86])), { leitura: .08, voleio: .06 });
-const leituraOf = a => Math.round(Object.keys(ATTR_W0).reduce((t, k) => t + (a[k] ?? 50) * ATTR_W0[k], 0));
-const voleioOf = a => Math.round((a.def ?? 50) * .3 + (a.vel ?? 50) * .25 + (a.backhand ?? 50) * .25 + (a.smash ?? 50) * .2);
-const attrOf = (a, k) => a[k] ?? (k === 'leitura' ? leituraOf(a) : k === 'voleio' ? voleioOf(a) : 50);
+const leituraOf = a => Math.round(Object.keys(ATTR_W0).reduce((t, k) => t + (Number.isFinite(a[k]) ? a[k] : 50) * ATTR_W0[k], 0));
+const fin = v => Number.isFinite(v) ? v : 50;
+const voleioOf = a => Math.round(fin(a.def) * .3 + fin(a.vel) * .25 + fin(a.backhand) * .25 + fin(a.smash) * .2);
+// valor inválido (NaN de save antigo) conta como ausente: nunca deixa a física/animação receber NaN
+const attrOf = (a, k) => { const v = a[k]; return Number.isFinite(v) ? v : k === 'leitura' ? leituraOf(a) : k === 'voleio' ? voleioOf(a) : 50; };
 // raquetes e equipamentos: alteram os atributos de quem usa (também fora da carreira)
 // raquetes: a soma dos bônus cresce com o preço; as especializadas têm picos maiores com algum ponto fraco
 const RACKET_STATS = {
@@ -262,7 +264,7 @@ const ATTR_OF = { smash: 'smash', drive: 'smash', lob: 'lob', curta: 'curta', de
 const attrN = v => clamp((v - 35) / 60, 0, 1.07);
 const attrK = (p, k) => attrN(p.char ? attrOf(p.char.a, k) : 70);
 // fraqueza: 0 com o atributo em 72 ou mais, 1 em 40 — atributo fraco pesa bem mais que a escala linear
-const weakK = (p, k) => clamp((72 - (p.char ? p.char.a[k] : 70)) / 32, 0, 1);
+const weakK = (p, k) => clamp((72 - (p.char ? attrOf(p.char.a, k) : 70)) / 32, 0, 1);
 const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (a, b) => a + Math.random() * (b - a);
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
