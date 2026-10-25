@@ -201,7 +201,7 @@ function serveRelease(res, amt, word, human) {
   else { q = lerp(.72, .32, amt); mod = { speedMul: amt < .6 ? lerp(.97, .9, amt / .6) : lerp(.9, .8, (amt - .6) / .4), noiseMul: lerp(1.25, 1.8, amt), misBoost: lerp(.06, .5, amt) * (type === 'smash' ? 1 : .5) }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)
   human.pendingServe = { type, q, mod, res, word };
-  const sw = human.swing; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = null;
+  const sw = human.swing; sw.t = sw.dur * .3; sw.type = 'smash'; sw.var = 'saque'; sw.hit = false; sw.meter = null; // animação própria do saque
 }
 function pressShot(type, c) {
   if (!c) {

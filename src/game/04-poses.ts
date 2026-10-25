@@ -92,6 +92,14 @@ Object.assign(ACT, {
     P({ rh: [-.25, .72, -.55], rp: [-.4, .5, .1], wx: -1, wr: -2.5, lh: [-.1, .4, -.25], lp: [-.9, -.3, .1], tw: .25, lean: .1, crouch: .1, lunge: -.1 }),
     P({ rh: [0, .58, -.62], rp: [.2, .3, .2], wx: -.4, wr: .3, lh: [-.22, .35, -.1], lp: [-.8, -.5, 0], tw: -.1, lean: .22, crouch: .14 }),
     READY],
+  // golpe do saque: da posição de troféu a raquete cai atrás das costas, as pernas empurram (corpo sobe), o tronco gira,
+  // o contato sai com o braço todo esticado e a terminação cruza o corpo até o lado esquerdo, com o peso indo para a frente
+  smash_saque: [READY,
+    P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.82, lean: -.26, bend: -.12, crouch: .28 }),
+    P({ rh: [.24, .52, .34], rp: [.5, 1.0, .1], wx: -1.7, wr: .2, lh: [-.06, .66, -.24], lp: [-.8, -.2, .3], tw: -.55, lean: -.32, bend: -.1, crouch: .08 }),
+    P({ rh: [.16, 1.12, -.24], rp: [.5, .3, .7], wx: .25, wr: .25, lh: [-.24, .38, -.06], lp: [-.8, -.4, .2], tw: .22, lean: .04, bend: -.02, crouch: 0 }),
+    P({ rh: [-.3, .12, -.26], rp: [.7, .2, -.3], wx: .6, wr: 1.2, lh: [-.2, .26, .14], lp: [-.8, -.5, 0], tw: .85, lean: .55, bend: .1, crouch: .24, lunge: .3 }),
+    READY],
 });
 ACT.smash_salto = ACT.smash;
 // efeito de cada variação no golpe
@@ -126,11 +134,13 @@ if (typeof window !== 'undefined') window.__pdoACT = ACT;
 const swingKey = p => p.swing.var && ACT[p.swing.type + '_' + p.swing.var] ? p.swing.type + '_' + p.swing.var : p.swing.type;
 // saque: bola na mão, lançamento, posição de troféu
 const SERVE_U = [0, .35, .75, 1];
+// lançamento do saque, mais solto: os braços descem juntos (pêndulo), sobem — a bola sai da mão e a raquete vai para trás
+// da cabeça — e termina na posição de troféu (joelhos flexionados, tronco de lado, costas arqueadas), igual ao 1º quadro do golpe
 const SERVE_KEYS = [
-  P({ rh: [.2, .3, -.28], rp: [.9, -.5, .3], wx: .3, lh: [.04, .34, -.36], tw: -.2, lean: .1, crouch: .06 }),
-  P({ rh: [.32, .42, .12], rp: [.8, -.2, .5], wx: -.3, lh: [.12, .98, -.42], lp: [-.9, 0, .3], tw: -.5, lean: 0, crouch: .12 }),
-  P({ rh: [.3, .66, .22], rp: [.7, .9, .2], wx: -1.0, lh: [.1, 1.02, -.38], lp: [-.9, 0, .3], tw: -.75, lean: -.25, bend: -.1, crouch: .24 }),
-  P({ rh: [.28, .72, .16], rp: [.7, .9, .2], wx: -1.0, lh: [0, .8, -.38], lp: [-.9, 0, .3], tw: -.55, lean: -.15, bend: -.1, crouch: .02 }),
+  P({ rh: [.2, .32, -.3], rp: [.9, -.5, .3], wx: .4, lh: [.04, .36, -.38], tw: -.25, lean: .12, crouch: .08 }),
+  P({ rh: [.36, .14, .12], rp: [.8, -.6, .5], wx: .9, wr: .6, lh: [.08, .44, -.44], lp: [-.9, -.3, .2], tw: -.5, lean: .14, crouch: .16 }),
+  P({ rh: [.33, .6, .2], rp: [.7, .8, .2], wx: -.8, lh: [.1, 1.06, -.36], lp: [-.9, 0, .3], tw: -.8, lean: -.2, bend: -.08, crouch: .3 }),
+  P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.82, lean: -.26, bend: -.12, crouch: .28 }),
 ];
 function poseAt(keys, us, u, out) {
   let i = 0; while (i < us.length - 2 && u > us[i + 1]) i++;
