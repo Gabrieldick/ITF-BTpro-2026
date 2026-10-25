@@ -100,7 +100,7 @@ function openOnline() {
   if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); $('onName').value = ON.name; setTimeout(() => $('onCode').focus(), 0); }
   if (!NET.role) { renderRoomList(); rlChannel().catch(() => { RL.state = 'erro'; renderRoomList(); }); }
 }
-function closeOnline() { $('online').hidden = true; el.menu.hidden = false; syncMenu(); }
+function closeOnline() { if (QQ.on) queueStop(); $('online').hidden = true; el.menu.hidden = false; syncMenu(); }
 function myName() {
   const n = ($('onName').value || '').trim().slice(0, 16) || 'Jogador';
   ON.name = n; try { localStorage.setItem('pdo-online-name', n); } catch (e) {}
@@ -192,6 +192,7 @@ function hostBeat() {
     if (g.open && now - g.lastRecv > TIMEOUT_MS) guestLost(g);
   }
   if (now - ON.lastL > 3000) broadcast(); // atualiza os pings na tela de todos
+  if (QQ.auto) queueHostTick();
 }
 // personagens da CPU: sem repetir nenhum que alguém da sala escolheu
 function sanitizeCC(c, mid) {
@@ -940,6 +941,72 @@ $('onCopy').addEventListener('click', () => {
   const chip = document.createElement('span'); chip.className = 'chip'; chip.id = 'netChip'; chip.hidden = true;
   $('tr').prepend(chip);
 }
+// ---------- partida rápida: fila (Realtime Presence) ----------
+// quem procura entra no canal 'fila-v1' com a modalidade; juntou gente suficiente (4 na dupla, 2 na simples), o primeiro
+// da fila cria a sala e avisa os outros pelo canal; eles entram sozinhos e o anfitrião distribui os lugares e começa.
+// Na dupla, depois de 30 s com pelo menos 2 na fila, completa com CPU.
+const QQ = { on: false, mode: 'dupla', id: '', client: null, ch: null, at: 0, leading: false, auto: null, t: 0 };
+const qStatus = t => { const e = $('onQStatus'); e.textContent = t || ''; e.hidden = !t; };
+function queueUi() { $('onQueue').hidden = QQ.on; $('onQMode').disabled = QQ.on; $('onQCancel').hidden = !QQ.on; }
+async function queueStart() {
+  if (QQ.on || NET.role) return;
+  QQ.on = true; QQ.mode = $('onQMode').value === 'simples' ? 'simples' : 'dupla'; QQ.id = 'q' + Math.random().toString(36).slice(2, 10); QQ.at = Date.now(); QQ.leading = false;
+  queueUi(); qStatus('Conectando à fila…');
+  try {
+    const { RealtimeClient } = await import('@supabase/realtime-js');
+    QQ.client = new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY } });
+    const ch = QQ.client.channel('fila-v1', { config: { presence: { key: QQ.id }, broadcast: { self: false } } });
+    ch.on('presence', { event: 'sync' }, () => queueSync());
+    ch.on('broadcast', { event: 'go' }, ({ payload }) => { if (QQ.on && payload && Array.isArray(payload.ids) && payload.ids.includes(QQ.id) && payload.code) queueGo(payload.code); });
+    QQ.ch = ch;
+    await new Promise((res, rej) => { const to = setTimeout(() => rej(new Error('tempo esgotado')), 9000); ch.subscribe(st => { if (st === 'SUBSCRIBED') { clearTimeout(to); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') { clearTimeout(to); rej(new Error(st)); } }); });
+    await ch.track({ mode: QQ.mode, at: QQ.at, name: myName() });
+    clearInterval(QQ.t); QQ.t = setInterval(queueSync, 2000); // o tempo de espera conta mesmo sem mudança na fila
+  } catch (e) { queueStop(); qStatus('Fila indisponível agora (sem conexão com o servidor). Crie uma sala ou entre pelo código.'); }
+}
+function queueStop(keepMsg) {
+  QQ.on = false; clearInterval(QQ.t);
+  try { if (QQ.ch) QQ.ch.untrack(); } catch (e) {}
+  setTimeout(() => { try { if (QQ.client) QQ.client.disconnect(); } catch (e) {} QQ.client = null; QQ.ch = null; }, 600);
+  queueUi(); if (!keepMsg) qStatus('');
+}
+function queueSync() {
+  if (!QQ.on || !QQ.ch || QQ.leading) return;
+  const st = QQ.ch.presenceState(), need = QQ.mode === 'simples' ? 2 : 4;
+  const list = Object.entries(st).map(([k, a]) => Object.assign({ k }, a[a.length - 1])).filter(x => x && x.mode === QQ.mode).sort((a, b) => (a.at - b.at) || (a.k < b.k ? -1 : 1));
+  const waited = (Date.now() - (list[0] ? list[0].at : QQ.at)) / 1000;
+  let group = null;
+  if (list.length >= need) group = list.slice(0, need);
+  else if (QQ.mode === 'dupla' && list.length >= 2 && waited >= 30) group = list.slice(0, 3); // completa com CPU
+  const me = list.findIndex(x => x.k === QQ.id);
+  qStatus('Procurando partida (' + (QQ.mode === 'simples' ? 'simples' : 'dupla') + '): ' + list.length + ' de ' + need + ' na fila' + (QQ.mode === 'dupla' ? (list.length >= 2 ? ' · completa com CPU em ' + Math.max(0, Math.ceil(30 - waited)) + ' s' : ' · com 2 ou mais, completa com CPU depois de 30 s') : '') + '…');
+  if (group && group[0].k === QQ.id && me >= 0) queueLead(group.map(x => x.k));
+}
+// o primeiro da fila cria a sala e chama os outros
+async function queueLead(ids) {
+  QQ.leading = true; qStatus('Partida encontrada! Criando a sala…');
+  const pub = $('onPublic'); const pubWas = pub ? pub.checked : true; if (pub) pub.checked = false; // sala da fila não aparece na lista
+  S.settings.mode = QQ.mode; await createRoom(); if (pub) pub.checked = pubWas;
+  if (!ON.code || NET.role !== 'host') { QQ.leading = false; qStatus('Não consegui criar a sala; tentando de novo…'); return; }
+  ON.room.mode = QQ.mode; broadcast();
+  QQ.auto = { n: ids.length, until: Date.now() + 25000 };
+  try { await QQ.ch.send({ type: 'broadcast', event: 'go', payload: { ids: ids.filter(i => i !== QQ.id), code: ON.code } }); } catch (e) {}
+  queueStop(true); qStatus('');
+}
+function queueGo(code) { queueStop(true); qStatus('Partida encontrada! Entrando na sala ' + code + '…'); $('onCode').value = code; joinRoom(); }
+// anfitrião da fila: senta todo mundo intercalando os times (CPU nos lugares vazios) e começa quando todos chegarem
+function queueHostTick() {
+  const room = ON.room, A = QQ.auto; if (!room || room.playing) { QQ.auto = null; return; }
+  const here = members().filter(m => m === ON.self || m.open);
+  if (here.length < A.n && Date.now() < A.until) { msg('Esperando os jogadores da fila: ' + here.length + ' de ' + A.n + '…', true); return; }
+  const order = room.mode === 'simples' ? ['A1', 'B1'] : ['A1', 'B1', 'A2', 'B2'];
+  room.seats = { A1: null, A2: null, B1: null, B2: null }; here.slice(0, order.length).forEach((m, i) => { room.seats[order[i]] = m === ON.self ? 'host' : m.id; });
+  fixCpu(); broadcast(); QQ.auto = null; msg('');
+  setTimeout(() => { if (NET.role === 'host' && !ON.room.playing) hostPlay(); }, 1200);
+}
+if (typeof window !== 'undefined') window.__pdoQQ = { QQ, queueSync };
+$('onQueue').addEventListener('click', queueStart);
+$('onQCancel').addEventListener('click', () => queueStop());
 // link com #sala=CÓDIGO: abre a tela do online com o código preenchido
 {
   const m = /sala=([A-Za-z0-9]{5})/.exec(location.hash);

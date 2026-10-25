@@ -805,3 +805,4 @@ body[data-tags="off"] .tag { display: none; }
 .tr-a > div { display: grid; flex: 1; min-width: 0; } .tr-a small { color: var(--ui-sub); font-size: 11px; }
 .tr-ai { font-size: 24px; width: 30px; text-align: center; }
 .tr-a .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 4px; } .tr-a .bar i { display: block; height: 100%; background: var(--ui-acc); }
+.on-queue { display: grid; gap: 6px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--ui-line); background: rgba(51, 195, 255, .06); }
