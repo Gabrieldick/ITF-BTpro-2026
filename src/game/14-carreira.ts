@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, NAMES, HEIGHTS } from './00-base';
+import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -1138,7 +1138,7 @@ function crNextWeek(note) {
         c.a = makeAttrs(Math.round(35 + rnd() * 15), ['atacante', 'defensor', 'tatico', 'completo'][Math.floor(rnd() * 4)], rnd); if ($s.CR.npcR) delete $s.CR.npcR[c.id]; return;
       }
       const o = overall(c.a), d = (c.age < 23 ? 1.6 : c.age < 28 ? .6 : c.age > 31 ? -1.3 : 0) * (o > 84 && c.age < 31 ? .3 : 1);
-      const ch = Math.round(d + gaussR(rnd) * 1.1); for (const [k] of ATTRS) c.a[k] = clamp(c.a[k] + ch, 30, 93);
+      const ch = Math.round(d + gaussR(rnd) * 1.1); for (const [k] of ATTRS) c.a[k] = clamp(attrOf(c.a, k) + ch, 30, 93); // attrOf: atributo novo que o jogador ainda não tinha (antes virava NaN)
     });
     crDriftSeason(rnd);
     if ($s.CR.age > 31) for (const [k] of [['vel']]) $s.CR.me.a[k] = Math.max(40, $s.CR.me.a[k] - 1);
@@ -1349,6 +1349,8 @@ function crMigrate() {
   } else if (extra) crSimYear(31, extra);
   if ($s.CR.me.a.leitura === undefined) $s.CR.me.a.leitura = leituraOf($s.CR.me.a); // atributo novo: noção de jogo
   if ($s.CR.me.a.voleio === undefined) $s.CR.me.a.voleio = voleioOf($s.CR.me.a); // atributo novo: voleio
+  // conserta saves em que a virada de temporada deixou atributo NaN (noção de jogo/voleio de quem não tinha)
+  [$s.CR.me, ...($s.CR.pool || [])].forEach(c => { if (!c || !c.a) return; for (const [k] of ATTRS) if (typeof c.a[k] === 'number' && !isFinite(c.a[k])) { delete c.a[k]; c.a[k] = Math.round(attrOf(c.a, k)); } });
   if ($s.CR.potCur === undefined) $s.CR.potCur = Math.max(Math.min($s.CR.pot, overall($s.CR.me.a) + 3), Math.max(...Object.values($s.CR.me.a)));
   if ($s.CR.day === undefined) $s.CR.day = 1;
   if (nM < POOL_N || $s.CR.v === 2 && !$s.CR.migr2) { $s.CR.migr2 = true; saveCareer(); }
