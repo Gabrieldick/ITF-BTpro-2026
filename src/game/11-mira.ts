@@ -98,7 +98,7 @@ function startToss(p, type, tf) {
   p.tossDur = TOSS_T * (tf || (.82 + Math.random() * .38)); // tf: sorteado pelo convidado no online
   const f = p.team === 0 ? 1 : -1;
   handPos(p, ball.pos);
-  const cx = p.pos.x + .22 * f, cz = p.pos.z - .62 * f, cy = 2.62;
+  const low = type === 'lob', cx = p.pos.x + (low ? .32 : .22) * f, cz = p.pos.z - (low ? .45 : .62) * f, cy = low ? 1.05 : 2.62; // por baixo (lob): bola sobe pouco e é batida na cintura
   p.serveJumped = false; p.pendingServe = null;
   const T = p.tossDur;
   ball.vel.set((cx - ball.pos.x) / T, (cy - ball.pos.y + .5 * G * T * T) / T, (cz - ball.pos.z) / T);

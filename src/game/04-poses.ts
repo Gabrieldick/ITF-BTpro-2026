@@ -5,7 +5,8 @@ import { C, clamp, lerp, attrK } from './00-base';
 import { ball } from './07-glb';
 import { S } from './01-estado';
 // ---------- Poses ----------
-const P = o => Object.assign({ rh: [.2, .42, -.42], rp: [.9, -.6, .3], wx: 1.15, wr: 1.2, lh: [-.03, .34, -.37], lp: [-.9, -.6, .2], tw: 0, lean: .22, bend: 0, crouch: .12, lunge: 0 }, o);
+// stag: pé de trás recuado (0 a 1) · feet: abertura das pernas (1 = normal, menos = pernas juntas)
+const P = o => Object.assign({ rh: [.2, .42, -.42], rp: [.9, -.6, .3], wx: 1.15, wr: 1.2, lh: [-.03, .34, -.37], lp: [-.9, -.6, .2], tw: 0, lean: .22, bend: 0, crouch: .12, lunge: 0, stag: 0, feet: 1 }, o);
 function newPose() { return P({}); }
 const READY = P({});
 // quadros-chave em u = 0, .3 (armado), .45 (contato), .75 (terminação), 1
@@ -95,13 +96,20 @@ Object.assign(ACT, {
   // golpe do saque: da posição de troféu a raquete cai atrás das costas, as pernas empurram (corpo sobe), o tronco gira,
   // o contato sai com o braço todo esticado e a terminação cruza o corpo até o lado esquerdo, com o peso indo para a frente
   smash_saque: [READY,
-    P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.82, lean: -.26, bend: -.12, crouch: .28 }),
-    P({ rh: [.24, .52, .34], rp: [.5, 1.0, .1], wx: -1.7, wr: .2, lh: [-.06, .66, -.24], lp: [-.8, -.2, .3], tw: -.55, lean: -.32, bend: -.1, crouch: .08 }),
+    P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.85, lean: -.26, bend: -.12, crouch: .34, stag: .1, feet: .5 }),
+    P({ rh: [.24, .52, .34], rp: [.5, 1.0, .1], wx: -1.7, wr: .2, lh: [-.06, .66, -.24], lp: [-.8, -.2, .3], tw: -.55, lean: -.32, bend: -.1, crouch: .06, feet: .55 }),
     P({ rh: [.16, 1.12, -.24], rp: [.5, .3, .7], wx: .25, wr: .25, lh: [-.24, .38, -.06], lp: [-.8, -.4, .2], tw: .22, lean: .04, bend: -.02, crouch: 0 }),
     P({ rh: [-.3, .12, -.26], rp: [.7, .2, -.3], wx: .6, wr: 1.2, lh: [-.2, .26, .14], lp: [-.8, -.5, 0], tw: .85, lean: .55, bend: .1, crouch: .24, lunge: .3 }),
     READY],
 });
 ACT.smash_salto = ACT.smash;
+// golpe do saque por baixo: a raquete vem de trás, por baixo, bate na altura da cintura com a face aberta e termina alta na frente
+ACT.smash_saquebaixo = [READY,
+  P({ rh: [.36, .0, .26], rp: [.8, -.7, .5], wx: 1.8, wr: .5, lh: [-.02, .6, -.4], lp: [-.9, -.3, .2], tw: -.6, lean: .25, crouch: .25, stag: .55 }),
+  P({ rh: [.32, .08, -.08], rp: [.8, -.7, .4], wx: 1.65, wr: .4, lh: [-.1, .5, -.3], lp: [-.9, -.4, .1], tw: -.3, lean: .24, crouch: .22, stag: .4 }),
+  P({ rh: [.22, .36, -.5], rp: [.9, -.5, .3], wx: 1.2, wr: .3, lh: [-.2, .4, -.2], lp: [-.9, -.5, 0], tw: 0, lean: .2, crouch: .15, stag: .2 }),
+  P({ rh: [.15, .95, -.45], rp: [.8, -.2, .2], wx: .4, wr: .2, lh: [-.25, .35, -.05], lp: [-.9, -.5, 0], tw: .3, lean: .05, crouch: .05, lunge: .15 }),
+  READY];
 // efeito de cada variação no golpe
 const VAR_FX = {
   smash_curto: { label: 'SMASH CURTO', speed: 1.08, depth: [2.6, 4.8], gk: 1.4 },
@@ -137,10 +145,17 @@ const SERVE_U = [0, .35, .75, 1];
 // lançamento do saque, mais solto: os braços descem juntos (pêndulo), sobem — a bola sai da mão e a raquete vai para trás
 // da cabeça — e termina na posição de troféu (joelhos flexionados, tronco de lado, costas arqueadas), igual ao 1º quadro do golpe
 const SERVE_KEYS = [
-  P({ rh: [.2, .32, -.3], rp: [.9, -.5, .3], wx: .4, lh: [.04, .36, -.38], tw: -.25, lean: .12, crouch: .08 }),
-  P({ rh: [.36, .14, .12], rp: [.8, -.6, .5], wx: .9, wr: .6, lh: [.08, .44, -.44], lp: [-.9, -.3, .2], tw: -.5, lean: .14, crouch: .16 }),
-  P({ rh: [.33, .6, .2], rp: [.7, .8, .2], wx: -.8, lh: [.1, 1.06, -.36], lp: [-.9, 0, .3], tw: -.8, lean: -.2, bend: -.08, crouch: .3 }),
-  P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.82, lean: -.26, bend: -.12, crouch: .28 }),
+  P({ rh: [.2, .32, -.3], rp: [.9, -.5, .3], wx: .4, lh: [.04, .36, -.38], tw: -.3, lean: .12, crouch: .08, stag: .85, feet: 1.05 }),
+  P({ rh: [.36, .14, .12], rp: [.8, -.6, .5], wx: .9, wr: .6, lh: [.08, .44, -.44], lp: [-.9, -.3, .2], tw: -.55, lean: .16, crouch: .12, stag: .7, feet: .9 }),
+  P({ rh: [.33, .6, .2], rp: [.7, .8, .2], wx: -.8, lh: [.1, 1.08, -.36], lp: [-.9, 0, .3], tw: -.85, lean: -.18, bend: -.08, crouch: .1, stag: .15, feet: .42 }),
+  P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.85, lean: -.26, bend: -.12, crouch: .34, stag: .1, feet: .5 }),
+];
+// saque por baixo (lob): bola na frente, raquete vai para trás por baixo e a bola sobe só um pouco
+const SERVE_KEYS_LOW = [
+  P({ rh: [.2, .32, -.3], rp: [.9, -.5, .3], wx: .4, lh: [.04, .36, -.38], tw: -.25, lean: .15, crouch: .1, stag: .6 }),
+  P({ rh: [.36, .1, .14], rp: [.8, -.6, .5], wx: 1.5, wr: .6, lh: [.02, .5, -.44], lp: [-.9, -.3, .2], tw: -.45, lean: .22, crouch: .18, stag: .65 }),
+  P({ rh: [.38, .02, .28], rp: [.8, -.7, .5], wx: 1.8, wr: .5, lh: [.0, .72, -.42], lp: [-.9, -.2, .2], tw: -.6, lean: .24, crouch: .24, stag: .6 }),
+  P({ rh: [.36, .0, .26], rp: [.8, -.7, .5], wx: 1.8, wr: .5, lh: [-.02, .6, -.4], lp: [-.9, -.3, .2], tw: -.6, lean: .25, crouch: .25, stag: .55 }),
 ];
 function poseAt(keys, us, u, out) {
   let i = 0; while (i < us.length - 2 && u > us[i + 1]) i++;
@@ -154,4 +169,4 @@ function mirrorPose(o) { // defesa de backhand
   o.tw = -o.tw; o.bend = -o.bend; o.wr = -o.wr; o.lh[0] = .12; o.lunge = -o.lunge;
 }
 
-export { ACT, KU, P, READY, SERVE_KEYS, SERVE_U, VAR_FX, mirrorPose, newPose, poseAt, swingKey, swingVar, uOf };
+export { ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, VAR_FX, mirrorPose, newPose, poseAt, swingKey, swingVar, uOf };

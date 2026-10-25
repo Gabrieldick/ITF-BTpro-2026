@@ -21,10 +21,10 @@ function updateBall(dt) {
   ball.pos.addScaledVector(ball.vel, dt);
   if (ball.state === 'toss') {
     const sp = S.serverPlayer;
-    if (!sp.isHuman && !sp.pendingServe && ball.vel.y < 0 && ball.pos.y <= 2.7) {
+    if (!sp.isHuman && !sp.pendingServe && ball.vel.y < 0 && ball.pos.y <= (S.serveType === 'lob' ? 1.35 : 2.7)) {
       const D = skillOf(sp);
       sp.pendingServe = { type: S.serveType, q: S.serveType === 'smash' ? rand(D.q[0] - .15, D.q[1]) : rand(D.q[0], 1) };
-      sp.swing.t = sp.swing.dur * .3; sp.swing.type = 'smash'; sp.swing.hit = false; sp.swing.var = 'saque';
+      sp.swing.t = sp.swing.dur * .3; sp.swing.type = 'smash'; sp.swing.hit = false; sp.swing.var = S.serveType === 'lob' ? 'saquebaixo' : 'saque';
     }
     return;
   }

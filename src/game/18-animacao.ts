@@ -7,7 +7,7 @@ import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shor
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
-import { ACT, KU, P, READY, SERVE_KEYS, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf } from './04-poses';
+import { ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf } from './04-poses';
 import { ALL, human } from './06-modelos';
 import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, fpArm, fpWrist, landRing, particles, puff, reachRing, stamp, trail, trailGeo, trailPos, updateParticles } from './07-glb';
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
@@ -71,6 +71,9 @@ const READY_FP_KEYS = [READY_FP, READY_FP];
 // preparação do smash: corpo de lado (ombro da mão livre para a rede), mão livre apontando a bola
 // 1 enquanto se prepara; no golpe o corpo desenrola até o contato
 function smashPrep(p, swingU) {
+  // lançamento do saque: vai ficando de lado como no smash (no saque por baixo, só meio de lado)
+  // saque: quem saca já espera de lado para a quadra (~75°) e segue assim no lançamento (por baixo, só meio de lado)
+  if ((S.mode === 'toss' || S.mode === 'serve') && S.serverPlayer === p && !p.pendingServe) return S.mode === 'toss' && S.serveType === 'lob' ? .6 : 1.35;
   if (p.charging && (p.mtr || MTR).type === 'smash') return clamp((p.mtr || MTR).t / .2, 0, 1);
   if (swingU >= 0 && p.swing.type === 'smash' && ball.pos.y >= 1.7) return clamp(1 - swingU / .45, 0, 1);
   if (!p.isHuman && S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team && p.swing.t < 0 && p.ai.planId === S.hitId && p.ai.shot === 'smash' && p.ai.plan && p.ai.plan.pt.y >= 1.9 && assignee(p.team) === p) return 1;
@@ -81,9 +84,9 @@ function animateAthlete(p, dt) {
   const sp = Math.hypot(p.vel.x, p.vel.z), run = clamp(sp / 4.2, 0, 1);
   let mirror = false, swingU = -1;
   if (p.debug) {
-    if (p.debug.type === 'serve') poseAt(SERVE_KEYS, SERVE_U, p.debug.u, pose);
+    if (p.debug.type === 'serve' || p.debug.type === 'servelow') poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose);
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); mirror = /^(defesa|curta|lob)/.test(p.debug.type) && p.debug.side < 0; }
-  } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(SERVE_KEYS, SERVE_U, clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1), pose);
+  } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1), pose);
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; let ak = swingKey(p); if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh'; poseAt(ACT[ak], uOf(ak), swingU, pose);
@@ -176,7 +179,7 @@ function animateAthlete(p, dt) {
   const air = jy > .05;
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1, L = m.legs[i];
-    let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)), fz = 0;
+    let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     const shuffle = sp > .25 && sp < 4.2 ? Math.abs(lvx) : 0; // deslocamento lateral: passo cruzado vira passo lateral
     const ph = p.gait + (i ? Math.PI * (1 - .45 * shuffle) : 0);

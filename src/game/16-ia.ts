@@ -223,7 +223,7 @@ function updateHuman(dt, c = localCtl()) {
   const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');
   if (serving) {
     tvz = 0; if (S.mode === 'toss') tvx = 0;
-    if (S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74) { tvz = -2.6 * s; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } }
+    if (S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74 && S.serveType !== 'lob') { tvz = -2.6 * s; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } } // saque por baixo: sem pulo
   }
   if (p.pendingServe) { tvx = 0; tvz = -2.6 * s; }
   if ((c.remote ? c.assistMove : S.settings.assistMove) && len < .1 && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === opp && assignee(p.team) === p) {
@@ -456,7 +456,7 @@ function updateAI(p, dt) {
     if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + 1.1);
     if (proMascHold(p)) { tz = (p.team === 0 ? 1 : -1) * Math.max(Math.abs(tz), 5.3); if (Math.abs(p.pos.z) < 5.05) p.pos.z = (p.team === 0 ? 1 : -1) * 5.05; }
   }
-  if (S.serverPlayer === p && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74) || p.pendingServe)) {
+  if (S.serverPlayer === p && S.serveType !== 'lob' && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) * .74) || p.pendingServe)) {
     tz = p.pos.z + (p.team === 0 ? -1 : 1) * .8;
     if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); }
   }
