@@ -50,7 +50,8 @@ function charSkill(p) {
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
   // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
   const stars = S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
-  const adj = stars ? [-.04, -.03, 0, .16, .32, .5][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  let adj = stars ? [-.04, -.03, 0, .16, .32, .5][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  if (S.careerActive && S.careerRival && p.team === 1) adj += .06; // clássico contra rival: a CPU vem mais focada (reação e decisões)
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
   const kb = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)), 0, 1);
   // estrelas: mudam a leitura de jogo (reação, posicionamento, escolha do golpe, não furar a bola);

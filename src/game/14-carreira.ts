@@ -931,7 +931,13 @@ function crSimOne(m, isMine) {
 // confrontos diretos: duplas (ou jogadores) que você enfrenta muito viram rivais
 const h2hKey = tm => [tm.a, tm.b].filter(Boolean).sort().join('+');
 function crH2H(tm) { return ($s.CR.h2h || {})[h2hKey(tm)] || { w: 0, l: 0 }; }
-function crRivalOf(tm) { const h = crH2H(tm); return h.w + h.l >= 3 && h.w >= 1 && h.l >= 1; }
+// rivalidade por jogador (as duplas mudam a cada torneio): 3+ confrontos com vitória e derrota dos dois lados = rival;
+// 3+ derrotas sem nenhuma vitória = carrasco (também conta como clássico)
+const crH2HP = id => (($s.CR.h2hP || {})[id]) || { w: 0, l: 0 };
+const crRivalP = id => { const h = crH2HP(id); return (h.w + h.l >= 3 && h.w >= 1 && h.l >= 1) || (h.l >= 3 && h.w === 0); };
+const crNemesis = id => { const h = crH2HP(id); return h.l >= 3 && h.w === 0; };
+function crRivalsIn(tm) { return [tm.a, tm.b].filter(id => id && id !== 'crme' && crRivalP(id)); }
+function crRivalOf(tm) { const h = crH2H(tm); return (h.w + h.l >= 3 && h.w >= 1 && h.l >= 1) || crRivalsIn(tm).length > 0; }
 function crAfterMyMatch(won) {
   const t = $s.CR.tour;
   // química: cada partida juntos aproxima (vitória mais); os outros parceiros esfriam um pouco
@@ -945,9 +951,13 @@ function crAfterMyMatch(won) {
   // nota alta rende mais (a partir de 8; nota 10 dobra o que a vitória dá)
   const rb = t.lastRating && t.lastRating.r > 8 ? Math.round((t.lastRating.r - 8) / 2 * winPE * crXpMul() * 10) / 10 : 0;
   if (rb > 0) $s.CR.pe += rb;
+  { const before = [opp.a, opp.b].filter(Boolean).map(id => [id, crRivalP(id)]); $s.CR.h2hP = $s.CR.h2hP || {};
+    before.forEach(([id]) => { const h = $s.CR.h2hP[id] || { w: 0, l: 0 }; won ? h.w++ : h.l++; h.name = nameOf(crChar(id)); $s.CR.h2hP[id] = h; });
+    before.forEach(([id, was]) => { if (!was && crRivalP(id)) { const h = $s.CR.h2hP[id]; t.log.push((crNemesis(id) ? 'Você ganhou um carrasco: ' : 'Nasce uma rivalidade com ') + h.name + ' (' + h.w + '–' + h.l + ')'); } });
+    if (won) before.forEach(([id, was]) => { if (was && crNemesis(id) === false && $s.CR.h2hP[id].w === 1 && $s.CR.h2hP[id].l >= 3) t.log.push('Enfim! Primeira vitória sobre ' + $s.CR.h2hP[id].name); }); }
   { const wasRival = crRivalOf(opp); $s.CR.h2h = $s.CR.h2h || {}; const k = h2hKey(opp), h = $s.CR.h2h[k] || { w: 0, l: 0, name: crTeamName(opp) }; won ? h.w++ : h.l++; h.name = crTeamName(opp); $s.CR.h2h[k] = h;
     if (won && wasRival) { const bon = Math.round(crTourT(t).prize[0] * .1 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 2; crAddFama(2); t.log.push('Clássico vencido contra rivais: +' + money(bon) + ', +2 PE, +2 fama'); }
-    else if (!wasRival && crRivalOf(opp)) t.log.push('Nasce uma rivalidade com ' + crTeamName(opp) + ' (' + h.w + '–' + h.l + ')'); }
+    else if (!wasRival && crRivalOf(opp)) { /* a rivalidade por jogador já avisa */ } }
   if (won) { [opp.a, opp.b].filter(Boolean).forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
   else t.alive = false;
   t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp) + (t.lastRating ? ' · nota ' + t.lastRating.r.toFixed(1).replace('.', ',') + (rb > 0 ? ' (+' + String(rb).replace('.', ',') + ' PE pela nota)' : '') + (t.lastRating.g > .005 ? ' · potencial +' + t.lastRating.g.toFixed(2).replace('.', ',') : '') : ''));
@@ -1303,6 +1313,7 @@ function crPlayMatch() {
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
   S.settings.pick = { me: 'crme', mate: t.teams[t.me].b || t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
+  { const mm0 = crMyMatch(), t0 = $s.CR.tour; S.careerRival = !!(mm0 && t0 && crRivalOf(t0.teams[mm0.a === t0.me ? mm0.b : mm0.a])); } // clássico: a CPU joga focada
   S.careerChem = $s.CR.tour && !$s.CR.tour.singles ? crChemLv() : 0; // o parceiro da CPU reage mais rápido com química
   S.careerStars = $s.CR.stars || 3; // dificuldade escolhida (3 = padrão: acompanha o nível do torneio)
   S.careerActive = true; saveCareer(); flushSaves();
@@ -1460,6 +1471,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; } };
