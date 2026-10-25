@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -77,7 +77,7 @@ function crAgendaHTML() {
   const cal = up.length ? '<p class="section-label">Próximos torneios profissionais</p>' + (crMaxTier() < 3 ? '<p class="cr-note">O ITF BT10 libera com ' + TIERS[3].req + ' pontos no ranking ou com um título no Amador A.</p>' : '') + '<div class="cr-list">' + up.map(x => '<div class="cr-row' + (x.o.locked ? ' dim' : '') + '"><span class="cr-pos">S' + x.w + '</span><div><b>' + esc(x.o.name) + '</b><small>' + x.date + (x.o.tier !== undefined && !x.o.special ? ' · ' + TIERS[x.o.tier].nome + ' · campeão ' + TIERS[x.o.tier].pts[0] + ' pts' : '') + '</small></div></div>').join('') + '</div>' : '';
   return '<div class="cr-ladder">' + ladder + '</div>'
     + '<div class="cr-week">' + week + '</div>'
-    + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · entrosamento ' + '★'.repeat($s.CR.chem) + '☆'.repeat(5 - $s.CR.chem) + ' · humor: ' + crMoodWord() : '') + '</p>'
+    + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · química ' + crChem() + ' (' + CHEM_NOME[crChemLv()] + ') · humor: ' + crMoodWord() : '') + '</p>'
     + goal + injC + regC + acts + tours + cal;
 }
 function crPlayerHTML() {
@@ -135,9 +135,9 @@ function crPartnersHTML() {
   const acts = cur ? '<div class="cr-energy"><span>Humor</span><span class="bar"><i class="' + (mood < 40 ? 'lo' : mood >= 70 ? 'hi' : '') + '" style="width:' + mood + '%"></i></span><b>' + mood + '</b></div>'
     + '<p class="cr-note">' + esc(nameOf(cur)) + ' está <b>' + crMoodWord() + '</b>' + (mb ? ' · em jogo: ' + (mb > 0 ? '+' : '') + mb + ' em todos os atributos' : '') + '. Vitórias e títulos animam; derrotas cedo desanimam; abaixo de 15 ele desfaz a dupla.</p>'
     + '<div class="cta-row"><button class="ghost sm" data-pact="jantar">Jantar juntos (' + money(150 * (crMaxTier() + 1)) + ', +8)</button><button class="ghost sm" data-pact="treino">Treinar em dupla (−10 energia, +PE, +4)</button><button class="ghost sm" data-pact="conversa">Conversar sobre o calendário (+3)</button></div>' : '';
-  return '<p class="section-label">Seu parceiro</p>' + (cur ? crPersonRow(cur, 'entrosamento ' + $s.CR.chem + '/5', '<button class="ghost sm" data-drop="1">Desfazer dupla</button>') + acts : '<p class="cr-note">Sem parceiro fixo.</p>')
+  return '<p class="section-label">Seu parceiro</p>' + (cur ? crPersonRow(cur, 'química ' + crChem() + ' · ' + CHEM_NOME[crChemLv()], '<button class="ghost sm" data-drop="1">Desfazer dupla</button>') + chemBar() + acts : '<p class="cr-note">Sem parceiro fixo.</p>')
     + (offers.length ? '<p class="section-label">Convites (de quem você venceu)</p>' + offers.map(c => crPersonRow(c, 'quer jogar com você', '<button class="cta sm" data-partner="' + c.id + '">Aceitar</button>')).join('') : '')
-    + '<p class="section-label">Mercado de parceiros</p><p class="cr-note">Quem aceita depende do seu overall, dos seus pontos no ranking e de você já ter vencido o jogador. Quem está muito acima no ranking só joga com você depois de perder para você. Entrosamento sobe a cada torneio juntos.</p>'
+    + '<p class="section-label">Mercado de parceiros</p><p class="cr-note">Quem aceita depende do seu overall, dos seus pontos no ranking e de você já ter vencido o jogador. Quem está muito acima no ranking só joga com você depois de perder para você. A química sobe a cada partida juntos (mais na vitória) e fica guardada se vocês se separarem.</p>'
     + '<div class="cr-list">' + list.map(x => crPersonRow(x.c, x.w.why + ' · ' + npcPts(x.c.id) + ' pts', x.w.ok ? '<button class="ghost sm" data-partner="' + x.c.id + '">Formar dupla</button>' : '<span class="cr-lock">🔒</span>')).join('') + '</div>';
 }
 // ícone de cada atributo nos bônus de raquetes e equipamentos
@@ -311,7 +311,7 @@ function bindCareerBody() {
   const co = $('crCoach'); if (co) co.addEventListener('click', () => { crCoach(); renderCareer(); });
   body.querySelectorAll('[data-up]').forEach(bt => bt.addEventListener('click', () => { crUpgrade(bt.dataset.up); renderCareer(); }));
   body.querySelectorAll('[data-partner]').forEach(bt => bt.addEventListener('click', () => { crSetPartner(bt.dataset.partner); $s.CR.lastMsg = 'Nova dupla: ' + nameOf(crChar(bt.dataset.partner)) + '.'; renderCareer(); }));
-  body.querySelectorAll('[data-drop]').forEach(bt => bt.addEventListener('click', () => { $s.CR.partner = null; $s.CR.chem = 0; saveCareer(); renderCareer(); }));
+  body.querySelectorAll('[data-drop]').forEach(bt => bt.addEventListener('click', () => { $s.CR.partner = null; saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-buy]').forEach(bt => bt.addEventListener('click', () => { const k = bt.dataset.buy, r = RACKET_STATS[k], price = Math.round(r.preco * (1 - ($s.CR.discount || 0))); if ($s.CR.money >= price) { $s.CR.money -= price; $s.CR.discount = 0; $s.CR.rackets.push(k); $s.CR.racket = k; $s.CR.me.look.racket = k; $s.CR.lastMsg = 'Comprou a ' + r.nome + '.'; saveCareer(); } renderCareer(); }));
   body.querySelectorAll('[data-life]').forEach(bt => bt.addEventListener('click', () => { crLifeBuy(bt.dataset.life); renderCareer(); }));
   body.querySelectorAll('[data-pact]').forEach(bt => bt.addEventListener('click', () => { crPartnerAct(bt.dataset.pact); renderCareer(); }));
@@ -584,6 +584,12 @@ $('stTable').addEventListener('click', e => {
   if (n) tutShowHow(+n.dataset.tutnext); else if (a) tutShowHow(+a.dataset.tutagain); else { renderTut(); $('tutPick').hidden = false; }
 });
 function openDrillFromCareer() { drillFromCareer = true; $('career').hidden = true; $('drillPick').hidden = false; drillInfo(); }
+// barra de química com o parceiro atual
+function chemBar() {
+  const v = crChem(), lv = crChemLv(), nx = [20, 50, 80, 100][lv];
+  return '<div class="cr-energy"><span>Química</span><span class="bar"><i class="' + (lv >= 2 ? 'hi' : '') + '" style="width:' + v + '%"></i></span><b>' + v + '</b></div>'
+    + '<p class="cr-note"><b>' + CHEM_NOME[lv] + '</b>' + (lv >= 2 ? ' · em jogo: +' + (lv - 1) + ' em todos os atributos para vocês dois e o parceiro reage mais rápido' : lv === 1 ? ' · o parceiro já reage um pouco mais rápido' : '') + (lv < 3 ? ' · próximo nível em ' + nx : '') + '. Cada partida juntos aproxima a dupla (vitória mais).</p>';
+}
 $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnSimRest').addEventListener('click', () => { setPaused(false); simulateRest(); }); // carreira: termina a partida no simulador (nota do que já foi jogado)
 $('btnPauseCam').addEventListener('click', () => { toggleCam(); setPaused(false); });

@@ -58,7 +58,7 @@ function charSkill(p) {
   const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
   const dm = p.team === 1 && !stars ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react, smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
+    speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), // química: o parceiro reage mais rápido smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, kt), .3, .9), clamp(lerp(.72, 1, kt), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)

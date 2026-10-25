@@ -339,7 +339,7 @@ async function crImportUrl(url) { const r = await fetch(url, { cache: 'no-store'
 function crSyncChars() {
   if ($s.CR) crSignature();
   // o parceiro joga melhor quando está contente e pior quando está insatisfeito
-  const mb = $s.CR && $s.CR.partner ? crMoodBonus() : 0, mbB = {}; if (mb) for (const [k] of ATTRS) mbB[k] = mb;
+  const mb = $s.CR && $s.CR.partner ? crMoodBonus() + ([0, 0, 1, 2][crChemLv()] || 0) : 0, mbB = {}; if (mb) for (const [k] of ATTRS) mbB[k] = mb; // humor + química
   // na partida cada um joga com a sua fase (e os reais com a evolução da carreira)
   $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER, crLocals()).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
 }
@@ -357,7 +357,7 @@ function crEquipB() {
   return out;
 }
 // rkIn: a raquete já está somada (a partida não soma de novo)
-function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crEquipB(), crFatigue()), rkIn: true }); }
+function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crEquipB(), crFatigue(), crChemB()), rkIn: true }); }
 const crMeOvr = () => overall(effA($s.CR.me.a, crEquipB(), crFatigue()));
 // fase de cada atleta: oscila semana a semana (−3 a +3 em todos os atributos); os profissionais reais também mudam de
 // nível de uma temporada para outra (até ±4), já que eles não envelhecem como os fictícios
@@ -538,7 +538,7 @@ function crCreate(o) {
     a: attrs || makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : o.acc === 'band' ? { headband: '#ff5a1f' } : {}, o.hairStyle ? { hairStyle: o.hairStyle } : {}, !o.fem && o.beard ? { beard: o.beard } : { beard: '' }, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
   $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: (promessa ? 17 : 22) + Math.round(st * .8),
     money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, titles: {}, maxTier: st, startTier: st,
-    partner: null, chem: 0, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
+    partner: null, chemBy: {}, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
   if (st >= 2) { const rk = st >= 5 ? 'proteo' : st >= 3 ? 'coral' : 'mare'; $s.CR.rackets.push(rk); $s.CR.racket = rk; } // começando mais alto, já tem uma raquete melhor
@@ -562,14 +562,22 @@ function crWillPartner(c) {
   if (o <= lim) return { ok: true, why: beat ? 'Respeita você: já perdeu para você' : 'Topa jogar com você' };
   return { ok: false, why: o - lim > 8 ? 'Fora do seu nível por enquanto' : 'Quer alguém com mais ranking ou que já o tenha vencido' };
 }
-function crSetPartner(id) { if ($s.CR.partner !== id) { $s.CR.partner = id; $s.CR.chem = 0; $s.CR.mood = 60; } $s.CR.offers = $s.CR.offers.filter(x => x !== id); saveCareer(); }
+// química com cada parceiro (0 a 100): sobe a cada partida juntos (mais na vitória), fica guardada se vocês se separarem
+// e esfria devagar com quem não joga com você; níveis: nova dupla, se conhecendo (20), boa química (50), entrosados (80)
+const crChem = id => Math.round((($s.CR.chemBy || {})[id || $s.CR.partner]) || 0);
+function crChemAdd(v, id) { id = id || $s.CR.partner; if (!id) return; const c = $s.CR.chemBy = $s.CR.chemBy || {}; c[id] = clamp((c[id] || 0) + v, 0, 100); }
+const crChemLv = id => { const v = crChem(id); return v >= 80 ? 3 : v >= 50 ? 2 : v >= 20 ? 1 : 0; };
+const CHEM_NOME = ['Nova dupla', 'Se conhecendo', 'Boa química', 'Entrosados'];
+// em jogo: boa química +1 e entrosados +2 em todos os atributos (para você e o parceiro, só na dupla)
+function crChemB() { const v = [0, 0, 1, 2][crChemLv()], b = {}; if (v && $s.CR.partner && !($s.CR.tour && $s.CR.tour.singles)) for (const [k] of ATTRS) b[k] = v; return b; }
+function crSetPartner(id) { if ($s.CR.partner !== id) { $s.CR.partner = id; $s.CR.mood = 60; } /* a química fica guardada por parceiro */ $s.CR.offers = $s.CR.offers.filter(x => x !== id); saveCareer(); }
 // humor do parceiro (0–100): sobe com vitórias e com o que você faz por ele, cai com derrotas; muito baixo, ele desfaz a dupla
 const crMoodWord = () => { const m = $s.CR.mood; return m >= 80 ? 'empolgado' : m >= 60 ? 'contente' : m >= 40 ? 'neutro' : m >= 25 ? 'insatisfeito' : 'quer sair'; };
 const crMoodBonus = () => { const m = $s.CR.mood; return m >= 80 ? 2 : m >= 65 ? 1 : m < 25 ? -3 : m < 40 ? -1 : 0; };
 function crMood(v, why) {
   if (!$s.CR.partner) return '';
   $s.CR.mood = clamp(($s.CR.mood ?? 60) + v, 0, 100);
-  if ($s.CR.mood < 15) { const n = nameOf(crChar($s.CR.partner)); $s.CR.partner = null; $s.CR.chem = 0; $s.CR.mood = 60; return n + ' estava muito insatisfeito e desfez a dupla.'; }
+  if ($s.CR.mood < 15) { const n = nameOf(crChar($s.CR.partner)); crChemAdd(-crChem() / 2); $s.CR.partner = null; $s.CR.mood = 60; return n + ' estava muito insatisfeito e desfez a dupla.'; }
   return why || '';
 }
 // ações com o parceiro (uma de cada por semana)
@@ -579,7 +587,7 @@ function crPartnerAct(k) {
   if ($s.CR.pact[k] === absWeek()) { $s.CR.lastMsg = 'Já fizeram isso esta semana.'; return; }
   const n = nameOf(crChar($s.CR.partner));
   if (k === 'jantar') { const c = 150 * (crMaxTier() + 1); if ($s.CR.money < c) { $s.CR.lastMsg = 'Dinheiro insuficiente.'; return; } $s.CR.money -= c; $s.CR.lastMsg = crMood(8, 'Jantar com ' + n + ': o clima melhorou (+8 de humor).'); }
-  if (k === 'treino') { if ($s.CR.energy < 15) { $s.CR.lastMsg = 'Energia baixa demais.'; return; } $s.CR.energy -= 10; const g = Math.round(2 * crXpMul()); $s.CR.pe += g; if (Math.random() < .35) $s.CR.chem = Math.min(5, $s.CR.chem + 1); $s.CR.lastMsg = crMood(4, 'Treino em dupla com ' + n + ': +' + g + ' pontos de evolução e +4 de humor.'); }
+  if (k === 'treino') { if ($s.CR.energy < 15) { $s.CR.lastMsg = 'Energia baixa demais.'; return; } $s.CR.energy -= 10; const g = Math.round(2 * crXpMul()); $s.CR.pe += g; crChemAdd(4); $s.CR.lastMsg = crMood(4, 'Treino em dupla com ' + n + ': +' + g + ' pontos de evolução, +4 de humor e +4 de química.'); }
   if (k === 'conversa') { const up = $s.CR.mood < 50 ? 6 : 3; $s.CR.lastMsg = crMood(up, 'Conversa franca com ' + n + ' sobre o calendário: +' + up + ' de humor.'); }
   $s.CR.pact[k] = absWeek(); crSyncChars(); saveCareer();
 }
@@ -809,7 +817,7 @@ function crEnter(opt) {
   if (!$s.CR.partner) { // parceiro de ocasião: o melhor que aceitar dentro do nível
     const cand = crWorld().filter(c => crCharOvr(c) <= T.ovr[1] && crWillPartner(c).ok).sort((x, y) => crCharOvr(y) - crCharOvr(x));
     if (!cand.length) { $s.CR.lastMsg = 'Ninguém aceitou ser seu parceiro neste torneio.'; return false; }
-    $s.CR.partner = cand[0].id; $s.CR.chem = 0; $s.CR.mood = 55;
+    $s.CR.partner = cand[0].id; $s.CR.mood = 55;
   }
   $s.CR.money -= cost; if (opt.wild) $s.CR.wildcard = 0;
   const rnd = Math.random;
@@ -910,11 +918,11 @@ function crScore(N, rnd) { const l = Math.floor((rnd || Math.random)() * (N - 1)
 function crSimOne(m, isMine) {
   const t = $s.CR.tour, A = t.teams[m.a], B = t.teams[m.b];
   if (t.mixed && A.squad && B.squad) { // formato antigo (confronto entre estados), só para torneio já em andamento
-    if (isMine) { const mine = A.me ? A : B, opp = A.me ? B : A; const sa = crTeamOvr(mine) + $s.CR.chem * .4 + crMoodBonus() * .5, sb = crTeamOvr(opp); crMixedAfter(m, Math.random() < 1 / (1 + Math.exp(-(sa - sb) / 3)), crScore($s.CR.games)); return; }
+    if (isMine) { const mine = A.me ? A : B, opp = A.me ? B : A; const sa = crTeamOvr(mine) + crChemLv() * .7 + crMoodBonus() * .5, sb = crTeamOvr(opp); crMixedAfter(m, Math.random() < 1 / (1 + Math.exp(-(sa - sb) / 3)), crScore($s.CR.games)); return; }
     const r = crTieSim(A, B); m.w = r.aWon ? m.a : m.b; m.score = Math.max(r.na, r.nb) + '–' + Math.min(r.na, r.nb); return;
   }
   let sa = crTeamOvr(A), sb = crTeamOvr(B);
-  if (!t.singles) { if (A.me) sa += $s.CR.chem * .4 + crMoodBonus() * .5; if (B.me) sb += $s.CR.chem * .4 + crMoodBonus() * .5; }
+  if (!t.singles) { if (A.me) sa += crChemLv() * .7 + crMoodBonus() * .5; if (B.me) sb += crChemLv() * .7 + crMoodBonus() * .5; }
   { const st = (3 - ($s.CR.stars || 3)) * 1.5; if (A.me) sa += st; if (B.me) sb += st; } // dificuldade em estrelas vale na partida simulada também
   const pA = 1 / (1 + Math.exp(-(sa - sb) / 3));
   m.w = Math.random() < pA ? m.a : m.b;
@@ -925,7 +933,9 @@ const h2hKey = tm => [tm.a, tm.b].filter(Boolean).sort().join('+');
 function crH2H(tm) { return ($s.CR.h2h || {})[h2hKey(tm)] || { w: 0, l: 0 }; }
 function crRivalOf(tm) { const h = crH2H(tm); return h.w + h.l >= 3 && h.w >= 1 && h.l >= 1; }
 function crAfterMyMatch(won) {
-  const t = $s.CR.tour; $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
+  const t = $s.CR.tour;
+  // química: cada partida juntos aproxima (vitória mais); os outros parceiros esfriam um pouco
+  if (!t.singles && $s.CR.partner) { crChemAdd(won ? 4.5 : 2.5); const c = $s.CR.chemBy || {}; for (const id in c) if (id !== $s.CR.partner) c[id] = Math.round(c[id] * .985 * 10) / 10; } $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
   const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
   // evolução por partida: vitória ≈ 2 no Amador C, ≈ 12 no BT200 e ≈ 15 no Sand Series (sobe bem menos que o custo dos atributos);
@@ -1033,7 +1043,7 @@ function crFinishTour() {
     const bon = $s.CR.sponsors.reduce((x, sp) => x + sp.bonus, 0); if (bon) { $s.CR.money += bon; t.sponsorBonus = bon; }
     crAddFama(1 + t.tier * 1.6 + (crInv('marca') >= 3 ? 2 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
   else if (place === 1 && !t.special && !t.singles) crAddFama(.3 + t.tier * .5);
-  if (!nation) $s.CR.chem = Math.min(5, $s.CR.chem + 1);
+  if (!nation && !t.singles) crChemAdd(2); // torneio inteiro juntos
   if (!nation) { const mv = place === 0 ? 15 : place === 1 ? 7 : place === 2 ? 2 : -8 - (crTeamOvr(t.teams[t.me]) >= T.ovr[1] ? 4 : 0); const mm = crMood(mv); if (mm) t.moodMsg = mm; }
   if (place === 0 && crLife('social')) crAddFama(1);
   // quem você venceu pode querer jogar com você
@@ -1293,6 +1303,7 @@ function crPlayMatch() {
   crSyncChars();
   S.settings.mode = t.singles ? 'simples' : 'dupla'; S.settings.diff = crTourT(t).diff; S.settings.racket = $s.CR.racket; S.settings.games = $s.CR.games; S.settings.format = proFinal ? 'pro' : 'set';
   S.settings.pick = { me: 'crme', mate: t.teams[t.me].b || t.mate || $s.CR.partner || opp.a, o1: opp.a, o2: opp.b || opp.a };
+  S.careerChem = $s.CR.tour && !$s.CR.tour.singles ? crChemLv() : 0; // o parceiro da CPU reage mais rápido com química
   S.careerStars = $s.CR.stars || 3; // dificuldade escolhida (3 = padrão: acompanha o nível do torneio)
   S.careerActive = true; saveCareer(); flushSaves();
   $('career').hidden = true; ac(); newMatch();
@@ -1349,6 +1360,7 @@ function crMigrate() {
   } else if (extra) crSimYear(31, extra);
   if ($s.CR.me.a.leitura === undefined) $s.CR.me.a.leitura = leituraOf($s.CR.me.a); // atributo novo: noção de jogo
   if ($s.CR.me.a.voleio === undefined) $s.CR.me.a.voleio = voleioOf($s.CR.me.a); // atributo novo: voleio
+  if (!$s.CR.chemBy) { $s.CR.chemBy = {}; if ($s.CR.partner && $s.CR.chem) $s.CR.chemBy[$s.CR.partner] = Math.min(100, $s.CR.chem * 16); delete $s.CR.chem; } // entrosamento antigo (0–5) vira química
   // conserta saves em que a virada de temporada deixou atributo NaN (noção de jogo/voleio de quem não tinha)
   [$s.CR.me, ...($s.CR.pool || [])].forEach(c => { if (!c || !c.a) return; for (const [k] of ATTRS) if (typeof c.a[k] === 'number' && !isFinite(c.a[k])) { delete c.a[k]; c.a[k] = Math.round(attrOf(c.a, k)); } });
   if ($s.CR.potCur === undefined) $s.CR.potCur = Math.max(Math.min($s.CR.pot, overall($s.CR.me.a) + 3), Math.max(...Object.values($s.CR.me.a)));
@@ -1418,7 +1430,7 @@ const EVENTS = {
   quebrou: { w: .7, ok: () => $s.CR.racket !== 'basica' && $s.CR.racket !== 'assinatura', choice: () => { const r = RACKET_STATS[$s.CR.racket], c = Math.round(r.preco * .2); return { text: 'Sua ' + r.nome + ' trincou num smash.', opts: ['Consertar (' + money(c) + ')', 'Aposentar a raquete'], data: { c } }; },
     resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; return 'Raquete consertada.'; } const old = $s.CR.racket; $s.CR.rackets = $s.CR.rackets.filter(k => k !== old); if (!$s.CR.rackets.includes('basica')) $s.CR.rackets.push('basica'); $s.CR.racket = $s.CR.rackets.slice().sort((a, b) => RACKET_STATS[b].preco - RACKET_STATS[a].preco)[0]; $s.CR.me.look.racket = $s.CR.racket; return 'Você voltou para a ' + RACKET_STATS[$s.CR.racket].nome + '.'; } },
   parceiro: { w: 1.4, ok: () => !!$s.CR.partner && $s.CR.mood < 60, choice: () => ({ text: nameOf(crChar($s.CR.partner)) + ' anda insatisfeito com a divisão de bolas.', opts: ['Conversar e acertar', 'Deixar para lá'] }),
-    resolve: i => { if (i === 0) { $s.CR.chem = Math.min(5, $s.CR.chem + 1); return 'Conversa boa: entrosamento subiu.'; } $s.CR.chem = Math.max(0, $s.CR.chem - 2); if (Math.random() < .35) { const n = nameOf(crChar($s.CR.partner)); $s.CR.partner = null; $s.CR.chem = 0; return n + ' desfez a dupla.'; } return 'O clima esfriou: entrosamento caiu.'; } },
+    resolve: i => { if (i === 0) { crChemAdd(12); return 'Conversa boa: a química subiu.'; } crChemAdd(-25); if (Math.random() < .35) { const n = nameOf(crChar($s.CR.partner)); $s.CR.partner = null; return n + ' desfez a dupla.'; } return 'O clima esfriou: entrosamento caiu.'; } },
   beneficente: { w: 1.2, ok: () => true, choice: () => ({ text: 'Convite para um torneio beneficente de exibição.', opts: ['Jogar (−15 energia, +fama)', 'Recusar'] }),
     resolve: i => { if (i === 0) { $s.CR.energy = Math.max(0, $s.CR.energy - 15); crAddFama(7); crMaybeSponsor(); return 'Exibição lotada: +7 de fama.'; } return 'Você preferiu poupar energia.'; } },
   mentor: { w: 1, ok: () => $s.CR.money > 400, choice: () => { const c = 300 * (crMaxTier() + 1); return { text: 'Um ex-campeão mundial se oferece para ser seu mentor por 4 semanas.', opts: ['Aceitar (' + money(c) + ', +50% de evolução e +40% de potencial)', 'Recusar'], data: { c } }; },
@@ -1448,6 +1460,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; } };
