@@ -46,6 +46,10 @@ const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;'
 function crAgendaHTML() {
   if ($s.CR.event) return '<div class="cr-card gold"><div class="eyebrow">Evento da semana</div><b>' + esc($s.CR.event.text) + '</b><div class="cta-row" style="margin-top:6px">' + $s.CR.event.opts.map((o, i) => '<button class="' + (i ? 'ghost' : 'cta') + ' sm" data-ev="' + i + '">' + esc(o) + '</button>').join('') + '</div></div>';
   const opts = crWeekOptions(), p = $s.CR.partner ? crChar($s.CR.partner) : null;
+  // arcos ativos dos eventos (duram semanas)
+  const arcs = [($s.CR.hurt > 0 ? '🩼 Jogando no sacrifício: −3 em tudo (' + $s.CR.hurt + ' sem.)' : ''), ($s.CR.slump > 0 ? '😞 Crise de confiança: −1 em tudo (' + $s.CR.slump + ' sem.)' : ''), ($s.CR.conf > 0 ? '🧠 Psicólogo: +1 em tudo (' + $s.CR.conf + ' sem.)' : ''),
+    ($s.CR.coach > 0 ? '🧢 Técnico campeão: +30% evolução/potencial, −20% dos prêmios (' + $s.CR.coach + ' sem.)' : ''), ($s.CR.spBet ? '🎯 Desafio da ' + esc($s.CR.spBet.brand) + ': título em ' + $s.CR.spBet.weeks + ' sem. vale ' + money($s.CR.spBet.reward) : ''), ($s.CR.feud ? '🔥 Duelo com ' + esc($s.CR.feud.name) + ' (' + $s.CR.feud.weeks + ' sem.)' : '')].filter(Boolean);
+  const arcC = arcs.length ? '<div class="cr-card"><div class="eyebrow">Em andamento</div>' + arcs.map(a => '<span>' + a + '</span>').join('') + '</div>' : '';
   const injC = $s.CR.injury ? '<div class="cr-card"><div class="eyebrow">Lesionado</div><b>' + esc($s.CR.injury.nome) + '</b><span>Faltam ' + $s.CR.injury.weeks + ' semana(s). Sem torneios nem treino pesado; descansar acelera a volta.' + ($s.CR.staff.fisio ? '' : ' Um fisioterapeuta (Loja) encurta lesões futuras.') + '</span></div>' : '';
   const goal = $s.CR.goal ? '<div class="cr-card' + (crGoalDone($s.CR.goal) ? ' gold' : '') + '"><div class="eyebrow">Meta da temporada</div><b>' + esc($s.CR.goal.txt) + '</b><span>' + (crGoalDone($s.CR.goal) ? 'Cumprida por enquanto ✔ — vale no fim da temporada' : 'Ainda não cumprida') + ' · prêmio ' + money($s.CR.goal.money) + ' e ' + $s.CR.goal.pe + ' pontos de evolução</span></div>'
     : '<div class="cr-card gold"><div class="eyebrow">Escolha a meta da temporada</div><span>Cumprida até o fim da temporada, dá dinheiro, evolução e fama.</span><div class="cta-row" style="margin-top:6px">' + crGoalOptions().map((o, i) => '<button class="ghost sm" data-goal="' + i + '" title="' + money(o.money) + ' · +' + o.pe + ' PE">' + esc(o.txt) + '</button>').join('') + '</div></div>';
@@ -78,7 +82,7 @@ function crAgendaHTML() {
   return '<div class="cr-ladder">' + ladder + '</div>'
     + '<div class="cr-week">' + week + '</div>'
     + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · química ' + crChem() + ' (' + CHEM_NOME[crChemLv()] + ') · humor: ' + crMoodWord() : '') + '</p>'
-    + goal + injC + regC + acts + tours + cal;
+    + goal + injC + arcC + regC + acts + tours + cal;
 }
 function crPlayerHTML() {
   const eq = crEquipB();
@@ -296,6 +300,7 @@ function crTourHTML() {
     const h = crH2H(opp), riv = crRivalOf(opp);
     const rv = crRivalsIn(opp), pTxt = [opp.a, opp.b].filter(Boolean).map(id => { const x = crH2HP(id); return x.w + x.l ? esc(shortOf(crChar(id))) + ' ' + x.w + '–' + x.l : ''; }).filter(Boolean).join(' · ');
     msg = (riv ? '<p class="cr-msg">🔥 Clássico!' + (rv.length ? ' ' + rv.map(id => (crNemesis(id) ? '💀 ' : '') + esc(shortOf(crChar(id)))).join(' e ') + (rv.length > 1 ? ' são rivais' : crNemesis(rv[0]) ? ' é o seu carrasco' : ' é seu rival') + '.' : '') + ' Confronto direto: ' + (pTxt || h.w + '–' + h.l) + '. A CPU vem mais focada; vencer rende bônus.</p>' : pTxt ? '<p class="cr-note">Confronto direto: ' + pTxt + '</p>' : '')
+      + ($s.CR.feud && (opp.a === $s.CR.feud.id || opp.b === $s.CR.feud.id) ? '<p class="cr-msg">⚔️ Duelo aceito contra ' + esc($s.CR.feud.name) + ': vencer vale +8 de fama, dinheiro e PE; perder custa 5 de fama.</p>' : '')
       + (t.singles ? '' : '<p class="cr-note">Seu lado na dupla: <select id="crSide" class="cr-sel"><option value="esquerda">Esquerda</option><option value="direita">Direita</option></select></p>')
       + '<p class="cr-note">Tática: <select id="crTactic" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></p>'
       + (t.mixed ? (t.states ? '<p class="cr-note">Brasileiro por categorias (top 2 do ranking estadual de cada uma): vocês jogam a chave da ' + esc(t.cat >= 3 ? 'PROFISSIONAL' : TIERS[t.cat].curto) + '. Em cada categoria o campeão soma 4 pontos para o estado, o vice 2 e o 3º 1; a soma das 4 categorias dá o estado campeão.</p>' : '<p class="cr-note">Confronto entre estados: um jogo por categoria (top 2 do ranking estadual de cada uma). Vocês jogam o da ' + esc(t.cat >= 3 ? 'PROFISSIONAL' : TIERS[t.cat].curto) + '; os outros são simulados e vence o estado que ganhar mais jogos.</p>') : '')

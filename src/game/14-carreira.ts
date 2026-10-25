@@ -357,8 +357,10 @@ function crEquipB() {
   return out;
 }
 // rkIn: a raquete já está somada (a partida não soma de novo)
-function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crEquipB(), crFatigue(), crChemB()), rkIn: true }); }
-const crMeOvr = () => overall(effA($s.CR.me.a, crEquipB(), crFatigue()));
+// arcos de eventos em jogo: jogando no sacrifício −3, em crise de confiança −1, com o psicólogo depois da crise +1
+function crArcB() { const v = (($s.CR.hurt || 0) > 0 ? -3 : 0) + (($s.CR.slump || 0) > 0 ? -1 : 0) + (($s.CR.conf || 0) > 0 ? 1 : 0), b = {}; if (v) for (const [k] of ATTRS) b[k] = v; return b; }
+function crMeChar() { const m = $s.CR.me; return Object.assign({}, m, { a: effA(m.a, crEquipB(), crFatigue(), crChemB(), crArcB()), rkIn: true }); }
+const crMeOvr = () => overall(effA($s.CR.me.a, crEquipB(), crFatigue(), crArcB()));
 // fase de cada atleta: oscila semana a semana (−3 a +3 em todos os atributos); os profissionais reais também mudam de
 // nível de uma temporada para outra (até ±4), já que eles não envelhecem como os fictícios
 const crFormV = id => Math.round((($s.CR && $s.CR.form) || {})[id] || 0) + ((($s.CR && $s.CR.drift) || {})[id] || 0);
@@ -977,6 +979,15 @@ function crAfterMyMatch(won) {
   const t = $s.CR.tour;
   won ? $s.CR.mw = ($s.CR.mw || 0) + 1 : $s.CR.ml = ($s.CR.ml || 0) + 1; // para as conquistas
   if (S.perf && S.perf.ev && S.perf.ev.ventaglio) $s.CR.vent = ($s.CR.vent || 0) + S.perf.ev.ventaglio;
+  // provocação aceita: o duelo vale muito
+  { const f = $s.CR.feud, op = t.teams[(t.rounds[t.round].find(m => m.a === t.me || m.b === t.me) || {}).a === t.me ? (t.rounds[t.round].find(m => m.a === t.me || m.b === t.me) || {}).b : (t.rounds[t.round].find(m => m.a === t.me || m.b === t.me) || {}).a] || {};
+    if (f && (op.a === f.id || op.b === f.id)) {
+      if (won) { const bon = Math.round(crTourT(t).prize[0] * .2 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 4; crAddFama(8); crMood(6); t.log.push('Respondeu na quadra! Venceu ' + f.name + ': +' + money(bon) + ', +4 PE, +8 de fama'); }
+      else { crAddFama(-5); crMood(-8); t.log.push(f.name + ' ganhou o duelo e ainda provocou: −5 de fama'); }
+      $s.CR.feud = null; } }
+  // três derrotas seguidas: crise de confiança (evento com escolha)
+  $s.CR.lstreak = won ? 0 : ($s.CR.lstreak || 0) + 1;
+  if ($s.CR.lstreak >= 3 && !$s.CR.slump && !$s.CR.event) { $s.CR.lstreak = 0; $s.CR.event = Object.assign({ id: 'crise' }, EVENTS.crise.choice()); }
   // química: cada partida juntos aproxima (vitória mais); os outros parceiros esfriam um pouco
   if (!t.singles && $s.CR.partner) { crChemAdd(won ? 4.5 : 2.5); const c = $s.CR.chemBy || {}; for (const id in c) if (id !== $s.CR.partner) c[id] = Math.round(c[id] * .985 * 10) / 10; } $s.CR.energy = Math.max(0, $s.CR.energy - 10 - (t.heat ? 5 : 0)); // calor forte cansa mais
   const mm = t.rounds[t.round].find(m => m.a === t.me || m.b === t.me);
@@ -1073,7 +1084,9 @@ function crFinishTour() {
   // amadores rendem menos evolução no fim do torneio (atributo ainda é barato nesse nível)
   const xpLow = t.tier <= 2 ? .45 + t.tier * .2 : 1;
   const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round(((T.xp[place] || 0) * xpLow + xpBonus) * crXpMul());
-  $s.CR.money += prize; $s.CR.pe += xp;
+  const fee = $s.CR.coach > 0 ? Math.round(prize * .2) : 0; $s.CR.money += prize - fee; $s.CR.pe += xp; if (fee) t.log.push('Comissão do técnico: −' + money(fee));
+  // desafio do patrocinador: título dentro do prazo paga o bônus
+  if (place === 0 && !t.special && $s.CR.spBet) { $s.CR.money += $s.CR.spBet.reward; crAddFama(5); t.log.push('Desafio da ' + $s.CR.spBet.brand + ' cumprido: +' + money($s.CR.spBet.reward) + ' e +5 de fama'); $s.CR.spBet = null; }
   $s.CR.results.push({ w: absWeek(), pts });
   if (!nation) crCatAdd('crme', t.tier, pts, absWeek()); // conta para as categorias das seleções estaduais
   if (t.mixed && t.states) {
@@ -1109,7 +1122,7 @@ function crFinishTour() {
 }
 // multiplicador de evolução: os bônus (técnico, mentor, idade, CT, embalo) somam com retorno decrescente
 // (+90% sozinho vale ~+62%; tudo junto não passa muito de ×2,2), para os ganhos não crescerem tanto quanto os custos
-const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0); return 1 + x / (1 + x * .5); };
+const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0) + ($s.CR.coach > 0 ? .3 : 0); return 1 + x / (1 + x * .5); };
 // ---------- negócios: investimentos permanentes para o fim da carreira ----------
 // cada linha tem níveis; cada nível exige o anterior e algo da carreira (fama, títulos, ranking)
 const crTitlesAt = t => Object.entries($s.CR.titles || {}).reduce((n, [k, v]) => n + (+k >= t ? v : 0), 0);
@@ -1166,6 +1179,13 @@ function crNextWeek(note) {
   if (crLife('imprensa')) crAddFama(1);
   if ($s.CR.boostW > 0) $s.CR.boostW--;
   crFormWeek();
+  // arcos dos eventos: contagem semanal
+  if ($s.CR.hurt > 0) { $s.CR.hurt--; if ($s.CR.hurt > 0 && !$s.CR.injury && Math.random() < .14) { $s.CR.hurt = 0; $s.CR.injury = { nome: 'Lesão no joelho agravada', weeks: 4 }; msg += (msg ? ' ' : '') + 'Jogar no sacrifício piorou o joelho: 4 semanas parado.'; } else if (!$s.CR.hurt) msg += (msg ? ' ' : '') + 'O joelho aguentou: dor passou.'; }
+  if ($s.CR.slump > 0 && !--$s.CR.slump) msg += (msg ? ' ' : '') + 'A confiança voltou.';
+  if ($s.CR.conf > 0) $s.CR.conf--;
+  if ($s.CR.coach > 0 && !--$s.CR.coach) msg += (msg ? ' ' : '') + 'Fim do contrato com o técnico.';
+  if ($s.CR.spBet && !--$s.CR.spBet.weeks) { crAddFama(-5); msg += (msg ? ' ' : '') + 'Prazo do desafio da ' + $s.CR.spBet.brand + ' acabou sem título: −5 de fama.'; $s.CR.spBet = null; }
+  if ($s.CR.feud && !--$s.CR.feud.weeks) { msg += (msg ? ' ' : '') + 'A provocação de ' + $s.CR.feud.name + ' esfriou.'; $s.CR.feud = null; }
   if ($s.CR.injury) { $s.CR.injury.weeks -= 1 + (($s.CR.restDays || 0) >= 3 ? 1 : 0); if ($s.CR.injury.weeks <= 0) { msg += (msg ? ' ' : '') + 'Recuperado da lesão: liberado para competir.'; $s.CR.injury = null; } }
   $s.CR.restDays = 0;
   crSimWorld();
@@ -1317,7 +1337,7 @@ function crBandStep(rating) {
   return $s.CR.potCur - before;
 }
 // eventos que aceleram o potencial: mentor (+40%) e temporada na Itália (+20%)
-const crPotBoost = () => 1 + ($s.CR.mentor > 0 ? .4 : 0) + ($s.CR.boostW > 0 ? .2 : 0);
+const crPotBoost = () => 1 + ($s.CR.mentor > 0 ? .4 : 0) + ($s.CR.boostW > 0 ? .2 : 0) + ($s.CR.coach > 0 ? .3 : 0);
 function crPotGain(rating, tier) {
   const gate = crGate();
   if (gate.cap >= 99 && $s.CR.potCur >= 90) return crBandStep(rating);
@@ -1464,6 +1484,10 @@ function crSponsorWeek() {
   return (paid ? 'Patrocínios: +' + money(paid) + '.' : '') + (ended.length ? ' Contrato encerrado: ' + ended.join(', ') + '.' : '');
 }
 // ---------- eventos aleatórios ----------
+const ADS_BRANDS = ['Solar Max', 'Brisa Energético', 'Marazul Seguros', 'Ondas Telecom', 'Duna Óculos', 'Farol Viagens', 'Coco Gelado'];
+// convite de um jogador melhor que o seu parceiro (mas não muito acima de você)
+function crInviteCand() { const cur = crChar($s.CR.partner); if (!cur) return null; const po = crCharOvr(cur), me = crMeOvr(), fem = !!$s.CR.me.fem;
+  const l = crWorld().filter(c => c.id !== cur.id && !!c.fem === fem && crCharOvr(c) >= po + 4 && crCharOvr(c) <= me + 6); return l.length ? l[Math.floor(Math.random() * l.length)] : null; }
 const EVENTS = {
   clinica: { w: 3, ok: () => true, run: () => { const g = Math.round(crLessonIncome() * .7); $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5); return 'Um clube te chamou para uma clínica no fim de semana: +' + money(g) + '.'; } },
   treinoPro: { w: 2, ok: () => true, run: () => { const g = 2 + Math.floor(Math.random() * 3); $s.CR.pe += g; return 'Um jogador do top 20 te chamou para treinar junto: +' + g + ' pontos de evolução.'; } },
@@ -1492,6 +1516,19 @@ const EVENTS = {
     resolve: i => { if (i === 0) { $s.CR.energy = Math.max(0, $s.CR.energy - 15); crAddFama(8); crMaybeSponsor(); return 'Gravações começaram: +8 de fama.'; } return 'Você preferiu focar nos treinos.'; } },
   rival: { w: .8, ok: () => !!$s.CR.partner && crMaxTier() >= 3, choice: () => ({ text: 'Uma dupla rival provocou vocês nas redes antes do próximo torneio.', opts: ['Responder à altura', 'Ignorar'] }),
     resolve: i => { if (i === 0) { crAddFama(3); return crMood(Math.random() < .5 ? 8 : -6, 'A resposta repercutiu: +3 de fama.') || 'A resposta repercutiu: +3 de fama.'; } return crMood(2, 'Vocês preferiram responder na quadra.') || 'Vocês preferiram responder na quadra.'; } },
+  // ---- eventos de impacto (com consequência por semanas) ----
+  provoca: { w: 1.6, ok: () => !$s.CR.feud && Object.keys($s.CR.h2hP || {}).some(crRivalP), choice: () => { const ids = Object.keys($s.CR.h2hP).filter(crRivalP), id = ids[Math.floor(Math.random() * ids.length)], n = nameOf(crChar(id)); return { text: n + ' disse numa entrevista que você "só ganha de quem está cansado". A imprensa quer a sua resposta.', opts: ['Aceitar o duelo (vencer: muita fama e dinheiro; perder: −fama)', 'Ignorar'], data: { id, n } }; },
+    resolve: (i, d) => { if (i === 0) { $s.CR.feud = { id: d.id, name: d.n, weeks: 10 }; crAddFama(2); return 'Duelo aceito! Na próxima vez contra ' + d.n + ' (até 10 semanas) vale muito.'; } return 'Você deixou para lá.'; } },
+  lesaoGrave: { w: .8, ok: () => !$s.CR.injury && !$s.CR.hurt && crMaxTier() >= 2, choice: () => { const c = $s.CR.staff.fisio ? 0 : 400 * (crMaxTier() + 1); return { text: 'Exame mostrou uma lesão no joelho. O médico recomenda cirurgia.', opts: ['Operar (4 semanas parado' + (c ? ', ' + money(c) : '') + ')', 'Jogar no sacrifício (−3 em tudo por 4 semanas, risco de piorar)'], data: { c } }; },
+    resolve: (i, d) => { if (i === 0) { $s.CR.money = Math.max(0, $s.CR.money - d.c); $s.CR.injury = { nome: 'Cirurgia no joelho', weeks: 4 }; return 'Cirurgia feita: 4 semanas de recuperação e volta 100%.'; } $s.CR.hurt = 4; return 'Você vai jogar no sacrifício: −3 em todos os atributos por 4 semanas (e a lesão pode piorar).'; } },
+  patroBet: { w: 1, ok: () => !$s.CR.spBet && crMaxTier() >= 2, choice: () => { const b = ADS_BRANDS[Math.floor(Math.random() * ADS_BRANDS.length)], r = Math.round(TIERS[crMaxTier()].prize[0] * 1.2 / 10) * 10; return { text: 'A ' + b + ' propõe um desafio: ganhe um título nas próximas 8 semanas e leve ' + money(r) + '. Se não ganhar, a marca expõe o fracasso.', opts: ['Topar (título: ' + money(r) + ' e +5 de fama; sem título: −5 de fama)', 'Recusar'], data: { b, r } }; },
+    resolve: (i, d) => { if (i === 0) { $s.CR.spBet = { brand: d.b, reward: d.r, weeks: 8 }; return 'Desafio aceito: 8 semanas para ganhar um título.'; } return 'Você recusou o desafio.'; } },
+  convite: { w: 1, ok: () => !!$s.CR.partner && !!crInviteCand(), choice: () => { const c = crInviteCand(), cur = crChar($s.CR.partner); return { text: nameOf(c) + ' (' + crCharOvr(c) + ') quer formar dupla com você. ' + nameOf(cur) + ' (' + crCharOvr(cur) + ') ficaria sabendo.', opts: ['Trocar de parceiro', 'Ficar com ' + shortOf(cur) + ' (lealdade: +química e +humor)'], data: { id: c.id } }; },
+    resolve: (i, d) => { if (i === 0) { const n = nameOf(crChar($s.CR.partner)); crSetPartner(d.id); return 'Nova dupla com ' + nameOf(crChar(d.id)) + '. ' + n + ' não gostou.'; } crChemAdd(10); return crMood(12, 'Você ficou: a dupla saiu mais unida (+10 de química, +12 de humor).') || 'Você ficou.'; } },
+  tecnico: { w: .7, ok: () => !($s.CR.coach > 0) && crMaxTier() >= 3, choice: () => ({ text: 'Um técnico campeão mundial quer te treinar pelas próximas 26 semanas. Ele cobra 20% de todos os prêmios.', opts: ['Contratar (+30% de evolução e potencial; −20% dos prêmios)', 'Seguir sozinho'] }),
+    resolve: i => { if (i === 0) { $s.CR.coach = 26; return 'Técnico contratado por 26 semanas.'; } return 'Você seguiu com a sua equipe.'; } },
+  crise: { w: 0, ok: () => false, choice: () => { const c = 250 * (crMaxTier() + 1); return { text: 'Três derrotas seguidas. A confiança sumiu e o jogo travou.', opts: ['Psicólogo esportivo (' + money(c) + ': +1 em tudo por 3 semanas)', 'Uma semana de descanso total (+40 de energia)', 'Seguir assim (−1 em tudo por 3 semanas)'], data: { c } }; },
+    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; $s.CR.conf = 3; return 'Sessões com o psicólogo: cabeça no lugar (+1 em todos os atributos por 3 semanas).'; } if (i === 1) { $s.CR.energy = Math.min(100, $s.CR.energy + 40); return 'Semana de descanso: +40 de energia e cabeça leve.'; } $s.CR.slump = 3; return 'Você seguiu, mas sem confiança: −1 em todos os atributos por 3 semanas.'; } },
   furto: { w: .8, ok: () => $s.CR.gear.length > 0 && crMaxTier() >= 3, choice: () => { const id = $s.CR.gear[Math.floor(Math.random() * $s.CR.gear.length)], g = GEAR.find(x => x.id === id); return { text: 'Furtaram sua mochila na viagem: ' + g.nome + ' sumiu.', opts: ['Repor (' + money(g.preco) + ')', 'Ficar sem'], data: { id, c: g.preco } }; },
     resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; return 'Equipamento reposto.'; } $s.CR.gear = $s.CR.gear.filter(x => x !== d.id); return 'Você vai jogar sem esse equipamento.'; } },
 };
@@ -1511,4 +1548,4 @@ function crResolveEvent(i) {
 
 export { ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; } };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
