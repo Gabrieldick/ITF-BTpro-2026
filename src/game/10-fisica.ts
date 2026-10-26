@@ -198,6 +198,12 @@ function doHit(p, type, q, isServe, mod) {
   if (spec.speed) spec.speed *= mod.speedMul || 1;
   if (spec.T) spec.T /= mod.speedMul || 1;
   spec.noise *= mod.noiseMul || 1;
+  // saque lob PERFEITO: sobe mais que o lob mais alto do jogo normal, cai devagar e fundo (o recebedor erra mais)
+  if (isServe && type === 'lob' && mod.perfect) {
+    const lk = Math.min(1, (attrK(p, 'lob') + attrK(p, 'saque')) / 2);
+    spec.T = lerp(2.55, 2.8, lk); spec.depth = [6.6, 7.5]; spec.gk = 1.05; spec.margin = .6; spec.label = 'SAQUE LOB PERFEITO';
+    mod.oppMissBoost = (mod.oppMissBoost || 0) + .05 + .05 * lk;
+  }
   // voleio: bola batida no ar perto da rede (drive, voleio da barra, bloqueio/curta/defesa a menos de 3,2 m da rede)
   const volleyish = !isServe && (key === 'drive' || !!mod.volley || (netD < 3.2 && key !== 'smash' && key !== 'lob'));
   const vlK = volleyish ? attrK(p, 'voleio') : 0;
