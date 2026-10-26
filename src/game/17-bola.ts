@@ -9,12 +9,14 @@ import { human } from './06-modelos';
 import { ball, puff } from './07-glb';
 import { sndHit, sndSand } from './08-audio';
 import { drillNext, el, placeHeldBall, pointTo, setupPoint, showOver, showReview } from './09-interface';
-import { skillOf, startJump, startToss } from './11-mira';
+import { skillOf, startJump, startToss, handPos, releaseToss } from './11-mira';
 import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 // ---------- Bola ----------
 function updateBall(dt) {
   if (ball.state === 'held') { placeHeldBall(); return; }
+  // lançamento do saque: a bola acompanha a mão até a soltura
+  if (ball.state === 'toss' && ball.inHand && S.serverPlayer) { const sp = S.serverPlayer; handPos(sp, ball.pos); ball.vel.set(0, 0, 0); if (sp.tossT >= (sp.tossRel || 0)) releaseToss(sp); else return; }
   const prev = ball.pos.clone();
   ball.vel.y -= bG() * dt;
   if (ball.state === 'live' && S.wind) { const ws = S.sideFlip ? -.07 : .07; ball.vel.x += S.wind.x * ws * dt; ball.vel.z += S.wind.z * ws * dt; } // vento: bolas lentas e altas desviam mais (na troca de lado ele passa a soprar ao contrário para cada time)

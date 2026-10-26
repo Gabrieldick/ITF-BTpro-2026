@@ -141,7 +141,7 @@ function swingVar(type, y, p, aimX) {
 if (typeof window !== 'undefined') window.__pdoACT = ACT;
 const swingKey = p => p.swing.var && ACT[p.swing.type + '_' + p.swing.var] ? p.swing.type + '_' + p.swing.var : p.swing.type;
 // saque: bola na mão, lançamento, posição de troféu
-const SERVE_U = [0, .35, .75, 1];
+const SERVE_U = [0, .15, .32, 1]; // pêndulo rápido, braço esticado em cima aos 30% (a bola sai da mão) e o resto até o troféu
 // lançamento do saque, mais solto: os braços descem juntos (pêndulo), sobem — a bola sai da mão e a raquete vai para trás
 // da cabeça — e termina na posição de troféu (joelhos flexionados, tronco de lado, costas arqueadas), igual ao 1º quadro do golpe
 const SERVE_KEYS = [
