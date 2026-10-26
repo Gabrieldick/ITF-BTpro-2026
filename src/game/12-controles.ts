@@ -262,7 +262,7 @@ function meterStep(c, dt) {
     else if (M.kind === 'smash' && v >= 1.15) releaseMeter(c);
     else if (M.kind === 'lob' && v >= (M.lmax || LOB_MAX)) releaseMeter(c);
     else if (M.kind === 'serve' && S.mode !== 'toss') cancelMeter(c);
-    else if (M.kind === 'serve' && ball.vel.y < 0 && ball.pos.y < 1.75) releaseMeter(c);
+    else if (M.kind === 'serve' && ball.vel.y < 0 && ball.pos.y < (S.serveType === 'lob' ? .7 : 1.75)) releaseMeter(c); // lob (por baixo): a bola é batida na cintura, só solta sozinho bem depois
   } else if (!c.remote && M.showT > 0) { M.showT -= dt; if (M.showT <= 0) el.meter.hidden = true; }
 }
 const SHOT_KEYS = { j: 'smash', '1': 'smash', k: 'lob', '2': 'lob', l: 'curta', '3': 'curta', ' ': 'defesa', '4': 'defesa' };
