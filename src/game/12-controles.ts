@@ -584,4 +584,4 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };

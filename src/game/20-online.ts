@@ -15,8 +15,8 @@ import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrai
 import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON, SB_URL, SB_KEY } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
-import { defenseFlash } from './11-mira';
-import { MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers, applyMeterLook } from './12-controles';
+import { defenseFlash, tossDurOf } from './11-mira';
+import { startMeter, MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers, applyMeterLook } from './12-controles';
 import { humanPlan, localInput } from './16-ia';
 import { sideOf } from './18-animacao';
 
@@ -532,8 +532,10 @@ function localShot(type, down) {
     return;
   }
   if (S.mode === 'serve' && S.serverPlayer === human && !LS.meter) { // saque: a barra anda pelo tempo, igual no anfitrião
-    LS.meter = { kind: 'serve', type, t0: now, fill: .9 };
-    Object.assign(MTR, { active: true, kind: 'serve', type, t: 0, v: 0, center: TOSS_T * (LS.tossF || 1) / .9, half: MTR.half || .068 }); meterDom(MTR);
+    // monta a barra com a mesma conta do anfitrião (duração do lançamento, verde e faixa): quando os dados dele chegam, nada pula
+    const td = tossDurOf(type, LS.tossF); human.tossDur = td.dur; human.tossMul = td.mul;
+    startMeter('serve', type, { m: MTR, p: human, remote: false });
+    LS.meter = { kind: 'serve', type, t0: now, fill: MTR.fill };
     return;
   }
   if (S.mode !== 'rally' || (LS.t >= 0 && LS.t < LS.dur * .8)) return;
@@ -1032,6 +1034,13 @@ function queueHostTick() {
   setTimeout(() => { if (NET.role === 'host' && !ON.room.playing) hostPlay(); }, 1200);
 }
 if (typeof window !== 'undefined') window.__pdoQQ = { QQ, queueSync };
+// teste: barra do saque montada como no convidado × como no anfitrião (mesmo sorteio do lançamento)
+if (typeof window !== 'undefined') window.__pdoSrvMeter = (type, tf) => {
+  const g = {}, td = tossDurOf(type, tf); human.tossDur = td.dur; human.tossMul = td.mul; startMeter('serve', type, { m: g, p: human, remote: false });
+  const h = { out: [], m: {}, p: human, remote: true }; human.tossDur = tossDurOf(type, tf).dur; startMeter('serve', type, h);
+  const ms = h.out[0]; MTR.active = false; el.meter.hidden = true;
+  return { convidado: { centro: +g.center.toFixed(3), faixa: +g.half.toFixed(3), vel: g.fill }, anfitriao: { centro: +ms[3].toFixed(3), faixa: +ms[4].toFixed(3), vel: ms[9] } };
+};
 $('onQueue').addEventListener('click', queueStart);
 $('onQCat').addEventListener('change', () => { qSave(); qFill(); qSave(); });
 $('onQPick').addEventListener('change', qSave); $('onQRk').addEventListener('change', qSave);

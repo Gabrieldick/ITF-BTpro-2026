@@ -92,12 +92,14 @@ function handPos(p, out) {
   if (!isFinite(out.x) || out.y < .3) out.set(p.pos.x + .05 * f, 1.25, p.pos.z - .35 * f);
   return out;
 }
+// duração do lançamento (a mesma conta no anfitrião e no convidado do online, para a barra bater igual):
+// a variação entre lançamentos é metade da sorteada (o verde do saque varia menos que o do smash) e o saque forte
+// tem lançamento bem mais alto (o contato continua na mesma altura; a barra anda na mesma proporção)
+function tossDurOf(type, tf) { const mul = type === 'smash' ? 2 : 1; return { dur: TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5) * mul, mul }; } // tf: sorteado pelo convidado no online
 function startToss(p, type, tf) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
   // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto
-  // a variação entre lançamentos é metade da sorteada (o verde do saque varia menos que o do smash)
-  p.tossDur = TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5); // tf: sorteado pelo convidado no online
-  p.tossMul = type === 'smash' ? 2 : 1; p.tossDur *= p.tossMul; // saque forte: lançamento bem mais alto (o contato continua na mesma altura; a barra anda na mesma proporção)
+  const td = tossDurOf(type, tf); p.tossDur = td.dur; p.tossMul = td.mul;
   const f = p.team === 0 ? 1 : -1;
   handPos(p, ball.pos);
   // a bola fica na mão enquanto o braço sobe e só sai quando ele está esticado (30% do tempo); a velocidade é calculada na soltura
@@ -114,4 +116,4 @@ function releaseToss(p) {
   ball.inHand = false;
 }
 
-export { releaseToss, TAC, defRing, defenseFeedback, defenseFlash, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };
+export { tossDurOf, releaseToss, TAC, defRing, defenseFeedback, defenseFlash, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };
