@@ -257,9 +257,13 @@ function updateLiveRating() {
     if (b.textContent === txt) continue;
     b.textContent = txt;
     if (e.dataset.r && Math.abs(v - prev) > .049) { // variação sobe e some: "+1" / "+0,2" verde ou "−0,3" vermelho
-      const d = document.createElement('i'), up = v > prev, good = k === 'err' ? !up : up;
-      d.className = 'nd ' + (good ? 'up' : 'dn'); d.textContent = (up ? '+' : '−') + (k === 'nota' ? Math.abs(v - prev).toFixed(1).replace('.', ',') : Math.abs(v - prev));
-      c.appendChild(d); setTimeout(() => d.remove(), 1300);
+      // mudanças seguidas (o mesmo lance recalcula a nota várias vezes) somam no mesmo indicador
+      const now = performance.now(), live = c._nd && c._nd.isConnected && now - c._ndT < 1100;
+      const sum = (live ? c._ndSum : 0) + (v - prev), up = sum > 0, good = k === 'err' ? !up : up;
+      const d = live ? c._nd : document.createElement('i');
+      c._nd = d; c._ndSum = sum; c._ndT = now;
+      d.className = 'nd ' + (good ? 'up' : 'dn'); d.textContent = Math.abs(sum) < .049 ? '' : (up ? '+' : '−') + (k === 'nota' ? Math.abs(sum).toFixed(1).replace('.', ',') : Math.round(Math.abs(sum)));
+      if (!live) c.appendChild(d); clearTimeout(c._ndTo); c._ndTo = setTimeout(() => d.remove(), 1300);
       c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse');
     }
     c.dataset.v = String(v);

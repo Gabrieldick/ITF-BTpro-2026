@@ -659,7 +659,7 @@ function guestEvent(e) {
   else if (k === 'rev') showReview({ x: e[1] * m, z: e[2] * m, axis: e[3], inB: !!e[4], mg: e[5] });
   else if (k === 'fb') shotFeedback(e[1], e[2], e[3]);
   else if (k === 'def') defenseFlash(e[1]);
-  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], pw: e[5] || .2, lmax: e[6] || undefined, tk: e[7] || 1, altoLo: e[8] || undefined }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
+  else if (k === 'ms') { Object.assign(MTR, { active: true, kind: e[1], type: e[2], center: e[3], half: e[4], pw: e[5] || .2, lmax: e[6] || undefined, tk: e[7] || 1, altoLo: e[8] || undefined, fill: e[9] || (e[1] === 'lob' ? .45 : .9) }); if (!LS.meter) { MTR.t = 0; MTR.v = 0; } clearTimeout(ON.mrTimer); meterDom(MTR); }
   else if (k === 'mr') {
     MTR.active = false; human.charging = false; LS.meter = null;
     el.meter.className = e[1]; el.mRes.textContent = e[2]; el.mFill.style.height = e[3] + '%'; el.meter.hidden = false;

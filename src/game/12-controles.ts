@@ -61,7 +61,8 @@ function startMeter(kind, type, c = localCtl()) {
   // lob: a barra sobe um pouco mais rápido que antes (.45 s até o fim da faixa normal) e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
   // dificuldade de timing: com menos estrelas, faixas do chutado e do alto maiores e a do lob longo (ruim) menor
   else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))) / M.tk; M.altoLo = clamp(.75 - (M.tk - 1) * .4, .55, .86); p.charging = true; }
-  else { M.fill = .9; M.center = (p.tossDur || TOSS_T) / .9; M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
+  else { M.fill = .9 * (p.tossMul || 1); M.center = (p.tossDur || TOSS_T) / M.fill; // o verde continua variando com a altura de cada lançamento
+    M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
   if (kind === 'serve') M.half *= type === 'lob'
@@ -70,7 +71,7 @@ function startMeter(kind, type, c = localCtl()) {
   // tolerância em volta do verde (amarelo/laranja): com atributo baixo fica estreita, errar por pouco já custa caro
   M.pw = .2 * lerp(.45, 1.1, Math.pow(attrN(kind === 'smash' ? p.char.a.smash : p.char.a.saque), 1.5));
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }
-  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw, M.lmax, M.tk, M.altoLo]); else meterDom(M);
+  if (c.remote) c.out.push(['ms', M.kind, M.type, M.center, M.half, M.pw, M.lmax, M.tk, M.altoLo, M.fill]); else meterDom(M);
 }
 // desenha a barra recém-armada (local, ou do convidado com os dados vindos do anfitrião)
 function meterDom(M) {

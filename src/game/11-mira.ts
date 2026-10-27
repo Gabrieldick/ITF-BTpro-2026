@@ -95,8 +95,9 @@ function handPos(p, out) {
 function startToss(p, type, tf) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
   // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto
-  p.tossDur = TOSS_T * (tf || (.82 + Math.random() * .38)); // tf: sorteado pelo convidado no online
-  if (type === 'smash') p.tossDur *= 2; // saque forte: lançamento bem mais alto (o contato continua na mesma altura)
+  // a variação entre lançamentos é metade da sorteada (o verde do saque varia menos que o do smash)
+  p.tossDur = TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5); // tf: sorteado pelo convidado no online
+  p.tossMul = type === 'smash' ? 2 : 1; p.tossDur *= p.tossMul; // saque forte: lançamento bem mais alto (o contato continua na mesma altura; a barra anda na mesma proporção)
   const f = p.team === 0 ? 1 : -1;
   handPos(p, ball.pos);
   // a bola fica na mão enquanto o braço sobe e só sai quando ele está esticado (30% do tempo); a velocidade é calculada na soltura
