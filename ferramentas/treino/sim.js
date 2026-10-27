@@ -22,16 +22,18 @@ function criarJogo() {
   P.human.isHuman = false; // os quatro jogadores pela CPU
   return {
     P, AI,
-    // joga n pontos: modos/parâmetros por time; devolve os pontos de cada time
+    // joga n pontos: modos/parâmetros por time; devolve os pontos de cada time (e .perf, a fração no verde)
     jogar(n, cfg0, cfg1) {
-      const S = P.S; S.simAI = { 0: cfg0, 1: cfg1 }; S.settings.games = 99; S.score.games = [0, 0];
+      const S = P.S; S.simAI = { 0: cfg0, 1: cfg1 }; S.simStats = { perf: [0, 0], n: [0, 0] }; S.settings.games = 99; S.score.games = [0, 0];
       for (const p of [P.human, P.partner, P.cpuA, P.cpuB]) p.skill = AI.charSkill(p);
       const start = S.stats.pts.slice(); let guard = 0;
       while ((S.stats.pts[0] - start[0]) + (S.stats.pts[1] - start[1]) < n && guard++ < n * 4000) {
         P.step(1 / 120);
         if (S.mode === 'over') { S.mode = 'dead'; S.matchWinner = null; S.score.games = [0, 0]; S.deadT = .1; }
       }
-      return [S.stats.pts[0] - start[0], S.stats.pts[1] - start[1]];
+      const r = [S.stats.pts[0] - start[0], S.stats.pts[1] - start[1]], t = S.simStats;
+      r.perf = [0, 1].map(i => t.n[i] ? t.perf[i] / t.n[i] : null); // fração de golpes no verde (null: time sem tempo treinado)
+      return r;
     },
   };
 }

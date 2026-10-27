@@ -2,7 +2,7 @@
 // inteligência artificial: planejamento, estilos, escolha de golpes
 import './15-carreira-telas';
 import { $s } from '../state';
-import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
+import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
 import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -59,6 +59,40 @@ function aiModeOf(p) {
   return p.team === 1 && !S.careerActive && !S.champActive && !NET.role ? S.settings.aiMode || '' : '';
 }
 const aiP = p => (S.simAI && (S.simAI[p.team] || {}).params) || (aiModeOf(p) ? AIP_TUNED : AIP_BASE);
+// IA Treinada/Planejadora: o tempo do golpe é decisão dela (parâmetros tLead/tSmash/tServe do treino), com uma pequena
+// imprecisão de execução; o resultado (verde, cedo, tarde) segue as mesmas faixas e efeitos do humano no nível médio
+const timedAI = p => { const m = aiModeOf(p); return m === 'treinada' || m === 'planejadora'; };
+const AI_MOTOR = .012, AI_ZONE = .068; // desvio do tempo de cada golpe (s); meia faixa verde do nível médio (como ZONE.medio)
+function noteTiming(p, perfect) { const t = S.simStats; if (t) { t.n[p.team]++; if (perfect) t.perf[p.team]++; } }
+function aiTiming(p, shot, q) {
+  const A = aiP(p);
+  if (shot === 'smash' && ball.pos.y >= 1.5) { // barra do smash
+    const skN = Math.min(1, attrK(p, 'smash')), aN = Math.pow(attrN(p.char ? p.char.a.smash : 70), 1.5);
+    const half = AI_ZONE * .8 * clamp(1.2 - ((ball.apex || 3.5) - 3.5) * .12, .45, 1.2) * clamp(aN, .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
+    const diff = ((A.tSmash ?? 0) + gauss() * AI_MOTOR) / .75, amt = clamp((Math.abs(diff) - half) / (.2 * lerp(.45, 1.1, aN)), 0, 1);
+    let res = Math.abs(diff) <= half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
+    if (res === 'cedo' && ball.pos.y < 2.05) res = 'voleio';
+    noteTiming(p, res === 'perfeito');
+    if (res === 'voleio') return { q: Math.max(q, lerp(.66, .86, skN)), mod: { speedMul: lerp(1, 1.12, skN), noiseMul: lerp(1.15, .85, skN), volley: true } };
+    if (res === 'perfeito') return { q: Math.max(q, lerp(.72, .92, skN)), mod: { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true } };
+    if (res === 'cedo') return { q, mod: { speedMul: lerp(.97, .6, amt), noiseMul: lerp(1.05, 1.8, amt), misBoost: (1 - skN) * .08 + amt * .2, meterSmash: true } };
+    return { q, mod: { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt), meterSmash: true } };
+  }
+  // demais golpes: o aperto antes da bola chegar (janela boa de 0,05 a 0,30 s, a mesma do humano)
+  const timing = pressTiming((A.tLead ?? .175) + gauss() * AI_MOTOR);
+  noteTiming(p, timing >= 1);
+  return { q, mod: { timing } };
+}
+function aiServeTiming(p, type) {
+  const A = aiP(p), a = p.char ? p.char.a : { saque: 70, lob: 70 }, svN = Math.min(1, attrN(a.saque)), sN = Math.pow(attrN(a.saque), 1.5);
+  const half = AI_ZONE * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1) * (type === 'lob' ? clamp(Math.pow(attrN((a.saque + attrOf(a, 'lob')) / 2), 1.9), .08, 1.1) * .7 : clamp(sN, .12, 1.15) * (type === 'smash' ? .45 : 1));
+  const diff = ((A.tServe ?? 0) + gauss() * AI_MOTOR) / .9, amt = clamp((Math.abs(diff) - half) / (.2 * lerp(.45, 1.1, sN)), 0, 1);
+  const res = Math.abs(diff) <= half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
+  noteTiming(p, res === 'perfeito');
+  if (res === 'perfeito') return { perfect: true, q: lerp(.88, 1, svN), mod: { speedMul: type === 'smash' ? lerp(1.1, 1.3, svN) : 1, noiseMul: lerp(.85, .55, svN), oppMissBoost: type === 'smash' ? .08 + .14 * svN : .03 * svN, misBoost: type === 'smash' ? lerp(.06, .035, svN) : .02, perfect: true } };
+  if (res === 'cedo') return { q: lerp(.8, .45, amt), mod: { speedMul: amt < .6 ? lerp(.97, .9, amt / .6) : lerp(.9, .62, (amt - .6) / .4), noiseMul: lerp(1.1, 1.4, amt), misBoost: amt * .1 } };
+  return { q: lerp(.72, .32, amt), mod: { speedMul: amt < .6 ? lerp(.97, .9, amt / .6) : lerp(.9, .8, (amt - .6) / .4), noiseMul: lerp(1.25, 1.8, amt), misBoost: lerp(.06, .5, amt) * (type === 'smash' ? 1 : .5) } };
+}
 const plnP = p => (S.simAI && (S.simAI[p.team] || {}).plan) || PLN_TUNED;
 if (typeof window !== 'undefined') window.__pdoAI = { AIP_BASE, AIP_TUNED, PLN_BASE, PLN_TUNED, charSkill: p => charSkill(p), homeOf: p => homeOf(p), bestPlay: (p, y) => bestPlay(p, y), expectK: (o, k) => expectK(o, k) };
 function charSkill(p) {
@@ -115,10 +149,12 @@ function smartAim(p) {
   const bh = Math.random() < A.bhAim ? -1 : Math.random() < .5 ? 0 : 1;
   return clamp(tgt.pos.x + bh * dir * rand(.6, 1.05), -lim, lim);
 }
+// profundidade treinada de cada golpe (0 = mais curto, 1 = mais fundo dentro do alcance do golpe); null = sorteio de sempre
+function aiDepthK(p, shot) { const v = aiP(p)['d_' + shot]; return v == null ? null : v; }
 function aiAim(p) {
   const st = styleOf(p), lim = C.halfW - .6;
   if (p.ai && p.ai.planAim != null) { const a = p.ai.planAim; p.ai.planAim = null; return clamp(a + rand(-.12, .12), -lim, lim); } // IA Planejadora: a mira escolhida na busca
-  { const up = skillOf(p).up || 0; if (up > 0 && Math.random() < Math.min(.85, up * aiP(p).smartAim)) return smartAim(p); }
+  { const up = skillOf(p).up || 0; if (up > 0 && Math.random() < Math.min(aiP(p).aimMax ?? .85, up * aiP(p).smartAim)) return smartAim(p); }
   { const ta = tacticAim(p.team); if (ta !== null && Math.random() < .7) return ta; }
   if (st.aimBody && Math.random() < st.aimBody) { const opp = $s.teams[1 - p.team].slice().sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (opp) return clamp(opp.pos.x + rand(-.35, .35), -lim, lim); }
   if (st.corners && Math.random() < .8) { const g = gapX(p.team, .2); return Math.sign(g || rand(-1, 1)) * Math.max(Math.abs(g), lim * .75); }
@@ -431,7 +467,7 @@ function chooseAIShot(p, y) {
 function chooseShotRule(p, y) {
   const st = styleOf(p), r = Math.random();
   // quanto melhor a leitura de jogo (estrelas altas), mais vezes escolhe a jogada certa em vez do estilo/sorteio
-  { const sp = clamp(((p.skill && p.skill.up) || 0) * aiP(p).bestP, 0, .92); if (sp > 0 && Math.random() < sp) return bestPlay(p, y); } // só acima do padrão
+  { const sp = clamp(((p.skill && p.skill.up) || 0) * aiP(p).bestP, 0, aiP(p).bestMax ?? .92); if (sp > 0 && Math.random() < sp) return bestPlay(p, y); } // só acima do padrão
   // estrelas baixas: bola alta vira devolução controlada na maioria das vezes (pouco smash)
   if (p.skill && p.skill.soft < 1 && y >= 1.45 && Math.random() < (1 - p.skill.soft) * 2.6) return Math.random() < .7 ? 'defesa' : 'lob';
   // decisão: quem lê bem o jogo não arrisca smash do fundo sem ter smash para isso (devolve e espera a bola certa)
@@ -492,17 +528,18 @@ function homeOf(p) {
   if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * (clamp(Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up, 0, .4)), 3.4, 6.4)) + adZ, 3.3, 6.6) - ahead)];
   // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
   // o parceiro também acompanha a posição real do companheiro
-  const fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
-  const center = clamp(fx * .5, -1.7, 1.7), hw = 1.8 - Math.abs(center) * .18;
+  const A = aiP(p), fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
+  const center = clamp(fx * (A.homeShift ?? .5), -1.7, 1.7), hw = (A.homeHw ?? 1.8) - Math.abs(center) * .18;
   let x = center + p.slot * hw;
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
-  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (clamp(Math.min(deepMax, clamp(4.6 + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) + adZ, 3.2, 6.5) - ahead)];
+  if (A.rush && ball.state === 'live' && S.lastTeam === p.team) ahead += A.rush; // depois do próprio golpe: sobe para a rede
+  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (clamp(Math.min(deepMax, clamp((A.homeZ ?? 4.6) + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) + adZ, 3.2, 6.5) - ahead)];
 }
 // recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio
 function receiveX(p) {
   const sp = S.serverPlayer; if (!sp || !dupla()) return p.slot * 1.9;
-  const center = clamp(sp.pos.x * .4, -1.2, 1.2), hw = 1.6;
+  const center = clamp(sp.pos.x * .4, -1.2, 1.2), hw = aiP(p).recvHw ?? 1.6;
   return clamp(center + p.slot * hw, -C.halfW + .4, C.halfW - .4);
 }
 function updateAI(p, dt) {
@@ -524,7 +561,7 @@ function updateAI(p, dt) {
   if (S.mode === 'serve' || S.mode === 'toss') {
     tx = p.team !== S.server && dupla() ? receiveX(p) : p.pos.x; tz = p.pos.z;
     // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
-    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + 1.1);
+    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + (aiP(p).recvZ ?? 1.1));
     if (proMascHold(p)) { tz = (p.team === 0 ? 1 : -1) * Math.max(Math.abs(tz), 5.3); if (Math.abs(p.pos.z) < 5.05) p.pos.z = (p.team === 0 ? 1 : -1) * 5.05; }
   }
   if (S.serverPlayer === p && S.serveType !== 'lob' && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) - .22) || p.pendingServe)) {
@@ -565,7 +602,7 @@ function updateAI(p, dt) {
       }
       if (p.ai.letGo) { tx = p.pos.x; tz = p.pos.z; }
       else {
-        if (p.ai.plan) { tx = p.ai.plan.pt.x + .35 * (p.team === 1 ? 1 : -1); tz = p.ai.plan.pt.z; }
+        if (p.ai.plan) { tx = p.ai.plan.pt.x + (aiP(p).sideOff ?? .35) * (p.team === 1 ? 1 : -1); tz = p.ai.plan.pt.z; }
         const shot = p.ai.shot;
         // arma o golpe quando a bola se aproxima
         if (!p.ai.swung && p.swing.t < 0 && Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) < 2.6 && ball.pos.y < 3.4) {
@@ -578,8 +615,13 @@ function updateAI(p, dt) {
           else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
-            const sf = D.soft || 1, soft = sf < 1;
-            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, shot === 'lob' ? (p.ai.planLob != null ? { lobPower: p.ai.planLob, lobKick: !!p.ai.planKick && Math.random() < .35 + attrK(p, 'lob') * .4 } : !soft && oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: soft ? rand(.35, .6) : st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
+            const sf = D.soft || 1, soft = sf < 1, A = aiP(p);
+            p.ai.depthK = aiDepthK(p, shot);
+            const lobT = A.lobPow != null && !soft && p.ai.planLob == null ? { lobPower: clamp(A.lobPow + rand(-.15, .15), .2, 1), lobKick: oppNearNet(p.team) && Math.random() < A.lobKickP } : null; // força do lob treinada
+            // IA Treinada/Planejadora: escolhe o momento do golpe como o humano (barra do smash / aperto) e leva o mesmo resultado
+            let q = clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), pm = null;
+            if (timedAI(p)) { const tm = aiTiming(p, shot, q); q = tm.q; pm = tm.mod; pm.speedMul = (pm.speedMul || 1) * st.speed * (D.pw || 1) * sf; pm.noiseMul = (pm.noiseMul || 1) * st.noise; }
+            const r = doHit(p, shot, q, false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, pm, shot === 'lob' ? lobT || (p.ai.planLob != null ? { lobPower: p.ai.planLob, lobKick: !!p.ai.planKick && Math.random() < .35 + attrK(p, 'lob') * .4 } : !soft && oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: soft ? rand(.35, .6) : st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
             p.ai.planLob = null; p.ai.planKick = false;
             shotFeedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
@@ -598,9 +640,13 @@ function updateAI(p, dt) {
       ball.state = 'live'; S.mode = 'rally';
       // CPU/parceira: de vez em quando o saque sai perfeito (mais com atributo de saque alto): mais forte, preciso e com estrelinhas
       const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), perf = sf >= 1 && (ps.type === 'smash' ? Math.random() < .06 + .16 * svN : ps.type === 'lob' && Math.random() < .03 + .14 * Math.pow((svN + attrK(p, 'lob')) / 2, 2)), sp = ball.pos.clone();
-      const r = doHit(p, ps.type, ps.q, true, perf ? { speedMul: ps.type === 'smash' ? lerp(1.08, 1.26, svN) : 1, noiseMul: lerp(.85, .6, svN), oppMissBoost: ps.type === 'smash' ? .06 + .12 * svN : 0, perfect: true } : sf < 1 ? { speedMul: sf * .9 } : undefined); // estrelas baixas: saque sem força
-      if (perf && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); }
-      shotFeedback(whoTag(p) + r.label, perf ? 'PERFEITO' : null, whoKind(p));
+      p.ai.depthK = aiDepthK(p, 'saque');
+      // IA Treinada/Planejadora: para a barra do saque como o humano (o verde vem do treino, não é garantido)
+      const ts = timedAI(p) ? aiServeTiming(p, ps.type) : null;
+      const r = ts ? doHit(p, ps.type, ts.q, true, ts.mod)
+        : doHit(p, ps.type, ps.q, true, perf ? { speedMul: ps.type === 'smash' ? lerp(1.08, 1.26, svN) : 1, noiseMul: lerp(.85, .6, svN), oppMissBoost: ps.type === 'smash' ? .06 + .12 * svN : 0, perfect: true } : sf < 1 ? { speedMul: sf * .9 } : undefined); // estrelas baixas: saque sem força
+      if ((ts ? ts.perfect : perf) && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); }
+      shotFeedback(whoTag(p) + r.label, (ts ? ts.perfect : perf) ? 'PERFEITO' : null, whoKind(p));
     }
     if (!p.swing.hit && !p.pendingServe && p.swing.t > p.swing.dur * .3) p.swing.t = p.swing.dur * .3; // segura armado até a bola chegar
     if (p.swing.t >= p.swing.dur) p.swing.t = -1;

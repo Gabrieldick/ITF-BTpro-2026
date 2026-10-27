@@ -14,3 +14,4 @@ ferramentas/teste/build/
 
 # resultados do treino da CPU (os valores ficam em src/game/16-ia.ts)
 ferramentas/treino/resultado-*.json
+ferramentas/treino/parcial-*.json
