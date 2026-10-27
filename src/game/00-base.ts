@@ -27,7 +27,7 @@ const SHOTS = {
   defesa: { label: 'DEFESA', T: 1.2,      depth: [4.3, 6.4], margin: .3,  noise: .3 },
 };
 const SERVES = {
-  smash:  { label: 'SAQUE FORTE',  speed: 18, depth: [4.5, 6.8], margin: .06, noise: .55 }, // saques mais rápidos: não dá tempo de chegar na rede enquanto a bola viaja
+  smash:  { label: 'SAQUE FORTE',  speed: 22, depth: [4.5, 6.8], margin: .06, noise: .55 }, // saques mais rápidos: não dá tempo de chegar na rede enquanto a bola viaja
   lob:    { label: 'SAQUE ALTO',   T: 1.9,      depth: [5.5, 7.4], margin: .5,  noise: .4 },
   curta:  { label: 'SAQUE CURTO',  T: .85,      depth: [1.6, 3.0], margin: .2,  noise: .35 },
   defesa: { label: 'SAQUE SEGURO', T: 1.05,     depth: [4.0, 6.0], margin: .3,  noise: .25 },
