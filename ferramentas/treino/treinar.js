@@ -65,13 +65,19 @@ async function inicia() {
     });
   })));
 }
+// avaliação maior (da média e do melhor): dividida entre os núcleos
+async function avaliaGrande(cfg, n) {
+  const rs = await Promise.all(Array.from({ length: NW }, () => avalia(cfg, Math.ceil(n / NW))));
+  const med = k => rs.reduce((a, r) => a + r[k], 0) / rs.length;
+  return { win: med('win'), perf: med('perf'), f: med('f') };
+}
 const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const pct = x => (x * 100).toFixed(1) + '%';
 
 (async () => {
   await inicia();
   const ini = GRUPO === 'pln' ? AI.PLN_TUNED : AI.AIP_TUNED;
-  let m = norm(ini), r0 = await avalia(cfgDe(m), PTS * 4), melhor = { v: m.slice(), f: r0.f, r: r0 };
+  let m = norm(ini), r0 = await avaliaGrande(cfgDe(m), PTS * 4), melhor = { v: m.slice(), f: r0.f, r: r0 };
   console.log(`grupo ${GRUPO} · ${KEYS.length} parâmetros · ${NW} núcleos · inicial ${pct(r0.win)} contra a Lendária, ${pct(r0.perf)} no verde`);
   const t0 = Date.now();
   for (let g = 1; g <= GER; g++) {
@@ -84,7 +90,7 @@ const pct = x => (x * 100).toFixed(1) + '%';
     const med = k => rs.reduce((a, r) => a + r[k], 0) / rs.length;
     let linha = `ger ${g}/${GER} · candidatos ${pct(med('win'))} (${pct(Math.min(...rs.map(r => r.win)))}–${pct(Math.max(...rs.map(r => r.win)))}), verde ${pct(med('perf'))}`;
     if (g % 5 === 0 || g === GER) {
-      const r = await avalia(cfgDe(m), PTS * 4); linha += ` · média ${pct(r.win)}, verde ${pct(r.perf)}`;
+      const r = await avaliaGrande(cfgDe(m), PTS * 4); linha += ` · média ${pct(r.win)}, verde ${pct(r.perf)}`;
       if (r.f > melhor.f) { melhor = { v: m.slice(), f: r.f, r }; linha += ' ★'; fs.writeFileSync(path.join(__dirname, `parcial-${GRUPO}.json`), JSON.stringify({ vitoria: r.win, verde: r.perf, params: denorm(m) }, null, 2) + '\n'); }
     }
     console.log(linha + ` · ${((Date.now() - t0) / 60000).toFixed(1)} min`);
