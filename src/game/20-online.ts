@@ -13,7 +13,7 @@ import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
-import { crSlots, crSlotChar, crCharFromJSON, SB_URL, SB_KEY } from './14-carreira';
+import { crSlots, crSlotChar, crCharFromJSON, clCareerChars, CL, SB_URL, SB_KEY } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
 import { defenseFlash, tossDurOf } from './11-mira';
 import { startMeter, MTR, inPlay, makeRemoteCtl, meterDom, pressShot, readMenu, releaseShot, syncMenu, saveSettings, renderBallPickers, renderBinds, renderCourtPickers, applyMeterLook } from './12-controles';
@@ -98,7 +98,7 @@ function openOnline() {
   ac(); readMenu(); // usa o que está marcado no menu (games, dificuldade, jogadores)
   msg('');
   if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); $('onName').value = ON.name; setTimeout(() => $('onCode').focus(), 0); }
-  if (!QQ.on) qFill(); // carreiras criadas ou baixadas da nuvem depois de abrir o jogo também aparecem na fila
+  if (!QQ.on) { qFill(); qLoadCloud(); } // carreiras da conta (nuvem) para a fila
   if (!NET.role) { renderRoomList(); rlChannel().catch(() => { RL.state = 'erro'; renderRoomList(); }); }
 }
 function closeOnline() { if (QQ.on) queueStop(); $('online').hidden = true; el.menu.hidden = false; syncMenu(); }
@@ -955,21 +955,29 @@ function queueUi() { $('onQueue').hidden = QQ.on; ['onQMode', 'onQCat', 'onQPick
 let QPREF = { cat: 'masc', pick: '', rk: '', cpu: false }; try { Object.assign(QPREF, JSON.parse(localStorage.getItem('pdo-fila') || '{}')); } catch (e) {}
 function qFill() {
   const cat = $('onQCat').value, okCat = c => cat === 'misto' || !!c.fem === (cat === 'fem'), list = byOvr().filter(okCat);
-  // personagens das carreiras salvas neste aparelho (valor 'cr:<save>'), no topo da lista
-  const ccs = crSlots().map(x => ({ v: 'cr:' + x.id, c: crSlotChar(x.id) })).filter(o => o.c && okCat(o.c));
-  if (!list.some(c => c.id === QPREF.pick) && !ccs.some(o => o.v === QPREF.pick)) QPREF.pick = (ccs[0] && ccs[0].v) || (list.find(c => c.id === S.settings.pick.me) || list[0] || {}).id || '';
+  // personagens das carreiras salvas na nuvem da sua conta (valor 'cr:<id>'), no topo da lista
+  const ccs = (CL.sess ? QCC.list : []).filter(o => okCat(o.c)).map(o => ({ v: 'cr:' + o.id, c: o.c }));
+  const sel = list.some(c => c.id === QPREF.pick) || ccs.some(o => o.v === QPREF.pick) ? QPREF.pick : (ccs[0] && ccs[0].v) || (list.find(c => c.id === S.settings.pick.me) || list[0] || {}).id || '';
   $('onQPick').innerHTML = ccs.map(o => '<option value="' + o.v + '">★ ' + overall(o.c.a) + ' · ' + esc(o.c.name) + ' (sua carreira' + (cat === 'misto' ? ' · ' + (o.c.fem ? 'fem' : 'masc') : '') + ')</option>').join('') + list.map(c => '<option value="' + c.id + '">' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + (cat === 'misto' ? ' · ' + (c.fem ? 'fem' : 'masc') : '') + ')</option>').join('');
-  $('onQPick').value = QPREF.pick;
+  $('onQPick').value = sel; // a escolha salva continua valendo (a lista da nuvem pode chegar depois)
   const rs = $('onQRk'); if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + ' (' + rkSummary(k) + ')</option>').join('');
   rs.value = QPREF.rk || '';
+}
+// carreiras da nuvem (só com a conta conectada); baixadas ao abrir o online
+const QCC = { list: [], busy: false };
+async function qLoadCloud() {
+  if (!CL.sess) { QCC.list = []; return; }
+  if (QCC.busy) return; QCC.busy = true;
+  try { QCC.list = await clCareerChars(); } catch (e) { QCC.list = []; }
+  QCC.busy = false; if (!QQ.on) qFill();
 }
 function qSave() { QPREF = { cat: $('onQCat').value, pick: $('onQPick').value, rk: $('onQRk').value, cpu: $('onQCpu').checked }; try { localStorage.setItem('pdo-fila', JSON.stringify(QPREF)); } catch (e) {} }
 async function queueStart() {
   if (QQ.on || NET.role) return;
   qSave(); if (!QPREF.pick) return;
   // personagem da carreira: vai para a sala pelo mesmo caminho do "Usar" da sala (o anfitrião confere os valores)
-  QQ.cc = QPREF.pick.startsWith('cr:') ? crSlotChar(QPREF.pick.slice(3)) : null;
-  if (QPREF.pick.startsWith('cr:') && !QQ.cc) { qStatus('Não deu para ler esse save de carreira.'); return; }
+  QQ.cc = QPREF.pick.startsWith('cr:') ? (QCC.list.find(o => 'cr:' + o.id === QPREF.pick) || {}).c || null : null;
+  if (QPREF.pick.startsWith('cr:') && !QQ.cc) { qStatus('Não achei essa carreira na sua conta. Entre na conta (Carreira → Nuvem) e tente de novo.'); return; }
   if (!QQ.cc) S.settings.pick.me = QPREF.pick; // entra na sala com esse personagem
   QQ.cat = QPREF.cat; QQ.fem = !!(QQ.cc || charById(QPREF.pick) || {}).fem;
   QQ.on = true; QQ.mode = $('onQMode').value === 'simples' ? 'simples' : 'dupla'; QQ.id = 'q' + Math.random().toString(36).slice(2, 10); QQ.at = Date.now(); QQ.leading = false;
@@ -1041,7 +1049,7 @@ function queueHostTick() {
   fixCpu(); broadcast(); QQ.auto = null; msg('');
   setTimeout(() => { if (NET.role === 'host' && !ON.room.playing) hostPlay(); }, 1200);
 }
-if (typeof window !== 'undefined') window.__pdoQQ = { QQ, queueSync };
+if (typeof window !== 'undefined') window.__pdoQQ = { QQ, QCC, queueSync, qLoadCloud };
 // teste: barra do saque montada como no convidado × como no anfitrião (mesmo sorteio do lançamento)
 if (typeof window !== 'undefined') window.__pdoSrvMeter = (type, tf) => {
   const g = {}, td = tossDurOf(type, tf); human.tossDur = td.dur; human.tossMul = td.mul; startMeter('serve', type, { m: g, p: human, remote: false });
