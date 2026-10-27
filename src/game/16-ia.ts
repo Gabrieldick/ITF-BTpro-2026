@@ -43,7 +43,24 @@ function gapX(team, jitter) {
 }
 // o "cérebro" de cada robô vem do próprio overall (reação, erros, qualidade, leitura de jogo);
 // a dificuldade só ajusta os adversários na partida rápida/campeonato (na carreira o nível vem do overall de cada um)
-if (typeof window !== 'undefined') window.__pdoAI = { charSkill: p => charSkill(p), homeOf: p => homeOf(p), bestPlay: (p, y) => bestPlay(p, y), expectK: (o, k) => expectK(o, k) };
+// ---------- parâmetros de decisão da CPU ----------
+// AIP_BASE é o comportamento de sempre; AIP_TUNED vem do treino no simulador (ferramentas/treino/treinar.js), que
+// faz a CPU jogar contra ela mesma milhares de pontos e guarda o conjunto que mais vence (IA Treinada do jogo rápido)
+const AIP_BASE = { bestP: 2.2, smartAim: 2, gapDirect: 2.1, weakW: 8, errW: .35, bhAim: .7, lobNet: .55, lobAttr: .6, curtaBase: .5, curtaAttr: .6, curtaMid: .2,
+  smashW: 1, defBase: .33, tie: .12, fav: .7, deepSmashAvoid: 2, deepMin: 5.05, ahead: .7, letGoMin: .05, serveSmash: .88, serveLob: .03, serveCurta: .03 };
+const AIP_TUNED = Object.assign({}, AIP_BASE); // substituído pelo resultado do treino
+// pesos da busca da IA Planejadora (planShot): erro, saída pela linha, folga de chegada, contra-ataque, pressão, alcance e
+// um bônus por golpe; PLN_TUNED também vem do treino
+const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0 };
+const PLN_TUNED = Object.assign({}, PLN_BASE);
+// modo de IA de cada jogador: só no jogo rápido (time adversário) ou no treino do simulador (S.simAI)
+function aiModeOf(p) {
+  if (S.simAI) return (S.simAI[p.team] || {}).mode || '';
+  return p.team === 1 && !S.careerActive && !S.champActive && !NET.role ? S.settings.aiMode || '' : '';
+}
+const aiP = p => (S.simAI && (S.simAI[p.team] || {}).params) || (aiModeOf(p) ? AIP_TUNED : AIP_BASE);
+const plnP = p => (S.simAI && (S.simAI[p.team] || {}).plan) || PLN_TUNED;
+if (typeof window !== 'undefined') window.__pdoAI = { AIP_BASE, AIP_TUNED, PLN_BASE, PLN_TUNED, charSkill: p => charSkill(p), homeOf: p => homeOf(p), bestPlay: (p, y) => bestPlay(p, y), expectK: (o, k) => expectK(o, k) };
 function charSkill(p) {
   if (!p.char) return p.team === 0 ? DIFF.medio : DIFF[S.settings.diff];
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
@@ -51,13 +68,15 @@ function charSkill(p) {
   // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
   const stars = S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
   let adj = stars ? [-.04, -.03, 0, .16, .32, .5][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  if (aiModeOf(p)) adj = S.simAI && (S.simAI[p.team] || {}).adj != null ? S.simAI[p.team].adj : .5; // IA Treinada/Planejadora: leitura de jogo do Lendário
+  else if (S.simAI) adj = 0;
   if (S.careerActive && S.careerRival && p.team === 1) adj += .06; // clássico contra rival: a CPU vem mais focada (reação e decisões)
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
   const kb = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)), 0, 1);
   // estrelas: mudam a leitura de jogo (reação, posicionamento, escolha do golpe, não furar a bola);
   // a técnica (qualidade, força, erro do golpe) continua sendo a do atributo: um 60 no Lendário ainda erra smash do fundo
   const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
-  const dm = p.team === 1 && !stars ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
+  const dm = p.team === 1 && !stars && !S.simAI ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
     speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), // química: o parceiro reage mais rápido smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
@@ -85,19 +104,21 @@ function smartAim(p) {
   const opp = $s.teams[1 - p.team], lim = C.halfW - .6; if (!opp.length) return 0;
   if (p.ai && p.ai.shot === 'lob') { const net = opp.filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (net) return clamp(net.pos.x + rand(-.3, .3), -lim, lim); }
   const g = gapX(p.team, .15); let gm = Infinity; for (const o of opp) gm = Math.min(gm, Math.abs(o.pos.x - g));
-  if (gm > 2.1) return g;
+  const A = aiP(p);
+  if (gm > A.gapDirect) return g;
   // alvo por peso: o mais fraco só vira foco com diferença grande de habilidade e/ou se estiver errando mais na partida
   const sk = o => (attrK(o, 'backhand') + attrK(o, 'def')) / 2, best = Math.max(...opp.map(sk)), errMin = Math.min(...opp.map(o => o.mErr || 0));
-  const w = opp.map(o => 1 + Math.max(0, best - sk(o) - .1) * 8 + Math.min(3, ((o.mErr || 0) - errMin) * .35));
+  const w = opp.map(o => 1 + Math.max(0, best - sk(o) - .1) * A.weakW + Math.min(3, ((o.mErr || 0) - errMin) * A.errW));
   let r = Math.random() * w.reduce((t, v) => t + v, 0), tgt = opp[0]; for (let i = 0; i < opp.length; i++) { if ((r -= w[i]) <= 0) { tgt = opp[i]; break; } }
   const dir = (tgt.team === 0 ? 1 : -1) * (tgt.lefty ? -1 : 1); // lado do forehand dele no eixo x
   // nem sempre o backhand: às vezes no corpo ou abrindo o forehand para variar
-  const bh = Math.random() < .7 ? -1 : Math.random() < .5 ? 0 : 1;
+  const bh = Math.random() < A.bhAim ? -1 : Math.random() < .5 ? 0 : 1;
   return clamp(tgt.pos.x + bh * dir * rand(.6, 1.05), -lim, lim);
 }
 function aiAim(p) {
   const st = styleOf(p), lim = C.halfW - .6;
-  { const up = skillOf(p).up || 0; if (up > 0 && Math.random() < Math.min(.85, up * 2)) return smartAim(p); }
+  if (p.ai && p.ai.planAim != null) { const a = p.ai.planAim; p.ai.planAim = null; return clamp(a + rand(-.12, .12), -lim, lim); } // IA Planejadora: a mira escolhida na busca
+  { const up = skillOf(p).up || 0; if (up > 0 && Math.random() < Math.min(.85, up * aiP(p).smartAim)) return smartAim(p); }
   { const ta = tacticAim(p.team); if (ta !== null && Math.random() < .7) return ta; }
   if (st.aimBody && Math.random() < st.aimBody) { const opp = $s.teams[1 - p.team].slice().sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (opp) return clamp(opp.pos.x + rand(-.35, .35), -lim, lim); }
   if (st.corners && Math.random() < .8) { const g = gapX(p.team, .2); return Math.sign(g || rand(-1, 1)) * Math.max(Math.abs(g), lim * .75); }
@@ -330,6 +351,46 @@ function updateHuman(dt, c = localCtl()) {
 }
 function oppNearNet(team) { return $s.teams[1 - team].some(o => Math.abs(o.pos.z) < 3.2); }
 function oppAllDeep(team) { return $s.teams[1 - team].every(o => Math.abs(o.pos.z) > 6.2); }
+// ---------- IA Planejadora: busca a melhor jogada ----------
+// para cada golpe (smash, defesa, curta, lob alto, lob chutado) × mira (7 posições) × profundidade (2), estima:
+// se algum adversário chega na bola a tempo (no caminho ou onde ela cai, pela posição, reação e velocidade de cada um),
+// a chance de errar (golpe, atributos, distância da linha) e se a devolução fica fácil de atacar; fica com a de maior valor
+function planShot(p, y) {
+  const opp = $s.teams[1 - p.team]; if (!opp.length) return null;
+  const dz = p.team === 0 ? -1 : 1, lim = C.halfW - .45, D = skillOf(p), st = styleOf(p);
+  const from = p.ai && p.ai.plan ? p.ai.plan.pt : ball.pos, netD = Math.abs(p.pos.z);
+  const at = k => attrK(p, k), q = (D.q[0] + D.q[1]) / 2, W = plnP(p);
+  const cand = [];
+  if (y >= 1.45) cand.push({ k: 'smash', b: W.bSmash, speed: 19 * lerp(.85, 1.1, at('forca')) * (D.pw || 1) * st.speed, depth: [4.6, 7.0], noise: .35, attr: 'smash', risk: 1.25 * (netD > 4.6 ? 1.6 : 1) * (y < 1.9 ? 1.1 : 1) });
+  cand.push({ k: 'defesa', b: W.bDef, T: 1.2, depth: [4.3, 6.4], noise: .3, attr: 'def', risk: .75, float: true });
+  cand.push({ k: 'curta', b: W.bCurta, T: .9, depth: [1.1, 2.5], noise: .35, attr: 'curta', risk: 1.35 * (netD > 6 ? 1.5 : 1) });
+  cand.push({ k: 'lob', b: W.bLob, T: 2.4, depth: [6.4, 7.5], noise: .5, attr: 'lob', risk: .8, lob: .95, high: true });
+  if (at('lob') > .55) cand.push({ k: 'lob', b: W.bKick, T: 1.15, depth: [6.5, 7.4], noise: .5, attr: 'lob', risk: 1.1, lob: .25, kick: true });
+  const reachT = (o, x, z) => { const so = skillOf(o); return (so.react || .2) + Math.max(0, Math.hypot(o.pos.x - x, o.pos.z - z) - W.reach) / (so.speed || 4.5); };
+  let best = null;
+  for (const c of cand) for (let i = 0; i < 7; i++) for (let j = 0; j < 2; j++) {
+    const x = -lim + i * lim / 3, depth = c.depth[0] + (c.depth[1] - c.depth[0]) * (j ? .78 : .22), z = dz * depth;
+    const T = c.T || Math.hypot(x - from.x, z - from.z) / c.speed;
+    // quem chega: no ponto onde cai e (golpes baixos) no caminho, onde dá para voleiar
+    let marg = -9;
+    for (const o of opp) {
+      marg = Math.max(marg, T - reachT(o, x, z));
+      if (!c.high && !c.kick) for (const f of [.55, .75]) { const px = from.x + (x - from.x) * f, pz = from.z + (z - from.z) * f; if (Math.sign(pz) === dz) marg = Math.max(marg, T * f - reachT(o, px, pz) - .05); }
+    }
+    const pWin = 1 / (1 + Math.exp(marg / W.marg));
+    // erro: base do golpe pelo nível + saída pela linha (mira perto da lateral ou do fundo, conforme a imprecisão)
+    const sig = c.noise * (1.15 - q) * lerp(1.5, .55, at(c.attr)) + .05, mLine = Math.min(C.halfW - Math.abs(x), C.halfL - depth + .1);
+    const pOut = 1 / (1 + Math.exp(W.out * mLine / sig)), pErr = Math.min(.9, (D.err || .03) * c.risk * W.err + pOut);
+    // quando ele chega com folga numa bola que flutua (defesa) ou num lob curto, a devolução vem atacando
+    const comfy = clamp(marg / .6, 0, 1), counter = W.counter * (c.float ? .18 : c.kick ? .05 : c.k === 'curta' ? .08 : .04) * comfy * (opp.some(o => Math.abs(o.pos.z) < 3.4) ? 1.4 : 1);
+    const press = (1 - pWin) * W.press * (1 - comfy);
+    const v = (1 - pErr) * (pWin + press - counter) - pErr + c.b + rand(0, .03);
+    if (!best || v > best.v) best = { v, c, x, depth };
+  }
+  if (!best) return null;
+  p.ai.planAim = best.x; p.ai.planDepth = best.depth; p.ai.planLob = best.c.lob != null ? best.c.lob : null; p.ai.planKick = !!best.c.kick;
+  return best.c.k;
+}
 // jogada mais eficaz para a situação: dá nota a cada golpe olhando onde os adversários estão e para onde estão indo
 // (quem vem subindo para a rede conta como já na rede), a altura da bola, a própria distância da rede e os atributos de quem bate
 // e de quem recebe; grudou na rede → lob por cima; ficou no fundo → curta; bola alta perto da rede → smash
@@ -341,31 +402,33 @@ function bestPlay(p, y) {
   const cover = clamp((dMax - 5.2) / 1.2, 0, 1) * (opp.length > 1 ? 1 : 0); // o parceiro do fundo cobre o lob
   const lobK = attrK(p, 'lob'), curK = attrK(p, 'curta'), smK = attrK(p, 'smash'), defK = attrK(p, 'def');
   const weakOH = Math.min(...opp.map(o => (attrK(o, 'smash') + attrK(o, 'vel')) / 2)); // lob contra quem não volta bem
+  const A = aiP(p);
   const sc = {
-    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (.55 + lobK * .6) * (1.15 - weakOH * .3) - (y >= 2.1 && netD < 3.2 ? .5 : 0),
+    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (A.lobNet + lobK * A.lobAttr) * (1.15 - weakOH * .3) - (y >= 2.1 && netD < 3.2 ? .5 : 0),
     // curta: boa contra quem está no fundo e ainda viável contra quem parou no meio (~3–4,5 m)
-    curta: (clamp((dMin - 2.4) / 2.6, 0, 1) + .2 * clamp(1 - Math.abs(dMin - 3.6) / 1.2, 0, 1)) * (.5 + curK * .6) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
-    smash: (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
-    defesa: .33 + defK * .1
+    curta: (clamp((dMin - 2.4) / 2.6, 0, 1) + A.curtaMid * clamp(1 - Math.abs(dMin - 3.6) / 1.2, 0, 1)) * (A.curtaBase + curK * A.curtaAttr) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
+    smash: A.smashW * (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
+    defesa: A.defBase + defK * .1
   };
   if (y >= 1.45 && netD > 4.6 && smK < .62) sc.smash *= .6;
   if (netD > 4.6 && allNet > .6 && lobK > .45) sc.smash *= .55; // do fundo contra quem está grudado na rede o smash volta no voleio: lob por cima // smash do fundo sem smash para isso: melhor devolver
   // duas (ou mais) jogadas quase igualmente boas (ex.: você nos 3 m — curta, lob ou bola no pé): decide o estilo de quem bate
-  const top = Math.max(...Object.values(sc)), opts = Object.keys(sc).filter(k => sc[k] >= top - .12);
+  const top = Math.max(...Object.values(sc)), opts = Object.keys(sc).filter(k => sc[k] >= top - A.tie);
   if (opts.length === 1) return opts[0];
   // na maioria das vezes (~70%) o golpe preferido do estilo; no resto varia entre as outras boas opções
   const w = styleOf(p).w, fav = opts.reduce((a, k) => (w[k] || 0) > (w[a] || 0) ? k : a, opts[0]);
-  if (Math.random() < .7) return fav;
+  if (Math.random() < A.fav) return fav;
   const rest = opts.filter(k => k !== fav); return rest[Math.floor(Math.random() * rest.length)];
 }
 function chooseAIShot(p, y) {
   const st = styleOf(p), r = Math.random();
   // quanto melhor a leitura de jogo (estrelas altas), mais vezes escolhe a jogada certa em vez do estilo/sorteio
-  { const sp = clamp(((p.skill && p.skill.up) || 0) * 2.2, 0, .92); if (sp > 0 && Math.random() < sp) return bestPlay(p, y); } // só acima do padrão
+  if (aiModeOf(p) === 'planejadora') { const pl = planShot(p, y); if (pl) return pl; } // IA Planejadora: busca a melhor jogada
+  { const sp = clamp(((p.skill && p.skill.up) || 0) * aiP(p).bestP, 0, .92); if (sp > 0 && Math.random() < sp) return bestPlay(p, y); } // só acima do padrão
   // estrelas baixas: bola alta vira devolução controlada na maioria das vezes (pouco smash)
   if (p.skill && p.skill.soft < 1 && y >= 1.45 && Math.random() < (1 - p.skill.soft) * 2.6) return Math.random() < .7 ? 'defesa' : 'lob';
   // decisão: quem lê bem o jogo não arrisca smash do fundo sem ter smash para isso (devolve e espera a bola certa)
-  if (y >= 1.45 && p.skill && p.skill.up > 0 && Math.abs(p.pos.z) > 4.6 && Math.random() < p.skill.up * 2 * (1.3 - attrK(p, 'smash'))) return Math.random() < .6 ? 'lob' : 'defesa';
+  if (y >= 1.45 && p.skill && p.skill.up > 0 && Math.abs(p.pos.z) > 4.6 && Math.random() < p.skill.up * aiP(p).deepSmashAvoid * (1.3 - attrK(p, 'smash'))) return Math.random() < .6 ? 'lob' : 'defesa';
   if (y >= 2.1 && r < st.high) return 'smash';
   if (y >= 1.45 && y < 2.1 && Math.random() < st.mid) return 'smash'; // drive na meia altura
   if (p.team === 0 && S.settings.tactic === 'lobs' && y < 2.1 && Math.random() < .45) return 'lob';
@@ -386,7 +449,7 @@ function chooseAIServe(p) {
   if (p.skill && p.skill.soft < 1 && Math.random() < .6) return 'defesa'; // estrelas baixas: saque por baixo, para começar o rali
   const lvl = p.team === 0 ? 'medio' : S.settings.diff;
   // no beach tennis quase todo saque é por cima (smash); lob e curto são raros
-  const w = { facil: [.62, .05, .05, .28], medio: [.8, .04, .04, .12], dificil: [.88, .03, .03, .06] }[lvl];
+  const A = aiP(p), w = aiModeOf(p) ? [A.serveSmash, A.serveLob, A.serveCurta, Math.max(.01, 1 - A.serveSmash - A.serveLob - A.serveCurta)] : ({ facil: [.62, .05, .05, .28], medio: [.8, .04, .04, .12], dificil: [.88, .03, .03, .06] }[lvl] || [.88, .03, .03, .06]);
   const types = ['smash', 'lob', 'curta', 'defesa']; let r = Math.random();
   const sw = styleOf(p).serve; const ww = sw ? w.map((v, i) => (v + sw[i]) / 2) : w;
   for (let i = 0; i < 4; i++) { if ((r -= ww[i]) <= 0) return types[i]; }
@@ -414,11 +477,11 @@ function homeOf(p) {
   // estrelas altas: quem lê o jogo não fica plantado no fundo (onde a curta mata); no Lendário fica perto dos 4,4 m
   // cada estilo mantém o seu jeito (paredão mais atrás, voleador na rede), só que sem exagero; e, quando o adversário vai bater
   // perto da rede ou numa bola baixa (cheiro de curta), dá um passo à frente
-  const up = (p.skill && p.skill.up) || 0, deepMax = lerp(6.3, 5.05, clamp(up * 2.5, 0, 1));
+  const up = (p.skill && p.skill.up) || 0, deepMax = lerp(6.3, aiP(p).deepMin, clamp(up * 2.5, 0, 1));
   let ahead = 0;
   // dificuldades acima do padrão se adaptam: muita curta → joga mais à frente; muito lob → recua para cobrir o fundo
   const ad = up > 0 ? oppTend(p.team) : { c: 0, l: 0 }, adK = clamp(up * 3, 0, 1), adZ = (ad.l * .75 - ad.c * .9) * adK;
-  if (up > 0 && ball.state === 'live' && S.lastTeam === p.team) { const opp = $s.teams[1 - p.team] || [], l = predictLanding(); if (opp.some(o => Math.abs(o.pos.z) < 3.6) || Math.abs(l.z) < 3.4) ahead = clamp(up * 2.4, 0, 1) * (.7 + ad.c * adK * .35) * (1 - ad.l * adK * .5); }
+  if (up > 0 && ball.state === 'live' && S.lastTeam === p.team) { const opp = $s.teams[1 - p.team] || [], l = predictLanding(); if (opp.some(o => Math.abs(o.pos.z) < 3.6) || Math.abs(l.z) < 3.4) ahead = clamp(up * 2.4, 0, 1) * (aiP(p).ahead + ad.c * adK * .35) * (1 - ad.l * adK * .5); }
   if (!dupla()) return [clamp(ball.pos.x * .35, -1.5, 1.5), s * (clamp(Math.min(deepMax + .2, clamp((S.settings.diff === 'dificil' && p.team === 1 ? 4.6 : 5.2) + hz * (1 - clamp(up, 0, .4)), 3.4, 6.4)) + adZ, 3.3, 6.6) - ahead)];
   // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
   // o parceiro também acompanha a posição real do companheiro
@@ -489,7 +552,7 @@ function updateAI(p, dt) {
         p.ai.swung = false;
         const land = predictLanding();
         // deixar a bola que vai sair: leitura de jogo (estrelas) + noção de jogo; no topo, julga até bolas rente à linha e nunca pega bola fora
-        const rd = clamp((D.up || 0) * 2.2, 0, 1) * lerp(.55, 1, attrK(p, 'leitura')), marg = lerp(.35, .05, rd);
+        const rd = clamp((D.up || 0) * 2.2, 0, 1) * lerp(.55, 1, attrK(p, 'leitura')), marg = lerp(.35, aiP(p).letGoMin, rd);
         const out = Math.abs(land.x) > C.halfW + marg || Math.abs(land.z) > C.halfL + marg;
         p.ai.letGo = out && Math.random() < (rd >= .9 ? 1 : lerp(D.letGo, 1, rd));
       }
@@ -509,7 +572,8 @@ function updateAI(p, dt) {
           else {
             const st = styleOf(p);
             const sf = D.soft || 1, soft = sf < 1;
-            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, shot === 'lob' ? (!soft && oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: soft ? rand(.35, .6) : st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
+            const r = doHit(p, shot, clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, shot === 'lob' ? (p.ai.planLob != null ? { lobPower: p.ai.planLob, lobKick: !!p.ai.planKick && Math.random() < .35 + attrK(p, 'lob') * .4 } : !soft && oppNearNet(p.team) && Math.random() < attrK(p, 'lob') * .25 ? { lobPower: .25, lobKick: true } : { lobPower: soft ? rand(.35, .6) : st.lobHigh ? rand(.72, 1) : oppNearNet(p.team) ? rand(.65, .98) : rand(.3, .95) }) : {}));
+            p.ai.planLob = null; p.ai.planKick = false;
             shotFeedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
           }
         }

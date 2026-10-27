@@ -1,0 +1,27 @@
+{
+  "vitoria": 0.5486,
+  "params": {
+    "bestP": 2.129,
+    "smartAim": 2.102,
+    "gapDirect": 2.604,
+    "weakW": 7.338,
+    "errW": 0.4,
+    "bhAim": 0.705,
+    "lobNet": 0.459,
+    "lobAttr": 0.765,
+    "curtaBase": 0.452,
+    "curtaAttr": 0.58,
+    "curtaMid": 0.132,
+    "smashW": 0.995,
+    "defBase": 0.251,
+    "tie": 0.076,
+    "fav": 0.787,
+    "deepSmashAvoid": 1.981,
+    "deepMin": 4.987,
+    "ahead": 0.8,
+    "letGoMin": 0.05,
+    "serveSmash": 0.843,
+    "serveLob": 0.055,
+    "serveCurta": 0.028
+  }
+}

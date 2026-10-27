@@ -254,7 +254,8 @@ function doHit(p, type, q, isServe, mod) {
   const err = 1.15 - q;
   // na finalização a mira curta (W) vai só até o meio: mais curta, a bola precisaria subir para passar a rede e perderia a velocidade
   const dT = p.isHuman ? (finisher ? .45 + humanDepthT(p) * .55 : humanDepthT(p)) : 0;
-  const depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
+  let depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
+  if (!p.isHuman && p.ai && p.ai.planDepth != null) { if (!pop && !isServe) depth = clamp(p.ai.planDepth, spec.depth[0], spec.depth[1]) + rand(-.15, .15); p.ai.planDepth = null; } // IA Planejadora: profundidade escolhida na busca
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
   if (wild) { tgt.x += (Math.random() < .5 ? -1 : 1) * rand(.8, 2.2); tgt.z += dir * rand(1.2, 3.2); }
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);

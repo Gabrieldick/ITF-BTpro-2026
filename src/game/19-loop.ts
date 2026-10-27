@@ -86,7 +86,7 @@ function start(data) {
     setupPoint(); setPaused(true);
   }
   renderBoard();
-  window.__pdo = { NET, MTR, doHit, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, GLB };
+  window.__pdo = { NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, GLB };
   loadModels().then(ok => {
     assignCharacters(); configureMode();
     if (!ok) { const fs2 = document.getElementById('fsPlayers'); if (fs2) fs2.hidden = true; }

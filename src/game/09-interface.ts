@@ -688,7 +688,7 @@ function simulateRest() {
 function showOver() {
   S.mode = 'over'; hideBanner();
   const w = S.matchWinner, g = S.score.games;
-  const dn = { facil: 'fácil', medio: 'médio', dificil: 'difícil' }[S.settings.diff];
+  const dn = !S.careerActive && !S.champActive && !NET.role && S.settings.aiMode ? { treinada: 'IA treinada', planejadora: 'IA planejadora' }[S.settings.aiMode] : { facil: 'fácil', medio: 'médio', dificil: 'difícil' }[S.settings.diff];
   $('overEyebrow').textContent = `Fim de set · ${dupla() ? 'dupla' : 'simples'} · ${dn}`;
   const wonBy = t => teamNames(t).toUpperCase() + ($s.teams[t].length > 1 ? ' VENCERAM' : ' VENCEU');
   $('overTitle').textContent = S.spectate ? wonBy(w) : w === 0 ? (dupla() ? 'VOCÊS VENCERAM' : 'VOCÊ VENCEU') : teamHuman(1) ? wonBy(1) : 'A CPU VENCEU';

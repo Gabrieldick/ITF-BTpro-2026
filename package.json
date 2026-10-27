@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "build:sim": "vite build -c vite.sim.config.ts",
+    "treinar": "npm run build:sim && node ferramentas/treino/treinar.js --aplicar",
     "simular": "npm run build:sim && node ferramentas/teste/simular.js ferramentas/teste/build/jogo-sim.js medio bot dupla"
   },
   "dependencies": {
