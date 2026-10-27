@@ -105,7 +105,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   const inSpeed = Math.hypot(ball.vel.x, ball.vel.z);
   // devolução de saque pesa menos (o recebedor já está esperando a bola)
-  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .55 : 0), 0, 1.5) * (S.rally === 1 ? .5 : 1);
+  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .55 : 0), 0, 1.5) * (S.rally === 1 ? .38 : 1); // devolução de saque: o saque ficou mais rápido, a pressão sobe bem menos
   if (pressure > 0) {
     // contra bola forte, o golpe de defesa é o mais seguro; a curta (toque) é uma aposta: levanta ou sai mais
     const risk = key === 'defesa' ? .6 : key === 'curta' ? 1.45 : 1;

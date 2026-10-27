@@ -6,7 +6,9 @@ import { ball } from './07-glb';
 const V3 = THREE.Vector3;
 const G = 9.8;
 // efeito da bola: topspin mergulha (gk > 1), slice flutua (gk < 1)
-const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : G;
+// lançamento do saque: bola "mais pesada" (sobe a mesma altura em menos tempo, lançamento mais ágil)
+const TOSS_G = 1.6;
+const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'toss' ? G * TOSS_G : G;
 const C = { halfL: 8, halfW: 2.25, netH: 1.7, ballR: .035, netHalf: 4.6 };
 const HALF_W = { simples: 2.25, dupla: 4 };
 const STEP = 1 / 120;
@@ -25,10 +27,10 @@ const SHOTS = {
   defesa: { label: 'DEFESA', T: 1.2,      depth: [4.3, 6.4], margin: .3,  noise: .3 },
 };
 const SERVES = {
-  smash:  { label: 'SAQUE FORTE',  speed: 15, depth: [4.5, 6.8], margin: .06, noise: .55 },
+  smash:  { label: 'SAQUE FORTE',  speed: 18, depth: [4.5, 6.8], margin: .06, noise: .55 }, // saques mais rápidos: não dá tempo de chegar na rede enquanto a bola viaja
   lob:    { label: 'SAQUE ALTO',   T: 1.9,      depth: [5.5, 7.4], margin: .5,  noise: .4 },
-  curta:  { label: 'SAQUE CURTO',  T: 1.0,      depth: [1.6, 3.0], margin: .2,  noise: .35 },
-  defesa: { label: 'SAQUE SEGURO', T: 1.3,      depth: [4.0, 6.0], margin: .3,  noise: .25 },
+  curta:  { label: 'SAQUE CURTO',  T: .85,      depth: [1.6, 3.0], margin: .2,  noise: .35 },
+  defesa: { label: 'SAQUE SEGURO', T: 1.05,     depth: [4.0, 6.0], margin: .3,  noise: .25 },
 };
 const DIFF = {
   facil:   { speed: 3.4, react: .30, miss: .14, err: .10,  q: [.45, .75], smart: .3, letGo: .3 },
@@ -280,4 +282,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { voleioOf, attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { TOSS_G, voleioOf, attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

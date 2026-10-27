@@ -3,7 +3,7 @@
 import './10-fisica';
 import * as THREE from 'three';
 import { $s } from '../state';
-import { ATTR_OF, C, DIFF, G, SHOTS, TOSS_T, V3, clamp, lerp, shortOf } from './00-base';
+import { ATTR_OF, C, DIFF, G, TOSS_G, SHOTS, TOSS_T, V3, clamp, lerp, shortOf } from './00-base';
 import { S } from './01-estado';
 import { scene } from './02-render';
 import { human } from './06-modelos';
@@ -95,7 +95,7 @@ function handPos(p, out) {
 // duração do lançamento (a mesma conta no anfitrião e no convidado do online, para a barra bater igual):
 // a variação entre lançamentos é metade da sorteada (o verde do saque varia menos que o do smash) e o saque forte
 // tem lançamento bem mais alto (o contato continua na mesma altura; a barra anda na mesma proporção)
-function tossDurOf(type, tf) { const mul = type === 'smash' ? 1.7 : 1; return { dur: TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5) * mul, mul }; } // tf: sorteado pelo convidado no online
+function tossDurOf(type, tf) { const mul = type === 'smash' ? 1.35 : 1; return { dur: TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5) * mul, mul }; } // tf: sorteado pelo convidado no online
 function startToss(p, type, tf) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
   // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto
@@ -112,7 +112,7 @@ function startToss(p, type, tf) {
 // solta a bola da mão em direção ao ponto de contato, chegando lá no fim do lançamento
 function releaseToss(p) {
   const T = Math.max(.15, p.tossDur - p.tossT), t = p.tossTgt;
-  ball.vel.set((t.x - ball.pos.x) / T, (t.y - ball.pos.y + .5 * G * T * T) / T, (t.z - ball.pos.z) / T);
+  const g = G * TOSS_G; ball.vel.set((t.x - ball.pos.x) / T, (t.y - ball.pos.y + .5 * g * T * T) / T, (t.z - ball.pos.z) / T);
   ball.inHand = false;
 }
 
