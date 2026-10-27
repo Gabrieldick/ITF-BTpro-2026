@@ -67,7 +67,7 @@ function startMeter(kind, type, c = localCtl()) {
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
   if (kind === 'serve') M.half *= type === 'lob'
     ? clamp(Math.pow(attrN((p.char.a.saque + attrOf(p.char.a, 'lob')) / 2), 1.9), .08, 1.1) * .7 // lob por baixo: depende de saque e lob; perfeito difícil com atributo baixo
-    : clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .6 : 1); // saque por cima: perfeito bem mais difícil (e mais forte)
+    : clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .45 : 1); // saque por cima: perfeito bem mais difícil (e mais forte), mesmo com saque bom
   // tolerância em volta do verde (amarelo/laranja): com atributo baixo fica estreita, errar por pouco já custa caro
   M.pw = .2 * lerp(.45, 1.1, Math.pow(attrN(kind === 'smash' ? p.char.a.smash : p.char.a.saque), 1.5));
   { const exp = clamp((overall(p.char.a) - 60) / 35, 0, 1); M.half *= (S.pressure ? lerp(.78, .97, exp) : 1) * (1 + (S.streak && S.streak.team === p.team ? Math.min(1, (S.streak.n - 1) / 3) : 0) * .12); }

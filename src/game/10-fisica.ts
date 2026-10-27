@@ -105,7 +105,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   const inSpeed = Math.hypot(ball.vel.x, ball.vel.z);
   // devolução de saque pesa menos (o recebedor já está esperando a bola)
-  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .55 : 0), 0, 1.5) * (S.rally === 1 ? .3 : 1); // devolução de saque: o saque ficou mais rápido, a pressão sobe bem menos
+  const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .55 : 0) + (S.rally === 1 && ball.servePerf ? .35 : 0), 0, 1.5) * (S.rally === 1 ? (ball.servePerf ? .8 : .3) : 1); // devolução de saque: o saque ficou mais rápido, a pressão sobe bem menos
   if (pressure > 0) {
     // contra bola forte, o golpe de defesa é o mais seguro; a curta (toque) é uma aposta: levanta ou sai mais
     const risk = key === 'defesa' ? .6 : key === 'curta' ? 1.45 : 1;
@@ -318,7 +318,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .45 : .32) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .45 : .32) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
