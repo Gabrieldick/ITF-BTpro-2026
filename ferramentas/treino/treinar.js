@@ -22,7 +22,7 @@ const GRUPO = arg('grupo', 'aip'), GER = +arg('geracoes', 40), PTS = +arg('ponto
 const IA = path.join(__dirname, '../../src/game/16-ia.ts');
 
 const ESPACO = GRUPO === 'pln' ? {
-  err: [.5, 5], out: [.8, 3], marg: [.05, .3], counter: [0, 3], press: [0, .5], reach: [.4, 1.3],
+  thr: [.5, 1.1], err: [.5, 5], out: [.8, 3], marg: [.05, .3], counter: [0, 3], press: [0, .5], reach: [.4, 1.3],
   bSmash: [-.3, .3], bDef: [-.3, .3], bCurta: [-.3, .3], bLob: [-.3, .3], bKick: [-.3, .3],
 } : {
   bestP: [1, 3], smartAim: [.5, 3], gapDirect: [1, 4], weakW: [0, 16], errW: [0, 1], bhAim: [0, 1], lobNet: [.2, 1], lobAttr: [0, 1.2],

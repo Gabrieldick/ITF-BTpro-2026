@@ -50,9 +50,9 @@ const AIP_BASE = { bestP: 2.2, smartAim: 2, gapDirect: 2.1, weakW: 8, errW: .35,
   smashW: 1, defBase: .33, tie: .12, fav: .7, deepSmashAvoid: 2, deepMin: 5.05, ahead: .7, letGoMin: .05, serveSmash: .88, serveLob: .03, serveCurta: .03 };
 const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.714, smartAim: 3, gapDirect: 2.915, weakW: 9.113, errW: .761, bhAim: 0, lobNet: .253, lobAttr: 0, curtaBase: .586, curtaAttr: 1.101, curtaMid: .481, smashW: .886, defBase: .1, tie: .016, fav: .688, deepSmashAvoid: .834, deepMin: 4.72, ahead: .728, letGoMin: .159, serveSmash: .785, serveLob: .034, serveCurta: 0 }); // treino: 64.8% contra a Lendária
 // pesos da busca da IA Planejadora (planShot): erro, saída pela linha, folga de chegada, contra-ataque, pressão, alcance e
-// um bônus por golpe; PLN_TUNED também vem do treino
-const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0 };
-const PLN_TUNED = Object.assign({}, PLN_BASE);
+// um bônus por golpe; thr: nota mínima para a busca assumir a jogada; PLN_TUNED também vem do treino
+const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0, thr: .75 };
+const PLN_TUNED = Object.assign({}, PLN_BASE, { err: 2.497, out: .93, marg: .112, counter: 1.954, press: .156, reach: 1.095, bSmash: .238, bDef: .132, bCurta: .126, bLob: -.203, bKick: .183, thr: .8 }); // treino: 63,7% contra a Lendária (Treinada: 62,0%)
 // modo de IA de cada jogador: só no jogo rápido (time adversário) ou no treino do simulador (S.simAI)
 function aiModeOf(p) {
   if (S.simAI) return (S.simAI[p.team] || {}).mode || '';
@@ -388,7 +388,7 @@ function planShot(p, y) {
     if (!best || v > best.v) best = { v, c, x, depth };
   }
   if (!best) return null;
-  p.ai.planAim = best.x; p.ai.planDepth = best.depth; p.ai.planLob = best.c.lob != null ? best.c.lob : null; p.ai.planKick = !!best.c.kick;
+  p.ai.planV = best.v; p.ai.planAim = best.x; p.ai.planDepth = best.depth; p.ai.planLob = best.c.lob != null ? best.c.lob : null; p.ai.planKick = !!best.c.kick;
   return best.c.k;
 }
 // jogada mais eficaz para a situação: dá nota a cada golpe olhando onde os adversários estão e para onde estão indo
@@ -421,9 +421,16 @@ function bestPlay(p, y) {
   const rest = opts.filter(k => k !== fav); return rest[Math.floor(Math.random() * rest.length)];
 }
 function chooseAIShot(p, y) {
+  if (aiModeOf(p) !== 'planejadora') return chooseShotRule(p, y);
+  // IA Planejadora: a busca só assume quando enxerga uma bola quase vencedora; no resto, as regras treinadas
+  // (no simulador, a busca sozinha perdia para as regras treinadas; só nas bolas decisivas ela soma)
+  const pl = planShot(p, y); if (pl && p.ai.planV > plnP(p).thr) return pl;
+  p.ai.planAim = p.ai.planDepth = p.ai.planLob = null; p.ai.planKick = false;
+  return chooseShotRule(p, y);
+}
+function chooseShotRule(p, y) {
   const st = styleOf(p), r = Math.random();
   // quanto melhor a leitura de jogo (estrelas altas), mais vezes escolhe a jogada certa em vez do estilo/sorteio
-  if (aiModeOf(p) === 'planejadora') { const pl = planShot(p, y); if (pl) return pl; } // IA Planejadora: busca a melhor jogada
   { const sp = clamp(((p.skill && p.skill.up) || 0) * aiP(p).bestP, 0, .92); if (sp > 0 && Math.random() < sp) return bestPlay(p, y); } // só acima do padrão
   // estrelas baixas: bola alta vira devolução controlada na maioria das vezes (pouco smash)
   if (p.skill && p.skill.soft < 1 && y >= 1.45 && Math.random() < (1 - p.skill.soft) * 2.6) return Math.random() < .7 ? 'defesa' : 'lob';
