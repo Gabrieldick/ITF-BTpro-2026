@@ -114,7 +114,7 @@ function doHit(p, type, q, isServe, mod) {
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
     let pOut = pressure * (1 - qq) * .45 * risk * wDef, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef;
     // bola de finalização: mesmo a defesa perfeita às vezes não segura (menos para quem defende muito bem)
-    if (ball.finisher) { const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1); pPop += lerp(.24, .1, dk); pOut += lerp(.2, .1, dk); } // espirra para fora com frequência
+    if (ball.finisher) { const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), fp = ball.finPerf ? 1.5 : 1; pPop += lerp(.24, .1, dk) * fp; pOut += lerp(.2, .1, dk) * fp; } // espirra para fora com frequência (finalização perfeita bem mais)
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
     if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk; pPop += .14 * ball.smashPow * dk; }
@@ -131,7 +131,7 @@ function doHit(p, type, q, isServe, mod) {
     else {
       if (fc.team !== p.team) { fc.team = p.team; fc.n = 0; }
       const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), kf = { defesa: 1, lob: 1.2, curta: 1.45, smash: 1.6, drive: 1.4 }[key] || 1.2;
-      const pf = Math.min(.85, (lerp(.22, .11, dk) + fc.n * lerp(.1, .07, dk)) * kf), r1 = Math.random();
+      const pf = Math.min(.9, ((ball.finPerf ? lerp(.55, .35, dk) : lerp(.22, .11, dk)) + fc.n * lerp(.1, .07, dk)) * kf), r1 = Math.random();
       if (!wild && !pop && r1 < pf) { if (r1 < pf * .45) wild = true; else netFin = true; }
       fc.n++;
     }
@@ -318,7 +318,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? .32 : 0); ball.finisher = finisher; ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .45 : .32) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
