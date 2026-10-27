@@ -95,7 +95,7 @@ function handPos(p, out) {
 // duração do lançamento (a mesma conta no anfitrião e no convidado do online, para a barra bater igual):
 // a variação entre lançamentos é metade da sorteada (o verde do saque varia menos que o do smash) e o saque forte
 // tem lançamento bem mais alto (o contato continua na mesma altura; a barra anda na mesma proporção)
-function tossDurOf(type, tf) { const mul = type === 'smash' ? 2 : 1; return { dur: TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5) * mul, mul }; } // tf: sorteado pelo convidado no online
+function tossDurOf(type, tf) { const mul = type === 'smash' ? 1.7 : 1; return { dur: TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5) * mul, mul }; } // tf: sorteado pelo convidado no online
 function startToss(p, type, tf) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
   // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto

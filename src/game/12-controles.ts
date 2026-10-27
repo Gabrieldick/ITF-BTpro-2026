@@ -61,7 +61,7 @@ function startMeter(kind, type, c = localCtl()) {
   // lob: a barra sobe um pouco mais rápido que antes (.45 s até o fim da faixa normal) e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
   // dificuldade de timing: com menos estrelas, faixas do chutado e do alto maiores e a do lob longo (ruim) menor
   else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))) / M.tk; M.altoLo = clamp(.75 - (M.tk - 1) * .4, .55, .86); p.charging = true; }
-  else { M.fill = .9 * (p.tossMul || 1); M.center = (p.tossDur || TOSS_T) / M.fill; // o verde continua variando com a altura de cada lançamento
+  else { M.fill = .9 * (p.tossMul || 1); M.center = ((p.tossDur || TOSS_T) - .06) / M.fill; // o verde varia com a altura de cada lançamento; −0,06 s: a raquete leva esse tempo da soltura ao contato
     M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
