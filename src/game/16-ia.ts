@@ -48,7 +48,7 @@ function gapX(team, jitter) {
 // faz a CPU jogar contra ela mesma milhares de pontos e guarda o conjunto que mais vence (IA Treinada do jogo rápido)
 const AIP_BASE = { bestP: 2.2, smartAim: 2, gapDirect: 2.1, weakW: 8, errW: .35, bhAim: .7, lobNet: .55, lobAttr: .6, curtaBase: .5, curtaAttr: .6, curtaMid: .2,
   smashW: 1, defBase: .33, tie: .12, fav: .7, deepSmashAvoid: 2, deepMin: 5.05, ahead: .7, letGoMin: .05, serveSmash: .88, serveLob: .03, serveCurta: .03 };
-const AIP_TUNED = Object.assign({}, AIP_BASE); // substituído pelo resultado do treino
+const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.714, smartAim: 3, gapDirect: 2.915, weakW: 9.113, errW: .761, bhAim: 0, lobNet: .253, lobAttr: 0, curtaBase: .586, curtaAttr: 1.101, curtaMid: .481, smashW: .886, defBase: .1, tie: .016, fav: .688, deepSmashAvoid: .834, deepMin: 4.72, ahead: .728, letGoMin: .159, serveSmash: .785, serveLob: .034, serveCurta: 0 }); // treino: 64.8% contra a Lendária
 // pesos da busca da IA Planejadora (planShot): erro, saída pela linha, folga de chegada, contra-ataque, pressão, alcance e
 // um bônus por golpe; PLN_TUNED também vem do treino
 const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0 };

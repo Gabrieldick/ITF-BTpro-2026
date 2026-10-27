@@ -87,7 +87,7 @@ const pct = x => (x * 100).toFixed(1) + '%';
   if (arg('aplicar', false)) {
     const nome = GRUPO === 'pln' ? 'PLN' : 'AIP', src = fs.readFileSync(IA, 'utf8');
     const re = new RegExp(`const ${nome}_TUNED = Object\\.assign\\(\\{\\}, ${nome}_BASE[^\\n]*`);
-    fs.writeFileSync(IA, src.replace(re, `const ${nome}_TUNED = Object.assign({}, ${nome}_BASE, ${JSON.stringify(res).replace(/"(\w+)":/g, '$1: ').replace(/,/g, ', ')}); // treino: ${pct(fConf)} contra a Lendária`));
+    fs.writeFileSync(IA, src.replace(re, `const ${nome}_TUNED = Object.assign({}, ${nome}_BASE, { ${Object.entries(res).map(([k, v]) => k + ': ' + String(v).replace(/^(-?)0\./, '$1.')).join(', ')} }); // treino: ${pct(fConf)} contra a Lendária`));
     console.log(`gravado em src/game/16-ia.ts (${nome}_TUNED)`);
   }
   ws.forEach(w => w.p.kill());
