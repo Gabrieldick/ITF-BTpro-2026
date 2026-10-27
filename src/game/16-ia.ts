@@ -527,7 +527,7 @@ function updateAI(p, dt) {
       ball.state = 'live'; S.mode = 'rally';
       // CPU/parceira: de vez em quando o saque sai perfeito (mais com atributo de saque alto): mais forte, preciso e com estrelinhas
       const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), perf = sf >= 1 && (ps.type === 'smash' ? Math.random() < .06 + .16 * svN : ps.type === 'lob' && Math.random() < .03 + .14 * Math.pow((svN + attrK(p, 'lob')) / 2, 2)), sp = ball.pos.clone();
-      const r = doHit(p, ps.type, ps.q, true, perf ? { speedMul: lerp(1, 1.12, svN), noiseMul: lerp(.85, .6, svN), perfect: true } : sf < 1 ? { speedMul: sf * .9 } : undefined); // estrelas baixas: saque sem força
+      const r = doHit(p, ps.type, ps.q, true, perf ? { speedMul: ps.type === 'smash' ? lerp(1.08, 1.26, svN) : 1, noiseMul: lerp(.85, .6, svN), oppMissBoost: ps.type === 'smash' ? .06 + .12 * svN : 0, perfect: true } : sf < 1 ? { speedMul: sf * .9 } : undefined); // estrelas baixas: saque sem força
       if (perf && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); }
       shotFeedback(whoTag(p) + r.label, perf ? 'PERFEITO' : null, whoKind(p));
     }
