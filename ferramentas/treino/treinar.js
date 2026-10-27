@@ -26,11 +26,11 @@ const ESPACO = GRUPO === 'pln' ? {
   thr: [.5, 1.1], err: [.5, 5], out: [.8, 3], marg: [.05, .3], counter: [0, 3], press: [0, .5], reach: [.4, 1.3],
   bSmash: [-.3, .3], bDef: [-.3, .3], bCurta: [-.3, .3], bLob: [-.3, .3], bKick: [-.3, .3],
 } : {
-  bestP: [1, 3], smartAim: [.5, 3], gapDirect: [1, 4], weakW: [0, 16], errW: [0, 1], bhAim: [0, 1], lobNet: [.2, 1], lobAttr: [0, 1.2],
-  curtaBase: [.2, 1], curtaAttr: [0, 1.2], curtaMid: [0, .6], smashW: [.5, 1.5], defBase: [.1, .6], tie: [0, .3], fav: [0, 1],
+  bestP: [1, 3], smartAim: [.5, 3], gapDirect: [1, 4], weakW: [0, 16], errW: [0, 1], bhAim: [0, 1], lobNet: [.2, 1], lobAttr: [0, 2],
+  curtaBase: [.2, 1], curtaAttr: [0, 1.2], curtaMid: [0, 1], smashW: [.5, 1.5], defBase: [.1, .6], tie: [0, .3], fav: [0, 1],
   deepSmashAvoid: [0, 4], deepMin: [4.3, 6.3], ahead: [0, 1.2], letGoMin: [0, .3], serveSmash: [.4, .97], serveLob: [0, .3], serveCurta: [0, .3],
   // opcionais (sem eles no AIP_BASE vale o comportamento de sempre): limites da leitura, posição, lob e profundidade de cada golpe
-  aimMax: [.4, 1], bestMax: [.5, 1], homeShift: [0, 1], homeHw: [1.2, 2.4], homeZ: [3.3, 6.2], rush: [0, 2], recvHw: [1, 2.4], recvZ: [-.5, 2.5],
+  aimMax: [.4, 1], bestMax: [.5, 1], homeShift: [0, 1], homeHw: [1.2, 2.4], homeZ: [3.3, 6.2], rush: [0, 3], recvHw: [1, 2.4], recvZ: [-.5, 2.5],
   sideOff: [0, .7], lobPow: [.2, 1], lobKickP: [0, .8], d_smash: [0, 1], d_defesa: [0, 1], d_lob: [0, 1], d_curta: [0, 1], d_saque: [0, 1],
   // tempo do golpe (s): aperto antes da bola chegar, e quanto antes (−) ou depois (+) do ideal para a barra do smash e do saque;
   // começam no meio da faixa (sem saber onde fica o verde) e o treino é que acha
