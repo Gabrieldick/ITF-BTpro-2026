@@ -12,7 +12,7 @@ const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'to
 const C = { halfL: 8, halfW: 2.25, netH: 1.7, ballR: .035, netHalf: 4.6 };
 const HALF_W = { simples: 2.25, dupla: 4 };
 const STEP = 1 / 120;
-const P_SPEED = 4.5;
+const P_SPEED = 5; // velocidade máxima base (m/s), multiplicada pelo atributo (velMul)
 const SWING_DUR = 0.4;
 const TOSS_T = 0.72;      // tempo do lançamento até o ponto ideal de contato no saque
 const ZONE3 = 3;          // zona de saque: quem recebe fica atrás dos 3 m até o saque ser batido
@@ -268,6 +268,20 @@ const attrK = (p, k) => attrN(p.char ? attrOf(p.char.a, k) : 70);
 // fraqueza: 0 com o atributo em 72 ou mais, 1 em 40 — atributo fraco pesa bem mais que a escala linear
 const weakK = (p, k) => clamp((72 - (p.char ? attrOf(p.char.a, k) : 70)) / 32, 0, 1);
 const lerp = (a, b, t) => a + (b - a) * t;
+// multiplicador da velocidade em quadra pelo atributo: 0,82–1,12, com um empurrão nas notas baixas (35: +9%, 50: +6%,
+// 65: +4%, 80: +2%, 95: igual) para quem é lento ainda conseguir buscar uma curta boa
+const velMul = v => { const k = attrN(v); return lerp(.82, 1.12, k) + .09 * Math.pow(1 - Math.min(1, k), 1.2); };
+// aceleração: a arrancada sai mais lenta e vai ganhando velocidade (explosão de 12 a 18 m/s² pelo atributo de velocidade);
+// frear, parar e virar forte usam a frenagem (24 m/s²): parar continua rápido e trocar de direção custa uma passada
+const ACC_STOP = 24;
+const accOf = v => lerp(12, 18, Math.min(1, attrN(v)));
+function accelStep(vx, vz, tvx, tvz, dt, acc) {
+  const dvx = tvx - vx, dvz = tvz - vz, dv = Math.hypot(dvx, dvz); if (dv < 1e-6) return [tvx, tvz];
+  const ts = Math.hypot(tvx, tvz), sp = Math.hypot(vx, vz), brake = ts < sp - .1 || tvx * vx + tvz * vz < .5 * ts * sp;
+  const m = Math.min(dv, (brake ? ACC_STOP : acc) * dt); return [vx + dvx / dv * m, vz + dvz / dv * m];
+}
+// tempo para correr x metros saindo parado (acelerando até a velocidade máxima v)
+const runTime = (x, v, a) => x <= 0 ? 0 : x < v * v / (2 * a) ? Math.sqrt(2 * x / a) : x / v + v / (2 * a);
 const rand = (a, b) => a + Math.random() * (b - a);
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
@@ -282,4 +296,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { TOSS_G, voleioOf, attrN, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

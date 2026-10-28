@@ -2,7 +2,7 @@
 // inteligência artificial: planejamento, estilos, escolha de golpes
 import './15-carreira-telas';
 import { $s } from '../state';
-import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
+import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
 import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -112,7 +112,7 @@ function charSkill(p) {
   const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
   const dm = p.team === 1 && !stars && !S.simAI ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: (2.9 + a.vel * .022) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), // química: o parceiro reage mais rápido smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
+    speed: P_SPEED * velMul(a.vel) * dm, acc: accOf(a.vel) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), // química: o parceiro reage mais rápido smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, kt), .3, .9), clamp(lerp(.72, 1, kt), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)
@@ -171,7 +171,7 @@ function planIntercept(p, speed, react) {
     if (pos.z * sgn < .3 || pos.y < .5 - .12 * shortK(p) || pos.y > 2.6 * hScale(p)) continue;
     const d = Math.hypot(pos.x - p.pos.x, pos.z - p.pos.z);
     lastP = { pt: pos.clone(), t, ok: false };
-    if (Math.max(0, d - .9) / speed + react <= t) {
+    if (runTime(Math.max(0, d - .9), speed, accOf(p.char ? attrOf(p.char.a, 'vel') : 70)) + react <= t) { // saindo parado: conta a arrancada
       // devolução de saque: entre os pontos que dá para alcançar, fica com o mais perto; no resto do jogo, o primeiro
       if (S.rally !== 1) { lastP.ok = true; return lastP; }
       const sc = d + Math.max(0, .9 - pos.y) * .8; if (!best || sc < best.sc) best = { pt: pos.clone(), t, ok: true, sc };
@@ -221,8 +221,8 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   const dx = tx - p.pos.x, dz = tz - p.pos.z; const d = Math.hypot(dx, dz);
   let vx = 0, vz = 0;
   if (d > .05) { const s = Math.min(maxSpeed, d * 5); vx = dx / d * s; vz = dz / d * s; }
-  const k = Math.min(1, dt * 7 * (p.burst > 0 ? 1.7 : 1)); // logo depois do split step a primeira passada é mais explosiva
-  p.vel.x += (vx - p.vel.x) * k; p.vel.z += (vz - p.vel.z) * k;
+  const acc = (skillOf(p).acc || accOf(p.char ? attrOf(p.char.a, 'vel') : 70)) * (p.burst > 0 ? 1.6 : 1); // logo depois do split step a primeira passada é mais explosiva
+  [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, vx, vz, dt, acc);
 }
 function receiving(p) {
   // até o saque ser batido ninguém passa da linha dos 3 m, só o sacador: a dupla que recebe e também o parceiro de quem saca.
@@ -269,7 +269,7 @@ function updateHuman(dt, c = localCtl()) {
   const len = Math.hypot(ix, iz);
   p.inputX = ix; p.inputZ = iz;
   const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
-  const spd = P_SPEED * lerp(.82, 1.12, attrK(p, 'vel')) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1);
+  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1);
   let tvx = ix * spd, tvz = iz * spd;
   if (p.dive) {
     p.dive.t += dt;
@@ -304,10 +304,9 @@ function updateHuman(dt, c = localCtl()) {
       if (dd > .05 && dd < .8) { const a = Math.min(1.8, dd * 5); tvx += dx / dd * a; tvz += dz / dd * a; }
     }
   }
-  // inércia: trocar de direção custa uma passada; parar é rápido
-  const rev = tvx * p.vel.x + tvz * p.vel.z < 0;
-  const k = Math.min(1, dt * (rev ? 5 : len < .1 ? 9 : 7.5) * (p.burst > 0 && len > .1 ? 1.7 : 1));
-  p.vel.x += (tvx - p.vel.x) * k; p.vel.z += (tvz - p.vel.z) * k;
+  // aceleração: arranca mais lento e vai ganhando velocidade; parar é rápido e trocar de direção custa uma passada
+  // (logo depois do split step a primeira passada é mais explosiva)
+  [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, tvx, tvz, dt, accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (p.burst > 0 && len > .1 ? 1.6 : 1));
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);
   if (serving && S.mode === 'serve') { p.pos.z = 8.6 * s; p.pos.x = clamp(p.pos.x, -C.halfW + .1, C.halfW - .1); }
@@ -402,7 +401,7 @@ function planShot(p, y) {
   cand.push({ k: 'curta', b: W.bCurta, T: .9, depth: [1.1, 2.5], noise: .35, attr: 'curta', risk: 1.35 * (netD > 6 ? 1.5 : 1) });
   cand.push({ k: 'lob', b: W.bLob, T: 2.4, depth: [6.4, 7.5], noise: .5, attr: 'lob', risk: .8, lob: .95, high: true });
   if (at('lob') > .55) cand.push({ k: 'lob', b: W.bKick, T: 1.15, depth: [6.5, 7.4], noise: .5, attr: 'lob', risk: 1.1, lob: .25, kick: true });
-  const reachT = (o, x, z) => { const so = skillOf(o); return (so.react || .2) + Math.max(0, Math.hypot(o.pos.x - x, o.pos.z - z) - W.reach) / (so.speed || 4.5); };
+  const reachT = (o, x, z) => { const so = skillOf(o); return (so.react || .2) + runTime(Math.max(0, Math.hypot(o.pos.x - x, o.pos.z - z) - W.reach), so.speed || P_SPEED, so.acc || 12); };
   let best = null;
   for (const c of cand) for (let i = 0; i < 7; i++) for (let j = 0; j < 2; j++) {
     const x = -lim + i * lim / 3, depth = c.depth[0] + (c.depth[1] - c.depth[0]) * (j ? .78 : .22), z = dz * depth;
@@ -579,7 +578,7 @@ function updateAI(p, dt) {
         let hardK = 0;
         { const sp = Math.hypot(ball.vel.x, ball.vel.z), pl = p.ai.plan;
           hardK += clamp((sp - 16) / 8, 0, 1) * lerp(.22, .06, attrK(p, 'def'));
-          if (pl) { const dd = Math.hypot(pl.pt.x - p.pos.x, pl.pt.z - p.pos.z), need = Math.max(0, dd - .9) / (D.speed * Math.max(.05, pl.t - D.react)); hardK += clamp((need - .8) / .4, 0, 1) * .15; if (!pl.ok) hardK += .3; p.ai.stretch = !pl.ok || need > .95; } else p.ai.stretch = true;
+          if (pl) { const dd = Math.hypot(pl.pt.x - p.pos.x, pl.pt.z - p.pos.z), need = runTime(Math.max(0, dd - .9), D.speed, D.acc || 15) / Math.max(.05, pl.t - D.react); hardK += clamp((need - .8) / .4, 0, 1) * .15; if (!pl.ok) hardK += .3; p.ai.stretch = !pl.ok || need > .95; } else p.ai.stretch = true;
           // defesa fraca sofre com bola rápida/finalização; backhand fraco sofre quando a bola vem do lado dele
           hardK += weakK(p, 'def') * (sp > 15 || ball.finisher ? .16 : .05);
           if (pl && pl.pt.y < 2 && sideOf(p, pl.pt) < -.15) hardK += weakK(p, 'backhand') * .16 + (1 - attrK(p, 'backhand')) * .06; // bola no backhand: erra mais quanto pior o backhand
