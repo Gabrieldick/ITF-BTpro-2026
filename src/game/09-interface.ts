@@ -94,12 +94,53 @@ function updateSides() {
   if (mid && S.mode === 'dead') sideWipe(f); else setSide(f);
 }
 let wipeT = 0;
+// troca de lado andando: depois de 1 s de comemoração, os dois times vão até o mesmo poste da rede e cruzam por ele (em
+// duas filas); a faixa "troca de lado" cobre a tela e, no meio dela, o cenário e os jogadores giram juntos (para a câmera
+// eles terminam do outro lado) e voltam às posições. Tudo no tempo do jogo (pausa e câmera lenta valem)
 function sideWipe(f) {
-  S.deadT = (S.deadT || 0) + 1.4; // a pausa antes do próximo saque cresce para caber a animação
-  let w = document.getElementById('sideWipe');
-  if (!w) { w = document.createElement('div'); w.id = 'sideWipe'; w.className = 'side-wipe'; w.innerHTML = '<b><i>↔</i> TROCA DE LADO</b>'; document.body.append(w); }
+  S.deadT = Math.max(S.deadT || 0, 0) + 4.2; // a pausa antes do próximo saque cresce para caber a caminhada
+  S.sideWalk = { t: 0, f, flipped: false, banner: false, plan: null };
   clearTimeout(wipeT);
-  wipeT = setTimeout(() => { w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); wipeT = setTimeout(() => setSide(f), 800); }, 900);
+}
+const SW_START = 1.0, SW_FLIP = 3.3, SW_END = 5.3;
+function sideWalkStep(dt) {
+  const W = S.sideWalk; if (!W) return false;
+  W.t += dt;
+  if (W.t < SW_START) return false; // comemoração continua
+  const ps = $s.players;
+  if (!W.plan) {
+    const px = C.netHalf + .55, sx = (human.pos.x || 0) >= 0 ? 1 : -1; // poste do lado onde o jogador está
+    W.plan = ps.map(p => {
+      const s = p.team === 0 ? 1 : -1, lane = sx * (px + (p.team === 0 ? 0 : .6)), idx = $s.teams[p.team].indexOf(p);
+      return { p, delay: idx * .35, pts: [[lane, s * 1.1], [lane, -s * .9]], back: [dupla() ? (p.slot || (idx ? 1 : -1)) * 1.4 : 0, s * 5] };
+    });
+    S.celebrate = null;
+  }
+  const t = W.t - SW_START;
+  // faixa: começa um pouco antes do giro (o giro acontece no meio da animação dela)
+  if (!W.banner && W.t >= SW_FLIP - .8) {
+    W.banner = true; let w = document.getElementById('sideWipe');
+    if (!w) { w = document.createElement('div'); w.id = 'sideWipe'; w.className = 'side-wipe'; w.innerHTML = '<b><i>↔</i> TROCA DE LADO</b>'; document.body.append(w); }
+    w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
+  }
+  if (!W.flipped && W.t >= SW_FLIP) {
+    W.flipped = true; setSide(W.f);
+    for (const p of ps) { p.pos.x = -p.pos.x; p.pos.z = -p.pos.z; } // giram junto com o cenário
+    for (const P of W.plan) P.pts = [P.back];
+  }
+  const left = (W.flipped ? SW_END : SW_FLIP) - W.t;
+  for (const P of W.plan) {
+    const p = P.p;
+    if (t < P.delay || !P.pts.length) { p.vel.set(0, 0, 0); continue; }
+    const [tx, tz] = P.pts[0], dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz);
+    const rest = P.pts.length > 1 ? Math.hypot(P.pts[1][0] - tx, P.pts[1][1] - tz) : 0;
+    const v = clamp((d + rest) / Math.max(.3, left - .15), 2.2, 5.5);
+    if (d < .12) { P.pts.shift(); p.vel.set(0, 0, 0); continue; }
+    const k = Math.min(1, v * dt / d); p.vel.set(dx / d * v, 0, dz / d * v);
+    p.pos.x += dx * k; p.pos.z += dz * k;
+  }
+  if (W.t >= SW_END) { for (const p of ps) p.vel.set(0, 0, 0); S.sideWalk = null; }
+  return true;
 }
 function renderBoard() {
   const sc = S.score;
@@ -716,4 +757,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { sideWalkStep, simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

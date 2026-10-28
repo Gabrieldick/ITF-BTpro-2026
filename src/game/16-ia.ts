@@ -48,11 +48,11 @@ function gapX(team, jitter) {
 // faz a CPU jogar contra ela mesma milhares de pontos e guarda o conjunto que mais vence (IA Treinada do jogo rápido)
 const AIP_BASE = { bestP: 2.2, smartAim: 2, gapDirect: 2.1, weakW: 8, errW: .35, bhAim: .7, lobNet: .55, lobAttr: .6, curtaBase: .5, curtaAttr: .6, curtaMid: .2,
   smashW: 1, defBase: .33, tie: .12, fav: .7, deepSmashAvoid: 2, deepMin: 5.05, ahead: .7, letGoMin: .05, serveSmash: .88, serveLob: .03, serveCurta: .03 };
-const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.687, smartAim: 2.226, gapDirect: 1.711, weakW: 4.144, errW: .51, bhAim: .473, lobNet: .623, lobAttr: .758, curtaBase: .518, curtaAttr: .424, curtaMid: .877, smashW: 1.5, defBase: .221, tie: .154, fav: .942, deepSmashAvoid: .081, deepMin: 4.87, ahead: .264, letGoMin: .152, serveSmash: .403, serveLob: .036, serveCurta: .076, aimMax: .737, bestMax: 1, homeShift: .033, homeHw: 1.638, homeZ: 3.605, rush: .26, recvHw: 1.185, recvZ: -.369, sideOff: .291, lobPow: .872, lobKickP: .018, d_smash: .129, d_defesa: .279, d_lob: 1, d_curta: .226, d_saque: .917, tLead: .205, tSmash: -.004, tServe: .005 }); // treino: 78,5% contra a Lendária, 52,1% contra a versão anterior, 43,4% contra a Planejadora, 92,2% no verde
+const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.578, smartAim: 2.036, gapDirect: 1.504, weakW: 4.186, errW: .439, bhAim: .533, lobNet: .488, lobAttr: .664, curtaBase: .628, curtaAttr: .343, curtaMid: .707, smashW: 1.385, defBase: .183, tie: .188, fav: .938, deepSmashAvoid: .253, deepMin: 4.545, ahead: .417, letGoMin: .174, serveSmash: .42, serveLob: .035, serveCurta: .092, aimMax: .766, bestMax: .975, homeShift: .026, homeHw: 1.684, homeZ: 3.748, rush: .128, recvHw: 1.093, recvZ: -.5, sideOff: .208, lobPow: .865, lobKickP: .087, d_smash: .007, d_defesa: .355, d_lob: .97, d_curta: .243, d_saque: .952, tLead: .107, tSmash: .005, tServe: .004 }); // treino: 71,3% contra a Lendária, 49,2% contra a versão anterior, 43,3% contra a Planejadora, 93,7% no verde
 // pesos da busca da IA Planejadora (planShot): erro, saída pela linha, folga de chegada, contra-ataque, pressão, alcance e
 // um bônus por golpe; thr: nota mínima para a busca assumir a jogada; PLN_TUNED também vem do treino
 const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0, thr: .75 };
-const PLN_TUNED = Object.assign({}, PLN_BASE, { thr: .879, err: .542, out: 1.392, marg: .133, counter: 1.704, press: .475, reach: .955, bSmash: .278, bDef: .182, bCurta: .096, bLob: -.254, bKick: -.289 }); // treino: 79,5% contra a Lendária, 50,1% contra a versão anterior, 54,8% contra a Treinada, 92,6% no verde
+const PLN_TUNED = Object.assign({}, PLN_BASE, { thr: .995, err: .548, out: 1.635, marg: .171, counter: 1.892, press: .473, reach: .802, bSmash: .249, bDef: .223, bCurta: .075, bLob: -.3, bKick: -.262 }); // treino: 74,4% contra a Lendária, 51,2% contra a versão anterior, 53,1% contra a Treinada, 94,3% no verde
 // modo de IA de cada jogador: só no jogo rápido (time adversário) ou no treino do simulador (S.simAI)
 function aiModeOf(p) {
   if (S.simAI) return (S.simAI[p.team] || {}).mode || '';
@@ -265,6 +265,7 @@ function localInput() {
 }
 // c: controle do jogador (o local por padrão; no online, também o do convidado, que pode estar no time de cima)
 function updateHuman(dt, c = localCtl()) {
+  if (S.sideWalk && S.mode === 'dead') return; // trocando de lado: a caminhada conduz
   const p = c.p, humanPlan = c.plan, s = p.team === 0 ? 1 : -1, opp = 1 - p.team;
   const [ix, iz] = c.remote ? [c.ix, c.iz] : localInput();
   const len = Math.hypot(ix, iz);
@@ -545,6 +546,7 @@ function receiveX(p) {
   return clamp(center + p.slot * hw, -C.halfW + .4, C.halfW - .4);
 }
 function updateAI(p, dt) {
+  if (S.sideWalk && S.mode === 'dead') return; // trocando de lado: a caminhada conduz
   if (S.drill && p.team === 1) { // no treino o professor só lança: faz o golpe e solta a bola no contato, não rebate
     p.vel.set(0, 0, 0);
     if (p.swing.t >= 0) {

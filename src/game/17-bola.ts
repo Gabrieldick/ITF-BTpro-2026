@@ -8,7 +8,7 @@ import { S, NET } from './01-estado';
 import { human } from './06-modelos';
 import { ball, puff } from './07-glb';
 import { sndHit, sndSand } from './08-audio';
-import { drillNext, el, placeHeldBall, pointTo, setupPoint, showOver, showReview } from './09-interface';
+import { sideWalkStep, drillNext, el, placeHeldBall, pointTo, setupPoint, showOver, showReview } from './09-interface';
 import { skillOf, startJump, startToss, handPos, releaseToss } from './11-mira';
 import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
@@ -80,7 +80,7 @@ function step(dt) {
     if (S.aiServeT <= 0) startToss(S.serverPlayer, chooseAIServe(S.serverPlayer));
   }
   updateBall(dt);
-  if (S.mode === 'dead' && S.celebrate) celebrateStep(dt);
+  if (S.mode === 'dead' && !sideWalkStep(dt) && S.celebrate) celebrateStep(dt); // troca de lado: caminhada até o poste
   if (S.mode === 'dead') {
     S.deadT -= dt;
     if (S.deadT <= 0) { if (S.drill) drillNext(); else if (S.matchWinner !== null) showOver(); else setupPoint(); }
