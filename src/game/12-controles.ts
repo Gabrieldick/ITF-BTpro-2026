@@ -534,7 +534,8 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
   if (changed && real && S.onPrefsSaved) S.onPrefsSaved(); } // conta na nuvem: as configurações sobem junto
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
-  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil) S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
+  // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil)
+  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal';
   S.quietSave = true; saveSettings(); S.quietSave = false;
 }

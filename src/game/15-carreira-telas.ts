@@ -5,8 +5,8 @@ import { $s } from '../state';
 import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
-import { ac } from './08-audio';
-import { BALL_STYLES, setBallStyle } from './07-glb';
+import { ac, applyGfx } from './08-audio';
+import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
 import { crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
@@ -543,6 +543,12 @@ function menuStep(st) {
   m.scrollTop = 0;
 }
 document.querySelectorAll('#menu [data-goto]').forEach(b => b.addEventListener('click', () => { ac(); menuStep(b.dataset.goto); }));
+// configurações: aplicar confirma e já mostra (gráficos, jogadores realista/desenhado, roupa, raquete)
+$('cfgApply').addEventListener('click', () => {
+  ac(); readMenu(); syncMenu();
+  try { applyGfx(); assignCharacters(); applyRackets(); applyPlayerStyle(); } catch (e) {}
+  const b = $('cfgApply'); b.textContent = '✓ Aplicado'; clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = 'Aplicar'; }, 2500);
+});
 $('btnStart').addEventListener('click', startFromMenu);
 // treino com desafios (menu): sem recompensa, só para praticar
 let drillFromCareer = null;
