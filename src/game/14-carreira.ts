@@ -1078,14 +1078,16 @@ function crSkipByes() {
 }
 // nota da partida simulada, como se tivesse sido jogada: resultado e placar (lavada vale mais que apertado), força do
 // adversário (ganhar de quem é mais forte vale mais; perder para quem é bem mais forte pesa menos) e um pouco de variação
-// de atuação; acima de 8 sobe devagar, como na nota jogada
+// de atuação; acima de 9 sobe devagar
 function crSimRating(mm, won) {
   const t = $s.CR.tour, A = t.teams[mm.a], B = t.teams[mm.b], mine = A && A.me ? A : B, opp = mine === A ? B : A;
   const sc = String(mm.score || '').match(/(\d+)\D+(\d+)/), hi = sc ? Math.max(+sc[1], +sc[2]) : 6, lo = sc ? Math.min(+sc[1], +sc[2]) : 3;
   const margin = hi ? (hi - lo) / hi : .4;
   let dOvr = 0; try { if (!t.mixed && mine && opp) dOvr = crTeamOvr(opp) - crTeamOvr(mine); } catch (e) {}
-  let r = 6.3 + (won ? .35 : -.45) + (won ? 1 : -1) * margin * 1.1 + clamp(dOvr / 10, -.5, .5) * (won ? 1 : .6) + gauss() * .55;
-  if (r > 8) r = 8 + (r - 8) * .65;
+  // na mesma faixa das notas jogadas: vitória apertada ~7,9, normal ~8,3, lavada ~8,9; derrota apertada ~6,6, de lavada ~5,8
+  let r = won ? 7.6 + margin * 1.3 : 6.9 - margin * 1.1;
+  r += clamp(dOvr / 10, -.5, .5) * (won ? .6 : .4) + gauss() * .4;
+  if (r > 9) r = 9 + (r - 9) * .5;
   return Math.round(clamp(r, 3, 9.6) * 10) / 10;
 }
 function crPlaySim() {
