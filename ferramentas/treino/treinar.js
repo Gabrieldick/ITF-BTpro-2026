@@ -1,6 +1,7 @@
 // Treino da CPU no simulador: estratégia evolutiva (pares antitéticos) sobre os parâmetros de decisão da IA.
-// Cada candidato joga contra a CPU Lendária de sempre (AIP_BASE), trocando de lado, e a média anda na direção
-// dos candidatos que mais venceram. A nota soma também a fração de golpes no verde (--verde, peso; o tempo de cada golpe
+// Cada candidato joga, trocando de lado, contra a Lendária de sempre (AIP_BASE), contra a própria IA (a média atual do
+// treino) e contra o outro tipo de IA (Treinada × Planejadora, como estão no arquivo); a média anda na direção dos que mais
+// venceram. Assim ela não vira só um robô de ganhar da Lendária (--rivais muda a lista: lendaria,eu,outra). A nota soma também a fração de golpes no verde (--verde, peso; o tempo de cada golpe
 // é decisão da IA: tLead/tSmash/tServe). No fim grava o melhor conjunto em src/game/16-ia.ts (AIP_TUNED ou PLN_TUNED).
 //
 //   npm run build:sim
@@ -49,63 +50,77 @@ const denorm = v => Object.fromEntries(KEYS.map((k, i) => { const [lo, hi] = ESP
 const cfgDe = v => GRUPO === 'pln'
   ? { mode: 'planejadora', adj: .5, params: AI.AIP_TUNED, plan: Object.assign({}, BASE, denorm(v)) }
   : { mode: 'treinada', adj: .5, params: Object.assign({}, BASE, denorm(v)) };
-const ADV = { mode: 'base', adj: .5, params: AI.AIP_BASE };
+// adversários: a Lendária de sempre, a própria IA (autojogo: a média atual do treino) e o outro tipo de IA (como está no arquivo).
+// Para comparar gerações (escolher o melhor), "eu" vira a versão inicial, que não muda durante o treino
+const LENDARIA = { mode: 'base', adj: .5, params: AI.AIP_BASE };
+const OUTRA = GRUPO === 'pln' ? { mode: 'treinada', adj: .5, params: AI.AIP_TUNED } : { mode: 'planejadora', adj: .5, params: AI.AIP_TUNED, plan: AI.PLN_TUNED };
+const RIVAIS = String(arg('rivais', 'lendaria,eu,outra')).split(',').filter(r => ['lendaria', 'eu', 'outra'].includes(r));
+const FIXOS = RIVAIS.map(r => r === 'eu' ? 'inicial' : r);
+const NOME = { lendaria: 'Lendária', eu: 'ela mesma', inicial: 'versão anterior', outra: GRUPO === 'pln' ? 'Treinada' : 'Planejadora' };
+let M0 = null; // parâmetros do começo do treino (normalizados)
+const rival = (r, m) => r === 'lendaria' ? LENDARIA : r === 'outra' ? OUTRA : cfgDe(r === 'inicial' ? M0 : m);
 
 // trabalhadores (um por núcleo)
 const NW = Math.max(1, Math.min(+arg('nucleos', os.cpus().length), 8));
 const ws = [], fila = [], pend = new Map(); let seq = 0;
 function despacha() { for (const w of ws) if (w.livre && fila.length) { const t = fila.shift(); w.livre = false; w.p.send(t.msg); pend.set(t.msg.id, { t, w }); } }
-function avalia(cfg, n = PTS) { return new Promise(res => { fila.push({ msg: { id: ++seq, a: cfg, b: ADV, n }, res }); despacha(); }); }
+const joga = (a, b, n) => new Promise(res => { fila.push({ msg: { id: ++seq, a, b, n }, res }); despacha(); });
 async function inicia() {
   await Promise.all(Array.from({ length: NW }, () => new Promise(ok => {
     const p = fork(__filename, ['worker']), w = { p, livre: false }; ws.push(w);
     p.on('message', m => {
       if (m.ready) { w.livre = true; ok(); despacha(); return; }
-      const e = pend.get(m.id); pend.delete(m.id); w.livre = true; e.t.res({ win: m.pts / m.tot, perf: m.perf, f: m.pts / m.tot + VERDE * m.perf }); despacha();
+      const e = pend.get(m.id); pend.delete(m.id); w.livre = true; e.t.res(m); despacha();
     });
   })));
 }
-// avaliação maior (da média e do melhor): dividida entre os núcleos
-async function avaliaGrande(cfg, n) {
-  const rs = await Promise.all(Array.from({ length: NW }, () => avalia(cfg, Math.ceil(n / NW))));
-  const med = k => rs.reduce((a, r) => a + r[k], 0) / rs.length;
-  return { win: med('win'), perf: med('perf'), f: med('f') };
+// avalia cfg contra cada rival (n pontos por lado contra cada um, em `partes` pedaços entre os núcleos); nota = média das
+// vitórias + peso × fração no verde
+async function avalia(cfg, rivais, m, n, partes = 1) {
+  const rs = await Promise.all(rivais.map(r => Promise.all(Array.from({ length: partes }, () => joga(cfg, rival(r, m), Math.ceil(n / partes))))));
+  const wins = {}; let perf = 0;
+  rivais.forEach((r, i) => { const t = rs[i]; wins[r] = t.reduce((a, x) => a + x.pts, 0) / t.reduce((a, x) => a + x.tot, 0); perf += t.reduce((a, x) => a + x.perf, 0) / t.length; });
+  const win = rivais.reduce((a, r) => a + wins[r], 0) / rivais.length; perf /= rivais.length;
+  return { wins, win, perf, f: win + VERDE * perf };
 }
 const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const pct = x => (x * 100).toFixed(1) + '%';
+const porRival = r => Object.entries(r.wins).map(([k, v]) => NOME[k] + ' ' + pct(v)).join(', ');
 
 (async () => {
   await inicia();
   const ini = GRUPO === 'pln' ? AI.PLN_TUNED : AI.AIP_TUNED;
-  let m = norm(ini), r0 = await avaliaGrande(cfgDe(m), PTS * 4), melhor = { v: m.slice(), f: r0.f, r: r0 };
-  console.log(`grupo ${GRUPO} · ${KEYS.length} parâmetros · ${NW} núcleos · inicial ${pct(r0.win)} contra a Lendária, ${pct(r0.perf)} no verde`);
+  let m = norm(ini); M0 = m.slice();
+  const NR = Math.ceil(PTS / RIVAIS.length), NG = Math.ceil(PTS * 4 / FIXOS.length); // pontos por rival: candidato / avaliação maior
+  const r0 = await avalia(cfgDe(m), FIXOS, m, NG, NW); let melhor = { v: m.slice(), f: r0.f, r: r0 }; // (contra a versão anterior = ela mesma: ~50%)
+  console.log(`grupo ${GRUPO} · ${KEYS.length} parâmetros · ${NW} núcleos · rivais: ${RIVAIS.map(r => NOME[r]).join(', ')} · inicial: ${porRival(r0)}, ${pct(r0.perf)} no verde`);
   const t0 = Date.now();
   for (let g = 1; g <= GER; g++) {
     const sig = SIG * (1 - .6 * (g - 1) / GER); // passos menores no fim, para assentar
     const eps = Array.from({ length: PARES }, () => KEYS.map(gauss));
-    const rs = await Promise.all(eps.flatMap(e => [avalia(cfgDe(m.map((x, i) => x + sig * e[i]))), avalia(cfgDe(m.map((x, i) => x - sig * e[i])))]));
+    const rs = await Promise.all(eps.flatMap(e => [avalia(cfgDe(m.map((x, i) => x + sig * e[i])), RIVAIS, m, NR), avalia(cfgDe(m.map((x, i) => x - sig * e[i])), RIVAIS, m, NR)]));
     const fs2 = rs.map(r => r.f), mean = fs2.reduce((a, b) => a + b, 0) / fs2.length, sd = Math.sqrt(fs2.reduce((a, b) => a + (b - mean) ** 2, 0) / fs2.length) || 1e-3;
     const grad = KEYS.map((_, i) => eps.reduce((a, e, j) => a + (fs2[2 * j] - fs2[2 * j + 1]) / sd * e[i], 0) / PARES);
     m = m.map((x, i) => Math.min(1, Math.max(0, x + LR * sig * grad[i])));
     const med = k => rs.reduce((a, r) => a + r[k], 0) / rs.length;
-    let linha = `ger ${g}/${GER} · candidatos ${pct(med('win'))} (${pct(Math.min(...rs.map(r => r.win)))}–${pct(Math.max(...rs.map(r => r.win)))}), verde ${pct(med('perf'))}`;
+    let linha = `ger ${g}/${GER} · candidatos ${pct(med('win'))}, verde ${pct(med('perf'))}`;
     if (g % 5 === 0 || g === GER) {
-      const r = await avaliaGrande(cfgDe(m), PTS * 4); linha += ` · média ${pct(r.win)}, verde ${pct(r.perf)}`;
-      if (r.f > melhor.f) { melhor = { v: m.slice(), f: r.f, r }; linha += ' ★'; fs.writeFileSync(path.join(__dirname, `parcial-${GRUPO}.json`), JSON.stringify({ vitoria: r.win, verde: r.perf, params: denorm(m) }, null, 2) + '\n'); }
+      const r = await avalia(cfgDe(m), FIXOS, m, NG, NW); linha += ` · média: ${porRival(r)}, verde ${pct(r.perf)}`;
+      if (r.f > melhor.f) { melhor = { v: m.slice(), f: r.f, r }; linha += ' ★'; fs.writeFileSync(path.join(__dirname, `parcial-${GRUPO}.json`), JSON.stringify({ vitorias: r.wins, verde: r.perf, params: denorm(m) }, null, 2) + '\n'); }
     }
     console.log(linha + ` · ${((Date.now() - t0) / 60000).toFixed(1)} min`);
   }
-  // confirma o melhor com mais pontos
-  const conf = await Promise.all(Array.from({ length: NW }, () => avalia(cfgDe(melhor.v), PTS * 3)));
-  const fConf = conf.reduce((a, b) => a + b.win, 0) / conf.length, pConf = conf.reduce((a, b) => a + b.perf, 0) / conf.length;
+  // confirma o melhor com mais pontos, contra os rivais fixos
+  const conf = await avalia(cfgDe(melhor.v), FIXOS, melhor.v, PTS * 6, NW);
   const res = denorm(melhor.v);
-  console.log(`melhor: ${pct(fConf)} contra a Lendária, ${pct(pConf)} no verde (confirmação com ${NW * PTS * 6} pontos)`);
+  console.log(`melhor: ${porRival(conf)}, ${pct(conf.perf)} no verde (confirmação com ${PTS * 12} pontos por rival)`);
   console.log(JSON.stringify(res));
-  fs.writeFileSync(path.join(__dirname, `resultado-${GRUPO}.json`), JSON.stringify({ vitoria: +fConf.toFixed(4), verde: +pConf.toFixed(4), params: res }, null, 2) + '\n');
+  fs.writeFileSync(path.join(__dirname, `resultado-${GRUPO}.json`), JSON.stringify({ vitorias: conf.wins, verde: +conf.perf.toFixed(4), params: res }, null, 2) + '\n');
   if (arg('aplicar', false)) {
     const nome = GRUPO === 'pln' ? 'PLN' : 'AIP', src = fs.readFileSync(IA, 'utf8');
     const re = new RegExp(`const ${nome}_TUNED = Object\\.assign\\(\\{\\}, ${nome}_BASE[^\\n]*`);
-    fs.writeFileSync(IA, src.replace(re, `const ${nome}_TUNED = Object.assign({}, ${nome}_BASE, { ${Object.entries(res).map(([k, v]) => k + ': ' + String(v).replace(/^(-?)0\./, '$1.')).join(', ')} }); // treino: ${pct(fConf).replace('.', ',')} contra a Lendária, ${pct(pConf).replace('.', ',')} no verde`));
+    const nota = Object.entries(conf.wins).map(([k, v]) => pct(v).replace('.', ',') + ' contra ' + (k === 'lendaria' ? 'a Lendária' : k === 'outra' ? 'a ' + NOME.outra : 'a versão anterior')).join(', ');
+    fs.writeFileSync(IA, src.replace(re, `const ${nome}_TUNED = Object.assign({}, ${nome}_BASE, { ${Object.entries(res).map(([k, v]) => k + ': ' + String(v).replace(/^(-?)0\./, '$1.')).join(', ')} }); // treino: ${nota}, ${pct(conf.perf).replace('.', ',')} no verde`));
     console.log(`gravado em src/game/16-ia.ts (${nome}_TUNED)`);
   }
   ws.forEach(w => w.p.kill());
