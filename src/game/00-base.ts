@@ -12,7 +12,7 @@ const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'to
 const C = { halfL: 8, halfW: 2.25, netH: 1.7, ballR: .035, netHalf: 4.6 };
 const HALF_W = { simples: 2.25, dupla: 4 };
 const STEP = 1 / 120;
-const P_SPEED = 5; // velocidade máxima base (m/s), multiplicada pelo atributo (velMul)
+const P_SPEED = 4.8; // velocidade máxima base (m/s), multiplicada pelo atributo (velMul)
 const SWING_DUR = 0.4;
 const TOSS_T = 0.72;      // tempo do lançamento até o ponto ideal de contato no saque
 const ZONE3 = 3;          // zona de saque: quem recebe fica atrás dos 3 m até o saque ser batido
@@ -280,6 +280,11 @@ function accelStep(vx, vz, tvx, tvz, dt, acc) {
   const ts = Math.hypot(tvx, tvz), sp = Math.hypot(vx, vz), brake = ts < sp - .1 || tvx * vx + tvz * vz < .5 * ts * sp;
   const m = Math.min(dv, (brake ? ACC_STOP : acc) * dt); return [vx + dvx / dv * m, vz + dvz / dv * m];
 }
+// correr para trás (de costas para a rede, atrás de um lob) é mais lento: a parte do movimento que se afasta da rede vale 78%
+const BACK_K = .78;
+const backZ = (team, vz) => (team === 0 ? vz > 0 : vz < 0) ? vz * BACK_K : vz;
+// distância "de corrida" até um ponto: o trecho para trás conta como mais longo
+const runDist = (team, dx, dz) => Math.hypot(dx, (team === 0 ? dz > 0 : dz < 0) ? dz / BACK_K : dz);
 // tempo para correr x metros saindo parado (acelerando até a velocidade máxima v)
 const runTime = (x, v, a) => x <= 0 ? 0 : x < v * v / (2 * a) ? Math.sqrt(2 * x / a) : x / v + v / (2 * a);
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -296,4 +301,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, runDist, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
