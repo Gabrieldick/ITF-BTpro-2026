@@ -112,7 +112,7 @@ function charSkill(p) {
   const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
   const dm = p.team === 1 && !stars && !S.simAI ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: P_SPEED * velMul(a.vel) * dm, acc: accOf(a.vel) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), // química: o parceiro reage mais rápido smart: Math.min(.98, lerp(.3, .92, k)), letGo: Math.min(.97, lerp(.3, .9, k)),
+    speed: P_SPEED * velMul(a.vel) * dm, acc: accOf(a.vel) * dm, react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), letGo: Math.min(.97, lerp(.3, .9, k)), // química: o parceiro reage mais rápido (a mira no buraco por nível, smart, fica desligada: o jogo e o treino são sem ela)
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, kt), .3, .9), clamp(lerp(.72, 1, kt), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)
@@ -598,9 +598,12 @@ function updateAI(p, dt) {
         p.ai.swung = false;
         const land = predictLanding();
         // deixar a bola que vai sair: leitura de jogo (estrelas) + noção de jogo; no topo, julga até bolas rente à linha e nunca pega bola fora
-        const rd = clamp((D.up || 0) * 2.2, 0, 1) * lerp(.55, 1, attrK(p, 'leitura')), marg = lerp(.35, aiP(p).letGoMin, rd);
-        const out = Math.abs(land.x) > C.halfW + marg || Math.abs(land.z) > C.halfL + marg;
-        p.ai.letGo = out && Math.random() < (rd >= .9 ? 1 : lerp(D.letGo, 1, rd));
+        // a leitura tem erro (bem menor no topo) e uma folga pequena a favor de jogar; bola claramente fora quase nunca é buscada
+        const rd = clamp((D.up || 0) * 2.2, 0, 1) * lerp(.55, 1, attrK(p, 'leitura')), lv = clamp(.5 * rd + .5 * clamp(D.k, 0, 1), 0, 1);
+        const sig = lerp(.3, .04, lv), marg = lerp(.1, Math.min(.05, aiP(p).letGoMin), rd);
+        const ex = Math.abs(land.x + gauss() * sig), ez = Math.abs(land.z + gauss() * sig);
+        const out = ex > C.halfW + marg || ez > C.halfL + marg;
+        p.ai.letGo = out && Math.random() > lerp(.2, 0, lv); // nível baixo às vezes vai na bola fora por instinto
       }
       if (p.ai.letGo) { tx = p.pos.x; tz = p.pos.z; }
       else {
