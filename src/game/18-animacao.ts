@@ -16,6 +16,7 @@ import { defRing, updateAimMarker } from './11-mira';
 import { LOB_MAX, MTR, timeToReach } from './12-controles';
 import { assignee } from './16-ia';
 // ---------- Animação: cinemática inversa em braços e pernas ----------
+const _iE = new V3(), _iP = new V3(), _iM = new V3();
 const _id = new V3(), _iu = new V3(), _iw = new V3(), _in = new V3(), _iX = new V3(), _iY = new V3(), _iZ = new V3(), _im = new THREE.Matrix4();
 const _pv = new V3();
 // flecha na borda da tela para onde a bola vai cair (quando o ponto está fora da vista) e aviso de linha no rali
@@ -59,6 +60,28 @@ function ik2(upper, lower, origin, target, pole, L1, L2) {
   _im.makeBasis(_iX, _iY, _iZ);
   upper.quaternion.setFromRotationMatrix(_im);
   lower.rotation.set(bend, 0, 0);
+}
+// tronco "sólido" (no espaço da coluna, frente em −z): mão e cotovelo não atravessam o corpo — na troca de forehand para
+// backhand a mão contorna o tronco em vez de passar por dentro dele
+const BODY_W = { compacto: [1.1, 1.18], forte: [1.1, 1.08], esguio: [.92, .88] };
+function keepOut(v, p, rx0, rz0) {
+  if (v.y < -.28 || v.y > .5) return false;
+  const bw = BODY_W[p.look && p.look.build] || [1, 1], top = clamp((v.y - .3) / .2, 0, 1);
+  const rx = rx0 * bw[0] * (1 - top * .25), rz = (v.z < 0 ? rz0 * bw[1] : rz0 * .9) * (1 - top * .3);
+  const e = (v.x / rx) ** 2 + (v.z / rz) ** 2; if (e >= 1) return false;
+  if (e < 1e-6) { v.z = -rz; return true; }
+  const k = 1 / Math.sqrt(e); v.x *= k; v.z *= k; return true;
+}
+function armIK(p, arm, sh, target, pole) {
+  keepOut(target, p, .21, .16);
+  ik2(arm.sh, arm.el, sh, target, pole, .285, .27);
+  _iE.copy(sh).addScaledVector(_iu, .285);
+  // cotovelo (e o meio do braço) por fora do corpo: a dobra vai para o lado de fora
+  _iM.addVectors(sh, _iE).multiplyScalar(.5);
+  if (keepOut(_iE, p, .19, .14) || keepOut(_iM, p, .17, .13)) { _iP.set(_iE.x, -.15, _iE.z).normalize(); ik2(arm.sh, arm.el, sh, target, _iP, .285, .27); _iE.copy(sh).addScaledVector(_iu, .285); }
+  // meio do antebraço dentro do tronco: a mão vai mais para fora/frente
+  _iM.addVectors(_iE, target).multiplyScalar(.5); _iP.copy(_iM);
+  if (keepOut(_iM, p, .19, .14)) { target.addScaledVector(_iM.sub(_iP), 2); ik2(arm.sh, arm.el, sh, target, pole, .285, .27); }
 }
 function sideOf(p, pt) { const q = pt || ball.pos; return (q.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1); }
 const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
@@ -225,7 +248,7 @@ function animateAthlete(p, dt) {
   const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(.18, 1.05, -.05); _b.set(.8, 0, .3); }
-  ik2(m.armR.sh, m.armR.el, shR, _c, _b, .285, .27);
+  armIK(p, m.armR, shR, _c, _b);
   m.armR.wrist.rotation.set(pose.wx, pose.wr, 0);
   _c.fromArray(pose.lh); _b.fromArray(pose.lp);
   if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
@@ -237,7 +260,7 @@ function animateAthlete(p, dt) {
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
   }
-  ik2(m.armL.sh, m.armL.el, shL, _c, _b, .285, .27);
+  armIK(p, m.armL, shL, _c, _b);
   m.armL.wrist.rotation.set(.2, 0, 0);
   // cabeça acompanha a bola
   if (ball.state !== 'held' || S.serverPlayer === p) {

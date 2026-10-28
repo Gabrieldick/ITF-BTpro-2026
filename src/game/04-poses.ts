@@ -157,11 +157,18 @@ const SERVE_KEYS_LOW = [
   P({ rh: [.38, .02, .28], rp: [.8, -.7, .5], wx: 1.8, wr: .5, lh: [.0, .72, -.42], lp: [-.9, -.2, .2], tw: -.6, lean: .24, crouch: .24, stag: .6 }),
   P({ rh: [.36, .0, .26], rp: [.8, -.7, .5], wx: 1.8, wr: .5, lh: [-.02, .6, -.4], lp: [-.9, -.3, .2], tw: -.6, lean: .25, crouch: .25, stag: .55 }),
 ];
+// curva contínua pelas poses-chave (Catmull-Rom não uniforme): o golpe flui sem parar em cada chave; só freia no começo e no fim
 function poseAt(keys, us, u, out) {
   let i = 0; while (i < us.length - 2 && u > us[i + 1]) i++;
-  let t = clamp((u - us[i]) / (us[i + 1] - us[i]), 0, 1); t = t * t * (3 - 2 * t);
-  const a = keys[i], b = keys[i + 1];
-  for (const k in a) { if (Array.isArray(a[k])) { for (let j = 0; j < 3; j++) out[k][j] = lerp(a[k][j], b[k][j], t); } else out[k] = lerp(a[k], b[k], t); }
+  const du = us[i + 1] - us[i], t = clamp((u - us[i]) / du, 0, 1);
+  const a = keys[i], b = keys[i + 1], a0 = keys[i - 1], b1 = keys[i + 2];
+  const ka = a0 ? du / (us[i + 1] - us[i - 1]) : 0, kb = b1 ? du / (us[i + 2] - us[i]) : 0;
+  const t2 = t * t, t3 = t2 * t, h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+  const f = (x0, x1, x2, x3) => h00 * x1 + h01 * x2 + h10 * (x2 - x0) * ka + h11 * (x3 - x1) * kb;
+  for (const k in a) {
+    if (Array.isArray(a[k])) { for (let j = 0; j < 3; j++) out[k][j] = f(a0 ? a0[k][j] : a[k][j], a[k][j], b[k][j], b1 ? b1[k][j] : b[k][j]); }
+    else out[k] = f(a0 ? a0[k] : a[k], a[k], b[k], b1 ? b1[k] : b[k]);
+  }
   return out;
 }
 function mirrorPose(o) { // defesa de backhand

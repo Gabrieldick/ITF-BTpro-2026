@@ -30,7 +30,8 @@ function loadModels() {
 }
 const ROT_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder'];
 const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'];
-const CURL = { axis: new V3(1, 0, 0), angle: 1.1, q: new THREE.Quaternion() };
+// pegada: a mão se orienta pelo cabo (palma no cabo, mão na diagonal), os dedos fecham em volta dele e a raquete encaixa no punho
+const CURL = { sign: 1, ps: 1, sx: 1, ga: .9, grip: [1.25, 1.45, 1.0], thumb: [1.0, .6, .5], relax: .3, pd: .028, fist: .72, q: new THREE.Quaternion() };
 const PALM = { angle: 1.5 }; // giro da mão livre no smash (rad)
 function attachSkin(p, gltf) {
   const root = SkeletonUtils.clone(gltf.scene);
@@ -62,6 +63,31 @@ function attachSkin(p, gltf) {
     racket: makeRacket(p.look.racket),
   };
   ROT_BONES.forEach(n => { k.restW[n] = new THREE.Quaternion(); });
+  // membros: cada osso guarda, no próprio espaço, a direção do filho e o eixo da dobra (cotovelo dobra para a frente,
+  // joelho para trás). No jogo o osso é orientado por esses dois eixos (direção + plano da dobra): sem a torção aleatória
+  // de só "apontar" o osso, que fazia o braço girar em eixos estranhos no smash e no backhand
+  const fw = new V3(k.toe.L.x, 0, k.toe.L.z).normalize(), bw = fw.clone().negate();
+  k.lim = {};
+  [['RightArm', 'RightForeArm', fw], ['RightForeArm', 'RightHand', fw], ['LeftArm', 'LeftForeArm', fw], ['LeftForeArm', 'LeftHand', fw],
+   ['RightUpLeg', 'RightLeg', bw], ['RightLeg', 'RightFoot', bw], ['LeftUpLeg', 'LeftLeg', bw], ['LeftLeg', 'LeftFoot', bw]].forEach(([a, c, F]) => {
+    const u = wp(B[c]).sub(wp(B[a])).normalize(), h = new V3().crossVectors(u, F).normalize(), qi = B[a].getWorldQuaternion(new THREE.Quaternion()).invert();
+    u.applyQuaternion(qi); h.applyQuaternion(qi);
+    k.lim[a] = { mi: new THREE.Matrix4().makeBasis(u, h, new V3().crossVectors(u, h)).transpose(), h: null };
+  });
+  // mãos: direção punho→dedos, normal da palma e eixo de fechar de cada dedo (no espaço de cada osso)
+  k.hand = {};
+  for (const S of ['Right', 'Left']) {
+    const H = B[S + 'Hand'], m1 = B[S + 'HandMiddle1'], i1 = B[S + 'HandIndex1'], p1 = B[S + 'HandPinky1'];
+    if (!H || !m1 || !i1 || !p1) continue;
+    const d = wp(m1).sub(wp(H)).normalize(), lat = wp(i1).sub(wp(p1)).normalize(), pn = new V3().crossVectors(lat, d).normalize();
+    const hq = H.getWorldQuaternion(new THREE.Quaternion()).invert(), dl = d.clone().applyQuaternion(hq), pl = pn.clone().applyQuaternion(hq);
+    const fingers = [];
+    for (const f of ['Index', 'Middle', 'Ring', 'Pinky', 'Thumb']) for (let j = 1; j <= 3; j++) {
+      const bn = B[S + 'Hand' + f + j]; if (!bn) continue;
+      fingers.push({ b: bn, j, thumb: f === 'Thumb', ax: (f === 'Thumb' ? d : lat).clone().applyQuaternion(bn.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize() });
+    }
+    k.hand[S] = { mi: new THREE.Matrix4().makeBasis(dl, pl, new V3().crossVectors(dl, pl)).transpose(), fingers, len: wp(m1).distanceTo(wp(H)) };
+  }
   k.mh = new THREE.Box3().setFromObject(root).max.y || 1.8; k.s = 1; // altura do modelo (para a escala pela altura do personagem)
   dressSkin(p, root);
   k.racket.traverse(m => { if (m.isMesh) m.castShadow = true; }); scene.add(k.racket);
@@ -154,15 +180,30 @@ function jointPos(S, T, pole, L1, L2, out) {
   _ke3.crossVectors(_ke2, _ke1).normalize();
   return out.copy(S).addScaledVector(_ke1, Math.cos(a1) * L1).addScaledVector(_ke3, Math.sin(a1) * L1);
 }
-function limbIK(upper, lower, end, rS, rM, rE, L1, L2, rigLen, scaleTarget, yOff) {
+const _kR2 = new THREE.Quaternion(), _rx = new V3(), _ry = new V3(), _rz = new V3();
+const _kMa = new THREE.Matrix4(), _ku = new V3(), _kl = new V3(), _kh = new V3(), _kx = new V3();
+// orienta o osso (no mundo) para que a direção do filho seja u e o eixo da dobra seja h
+function orientBone(bone, L, u, h) {
+  _kx.crossVectors(u, h); _kMa.makeBasis(u, h, _kx).multiply(L.mi); _kq.setFromRotationMatrix(_kMa);
+  bone.parent.getWorldQuaternion(_kq3); _kq3.invert().multiply(_kq); bone.quaternion.copy(_kq3); bone.updateMatrixWorld(true);
+}
+function limbIK(upper, lower, end, rS, rM, rE, L1, L2, rigLen, scaleTarget, yOff, Lu, Ll) {
   rS.getWorldPosition(_kS); rM.getWorldPosition(_kM); rE.getWorldPosition(_kE);
   upper.getWorldPosition(_kU);
   if (scaleTarget) _kT.subVectors(_kE, _kS).multiplyScalar((L1 + L2) / rigLen).add(_kU); else _kT.copy(_kE);
   _kT.y += yOff || 0;
   _kP.addVectors(_kS, _kE).multiplyScalar(.5); _kP.subVectors(_kM, _kP);
   jointPos(_kU, _kT, _kP, L1, L2, _kJ);
-  aimBone(upper, lower, _kJ);
-  aimBone(lower, end, _kT);
+  if (!Lu || !Ll) { aimBone(upper, lower, _kJ); aimBone(lower, end, _kT); return; }
+  // eixo da dobra: do próprio cotovelo/joelho (u × l); quase esticado, vem do lado para onde o rig aponta a junta
+  _ku.subVectors(_kJ, _kU).normalize(); _kl.subVectors(_kT, _kJ).normalize();
+  _kh.crossVectors(_ku, _kl); _kP.normalize(); _kx.crossVectors(_kP, _ku); _kh.addScaledVector(_kx, .12);
+  _kh.addScaledVector(_ku, -_kh.dot(_ku));
+  if (_kh.lengthSq() < 1e-6) { if (Lu.h) _kh.copy(Lu.h); else return; }
+  _kh.normalize();
+  if (Lu.h) { if (Lu.h.dot(_kh) < .2) _kh.lerp(Lu.h, .5).normalize(); Lu.h.copy(_kh); } else Lu.h = _kh.clone(); // sem virar de um quadro para o outro
+  orientBone(upper, Lu, _ku, _kh);
+  orientBone(lower, Ll, _kl, _kh);
 }
 function driveSkin(p) {
   const k = p.skin, m = p.model, B = k.B;
@@ -192,8 +233,8 @@ function driveSkin(p) {
   setDelta(B.Neck, k.restW.Neck, _kN); setDelta(B.Head, k.restW.Head, _kH);
   // braço da raquete do rig → braço direito do modelo (esquerdo no canhoto); pernas também trocam de lado
   const R = L ? 'Left' : 'Right', O = L ? 'Right' : 'Left', aR = L ? k.armL : k.arm, aO = L ? k.arm : k.armL;
-  limbIK(B[R + 'Arm'], B[R + 'ForeArm'], B[R + 'Hand'], m.armR.sh, m.armR.el, m.armR.wrist, aR[0], aR[1], .555, true, 0);
-  limbIK(B[O + 'Arm'], B[O + 'ForeArm'], B[O + 'Hand'], m.armL.sh, m.armL.el, m.armL.wrist, aO[0], aO[1], .555, true, 0);
+  limbIK(B[R + 'Arm'], B[R + 'ForeArm'], B[R + 'Hand'], m.armR.sh, m.armR.el, m.armR.wrist, aR[0], aR[1], .555, true, 0, k.lim[R + 'Arm'], k.lim[R + 'ForeArm']);
+  limbIK(B[O + 'Arm'], B[O + 'ForeArm'], B[O + 'Hand'], m.armL.sh, m.armL.el, m.armL.wrist, aO[0], aO[1], .555, true, 0, k.lim[O + 'Arm'], k.lim[O + 'ForeArm']);
   // mão livre apontando a bola no smash: gira o punho (palma meio para cima / para o corpo)
   if ((p.prep || 0) > .02 && B[O + 'Hand']) {
     const h = B[O + 'Hand']; B[O + 'ForeArm'].getWorldPosition(_ka); h.getWorldPosition(_kb); _kc.subVectors(_kb, _ka).normalize();
@@ -201,25 +242,29 @@ function driveSkin(p) {
     h.parent.getWorldQuaternion(_kq3); _kq3.invert().multiply(_kq); h.quaternion.copy(_kq3); h.updateMatrixWorld(true);
   }
   const l0 = m.legs[L ? 1 : 0], l1 = m.legs[L ? 0 : 1];
-  limbIK(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, l0.thigh, l0.knee, l0.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
-  limbIK(B.RightUpLeg, B.RightLeg, B.RightFoot, l1.thigh, l1.knee, l1.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
+  limbIK(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, l0.thigh, l0.knee, l0.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07, k.lim.LeftUpLeg, k.lim.LeftLeg);
+  limbIK(B.RightUpLeg, B.RightLeg, B.RightFoot, l1.thigh, l1.knee, l1.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07, k.lim.RightUpLeg, k.lim.RightLeg);
   // pés planos na areia
   [['LeftFoot', 'LeftToeBase', k.toe.L], ['RightFoot', 'RightToeBase', k.toe.R]].forEach(([f, t, v]) => {
     if (!B[f] || !B[t]) return;
     B[f].getWorldPosition(_k3); _k1.copy(v).applyQuaternion(k.holder.quaternion).add(_k3); aimBone(B[f], B[t], _k1);
   });
-  // mão da raquete segue o cabo e fecha os dedos
-  const H = B[R + 'Hand'];
-  m.racket.getWorldPosition(_k3); m.armR.wrist.getWorldPosition(_k2);
-  m.racket.localToWorld(_k1.set(0, -.36, 0)).sub(_k3);
-  if (B[R + 'HandMiddle1']) { H.getWorldPosition(_kU).addScaledVector(_k1, .3); aimBone(H, B[R + 'HandMiddle1'], _kU); }
-  CURL.q.setFromAxisAngle(CURL.axis, CURL.angle);
-  for (const f of FINGERS) for (let j = 1; j <= 3; j++) { const b = B[R + 'Hand' + f + j]; if (b) b.quaternion.multiply(CURL.q); }
-  H.updateMatrixWorld(true);
-  // raquete visível presa na mão do modelo
-  m.racket.getWorldQuaternion(k.racket.quaternion);
-  H.getWorldPosition(_kU);
-  k.racket.position.copy(_k3).add(_kU).sub(_k2);
+  // mão da raquete: orientada pelo cabo da raquete do rig; dedos fecham em volta; raquete encaixada no punho
+  const H = B[R + 'Hand'], Hd = k.hand[R], Ho = k.hand[O];
+  m.racket.getWorldQuaternion(_kR2); _rx.set(1, 0, 0).applyQuaternion(_kR2); _ry.set(0, 1, 0).applyQuaternion(_kR2); _rz.set(0, 0, 1).applyQuaternion(_kR2);
+  if (Hd) {
+    const sx = CURL.sx * (L ? -1 : 1);
+    _kc.copy(_ry).multiplyScalar(-Math.cos(CURL.ga)).addScaledVector(_rx, Math.sin(CURL.ga) * sx).normalize();   // punho → dedos
+    _kb.copy(_rz).multiplyScalar(CURL.ps * (L ? -1 : 1)); _kb.addScaledVector(_kc, -_kb.dot(_kc)).normalize();    // palma
+    orientBone(H, Hd, _kc, _kb);
+    for (const F of Hd.fingers) { CURL.q.setFromAxisAngle(F.ax, (F.thumb ? CURL.thumb[F.j - 1] : CURL.grip[F.j - 1]) * CURL.sign); F.b.quaternion.multiply(CURL.q); F.b.updateMatrixWorld(true); }
+    // centro do punho fechado: um pouco à frente do punho, do lado da palma; o cabo passa por ali
+    H.getWorldPosition(_kU).addScaledVector(_kc, Hd.len * CURL.fist).addScaledVector(_kb, CURL.pd);
+    k.racket.position.copy(_kU).addScaledVector(_ry, .075);
+  } else { H.getWorldPosition(_kU); m.racket.getWorldPosition(_k3); m.armR.wrist.getWorldPosition(_k2); k.racket.position.copy(_k3).add(_kU).sub(_k2); }
+  k.racket.quaternion.copy(_kR2);
+  // mão livre: dedos meio fechados (relaxada)
+  if (Ho) for (const F of Ho.fingers) { CURL.q.setFromAxisAngle(F.ax, CURL.relax * (F.thumb ? .5 : 1) * CURL.sign); F.b.quaternion.multiply(CURL.q); F.b.updateMatrixWorld(true); }
 }
 // canhoto = modelo desenhado espelhado (o modelo 3D troca os lados em driveSkin)
 function applyLefty(p) {
