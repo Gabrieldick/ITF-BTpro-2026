@@ -15,3 +15,7 @@ ferramentas/teste/build/
 # resultados do treino da CPU (os valores ficam em src/game/16-ia.ts)
 ferramentas/treino/resultado-*.json
 ferramentas/treino/parcial-*.json
+
+# dados do MakeHuman e Blender do gerador de modelos (baixados por ferramentas/modelos-mh/baixar.sh)
+ferramentas/modelos-mh/mh/
+ferramentas/modelos-mh/blend/

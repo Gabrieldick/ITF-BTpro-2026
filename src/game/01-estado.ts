@@ -19,6 +19,7 @@ try { savedSettings = JSON.parse(localStorage.getItem('pdo-settings') || 'null')
 if (savedSettings) {
   Object.assign(S.settings, savedSettings);
   S.settings.format = 'set'; // o formato pro só vale dentro das finais da carreira
+  if (S.settings.players === 'carol') S.settings.players = '3d'; // os modelos escaneados saíram: o realista é o novo modelo 3D
   if (savedSettings.assistMove === undefined && savedSettings.assist !== undefined) { S.settings.assistMove = S.settings.assistMark = !!savedSettings.assist; }
   // 'seguir a bola' passou a vir desligado: desliga uma vez nas configurações salvas antes da mudança
   if (!savedSettings.assistMoveV2) { S.settings.assistMove = false; S.settings.assistMoveV2 = true; }

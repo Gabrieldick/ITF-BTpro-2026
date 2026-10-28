@@ -1,20 +1,11 @@
 // Recursos do jogo (modelos, texturas, som).
 // No site eles vêm de public/assets; no HTML de arquivo único vêm embutidos em base64 (tags <script id="...">).
 export const ASSET_FILES: Record<string, string> = {
-  'glb-male': 'Soldier.glb',
-  'glb-female': 'Michelle.glb',
+  // jogadores realistas: corpo do MakeHuman (CC0) montado no Blender (ferramentas/modelos-mh), com todas as roupas
+  'glb-male': 'mh-male.glb',
+  'glb-female': 'mh-female.glb',
   'uni-m': 'uniform-m.bin',
   'uni-f': 'uniform-f.bin',
-  'carol-geo': 'carol.bin',
-  'carol-tex0': 'carol-tex0.jpg',
-  'carol-tex3': 'carol-tex3.jpg',
-  'carol-tex4': 'carol-tex4.jpg',
-  'carol-tex5': 'carol-tex5.jpg',
-  'carol-tex6': 'carol-tex6.jpg',
-  'carol-tex7': 'carol-tex7.jpg',
-  'carol-tex8': 'carol-tex8.jpg',
-  'male-geo': 'male.bin',
-  'male-col': 'male-col.jpg',
   'snd-hits': 'hits.mp3',
 };
 

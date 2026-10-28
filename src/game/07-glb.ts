@@ -1,5 +1,5 @@
 // @ts-nocheck
-// modelos GLB (Michelle/Soldier) e escalação dos personagens
+// modelos GLB (jogadores realistas do MakeHuman) e escalação dos personagens
 import './06-modelos';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -52,9 +52,51 @@ function attachSkin(p, gltf) {
     racket: makeRacket(p.look.racket),
   };
   ROT_BONES.forEach(n => { k.restW[n] = new THREE.Quaternion(); });
+  k.mh = new THREE.Box3().setFromObject(root).max.y || 1.8; k.s = 1; // altura do modelo (para a escala pela altura do personagem)
+  dressSkin(p, root);
   k.racket.traverse(m => { if (m.isMesh) m.castShadow = true; }); scene.add(k.racket);
   p.skin = k;
   p.model.group.traverse(o => { if (o.isMesh && o !== p.model.blob) o.visible = false; });
+}
+// veste o modelo realista conforme o personagem: o arquivo traz todas as peças (blusas, short, saia, cabelo, rabo de cavalo,
+// manguito, meião, óculos); escolhe as do personagem (sempre as mesmas para ele) e pinta pele, cabelo e uniforme do time
+const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
+function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
+function dressSkin(p, root) {
+  const look = p.look || {}, c = p.char || {}, fem = !!look.fem;
+  let h = 2166136261; for (const ch of String(c.id || c.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const r = k => ((h >>> (k * 3)) % 997) / 997;
+  const parts = {}; root.traverse(o => { if (o.isMesh) (parts[o.name] = parts[o.name] || []).push(o); });
+  const show = (n, on) => (parts[n] || []).forEach(o => { o.visible = on; o.userData.off = !on; });
+  const matOf = n => (parts[n] || [])[0] && parts[n][0].material;
+  // roupa: homens de camiseta (às vezes regata); mulheres de regata + short, cropped + saia, camiseta + saia ou macacão (regata + saia da mesma cor)
+  let top, skirt = false, dress = false;
+  if (fem) { const o = Math.floor(r(1) * 4); top = ['tank', 'crop', 'tee', 'tank'][o]; skirt = o > 0; dress = o === 3; }
+  else top = r(1) < .72 ? 'tee' : 'tank';
+  ['tee', 'tank', 'crop'].forEach(t => show('Top_' + t, t === top));
+  show('Skirt', skirt);
+  const hs = look.hairStyle || '';
+  show('Hair', !/careca/.test(hs)); show('Pony', fem && !/curto/.test(hs));
+  show('Glasses', !!look.glasses); show('ArmSleeve', r(2) < .22); show('Calf', fem && r(3) < .3);
+  // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
+  tint(matOf('Body'), look.skin || '#c68a62', SKIN_BASE);
+  tint(matOf('Hair'), look.hair || '#2a1a0e', HAIR_BASE);
+  tint(matOf('Pony'), look.hair || '#2a1a0e', HAIR_BASE);
+  const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
+  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) m.color.copy(shirt); });
+  if (matOf('Shorts')) matOf('Shorts').color.copy(dress ? shirt : shorts);
+  if (matOf('Skirt')) matOf('Skirt').color.copy(dress ? shirt : shorts);
+  const trim = col(look.trim || '#fbf6ea');
+  if (matOf('ArmSleeve')) matOf('ArmSleeve').color.copy(trim); if (matOf('Calf')) matOf('Calf').color.copy(trim);
+  if (matOf('Glasses')) matOf('Glasses').color.copy(col(look.lens || '#0b0d10'));
+}
+// escala do modelo pela altura do personagem (os comprimentos usados na animação acompanham)
+function scaleSkin(p) {
+  const k = p.skin; if (!k) return;
+  const s = (p.height || 1.8) / (k.mh || 1.8), f = s / (k.s || 1); if (Math.abs(f - 1) < 1e-4) return;
+  k.holder.scale.setScalar(s); k.s = s;
+  k.arm = k.arm.map(x => x * f); k.armL = k.armL.map(x => x * f); k.leg = k.leg.map(x => x * f);
+  k.toe.L.multiplyScalar(f); k.toe.R.multiplyScalar(f); k.footH *= f;
 }
 const _k1 = new V3(), _k2 = new V3(), _k3 = new V3(), _kS = new V3(), _kM = new V3(), _kE = new V3(), _kU = new V3(), _kT = new V3(), _kP = new V3(), _kJ = new V3();
 const _ka = new V3(), _kb = new V3(), _kc = new V3(), _ke1 = new V3(), _ke2 = new V3(), _ke3 = new V3();
@@ -148,6 +190,7 @@ function applyPlayerStyle() {
     if (!p.skin) continue;
     p.skinOn = on;
     p.model.group.traverse(o => { if (o.isMesh && o !== p.model.blob) o.visible = !on && !o.userData.off; });
+    p.skin.holder.traverse(o => { if (o.isMesh) o.visible = on && !o.userData.off; });
     if (!on) { p.skin.holder.visible = false; p.skin.racket.visible = false; }
   }
   for (const p of ALL) if (p.char) applyLefty(p);
@@ -174,11 +217,11 @@ function assignCharacters() {
     p.char = Object.assign({}, c, { a });
     const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
     const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
-    if (p.lookKey !== lk) { rebuildModel(p, look); p.lookKey = lk; }
+    if (p.lookKey !== lk || (GLB.male && GLB.female && !p.skin)) { rebuildModel(p, look); p.lookKey = lk; } // (os modelos 3D podem ter terminado de carregar depois)
     p.playStyle = playStyleOf(c);
     p.skill = p.isHuman ? null : charSkill(p);
     p.name = nameOf(c);
-    p.height = heightOf(c); applyLefty(p); if (p.skin) p.skin.holder.scale.setScalar(hScale(p));
+    p.height = heightOf(c); applyLefty(p); scaleSkin(p);
   });
   if (fpSkin) fpSkin.color.copy(col(human.look.skin));
 }
