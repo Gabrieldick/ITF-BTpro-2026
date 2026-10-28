@@ -268,9 +268,9 @@ const attrK = (p, k) => attrN(p.char ? attrOf(p.char.a, k) : 70);
 // fraqueza: 0 com o atributo em 72 ou mais, 1 em 40 — atributo fraco pesa bem mais que a escala linear
 const weakK = (p, k) => clamp((72 - (p.char ? attrOf(p.char.a, k) : 70)) / 32, 0, 1);
 const lerp = (a, b, t) => a + (b - a) * t;
-// multiplicador da velocidade em quadra pelo atributo: 0,82–1,12, com um empurrão nas notas baixas (35: +9%, 50: +6%,
-// 65: +4%, 80: +2%, 95: igual) para quem é lento ainda conseguir buscar uma curta boa
-const velMul = v => { const k = attrN(v); return lerp(.82, 1.12, k) + .09 * Math.pow(1 - Math.min(1, k), 1.2); };
+// multiplicador da velocidade em quadra pelo atributo: 0,82–1,12, com um empurrão nas notas baixas (35: +16%, 50: +11%,
+// 65: +7%, 80: +3%, 95: igual) para quem é lento ainda conseguir buscar uma curta boa
+const velMul = v => { const k = attrN(v); return lerp(.82, 1.12, k) + .16 * Math.pow(1 - Math.min(1, k), 1.2); };
 // aceleração: a arrancada sai mais lenta e vai ganhando velocidade (explosão de 12 a 18 m/s² pelo atributo de velocidade);
 // frear, parar e virar forte usam a frenagem (24 m/s²): parar continua rápido e trocar de direção custa uma passada
 const ACC_STOP = 24;
@@ -280,9 +280,9 @@ function accelStep(vx, vz, tvx, tvz, dt, acc) {
   const ts = Math.hypot(tvx, tvz), sp = Math.hypot(vx, vz), brake = ts < sp - .1 || tvx * vx + tvz * vz < .5 * ts * sp;
   const m = Math.min(dv, (brake ? ACC_STOP : acc) * dt); return [vx + dvx / dv * m, vz + dvz / dv * m];
 }
-// correr para trás (de costas para a rede, atrás de um lob) é mais lento: a parte do movimento que se afasta da rede vale 68%
-// e a arrancada para trás é mais fraca (precisa virar o corpo): quem está colado na rede não busca um lob bom no fundo
-const BACK_K = .68, BACK_ACC = .55;
+// correr para trás (de costas para a rede, atrás de um lob) é mais lento: a parte do movimento que se afasta da rede vale 80%
+// e a arrancada para trás é bem mais fraca (precisa virar o corpo): quem está colado na rede não busca um lob bom no fundo
+const BACK_K = .8, BACK_ACC = .5;
 const backZ = (team, vz) => (team === 0 ? vz > 0 : vz < 0) ? vz * BACK_K : vz;
 const backAcc = (team, vz, acc) => (team === 0 ? vz > .3 : vz < -.3) ? acc * BACK_ACC : acc;
 // distância "de corrida" até um ponto: o trecho para trás conta como mais longo
