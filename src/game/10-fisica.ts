@@ -113,27 +113,34 @@ function doHit(p, type, q, isServe, mod) {
     grade = qq;
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
     let pOut = pressure * (1 - qq) * .45 * risk * wDef, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef;
-    // bola de finalização: mesmo a defesa perfeita às vezes não segura (menos para quem defende muito bem)
-    if (ball.finisher) { const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), fp = ball.finPerf ? 1.5 : 1; pPop += lerp(.24, .1, dk) * fp; pOut += lerp(.2, .1, dk) * fp; } // espirra para fora com frequência (finalização perfeita bem mais)
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
     if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk; pPop += .14 * ball.smashPow * dk; }
     const r0 = Math.random();
     if (r0 < pOut) wild = true; else if (r0 < pOut + pPop) pop = true;
   }
-  // finalização: vale para qualquer devolução (defesa, curta, lob e até contra-smash, que antes escapava da pressão);
-  // espirra para fora ou fica na rede, e cada finalização seguida que a mesma dupla segura deixa a próxima mais difícil
-  // (desequilibrado, sem tempo de voltar à base): ninguém segura 5 seguidas
-  let netFin = false;
+  // finalização: vale para qualquer devolução (defesa, curta, lob e até contra-smash). A grande maioria não volta: fica na
+  // rede, sai (de verdade, além da linha) ou fura. Defesa muito boa e o tempo certo seguram um pouco mais, e a que volta vem
+  // quase sempre levantada; a finalização perfeita, menos ainda; cada uma seguida que a dupla segura deixa a próxima pior
+  let netFin = false, finOut = false;
   if (!isServe) {
     const fc = S.finChain || (S.finChain = { team: -1, n: 0 });
     if (S.rally <= 1 || !ball.finisher) { if (fc.team === p.team || S.rally <= 1) { fc.team = p.team; fc.n = 0; } }
     else {
       if (fc.team !== p.team) { fc.team = p.team; fc.n = 0; }
-      const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), kf = { defesa: 1, lob: 1.2, curta: 1.45, smash: 1.6, drive: 1.4 }[key] || 1.2;
-      const pf = Math.min(.9, ((ball.finPerf ? lerp(.55, .35, dk) : lerp(.22, .11, dk)) + fc.n * lerp(.1, .07, dk)) * kf), r1 = Math.random();
-      if (!wild && !pop && r1 < pf) { if (r1 < pf * .45) wild = true; else netFin = true; }
+      const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), kf = { defesa: 1, lob: 1.04, drive: 1.06, curta: 1.1, smash: 1.1 }[key] || 1.05;
+      const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
+      const pf = Math.min(.97, ((ball.finPerf ? lerp(.95, .85, dk) : lerp(.9, .7, dk)) * lerp(1.08, .92, tq) + fc.n * .06) * kf), r1 = Math.random();
       fc.n++;
+      if (r1 < pf) {
+        wild = pop = false; const u = r1 / pf;
+        if (u < .2) { // furou: a raquete passa e a bola segue (cai na quadra de quem defendia)
+          p.swing.hit = true; if (p.swing.t < p.swing.dur * .45) p.swing.t = p.swing.dur * .45; if (!p.isHuman && p.ai) p.ai.letGo = true;
+          S.attempt = { p, hitId: S.hitId, hard: true }; // o ponto conta como erro forçado pela finalização
+          return { key, label: 'FUROU', mis: true, pop: false, wild: false, grade: 0, pressure, backhand: bhSide, contact: '', curtaK: 0, whiff: true };
+        }
+        if (u < .6) netFin = true; else finOut = wild = true;
+      } else if (!pop && Math.random() < lerp(.75, .45, dk) * (ball.finPerf ? 1.2 : 1)) pop = true; // a que volta: quase sempre levantada
     }
   }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
@@ -259,6 +266,7 @@ function doHit(p, type, q, isServe, mod) {
   if (!p.isHuman && p.ai && p.ai.planDepth != null) { if (!pop && !isServe) depth = clamp(p.ai.planDepth, spec.depth[0], spec.depth[1]) + rand(-.15, .15); p.ai.planDepth = null; } // IA Planejadora: profundidade escolhida na busca
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
   if (wild) { tgt.x += (Math.random() < .5 ? -1 : 1) * rand(.8, 2.2); tgt.z += dir * rand(1.2, 3.2); }
+  if (finOut) { if (Math.random() < .45) tgt.x = (Math.sign(tgt.x) || 1) * (C.halfW + rand(.5, 2)); else tgt.z = dir * (C.halfL + rand(.6, 2.5)); } // finalização que espirra: sai de verdade
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);
   if (dir < 0 && tgt.z > -.4) tgt.z = -.4;
   if (dir > 0 && tgt.z < .4) tgt.z = .4;
@@ -320,7 +328,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .45 : .32) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;

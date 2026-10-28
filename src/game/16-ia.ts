@@ -379,7 +379,7 @@ function updateHuman(dt, c = localCtl()) {
       if (sw.type === 'defesa' || sw.type === 'curta' || r.pressure > .2) defenseFeedback(r, c);
       // curta: diz se saiu boa e se o toque foi cedo ou tarde (o miolo do movimento é o ideal)
       const cw = sw.type === 'curta' && !r.mis && !r.pop && !r.wild ? (r.curtaK > .86 ? 'MATADORA' : r.curtaK >= .5 ? 'BOA' : 'LENTA') + (mod.timing < .9 ? (su < .15 ? ' · CEDO' : ' · TARDE') : '') + (p.dive ? ' · NO MERGULHO' : '') : '';
-      ctlFeedback(c, r.label, cw || (r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
+      ctlFeedback(c, r.label, cw || (r.whiff ? 'FUROU' : r.mis ? 'ERROU A MÃO' : r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : sw.meter ? (sw.meter.word || RES_WORD[sw.meter.res]) + (sw.meter.pos ? ' · ' + sw.meter.pos : '') : sw.lob ? sw.lob.word : qualityWord(q) + (r.backhand ? ' · BACKHAND' : '') + (r.contact ? ' · ' + r.contact : '') + (p.dive ? ' · NO MERGULHO' : '')), null);
     }
     if (p.isHuman && !sw.hit && !sw.meter && sw.t > sw.dur * .55 && sw.t < sw.dur * .8 && canHit(p, sw.type) && waitCloser(p, su, dt)) sw.t -= dt * .8; // segura a raquete armada
     sw.t += dt; if (sw.t >= sw.dur) { if (sw.meter && !sw.hit && S.mode === 'rally') { ctlFeedback(c, 'SMASH', 'FUROU', null); S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 }; } sw.t = -1; sw.meter = null; }
