@@ -77,7 +77,7 @@ function dressSkin(p, root) {
   show('Skirt', skirt);
   const hs = look.hairStyle || '';
   show('Hair', !/careca/.test(hs)); show('Pony', fem && !/curto/.test(hs));
-  show('Glasses', !!look.glasses); show('ArmSleeve', r(2) < .22); show('Calf', fem && r(3) < .3);
+  show('Glasses', !!look.glasses); show('ArmSleeve', r(2) < .22 && !c.canhoto); // o manguito do arquivo é do braço direito show('Calf', fem && r(3) < .3);
   // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
   tint(matOf('Body'), look.skin || '#c68a62', SKIN_BASE);
   tint(matOf('Hair'), look.hair || '#2a1a0e', HAIR_BASE);
@@ -101,7 +101,7 @@ function scaleSkin(p) {
 const _k1 = new V3(), _k2 = new V3(), _k3 = new V3(), _kS = new V3(), _kM = new V3(), _kE = new V3(), _kU = new V3(), _kT = new V3(), _kP = new V3(), _kJ = new V3();
 const _ka = new V3(), _kb = new V3(), _kc = new V3(), _ke1 = new V3(), _ke2 = new V3(), _ke3 = new V3();
 const _kq = new THREE.Quaternion(), _kq2 = new THREE.Quaternion(), _kq3 = new THREE.Quaternion(), _kD = new THREE.Quaternion(), _kH = new THREE.Quaternion(), _kN = new THREE.Quaternion();
-const _kR = new THREE.Quaternion(), _kRi = new THREE.Quaternion(), _kI = new THREE.Quaternion();
+const _kR = new THREE.Quaternion(), _kRi = new THREE.Quaternion(), _kI = new THREE.Quaternion(), _kSq = new THREE.Quaternion(), _kHg = new THREE.Quaternion();
 function setDelta(bone, restW, D) {
   _kq.copy(_kR).multiply(D).multiply(_kRi).multiply(restW);
   bone.parent.getWorldQuaternion(_kq2); _kq2.invert().multiply(_kq);
@@ -145,10 +145,13 @@ function driveSkin(p) {
   k.holder.updateMatrixWorld(true);
   for (const n of ROT_BONES) if (B[n]) B[n].getWorldQuaternion(k.restW[n]);
   _kR.copy(m.group.quaternion); _kRi.copy(_kR).invert();
+  // canhoto: o rig desenhado está espelhado (escala x negativa); no modelo 3D trocamos os lados dos membros e
+  // espelhamos as rotações do tronco e da cabeça (reflexão em x: q → (x, −y, −z, w))
+  const L = !!p.lefty, mir = q => L ? q.set(q.x, -q.y, -q.z, q.w) : q;
   // quadril desce e desloca como no rig
-  _k1.set(m.hips.position.x, m.hips.position.y - .92, m.hips.position.z).applyQuaternion(_kR);
+  _k1.set(m.hips.position.x * (L ? -1 : 1), m.hips.position.y - .92, m.hips.position.z).applyQuaternion(_kR);
   B.Hips.getWorldPosition(_k2).add(_k1); B.Hips.parent.worldToLocal(_k2); B.Hips.position.copy(_k2); B.Hips.updateMatrixWorld(true);
-  const sq = m.spine.quaternion;
+  const sq = mir(_kSq.copy(m.spine.quaternion));
   const D = t => _kD.copy(_kI).slerp(sq, t);
   setDelta(B.Hips, k.restW.Hips, D(.25));
   setDelta(B.Spine, k.restW.Spine, D(.5));
@@ -156,32 +159,36 @@ function driveSkin(p) {
   setDelta(B.Spine2, k.restW.Spine2, D(1));
   setDelta(B.LeftShoulder, k.restW.LeftShoulder, D(1));
   setDelta(B.RightShoulder, k.restW.RightShoulder, D(1));
-  _kH.copy(sq).multiply(m.headG.quaternion); _kN.copy(sq).slerp(_kH, .5);
+  _kH.copy(sq).multiply(mir(_kHg.copy(m.headG.quaternion))); _kN.copy(sq).slerp(_kH, .5);
   setDelta(B.Neck, k.restW.Neck, _kN); setDelta(B.Head, k.restW.Head, _kH);
-  limbIK(B.RightArm, B.RightForeArm, B.RightHand, m.armR.sh, m.armR.el, m.armR.wrist, k.arm[0], k.arm[1], .555, true, 0);
-  limbIK(B.LeftArm, B.LeftForeArm, B.LeftHand, m.armL.sh, m.armL.el, m.armL.wrist, k.armL[0], k.armL[1], .555, true, 0);
-  limbIK(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, m.legs[0].thigh, m.legs[0].knee, m.legs[0].ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
-  limbIK(B.RightUpLeg, B.RightLeg, B.RightFoot, m.legs[1].thigh, m.legs[1].knee, m.legs[1].ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
+  // braço da raquete do rig → braço direito do modelo (esquerdo no canhoto); pernas também trocam de lado
+  const R = L ? 'Left' : 'Right', O = L ? 'Right' : 'Left', aR = L ? k.armL : k.arm, aO = L ? k.arm : k.armL;
+  limbIK(B[R + 'Arm'], B[R + 'ForeArm'], B[R + 'Hand'], m.armR.sh, m.armR.el, m.armR.wrist, aR[0], aR[1], .555, true, 0);
+  limbIK(B[O + 'Arm'], B[O + 'ForeArm'], B[O + 'Hand'], m.armL.sh, m.armL.el, m.armL.wrist, aO[0], aO[1], .555, true, 0);
+  const l0 = m.legs[L ? 1 : 0], l1 = m.legs[L ? 0 : 1];
+  limbIK(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, l0.thigh, l0.knee, l0.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
+  limbIK(B.RightUpLeg, B.RightLeg, B.RightFoot, l1.thigh, l1.knee, l1.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
   // pés planos na areia
   [['LeftFoot', 'LeftToeBase', k.toe.L], ['RightFoot', 'RightToeBase', k.toe.R]].forEach(([f, t, v]) => {
     if (!B[f] || !B[t]) return;
     B[f].getWorldPosition(_k3); _k1.copy(v).applyQuaternion(k.holder.quaternion).add(_k3); aimBone(B[f], B[t], _k1);
   });
-  // mão direita segue o cabo da raquete e fecha os dedos
+  // mão da raquete segue o cabo e fecha os dedos
+  const H = B[R + 'Hand'];
   m.racket.getWorldPosition(_k3); m.armR.wrist.getWorldPosition(_k2);
   m.racket.localToWorld(_k1.set(0, -.36, 0)).sub(_k3);
-  if (B.RightHandMiddle1) { B.RightHand.getWorldPosition(_kU).addScaledVector(_k1, .3); aimBone(B.RightHand, B.RightHandMiddle1, _kU); }
+  if (B[R + 'HandMiddle1']) { H.getWorldPosition(_kU).addScaledVector(_k1, .3); aimBone(H, B[R + 'HandMiddle1'], _kU); }
   CURL.q.setFromAxisAngle(CURL.axis, CURL.angle);
-  for (const f of FINGERS) for (let j = 1; j <= 3; j++) { const b = B['RightHand' + f + j]; if (b) b.quaternion.multiply(CURL.q); }
-  B.RightHand.updateMatrixWorld(true);
+  for (const f of FINGERS) for (let j = 1; j <= 3; j++) { const b = B[R + 'Hand' + f + j]; if (b) b.quaternion.multiply(CURL.q); }
+  H.updateMatrixWorld(true);
   // raquete visível presa na mão do modelo
   m.racket.getWorldQuaternion(k.racket.quaternion);
-  B.RightHand.getWorldPosition(_kU);
+  H.getWorldPosition(_kU);
   k.racket.position.copy(_k3).add(_kU).sub(_k2);
 }
-// canhoto = modelo desenhado espelhado (o modelo 3D baixado só existe destro)
+// canhoto = modelo desenhado espelhado (o modelo 3D troca os lados em driveSkin)
 function applyLefty(p) {
-  p.lefty = !!(p.char && p.char.canhoto) && S.settings.players !== '3d';
+  p.lefty = !!(p.char && p.char.canhoto);
   p.model.group.scale.set(hScale(p) * (p.lefty ? -1 : 1), hScale(p), hScale(p));
 }
 function applyPlayerStyle() {
