@@ -268,9 +268,10 @@ const attrK = (p, k) => attrN(p.char ? attrOf(p.char.a, k) : 70);
 // fraqueza: 0 com o atributo em 72 ou mais, 1 em 40 — atributo fraco pesa bem mais que a escala linear
 const weakK = (p, k) => clamp((72 - (p.char ? attrOf(p.char.a, k) : 70)) / 32, 0, 1);
 const lerp = (a, b, t) => a + (b - a) * t;
-// multiplicador da velocidade em quadra pelo atributo: 0,82–1,12, com um empurrão nas notas baixas (35: +16%, 50: +11%,
-// 65: +7%, 80: +3%, 95: igual) para quem é lento ainda conseguir buscar uma curta boa
-const velMul = v => { const k = attrN(v); return lerp(.82, 1.12, k) + .16 * Math.pow(1 - Math.min(1, k), 1.2); };
+// multiplicador da velocidade em quadra pelo atributo: 0,84–1,05, com um empurrão nas notas baixas (para quem é lento ainda
+// buscar uma curta boa): 50 → 0,99 · 65 → 1,01 · 80 → 1,02 · 95 → 1,05 (a diferença maior entre rápidos e lentos fica na
+// arrancada, que vai de 12 a 18 m/s²)
+const velMul = v => { const k = attrN(v); return lerp(.84, 1.05, k) + .14 * Math.pow(1 - Math.min(1, k), 1.2); };
 // aceleração: a arrancada sai mais lenta e vai ganhando velocidade (explosão de 12 a 18 m/s² pelo atributo de velocidade);
 // frear, parar e virar forte usam a frenagem (24 m/s²): parar continua rápido e trocar de direção custa uma passada
 const ACC_STOP = 24;
