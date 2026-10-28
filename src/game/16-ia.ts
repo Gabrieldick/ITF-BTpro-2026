@@ -585,7 +585,7 @@ function updateAI(p, dt) {
           if (pl && pl.pt.y < 2 && sideOf(p, pl.pt) < -.15) hardK += weakK(p, 'backhand') * .16 + (1 - attrK(p, 'backhand')) * .06; // bola no backhand: erra mais quanto pior o backhand
           // lob chutado perfeito por cima de quem estava na frente dos 3 m: corre para trás e chega mal
           p.ai.kickBeat = !!ball.kick && Math.abs(p.pos.z) < 3.6;
-          if (p.ai.kickBeat) hardK += lerp(.38, .22, attrK(p, 'vel'));
+          if (p.ai.kickBeat) hardK += lerp(.5, .32, Math.min(1, attrK(p, 'vel')));
           if (S.rally === 1) hardK *= .5; }
         // pressão do ponto decisivo pesa mais em quem tem menos nível; time embalado erra menos
         const expK = clamp((overall(p.char ? p.char.a : { forca: 70, vel: 70, def: 70, backhand: 70, curta: 70, lob: 70, smash: 70, saque: 70 }) - 60) / 35, 0, 1);

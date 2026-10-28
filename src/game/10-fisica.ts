@@ -168,8 +168,14 @@ function doHit(p, type, q, isServe, mod) {
   // smash contra lob chutado perfeito: quem chega lá correu para trás e bate mal (fraco, impreciso, erra mais).
   // Se alcançou ainda na zona de finalização (o lob não passou), é finalização normal
   if (!isServe && key === 'smash' && ball.kick && !finisher) {
-    finisher = false; spec.speed *= .72; spec.noise *= 1.8; spec.label = 'SMASH RECUANDO';
-    mod.misBoost = (mod.misBoost || 0) + .18 * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
+    finisher = false; spec.speed *= .62; spec.noise *= 2; spec.label = 'SMASH RECUANDO';
+    mod.misBoost = (mod.misBoost || 0) + .28 * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
+  }
+  // qualquer outra devolução de quem estava na rede e foi encoberto pelo lob chutado: volta correndo de costas e devolve mal
+  // (fraco, impreciso, erra e levanta mais; menos para quem é rápido)
+  if (!isServe && key !== 'smash' && ball.kick && ball.kickBeat && ball.kickBeat.includes(p)) {
+    const vk = Math.min(1, attrK(p, 'vel')); mod.misBoost = (mod.misBoost || 0) + lerp(.24, .12, vk); spec.noise *= 1.4; mod.speedMul = (mod.speedMul || 1) * .88;
+    if (!pop && Math.random() < lerp(.35, .2, vk)) { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } // levantou (como o pop da pressão)
   }
   // smash na devolução de saque: contra saque rasante é difícil (bola baixa, pouco tempo para subir na rede) e sai ruim;
   // só contra saque que subiu muito (saque muito ruim) o smash sai normal. Vale para todos
@@ -199,7 +205,7 @@ function doHit(p, type, q, isServe, mod) {
     spec.margin = lerp(.25, .4, lp); spec.gk = lerp(1.6, 1.1, Math.sqrt(lp));
     spec.label = lp < .35 ? 'LOB CHUTADO' : lp < .75 ? 'LOB' : 'LOB ALTO';
     // chutado PERFEITO: sobe só o bastante para passar por cima do smash de quem está na rede e despenca no fundo
-    if (mod.lobKick) { spec.T = 1.15; spec.depth = [6.5, 7.4]; spec.margin = .5; spec.kick = true; spec.label = 'LOB CHUTADO'; }
+    if (mod.lobKick) { spec.T = 1; spec.depth = [6.7, 7.5]; spec.margin = .5; spec.kick = true; spec.label = 'LOB CHUTADO'; } // mais rápido e fundo
     lobLong = Math.max(0, mod.lobPower - 1);
   }
   if (spec.speed) spec.speed *= mod.speedMul || 1;
@@ -275,7 +281,7 @@ function doHit(p, type, q, isServe, mod) {
     // lob chutado perfeito: acima do alcance do smash de quem está na frente dos 3 m, inclusive se ele der um passo para trás;
     // depois do ponto mais alto despenca (gravidade maior = efeito de bola caindo forte)
     const np = $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0];
-    const zN = (np ? np.pos.z : dir * 2.2) + dir * .8, H = (np ? 3.0 * hScale(np) : 3.0) + .3;
+    const zN = (np ? np.pos.z : dir * 2.2) + dir * 1.1, H = (np ? 3.0 * hScale(np) : 3.0) + .45; // passa por cima mesmo com ele recuando um passo e meio
     spec.gk = 1.3;
     for (let i = 0; i < 30; i++) {
       v = solveShot(ball.pos, tgt, spec);
@@ -329,7 +335,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   ball.threat = threat;
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
-  { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
+  { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop; ball.kickBeat = ball.kick ? $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6) : null;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
