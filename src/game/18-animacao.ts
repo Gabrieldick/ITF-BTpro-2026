@@ -142,7 +142,7 @@ function animateAthlete(p, dt) {
   if (sp > .25) p.gait += dt * Math.PI * 2 * (1.35 + sp * .3);
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
-  const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1;
+  const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = (dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1) * (p.dive ? .45 + .55 * (p.dive.sev ?? 1) : 1); // esticada curta: só abaixa
   // bola longe do corpo no golpe: o jogador se estica (passo em afundo para o lado dela, tronco inclinado, mais baixo se a bola é baixa)
   let reachK = 0, reachS = 1, reachLow = 0;
   if (swingU >= 0 && swingU < .8 && ball.state === 'live' && p.swing.type !== 'smash') {

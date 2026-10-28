@@ -277,7 +277,7 @@ function updateHuman(dt, c = localCtl()) {
     p.dive.t += dt;
     if (p.dive.t < .28) { tvx = p.dive.dx * p.dive.spd; tvz = p.dive.dz * p.dive.spd; p.vel.x = tvx; p.vel.z = tvz; }
     else { tvx = 0; tvz = 0; p.vel.x *= .6; p.vel.z *= .6; if (!p.dive.landed) { p.dive.landed = true; puff(p.pos.x, p.pos.z, 14, .9); } }
-    if (p.dive.t >= p.dive.dur) { p.dive = null; p.diveRec = .8; } // levantou: ainda volta devagar por ~0,8 s
+    if (p.dive.t >= p.dive.dur) { p.diveRec = p.dive.rec ?? .8; p.dive = null; } // levantou: ainda volta devagar (até ~0,8 s no peixinho)
   }
   const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');
   if (serving) {
