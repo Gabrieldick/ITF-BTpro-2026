@@ -218,6 +218,16 @@ function racketMats(key) {
   });
 }
 const STRAP_MAT = mat('#1b1e22', { roughness: .8 });
+// raquete modelada no Blender (ferramentas/modelos-mh/raquete.py, medidas de mercado: 50 cm × 22,5 cm × 22 mm): chega
+// depois do carregamento; até lá (ou sem o arquivo) fica a desenhada aqui. Cada modelo tem um padrão de furação.
+const RK_GLB = { geo: null, all: [] };
+const RK_PATTERN = { basica: 'band', tropic: 'side1', brisa: 'side1', fibra: 'side2', areia: 'side1', mare: 'arc', coral: 'side2', duna: 'side1', medusa: 'full', proteo: 'side2', vela: 'arc', tufao: 'side1', atol: 'ring', kronos: 'ring', ventosul: 'arc', maresia: 'band', recife: 'side2', farol: 'side1', supercarbon: 'arc', corsario: 'side2', tsunami: 'side1', abismo: 'band', eclipse: 'full', trovao: 'side1', aurora: 'side2', zenite: 'arc', assinatura: 'side1' };
+function setRacketModels(gltf) {
+  const geo = {}; gltf.scene.traverse(o => { if (o.isMesh) geo[o.name] = o.geometry; });
+  if (!geo.Grip || !geo.F_side1) return;
+  for (const k in geo) { const uv = geo[k].attributes.uv; if (!uv || !/^F_|^E_/.test(k)) continue; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i)); } // UV do glTF vem invertido em v
+  RK_GLB.geo = geo; RK_GLB.all.forEach(g => g.userData.setStyle(g.userData.key));
+}
 function makeRacket(key) {
   const g = new THREE.Group();
   const face = new THREE.Mesh(racketGeo(key), []); face.rotation.z = Math.PI; face.position.y = -.365; face.castShadow = true; g.add(face);
@@ -225,11 +235,18 @@ function makeRacket(key) {
   const handle = new THREE.Mesh(new THREE.CylinderGeometry(.0165, .0185, .165, 8)); handle.position.y = -.0825; g.add(handle);
   const butt = new THREE.Mesh(new THREE.CylinderGeometry(.021, .019, .014, 16)); butt.position.y = .002; g.add(butt);
   const strap = new THREE.Mesh(STRAP_GEO, STRAP_MAT); g.add(strap);
+  const old = [face, bumper, handle, butt, strap];
+  const nm = ['face', 'edge', 'bumper', 'grip', 'cap', 'leash'].map(() => { const m = new THREE.Mesh(); m.castShadow = true; m.visible = false; g.add(m); return m; });
   g.userData.setStyle = k => {
-    const M = racketMats(RACKETS[k] ? k : 'proteo');
-    face.geometry = racketGeo(RACKETS[k] ? k : 'proteo'); face.material = [M.face, M.edge]; bumper.material = M.bumper; handle.material = M.grip; butt.material = M.cap;
+    const kk = RACKETS[k] ? k : 'proteo', M = racketMats(kk); g.userData.key = kk;
+    face.geometry = racketGeo(kk); face.material = [M.face, M.edge]; bumper.material = M.bumper; handle.material = M.grip; butt.material = M.cap;
+    const G = RK_GLB.geo; old.forEach(o => { o.visible = !G; }); nm.forEach(o => { o.visible = !!G; });
+    if (G) {
+      const pt = RK_PATTERN[kk] || 'side1';
+      [[G['F_' + pt], M.face], [G['E_' + pt], M.edge], [G.Bumper, M.bumper], [G.Grip, M.grip], [G.Cap, M.cap], [G.Leash, STRAP_MAT]].forEach(([geo, m], i) => { nm[i].geometry = geo; nm[i].material = m; });
+    }
   };
-  g.userData.setStyle(key);
+  g.userData.setStyle(key); RK_GLB.all.push(g);
   return g;
 }
 function headGeo(fem) {
@@ -349,4 +366,4 @@ function profR(prof, y) {
   return best;
 }
 
-export { FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
+export { setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };

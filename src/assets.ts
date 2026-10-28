@@ -4,6 +4,7 @@ export const ASSET_FILES: Record<string, string> = {
   // jogadores realistas: corpo do MakeHuman (CC0) montado no Blender (ferramentas/modelos-mh), com todas as roupas
   'glb-male': 'mh-male.glb',
   'glb-female': 'mh-female.glb',
+  'glb-rk': 'raquetes.glb', // raquetes modeladas no Blender (ferramentas/modelos-mh/raquete.py)
   'uni-m': 'uniform-m.bin',
   'uni-f': 'uniform-f.bin',
   'snd-hits': 'hits.mp3',

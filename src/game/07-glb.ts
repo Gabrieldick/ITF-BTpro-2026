@@ -8,7 +8,7 @@ import { assetBuf } from '../assets';
 import { G, KITS, V3, charById, clamp, effA, hScale, heightOf, nameOf, racketBonus, rand , lookExtras } from './00-base';
 import { S } from './01-estado';
 import { camera, canvasTex, col, mat, scene } from './02-render';
-import { RACKETS, SHADOW_TEX, capsuleGeo, makeRacket } from './05-atletas';
+import { RACKETS, SHADOW_TEX, capsuleGeo, makeRacket, setRacketModels } from './05-atletas';
 import { ALL, cpuA, cpuB, human, makeAthlete, partner } from './06-modelos';
 import { charSkill, playStyleOf } from './16-ia';
 // ---------- Jogadores com modelo 3D (GLB) dirigidos pelo rig de animação ----------
@@ -22,6 +22,8 @@ function loadModels() {
       if (!buf) return r();
       try { loader.parse(buf, '', g => { GLB[k] = g; r(); }, () => r()); } catch (e) { r(); }
     }));
+    // raquetes modeladas no Blender (geometria; a arte de cada modelo continua pintada no jogo)
+    jobs.push(new Promise(r => { let buf = null; try { buf = b64Buf('glb-rk'); } catch (e) { buf = null; } if (!buf) return r(); try { loader.parse(buf, '', g => { setRacketModels(g); r(); }, () => r()); } catch (e) { r(); } }));
     Promise.all(jobs).then(() => resolve(!!(GLB.male && GLB.female)));
     setTimeout(() => resolve(!!(GLB.male && GLB.female)), 15000);
   });
@@ -35,7 +37,14 @@ function attachSkin(p, gltf) {
   const holder = new THREE.Group(); holder.add(root); scene.add(holder);
   const B = {}, all = [];
   root.traverse(o => {
-    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material) { o.material = o.material.clone(); o.material.envMapIntensity = .6; } }
+    if (o.isMesh) {
+      o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+      if (o.material) {
+        o.material = o.material.clone(); o.material.envMapIntensity = .6;
+        // barba e raspado ficam a 1–2 mm da pele: puxados para a frente na profundidade (não piscam com a pele de longe)
+        if (/^(Beard|Goatee|Mustache|HairBuzz)/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -6; }
+      }
+    }
     if (o.isBone) { const k = o.name.replace(/^mixamorig[:_]?/, ''); B[k] = o; o.userData.rq = o.quaternion.clone(); o.userData.rp = o.position.clone(); all.push(o); }
   });
   if (!B.Hips || !B.RightHand || !B.LeftFoot) { scene.remove(holder); return; }
@@ -63,6 +72,8 @@ function attachSkin(p, gltf) {
 // manguito, meião, óculos); escolhe as do personagem (sempre as mesmas para ele) e pinta pele, cabelo e uniforme do time
 const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
+const HAIR_PARTS = ['Hair', 'HairCards', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards'];
+const BEARDS = ['Beard', 'Goatee', 'Mustache'];
 function dressSkin(p, root) {
   const look = p.look || {}, c = p.char || {}, fem = !!look.fem;
   let h = 2166136261; for (const ch of String(c.id || c.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
@@ -76,13 +87,29 @@ function dressSkin(p, root) {
   else top = r(1) < .72 ? 'tee' : 'tank';
   ['tee', 'tank', 'crop'].forEach(t => show('Top_' + t, t === top));
   show('Skirt', skirt);
+  // cabelo: cada corte é um conjunto de peças do arquivo (casca, mechas, borda, rabo, coque…); barba idem
   const hs = look.hairStyle || '';
-  show('Hair', !/careca/.test(hs)); show('Pony', fem && !/curto/.test(hs));
-  show('Glasses', !!look.glasses); show('ArmSleeve', r(2) < .22 && !c.canhoto); show('Calf', fem && r(3) < .3); // (o manguito do arquivo é do braço direito)
+  const cut = fem ? ({ coque: ['Hair', 'HairCards', 'HairFringe', 'Bun'], longo: ['Hair', 'HairLong', 'HairFringe'], cacheado: ['Hair', 'HairLong', 'HairFringe'], curto: ['Hair', 'HairBob', 'HairFringe'] }[hs] || ['Hair', 'HairCards', 'HairFringe', 'Pony', 'PonyCards'])
+    : ({ careca: [], raspado: ['HairBuzz'], moicano: ['HairBuzz', 'HairMohawk'], cacheado: ['HairCurly', 'HairCurlyCards'], longo: ['Hair', 'HairLong', 'HairFringe'] }[hs] || ['Hair', 'HairCards', 'HairFringe']);
+  const bd = fem ? '' : ({ barba: 'Beard', cavanhaque: 'Goatee', bigode: 'Mustache' }[look.beard] || '');
+  // boné/viseira/faixa: o boné esconde o volume do cabelo (fica a base curta por baixo; o rabo sai por trás)
+  const cap = !!look.cap, vis = !cap && !!look.visor, band = !cap && !vis && !!look.headband;
+  const under = cap ? ['HairCards', 'HairFringe', 'HairMohawk', 'HairCurlyCards', 'Bun'] : vis || band ? ['HairFringe', 'HairMohawk'] : [];
+  HAIR_PARTS.forEach(n => show(n, cut.includes(n) && !under.includes(n)));
+  if (cap && hs === 'cacheado' && !fem) show('Hair', true);
+  show('Cap', cap); show('CapBrim', cap); show('Visor', vis); show('VisorBrim', vis); show('Headband', band);
+  [['Cap', look.cap], ['CapBrim', look.cap], ['Visor', look.visor], ['VisorBrim', look.visor], ['Headband', look.headband]].forEach(([n, c]) => { const m = matOf(n); if (m && c) m.color.copy(col(c)); });
+  BEARDS.forEach(n => { show(n, n === bd); show(n + 'Edge', n === bd); });
+  show('Glasses', !!look.glasses); show('GlassesFrame', !!look.glasses);
+  show('ArmSleeve', r(2) < .22 && !c.canhoto); show('Calf', fem && r(3) < .3); // (o manguito do arquivo é do braço direito)
+  // pele: os trechos que a blusa escolhida cobre somem (não atravessam a roupa)
+  for (const n in parts) if (n.startsWith('BodySk_')) show(n, !n.slice(7).split('_').includes(top));
+  // físico: formas do arquivo sobre o atlético
+  const shape = { esguio: { Magro: 1 }, compacto: { Gordo: .7 }, forte: { Forte: 1 } }[look.build || c.build] || {};
+  root.traverse(o => { if (o.isMesh && o.morphTargetDictionary) for (const k in o.morphTargetDictionary) o.morphTargetInfluences[o.morphTargetDictionary[k]] = shape[k] || 0; });
   // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
-  tint(matOf('Body'), look.skin || '#c68a62', SKIN_BASE);
-  tint(matOf('Hair'), look.hair || '#2a1a0e', HAIR_BASE);
-  tint(matOf('Pony'), look.hair || '#2a1a0e', HAIR_BASE);
+  for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => tint(o.material, look.skin || '#c68a62', SKIN_BASE));
+  for (const n of HAIR_PARTS.concat(BEARDS, BEARDS.map(x => x + 'Edge'))) (parts[n] || []).forEach(o => tint(o.material, look.hair || '#2a1a0e', HAIR_BASE));
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
   ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) m.color.copy(shirt); });
   if (matOf('Shorts')) matOf('Shorts').color.copy(dress ? shirt : shorts);
@@ -90,6 +117,7 @@ function dressSkin(p, root) {
   const trim = col(look.trim || '#fbf6ea');
   if (matOf('ArmSleeve')) matOf('ArmSleeve').color.copy(trim); if (matOf('Calf')) matOf('Calf').color.copy(trim);
   if (matOf('Glasses')) matOf('Glasses').color.copy(col(look.lens || '#0b0d10'));
+  if (matOf('GlassesFrame')) matOf('GlassesFrame').color.copy(col(look.frame || '#15171a'));
 }
 // escala do modelo pela altura do personagem (os comprimentos usados na animação acompanham)
 function scaleSkin(p) {

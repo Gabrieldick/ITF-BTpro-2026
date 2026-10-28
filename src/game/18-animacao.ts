@@ -303,9 +303,10 @@ function setFpBody(on) {
   if (on === fpBodyOn && human.model.__fpModel === human.model) return;
   fpBodyOn = on; human.model.__fpModel = human.model;
   const m = human.model;
-  m.headG.traverse(o => { if (o.isMesh) o.visible = !on && !o.userData.off; });
+  const sk = !!(human.skin && human.skinOn); // modelo realista: o desenhado fica todo escondido (senão o boné/cabelo dele aparecia por cima)
+  m.headG.traverse(o => { if (o.isMesh) o.visible = !on && !o.userData.off && !sk; });
   // tronco, pescoço e braço de cima somem (passariam colados no olho); antebraço, mão e raquete continuam
-  (m.fpHide || []).forEach(o => { o.visible = !on; });
+  (m.fpHide || []).forEach(o => { o.visible = !on && !sk; });
 }
 const _eye = new V3();
 // ângulos da 3ª pessoa ([simples, dupla]): altura, recuo, quanto segue o jogador de lado, para onde olha.
