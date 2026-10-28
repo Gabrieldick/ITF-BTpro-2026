@@ -201,7 +201,10 @@ function doHit(p, type, q, isServe, mod) {
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
     const lp = clamp(mod.lobPower, 0, 1);
     // lob com pouca força sai chutado: baixo, rápido e caindo forte; só o carregado sobe alto e devagar
-    spec.T = lerp(.95, 2.6, Math.pow(lp, 2.2)); spec.depth = [lerp(5.8, 6.4, lp), lerp(7.1, 7.6, lp)];
+    // médio (meio da barra, .32–.75): já sobe bem acima de quem está na rede (~4–6 m), mas menos que o alto e caindo com menos
+    // constância no fundo; o alto (.75–1) é o mais alto e o mais fundo
+    spec.T = lp < .32 ? lerp(.95, 2.6, Math.pow(lp, 2.2)) : lp < .75 ? lerp(1.4, 1.8, Math.pow((lp - .32) / .43, .8)) : lerp(2, 2.6, (lp - .75) / .25);
+    spec.depth = [lerp(4.8, 6.4, Math.pow(lp, 1.4)), lerp(7.1, 7.6, lp)]; if (lp > .32 && lp < .75) spec.noise *= 1.25;
     spec.margin = lerp(.25, .4, lp); spec.gk = lerp(1.6, 1.1, Math.sqrt(lp));
     spec.label = lp < .35 ? 'LOB CHUTADO' : lp < .75 ? 'LOB' : 'LOB ALTO';
     // chutado PERFEITO: sobe só o bastante para passar por cima do smash de quem está na rede e despenca no fundo
@@ -278,16 +281,23 @@ function doHit(p, type, q, isServe, mod) {
   if (dir > 0 && tgt.z < .4) tgt.z = .4;
   let v;
   if (spec.kick && !pop) {
-    // lob chutado perfeito: acima do alcance do smash de quem está na frente dos 3 m, inclusive se ele der um passo para trás;
-    // depois do ponto mais alto despenca (gravidade maior = efeito de bola caindo forte)
-    const np = $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0];
-    const zN = (np ? np.pos.z : dir * 2.2) + dir * 1.1, H = (np ? 3.0 * hScale(np) : 3.0) + .45; // passa por cima mesmo com ele recuando um passo e meio
-    spec.gk = 1.3;
-    for (let i = 0; i < 30; i++) {
-      v = solveShot(ball.pos, tgt, spec);
-      const t = (zN - ball.pos.z) / v.z, y = ball.pos.y + v.y * t - .5 * G * spec.gk * t * t;
-      if (t <= 0 || y >= H || spec.gk >= 3.2) break;
-      spec.gk *= 1.06;
+    // lob chutado perfeito: acima do alcance do smash de quem está na frente dos 3 m, inclusive se ele der um passo e meio para
+    // trás, e ainda acima do alcance normal até uns 3 m atrás dele (não dá para recuar e pegar no meio da quadra); só então
+    // despenca no fundo (gravidade maior = efeito de bola caindo forte). Se não couber no tempo, a bola sobe um pouco mais devagar
+    const nets = $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z));
+    const np = nets[0], nd = nets[nets.length - 1];
+    const z1 = (np ? np.pos.z : dir * 2.2) + dir * 1.1, H1 = (np ? 3.0 * hScale(np) : 3.0) + .45;
+    const z2 = (nd ? nd.pos.z : dir * 2.2) + dir * 3.2, H2 = (nd ? 2.6 * hScale(nd) : 2.6) + .15;
+    const yAt = z => { const t = (z - ball.pos.z) / v.z; return t <= 0 ? 99 : ball.pos.y + v.y * t - .5 * G * spec.gk * t * t; };
+    for (let j = 0; j < 6; j++) {
+      spec.gk = 1.3;
+      for (let i = 0; i < 40; i++) {
+        v = solveShot(ball.pos, tgt, spec);
+        if ((yAt(z1) >= H1 && yAt(z2) >= H2) || spec.gk >= 4.5) break;
+        spec.gk *= 1.06;
+      }
+      if (yAt(z1) >= H1 && yAt(z2) >= H2) break;
+      spec.T += .05;
     }
   } else if (!pop && !wild && spec.speed && (finisher || topK > 0 || (isServe && type === 'smash'))) {
     // em vez de subir a bola para passar a rede (e perder a velocidade), bate com efeito para baixo: a bola passa a rede e
