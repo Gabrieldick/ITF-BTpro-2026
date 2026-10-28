@@ -673,9 +673,9 @@ function crGoalOptions() {
   const r = crRank(), mt = crMaxTier(), o = overall($s.CR.me.a), T = TIERS[mt];
   const top = r <= 3 ? 1 : r <= 10 ? 3 : r <= 25 ? 10 : r <= 60 ? 25 : r <= 150 ? 60 : 150;
   return [
-    { id: 'rank', txt: 'Terminar a temporada no top ' + top + ' do ranking', n: top, money: Math.round(T.prize[0] * .6), pe: 18, fama: 4 },
-    { id: 'titulo', txt: 'Ganhar um título de ' + T.curto + ' ou maior', n: mt, money: Math.round(T.prize[0] * .4), pe: 24, fama: 6 },
-    { id: 'ovr', txt: 'Chegar a ' + (o + 2) + ' de overall', n: o + 2, money: Math.round(T.prize[0] * .3), pe: 10, fama: 2 },
+    { id: 'rank', txt: 'Terminar a temporada no top ' + top + ' do ranking', n: top, money: Math.round(T.prize[0] * .6), pe: 11, fama: 4 },
+    { id: 'titulo', txt: 'Ganhar um título de ' + T.curto + ' ou maior', n: mt, money: Math.round(T.prize[0] * .4), pe: 14, fama: 6 },
+    { id: 'ovr', txt: 'Chegar a ' + (o + 2) + ' de overall', n: o + 2, money: Math.round(T.prize[0] * .3), pe: 6, fama: 2 },
   ];
 }
 function crPickGoal(i) { const o = crGoalOptions()[i]; if (!o) return; $s.CR.goal = Object.assign({ season: $s.CR.season, t0: Object.assign({}, $s.CR.titles) }, o); $s.CR.lastMsg = 'Meta da temporada: ' + o.txt + '.'; saveCareer(); }
@@ -1022,7 +1022,7 @@ function crAfterMyMatch(won) {
   // provocação aceita: o duelo vale muito
   { const f = $s.CR.feud, op = t.teams[(t.rounds[t.round].find(m => m.a === t.me || m.b === t.me) || {}).a === t.me ? (t.rounds[t.round].find(m => m.a === t.me || m.b === t.me) || {}).b : (t.rounds[t.round].find(m => m.a === t.me || m.b === t.me) || {}).a] || {};
     if (f && (op.a === f.id || op.b === f.id)) {
-      if (won) { const bon = Math.round(crTourT(t).prize[0] * .2 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 4; crAddFama(8); crMood(6); t.log.push('Respondeu na quadra! Venceu ' + f.name + ': +' + money(bon) + ', +4 PE, +8 de fama'); }
+      if (won) { const bon = Math.round(crTourT(t).prize[0] * .2 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 2; crAddFama(8); crMood(6); t.log.push('Respondeu na quadra! Venceu ' + f.name + ': +' + money(bon) + ', +2 PE, +8 de fama'); }
       else { crAddFama(-5); crMood(-8); t.log.push(f.name + ' ganhou o duelo e ainda provocou: −5 de fama'); }
       $s.CR.feud = null; } }
   // três derrotas seguidas: crise de confiança (evento com escolha)
@@ -1044,7 +1044,7 @@ function crAfterMyMatch(won) {
     before.forEach(([id, was]) => { if (!was && crRivalP(id)) { const h = $s.CR.h2hP[id]; t.log.push((crNemesis(id) ? 'Você ganhou um carrasco: ' : 'Nasce uma rivalidade com ') + h.name + ' (' + h.w + '–' + h.l + ')'); } });
     if (won) before.forEach(([id, was]) => { if (was && crNemesis(id) === false && $s.CR.h2hP[id].w === 1 && $s.CR.h2hP[id].l >= 3) t.log.push('Enfim! Primeira vitória sobre ' + $s.CR.h2hP[id].name); }); }
   { const wasRival = crRivalOf(opp); $s.CR.h2h = $s.CR.h2h || {}; const k = h2hKey(opp), h = $s.CR.h2h[k] || { w: 0, l: 0, name: crTeamName(opp) }; won ? h.w++ : h.l++; h.name = crTeamName(opp); $s.CR.h2h[k] = h;
-    if (won && wasRival) { const bon = Math.round(crTourT(t).prize[0] * .1 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 2; crAddFama(2); t.log.push('Clássico vencido contra rivais: +' + money(bon) + ', +2 PE, +2 fama'); }
+    if (won && wasRival) { const bon = Math.round(crTourT(t).prize[0] * .1 / 10) * 10; $s.CR.money += bon; $s.CR.pe += 1; crAddFama(2); t.log.push('Clássico vencido contra rivais: +' + money(bon) + ', +1 PE, +2 fama'); }
     else if (!wasRival && crRivalOf(opp)) { /* a rivalidade por jogador já avisa */ } }
   if (won) { [opp.a, opp.b].filter(Boolean).forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
   else t.alive = false;
@@ -1175,7 +1175,9 @@ function crFinishTour() {
 }
 // multiplicador de evolução: os bônus (técnico, mentor, idade, CT, embalo) somam com retorno decrescente
 // (+90% sozinho vale ~+62%; tudo junto não passa muito de ×2,2), para os ganhos não crescerem tanto quanto os custos
-const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0) + ($s.CR.coach > 0 ? .3 : 0); return 1 + x / (1 + x * .5); };
+// PE_K: ganho geral de pontos de evolução (sobravam centenas de pontos: o potencial trava antes de gastar)
+const PE_K = .6;
+const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0) + ($s.CR.coach > 0 ? .3 : 0); return (1 + x / (1 + x * .5)) * PE_K; };
 // ---------- negócios: investimentos permanentes para o fim da carreira ----------
 // cada linha tem níveis; cada nível exige o anterior e algo da carreira (fama, títulos, ranking)
 const crTitlesAt = t => Object.entries($s.CR.titles || {}).reduce((n, [k, v]) => n + (+k >= t ? v : 0), 0);
@@ -1543,7 +1545,7 @@ function crInviteCand() { const cur = crChar($s.CR.partner); if (!cur) return nu
   const l = crWorld().filter(c => c.id !== cur.id && !!c.fem === fem && crCharOvr(c) >= po + 4 && crCharOvr(c) <= me + 6); return l.length ? l[Math.floor(Math.random() * l.length)] : null; }
 const EVENTS = {
   clinica: { w: 3, ok: () => true, run: () => { const g = Math.round(crLessonIncome() * .7); $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5); return 'Um clube te chamou para uma clínica no fim de semana: +' + money(g) + '.'; } },
-  treinoPro: { w: 2, ok: () => true, run: () => { const g = 2 + Math.floor(Math.random() * 3); $s.CR.pe += g; return 'Um jogador do top 20 te chamou para treinar junto: +' + g + ' pontos de evolução.'; } },
+  treinoPro: { w: 2, ok: () => true, run: () => { const g = 1 + Math.floor(Math.random() * 2); $s.CR.pe += g; return 'Um jogador do top 20 te chamou para treinar junto: +' + g + ' pontos de evolução.'; } },
   chuva: { w: 2, ok: () => true, run: () => { $s.CR.energy = Math.min(100, $s.CR.energy + 15); return 'Chuva a semana toda: treinos cancelados, mas o corpo agradeceu (+15 energia).'; } },
   calor: { w: 2, ok: () => true, run: () => { $s.CR.energy = Math.max(0, $s.CR.energy - 15); return 'Onda de calor na areia: −15 de energia.'; } },
   viral: { w: 1.5, ok: () => true, run: () => { crAddFama(6); crMaybeSponsor(true); return 'Um ponto seu viralizou nas redes! +6 de fama e uma marca quer conversar (veja Patrocínios).'; } },
