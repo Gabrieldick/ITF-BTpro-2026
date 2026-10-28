@@ -96,29 +96,47 @@ const seaMat = new THREE.ShaderMaterial({
 const sea = new THREE.Mesh(new THREE.PlaneGeometry(6000, 3000, 1, 1), seaMat);
 sea.rotation.x = -Math.PI / 2; sea.position.set(0, -0.02, SHORE_Z + 4 - 1500); ENV.add(sea);
 // ---------- Areia ----------
-function makeSandTextures(N) {
+// areia de praia (ondulação leve do vento) ou areia revirada da quadra (montinhos e buracos de pisada, sem ondulação);
+// grãos de cores diferentes (quartzo claro, bege, marrom, minerais escuros)
+function makeSandTextures(N, churn) {
   const H = new Float32Array(N * N);
   const cA = document.createElement('canvas'); cA.width = cA.height = N;
   const cN = document.createElement('canvas'); cN.width = cN.height = N;
   const xa = cA.getContext('2d'), xn = cN.getContext('2d');
   const ia = xa.createImageData(N, N), inn = xn.createImageData(N, N);
   const P = 6;
+  // buracos de pisada/montinhos (quadra): bacias com borda levantada, espalhadas e sobrepostas
+  const pits = [];
+  if (churn) for (let i = 0; i < 95; i++) pits.push([Math.random() * N, Math.random() * N, N * (.02 + Math.random() * .045), Math.random() < .75 ? 1 : -.7]);
+  const PH = new Float32Array(N * N); // altura dos buracos, carimbada só em volta de cada um
+  for (const [px, py, r, sg] of pits) {
+    const R = Math.ceil(r * 1.6);
+    for (let oy = -R; oy <= R; oy++) for (let ox = -R; ox <= R; ox++) {
+      const d = Math.hypot(ox, oy * 1.3) / r; if (d > 1.6) continue;
+      const x = ((Math.round(px) + ox) % N + N) % N, y = ((Math.round(py) + oy) % N + N) % N;
+      PH[y * N + x] += sg * (d < 1 ? -(1 - d * d) * .9 : Math.sin((d - 1) / .6 * Math.PI) * .35); // fundo + borda empurrada para cima
+    }
+  }
+  const pitH = (x, y) => PH[y * N + x];
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const u = x / N, v = y / N;
-    const f = fbm(u * P, v * P, P, 4, 3);
-    const rip = Math.sin(2 * Math.PI * (3 * u + 5 * v) + f * 7) * .5 + .5;
+    const f = fbm(u * P, v * P, P, 4, churn ? 7 : 3), f2 = fbm(u * 24, v * 24, 24, 3, churn ? 11 : 5);
+    const rip = churn ? 0 : Math.sin(2 * Math.PI * (3 * u + 5 * v) + f * 7) * .5 + .5;
     const g = Math.random();
-    H[y * N + x] = f * .8 + rip * .25 + g * .35;
+    H[y * N + x] = churn ? f * .9 + f2 * .6 + pitH(x, y) * 1.4 + g * .4 : f * .8 + rip * .14 + f2 * .3 + g * .35;
     const i = (y * N + x) * 4;
-    const k = .9 + (f - .5) * .35 + (g - .5) * .12;
+    // revirada: a areia de baixo aparece mais clara/seca nas bordas dos buracos e mais escura no fundo
+    const sh = churn ? clamp(pitH(x, y) * .22, -.16, .1) : 0;
+    const k = .9 + (f - .5) * .3 + (f2 - .5) * .12 + (g - .5) * .14 + sh;
     let r = 222 * k, gg = 197 * k, b = 150 * k;
     const sp = Math.random();
-    if (sp < .012) { r *= .55; gg *= .5; b *= .45; }          // grãos escuros
-    else if (sp < .03) { r = 250; gg = 244; b = 228; }        // grãos claros
-    else if (sp < .034) { r *= 1.05; gg *= .8; b *= .7; }      // grãos avermelhados
+    if (sp < .016) { r *= .5; gg *= .46; b *= .42; }            // minerais escuros
+    else if (sp < .04) { r = 252; gg = 247; b = 234; }          // quartzo claro
+    else if (sp < .055) { r *= 1.06; gg *= .82; b *= .68; }      // grãos avermelhados
+    else if (sp < .075) { r *= .86; gg *= .8; b *= .72; }        // grãos marrons
     ia.data[i] = clamp(r, 0, 255); ia.data[i + 1] = clamp(gg, 0, 255); ia.data[i + 2] = clamp(b, 0, 255); ia.data[i + 3] = 255;
   }
-  const str = 2.2;
+  const str = churn ? 4.6 : 2.2;
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const l = H[y * N + (x - 1 + N) % N], r = H[y * N + (x + 1) % N], t = H[((y - 1 + N) % N) * N + x], b = H[((y + 1) % N) * N + x];
     let nx = (l - r) * str, ny = (t - b) * str, nz = 1; const L = Math.hypot(nx, ny, nz); nx /= L; ny /= L; nz /= L;
@@ -155,6 +173,19 @@ const sandGeo = new THREE.PlaneGeometry(420, 320, 168, 128);
   sandGeo.computeVertexNormals();
 }
 const sandMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sandTex.ta, normalMap: sandTex.tn, normalScale: new THREE.Vector2(.9, .9), roughness: .97, metalness: 0, vertexColors: true, envMapIntensity: .6 });
+// no shader: duas escalas da mesma textura (some a repetição) e, na quadra e em volta, a areia revirada no lugar da de praia
+const churnTex = makeSandTextures(512, true);
+sandMat.onBeforeCompile = sh => {
+  sh.uniforms.tChurn = { value: churnTex.ta }; sh.uniforms.tChurnN = { value: churnTex.tn }; sh.uniforms.uCourt = { value: new THREE.Vector2(6.2, 11) };
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;')
+    .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvSandW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;\nuniform sampler2D tChurn, tChurnN;\nuniform vec2 uCourt;\nfloat sandCourt() { return 1.0 - smoothstep(0.0, 4.0, max(abs(vSandW.x) - uCourt.x, abs(vSandW.z) - uCourt.y)); }')
+    .replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', `vec2 uvB = vMapUv * 0.371 + vec2(0.13, 0.57);
+    float ct = sandCourt();
+    vec4 sampledDiffuseColor = mix(mix(texture2D(map, vMapUv), texture2D(map, uvB), 0.45), mix(texture2D(tChurn, vMapUv), texture2D(tChurn, uvB * 1.7), 0.4), ct);`)
+    .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `vec2 nuvB = vNormalMapUv * 0.371 + vec2(0.13, 0.57);
+    vec3 mapN = mix(mix(texture2D(normalMap, vNormalMapUv).xyz, texture2D(normalMap, nuvB).xyz, 0.45), mix(texture2D(tChurnN, vNormalMapUv).xyz, texture2D(tChurnN, nuvB * 1.7).xyz, 0.4), sandCourt()) * 2.0 - 1.0;`);
+};
 const sand = new THREE.Mesh(sandGeo, sandMat);
 sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0, 90);
 sand.receiveShadow = true;
