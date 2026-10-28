@@ -29,6 +29,7 @@ function loadModels() {
 const ROT_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder'];
 const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'];
 const CURL = { axis: new V3(1, 0, 0), angle: 1.1, q: new THREE.Quaternion() };
+const PALM = { angle: 1.5 }; // giro da mão livre no smash (rad)
 function attachSkin(p, gltf) {
   const root = SkeletonUtils.clone(gltf.scene);
   const holder = new THREE.Group(); holder.add(root); scene.add(holder);
@@ -165,6 +166,12 @@ function driveSkin(p) {
   const R = L ? 'Left' : 'Right', O = L ? 'Right' : 'Left', aR = L ? k.armL : k.arm, aO = L ? k.arm : k.armL;
   limbIK(B[R + 'Arm'], B[R + 'ForeArm'], B[R + 'Hand'], m.armR.sh, m.armR.el, m.armR.wrist, aR[0], aR[1], .555, true, 0);
   limbIK(B[O + 'Arm'], B[O + 'ForeArm'], B[O + 'Hand'], m.armL.sh, m.armL.el, m.armL.wrist, aO[0], aO[1], .555, true, 0);
+  // mão livre apontando a bola no smash: gira o punho (palma meio para cima / para o corpo)
+  if ((p.prep || 0) > .02 && B[O + 'Hand']) {
+    const h = B[O + 'Hand']; B[O + 'ForeArm'].getWorldPosition(_ka); h.getWorldPosition(_kb); _kc.subVectors(_kb, _ka).normalize();
+    _kq.setFromAxisAngle(_kc, p.prep * PALM.angle * (L ? -1 : 1)); h.getWorldQuaternion(_kq2); _kq.multiply(_kq2);
+    h.parent.getWorldQuaternion(_kq3); _kq3.invert().multiply(_kq); h.quaternion.copy(_kq3); h.updateMatrixWorld(true);
+  }
   const l0 = m.legs[L ? 1 : 0], l1 = m.legs[L ? 0 : 1];
   limbIK(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, l0.thigh, l0.knee, l0.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
   limbIK(B.RightUpLeg, B.RightLeg, B.RightFoot, l1.thigh, l1.knee, l1.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07);
@@ -364,4 +371,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
