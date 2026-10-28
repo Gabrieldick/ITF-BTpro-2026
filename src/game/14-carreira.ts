@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
+import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -1076,11 +1076,22 @@ function crSkipByes() {
   if (t.champion !== null && !t.done) crFinishTour();
   if (g) saveCareer();
 }
+// nota da partida simulada, como se tivesse sido jogada: resultado e placar (lavada vale mais que apertado), força do
+// adversário (ganhar de quem é mais forte vale mais; perder para quem é bem mais forte pesa menos) e um pouco de variação
+// de atuação; acima de 8 sobe devagar, como na nota jogada
+function crSimRating(mm, won) {
+  const t = $s.CR.tour, A = t.teams[mm.a], B = t.teams[mm.b], mine = A && A.me ? A : B, opp = mine === A ? B : A;
+  const sc = String(mm.score || '').match(/(\d+)\D+(\d+)/), hi = sc ? Math.max(+sc[1], +sc[2]) : 6, lo = sc ? Math.min(+sc[1], +sc[2]) : 3;
+  const margin = hi ? (hi - lo) / hi : .4;
+  let dOvr = 0; try { if (!t.mixed && mine && opp) dOvr = crTeamOvr(opp) - crTeamOvr(mine); } catch (e) {}
+  let r = 6.3 + (won ? .35 : -.45) + (won ? 1 : -1) * margin * 1.1 + clamp(dOvr / 10, -.5, .5) * (won ? 1 : .6) + gauss() * .55;
+  if (r > 8) r = 8 + (r - 8) * .65;
+  return Math.round(clamp(r, 3, 9.6) * 10) / 10;
+}
 function crPlaySim() {
   const mm = crMyMatch(); if (!mm) return;
   crSimOne(mm, true);
-  // simulada: nota neutra (rende pouco potencial; jogar bem de verdade rende mais)
-  const won = mm.w === $s.CR.tour.me, r = won ? 6.2 : 5.6; $s.CR.tour.lastRating = { r, g: crPotGain(r, $s.CR.tour.tier) }; crRate(r);
+  const won = mm.w === $s.CR.tour.me, r = crSimRating(mm, won); $s.CR.tour.lastRating = { r, g: crPotGain(r, $s.CR.tour.tier) }; crRate(r);
   crAfterMyMatch(won);
 }
 // interestadual por categorias: cada categoria dá 4 pontos ao campeão, 2 ao vice e 1 ao 3º; a soma decide o estado campeão
