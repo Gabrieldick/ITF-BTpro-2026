@@ -151,17 +151,26 @@ function doHit(p, type, q, isServe, mod) {
     const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)), r2 = Math.random();
     if (!wild && !pop && r2 < pl) { const u = r2 / pl; if (u < .45) netFin = true; else if (u < .85) finOut = wild = true; else { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } }
   }
+  // curta contra bola rápida (smash, saque forte): o toque é uma aposta — vai na rede, levanta ou sai bem mais que a defesa;
+  // a defesa padrão contra pancada é o botão de defesa
+  if (key === 'curta' && !isServe && !netFin && !wild && !pop && inSpeed > 11) {
+    const sk = clamp((inSpeed - 11) / 9, 0, 1) * (ball.smashPow ? 1.25 : 1) * (ball.finisher ? 1.2 : 1);
+    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
+    const pc = Math.min(.8, sk * lerp(.62, .26, tq) * lerp(1.15, .8, attrK(p, 'curta'))), r3 = Math.random();
+    if (r3 < pc) { const u = r3 / pc; if (u < .45) netFin = true; else if (u < .7) pop = true; else wild = true; }
+  }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
   // defesa: quanto melhor o golpe (timing/posição) e o atributo, mais baixa e rápida ela volta; só a ruim flutua
   if (!pop && key === 'defesa') {
     const dq = mod.timing === undefined ? grade : grade * .6 + mod.timing * .4;
     const dk = clamp((dq - .4) / .45, 0, 1);
     // contra pancada, a defesa boa (e às vezes a amarela) pode virar um lob alto para o fundo
-    if (S.rally !== 1 && (pressure > .3 || inSpeed > 14) && dq >= .5 && Math.random() < lerp(.3, .55, dk)) { // na devolução de saque, não
+    if (S.rally !== 1 && (pressure > .3 || inSpeed > 14) && dq >= .5 && Math.random() < lerp(.1, .22, dk)) { // na devolução de saque, não (agora é a exceção)
       spec.T = rand(1.75, 2.15); spec.depth = [6.3, 7.4]; spec.margin = .5; spec.label = 'DEFESA ALTA';
     } else {
-      spec.T = lerp(1.25, .78, dk) * lerp(1.06, .94, attrK(p, 'def')) * (1 + weakK(p, 'def') * .18); // defensor fraco devolve mais flutuada
-      spec.margin = lerp(.3, .07, dk); // bem batida passa rente à rede (abaixo da altura de finalização do jogador da rede)
+      // defesa: volta baixa e tensa (não precisa ser curta), para não dar smash/acelerada fácil; só a ruim flutua
+      spec.T = lerp(1.08, .7, dk) * lerp(1.06, .94, attrK(p, 'def')) * (1 + weakK(p, 'def') * .18); // defensor fraco devolve mais flutuada
+      spec.margin = lerp(.24, .06, dk); // bem batida passa rente à rede (abaixo da altura de finalização do jogador da rede)
     }
   }
   let lobLong = 0, finisher = false, topK = 0; // topK: quanto efeito para baixo o golpe consegue (0 a 1)
