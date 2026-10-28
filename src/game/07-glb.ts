@@ -77,7 +77,7 @@ function dressSkin(p, root) {
   show('Skirt', skirt);
   const hs = look.hairStyle || '';
   show('Hair', !/careca/.test(hs)); show('Pony', fem && !/curto/.test(hs));
-  show('Glasses', !!look.glasses); show('ArmSleeve', r(2) < .22 && !c.canhoto); // o manguito do arquivo é do braço direito show('Calf', fem && r(3) < .3);
+  show('Glasses', !!look.glasses); show('ArmSleeve', r(2) < .22 && !c.canhoto); show('Calf', fem && r(3) < .3); // (o manguito do arquivo é do braço direito)
   // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
   tint(matOf('Body'), look.skin || '#c68a62', SKIN_BASE);
   tint(matOf('Hair'), look.hair || '#2a1a0e', HAIR_BASE);
