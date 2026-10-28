@@ -175,16 +175,31 @@ function flushSaves() {
 // grava o índice já (barato) e as carreiras um pouco depois da última mudança
 function writeSaves() { clearTimeout(saveT); saveT = setTimeout(flushSaves, 700); }
 if (typeof window !== 'undefined') { addEventListener('pagehide', flushSaves); addEventListener('beforeunload', flushSaves); document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) flushSaves(); }); }
+// a carreira só conta como "mexida neste aparelho" (data nova e subir para a nuvem) quando você joga: depois de entrar nela
+// com a nuvem já sincronizada (CL.crReady) e só se algo mudou de verdade desde que ela foi aberta/carregada/puxada
+// (abrir, olhar as abas ou só carregar não salva nada por cima da versão da nuvem)
+let crBase = null;
+const crSnap = () => JSON.stringify(Object.assign({}, $s.CR, { savedAt: 0 }));
+const crSnapBase = () => { crBase = $s.CR ? crSnap() : null; };
 const saveCareer = () => {
-  if ($s.CR) { $s.CR.id = $s.CR.id || 'c' + $s.CR.seed; $s.CR.savedAt = new Date().toISOString(); SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; DIRTY.add($s.CR.id); clMark($s.CR.id); }
+  if ($s.CR) {
+    $s.CR.id = $s.CR.id || 'c' + $s.CR.seed;
+    if (CL.crReady) { const sn = crSnap(); if (sn !== crBase) { crBase = sn; $s.CR.savedAt = new Date().toISOString(); clMark($s.CR.id); } }
+    SAVES.slots[$s.CR.id] = $s.CR; SAVES.active = $s.CR.id; DIRTY.add($s.CR.id);
+  }
   else if (SAVES.active) { DIRTY.add(SAVES.active); delete SAVES.slots[SAVES.active]; SAVES.active = null; }
   writeSaves();
 };
 // ---------- nuvem (Supabase): conta por e-mail e senha; as carreiras sobem sozinhas a cada save ----------
 // a chave é a pública (publishable): cada usuário só lê e grava as próprias carreiras (RLS na tabela careers)
 const SB_URL = 'https://oantsbdmqdhaokzgfqki.supabase.co', SB_KEY = 'sb_publishable_Co99x5KdqV59ZdZrffHy5A_mqtIecse';
-const CL = { sess: null, dirty: new Set(), t: 0, busy: false, msg: '', onChange: null };
+const CL = { sess: null, dirty: new Set(), t: 0, busy: false, msg: '', onChange: null, crReady: false, prefsReady: false, synced: false, syncP: null, onPulled: null };
 try { CL.sess = JSON.parse(localStorage.getItem('pdo-cloud') || 'null'); } catch (e) {}
+CL.prefsReady = !CL.sess; // sem conta, as configurações deste aparelho valem desde o começo
+// carreiras mexidas neste aparelho que ainda não subiram (sobrevive a fechar o jogo): ao abrir, só elas sobem; as outras,
+// a versão da nuvem vale
+const CL_PEND = new Set((() => { try { return JSON.parse(localStorage.getItem('pdo-cloud-pend') || '[]'); } catch (e) { return []; } })());
+const pendStore = () => { try { localStorage.setItem('pdo-cloud-pend', JSON.stringify([...CL_PEND])); } catch (e) {} };
 const clStore = () => { try { if (CL.sess) localStorage.setItem('pdo-cloud', JSON.stringify(CL.sess)); else localStorage.removeItem('pdo-cloud'); } catch (e) {} };
 const clNote = m => { CL.msg = m; if (CL.onChange) CL.onChange(); };
 const AUTH_ERR = { 'Invalid login credentials': 'E-mail ou senha errados.', 'User already registered': 'Já existe uma conta com esse e-mail.', 'Email not confirmed': 'Confirme o e-mail (link enviado para a sua caixa de entrada) antes de entrar.' };
@@ -221,33 +236,45 @@ async function clUpload(id) {
 async function clFlush() {
   if (!CL.sess || CL.busy || !CL.dirty.size) return;
   CL.busy = true; const ids = [...CL.dirty]; CL.dirty.clear();
-  try { for (const id of ids) await clUpload(id); clNote('Salvo na nuvem às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.'); }
+  try { for (const id of ids) { await clUpload(id); CL_PEND.delete(id); } pendStore(); clNote('Salvo na nuvem às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.'); }
   catch (e) { ids.forEach(id => CL.dirty.add(id)); clNote('Não consegui salvar na nuvem (' + e.message + '). Tento de novo no próximo save.'); }
   CL.busy = false;
 }
 // marca para subir (agrupa: sobe alguns segundos depois do último save)
-function clMark(id) { if (!CL.sess || !id) return; CL.dirty.add(id); clearTimeout(CL.t); CL.t = setTimeout(clFlush, 5000); }
+function clMark(id) { if (!id) return; CL_PEND.add(id); pendStore(); if (!CL.sess) return; CL.dirty.add(id); clearTimeout(CL.t); CL.t = setTimeout(clFlush, 5000); }
 const clList = async () => (await sbRest('careers?select=id,name,season,week,updated_at&id=neq.__prefs&order=updated_at.desc')) || [];
 async function clFetch(id) { const r = await sbRest('careers?select=data&id=eq.' + encodeURIComponent(id)); if (!r || !r[0]) throw new Error('carreira não encontrada na nuvem'); return clUnpack(r[0].data); }
 const clRemove = id => sbRest('careers?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
 // baixa da nuvem para este navegador (substitui a versão local)
-async function clPull(id) { const c = await clFetch(id); c.id = c.id || id; SAVES.slots[c.id] = c; DIRTY.add(c.id); flushSaves(); return c.id; }
+async function clPull(id) {
+  const c = await clFetch(id); c.id = c.id || id; SAVES.slots[c.id] = c; DIRTY.add(c.id); CL_PEND.delete(c.id); pendStore();
+  if (SAVES.active === c.id) { $s.CR = c; crMigrate(); crSyncChars(); crSnapBase(); if (CL.onPulled) CL.onPulled(); } // era a carreira aberta: passa a ser a da nuvem
+  flushSaves(); return c.id;
+}
 // personagens das carreiras salvas na nuvem (para jogar online), da mais recente para a mais antiga
 async function clCareerChars() {
   const rows = (await sbRest('careers?select=id,data&id=neq.' + PREFS_ID + '&order=updated_at.desc')) || [];
   return rows.map(r => { try { const c = crCharFromSave(clUnpack(r.data)); return c ? { id: r.id, c } : null; } catch (e) { return null; } }).filter(Boolean);
 }
-// ao entrar: sobe as carreiras locais que a nuvem não tem (ou tem mais antigas)
+// ao abrir o jogo / entrar na conta: a da nuvem vale (puxa se for diferente da daqui); só sobe a carreira que foi mexida neste
+// aparelho depois da última sincronização (e não ficou mais velha que a da nuvem) e a que a nuvem ainda não tem
 async function clSyncAll() {
   try {
     const rows = await clList(), cloud = new Map(rows.map(r => [r.id, r]));
-    Object.values(SAVES.slots).forEach(c => { const r = cloud.get(c.id); if (!r || clTime(c.savedAt) > clTime(r.updated_at) + 1000) CL.dirty.add(c.id); });
-    await clFlush(); clSyncPrefs(); return rows;
+    for (const c of Object.values(SAVES.slots)) {
+      const r = cloud.get(c.id); if (!r) { CL.dirty.add(c.id); continue; }
+      const lt = clTime(c.savedAt), rt = clTime(r.updated_at);
+      if (CL_PEND.has(c.id) && lt >= rt - 1000) CL.dirty.add(c.id);
+      else if (Math.abs(lt - rt) > 1000) await clPull(c.id);
+      else if (CL_PEND.delete(c.id)) pendStore();
+    }
+    await clFlush(); await clSyncPrefs(); return rows;
   } catch (e) { clNote('Nuvem: ' + e.message); return []; }
+  finally { CL.synced = true; CL.prefsReady = true; }
 }
 const clLocalTime = id => clTime(SAVES.slots[id] && SAVES.slots[id].savedAt);
 // configurações do jogo (e nomes/alturas editados) também ficam na conta: linha especial '__prefs' na mesma tabela.
-// A mais nova vence; a qualidade gráfica fica de cada aparelho
+// Vale a da nuvem, a não ser que você tenha mexido nelas neste aparelho; a qualidade gráfica fica de cada aparelho
 const PREFS_ID = '__prefs';
 const prefsAt = () => +(localStorage.getItem('pdo-prefs-at') || 0);
 function prefsPack() { const st = Object.assign({}, S.settings); delete st.gfx; return { s: st, names: NAMES, heights: HEIGHTS, at: prefsAt() || Date.now() }; }
@@ -255,20 +282,28 @@ async function clPushPrefs() {
   if (!CL.sess) return;
   const d = prefsPack();
   await sbRest('careers?on_conflict=user_id,id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ id: PREFS_ID, name: 'Configurações', season: 0, week: 0, data: JSON.stringify(d), updated_at: new Date(d.at).toISOString() }) });
+  try { localStorage.removeItem('pdo-prefs-pend'); } catch (e) {} // subiu: não está mais pendente
 }
 let prefsT = 0;
-S.onPrefsSaved = () => { if (!CL.sess) return; clearTimeout(prefsT); prefsT = setTimeout(() => clPushPrefs().catch(() => {}), 4000); };
-// ao entrar: se a da nuvem for mais nova, aplica aqui; senão, sobe a deste aparelho
+// configurações mexidas neste aparelho (depois da sincronização ao abrir o jogo) e que ainda não subiram
+const prefsPend = () => { try { return localStorage.getItem('pdo-prefs-pend') === '1'; } catch (e) { return false; } };
+S.onPrefsSaved = () => {
+  if (!CL.prefsReady) return; // ao abrir o jogo, antes de puxar as da nuvem, nada conta como mexido
+  try { localStorage.setItem('pdo-prefs-pend', '1'); } catch (e) {}
+  if (!CL.sess) return; clearTimeout(prefsT); prefsT = setTimeout(() => clPushPrefs().catch(() => {}), 4000);
+};
+// ao entrar: se você mexeu nas configurações neste aparelho, sobem as daqui; senão, as da nuvem valem
 async function clSyncPrefs() {
   try {
     const r = await sbRest('careers?select=data,updated_at&id=eq.' + PREFS_ID), row = r && r[0];
     const remote = row ? JSON.parse(row.data) : null;
-    if (remote && (remote.at || 0) > prefsAt()) {
+    if (remote && !prefsPend()) {
+      const before = JSON.stringify([S.settings, NAMES, HEIGHTS]);
       const gfx = S.settings.gfx; Object.assign(S.settings, remote.s || {}); if (gfx) S.settings.gfx = gfx;
       Object.keys(NAMES).forEach(k => delete NAMES[k]); Object.assign(NAMES, remote.names || {});
       Object.keys(HEIGHTS).forEach(k => delete HEIGHTS[k]); Object.assign(HEIGHTS, remote.heights || {});
       try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); localStorage.setItem('pdo-names', JSON.stringify(NAMES)); localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); localStorage.setItem('pdo-prefs-at', String(remote.at)); } catch (e) {}
-      if (CL.onPrefs) CL.onPrefs();
+      if (CL.onPrefs && JSON.stringify([S.settings, NAMES, HEIGHTS]) !== before) CL.onPrefs();
     } else await clPushPrefs();
   } catch (e) {}
 }
@@ -307,7 +342,7 @@ function crCharFromSave(c) {
 }
 const crSlotChar = id => crCharFromSave(SAVES.slots[id]);
 function crCharFromJSON(text) { let o; try { o = JSON.parse(text); } catch (e) { return null; } return crCharFromSave(o && o.formato === SAVE_FMT ? o.carreira : o); }
-function crLoadSlot(id) { const c = SAVES.slots[id]; if (!c) return false; $s.CR = c; SAVES.active = id; writeSaves(); crMigrate(); crSyncChars(); return true; }
+function crLoadSlot(id) { const c = SAVES.slots[id]; if (!c) return false; $s.CR = c; SAVES.active = id; writeSaves(); crMigrate(); crSyncChars(); crSnapBase(); return true; }
 // sai da carreira atual sem apagar (volta para a lista)
 function crCloseSlot() { $s.CR = null; SAVES.active = null; writeSaves(); crSyncChars(); }
 function crDeleteSlot(id) { delete SAVES.slots[id]; DIRTY.add(id); if (SAVES.active === id) { SAVES.active = null; $s.CR = null; crSyncChars(); } flushSaves(); }
@@ -1551,6 +1586,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { clCareerChars, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };

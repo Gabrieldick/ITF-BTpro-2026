@@ -9,7 +9,7 @@ import { ac } from './08-audio';
 import { BALL_STYLES, setBallStyle } from './07-glb';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
+import { crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -17,7 +17,13 @@ let crTab = 'agenda';
 const money = v => '$' + Math.round(v).toLocaleString('pt-BR');
 let crEntry = '';
 document.querySelectorAll('[data-entry]').forEach(b => b.addEventListener('click', () => { crEntry = b.dataset.entry; renderCareer(); }));
-function openCareer() { readMenu(); el.menu.hidden = true; $('career').hidden = false; document.body.classList.add('in-menu'); if ($s.CR) { crMigrate(); crSyncChars(); } renderCareer(); }
+function openCareer() {
+  readMenu(); el.menu.hidden = true; $('career').hidden = false; document.body.classList.add('in-menu');
+  // com conta: espera a sincronização ao abrir o jogo (puxa a versão da nuvem) antes de a carreira passar a salvar
+  // o que a própria tela gera ao abrir (migração, opções da semana) não conta como jogar: a base é tirada depois do 1º desenho
+  const go = () => { if ($s.CR) { crMigrate(); crSyncChars(); } if (CL.msg === 'Sincronizando com a nuvem…') CL.msg = ''; renderCareer(); if (!CL.based) { CL.based = true; crSnapBase(); } CL.crReady = true; };
+  if (CL.sess && !CL.synced && CL.syncP) { CL.msg = 'Sincronizando com a nuvem…'; renderCareer(); CL.syncP.then(go, go); } else go();
+}
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -428,7 +434,8 @@ const acctBtnTxt = () => { const b = $('btnAcct'); if (b) b.textContent = CL.ses
 $('btnAcct').addEventListener('click', () => { $('acctSlot').appendChild($('crCloud')); renderCloud(); $('acctOv').hidden = false; });
 $('acctClose').addEventListener('click', () => { $('acctOv').hidden = true; $('crAccount').appendChild($('crCloud')); acctBtnTxt(); });
 // login automático: a sessão fica guardada neste navegador; ao abrir o jogo ela é renovada e as carreiras/configurações sincronizam
-if (CL.sess) clSyncAll().then(() => acctBtnTxt());
+if (CL.sess) CL.syncP = clSyncAll().then(() => acctBtnTxt());
+CL.onPulled = () => { if (!$('career').hidden) renderCareer(); }; // a carreira aberta foi trocada pela da nuvem
 acctBtnTxt();
 CL.onChange = () => { acctBtnTxt(); if (!$('crSaves').hidden || !$('crAccount').hidden || !$('acctOv').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {

@@ -525,14 +525,18 @@ function setPaused(v) { if (!inPlay() && v) return; { const sr = document.getEle
 function togglePause() { if (!inPlay()) return; setPaused(NET.role ? el.pause.hidden : !S.paused); }
 function saveSettings() { if (NET.role) return; // online: as escolhas da sala não sobrescrevem as suas
   // só marca como alterado (e sobe para a conta) quando algo mudou de verdade
-  let changed = false;
-  try { const js = JSON.stringify(S.settings), old = localStorage.getItem('pdo-settings'); changed = js !== old; if (changed) { localStorage.setItem('pdo-settings', js); if (old !== null) localStorage.setItem('pdo-prefs-at', String(Date.now())); else changed = false; } } catch (e) {} // a 1ª gravação (aparelho novo) não conta como mudança
-  if (changed && S.onPrefsSaved) S.onPrefsSaved(); } // conta na nuvem: as configurações sobem junto
+  let changed = false, real = false;
+  try { const js = JSON.stringify(S.settings), old = localStorage.getItem('pdo-settings'); changed = js !== old;
+    if (changed) { localStorage.setItem('pdo-settings', js); if (old !== null) { localStorage.setItem('pdo-prefs-at', String(Date.now()));
+      // gravação vinda da leitura do menu (readMenu, ao abrir carreira/jogo/online): só conta como "mexeu" se mudou algo que já
+      // existia (opção nova do jogo ganhando o valor padrão não conta); qualquer mudança feita por você conta
+      const o = JSON.parse(old) || {}; real = !S.quietSave || Object.keys(S.settings).some(k => o[k] !== undefined && JSON.stringify(o[k]) !== JSON.stringify(S.settings[k])); } else changed = false; } } catch (e) {} // a 1ª gravação (aparelho novo) não conta como mudança
+  if (changed && real && S.onPrefsSaved) S.onPrefsSaved(); } // conta na nuvem: as configurações sobem junto
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil) S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal';
-  saveSettings();
+  S.quietSave = true; saveSettings(); S.quietSave = false;
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
