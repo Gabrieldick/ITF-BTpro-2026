@@ -260,9 +260,28 @@ function headGeo(fem) {
   }
   g.computeVertexNormals(); return g;
 }
+// estampa da camiseta do boneco desenhado (u = volta no tronco, frente no meio; v = de cima para baixo)
+function drawPattern(x, w, h, pat, c2) {
+  x.save(); x.fillStyle = c2; x.strokeStyle = c2;
+  if (pat === 'listras') for (let y = 0; y < h; y += h / 10) x.fillRect(0, y, w, h / 20);
+  else if (pat === 'faixas') for (let u = 0; u < w; u += w / 14) x.fillRect(u, 0, w / 50, h);
+  else if (pat === 'diagonal') { x.beginPath(); x.moveTo(w * .3, 0); x.lineTo(w * .42, 0); x.lineTo(w * .72, h); x.lineTo(w * .6, h); x.fill(); }
+  else if (pat === 'degrade') { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, c2); g.addColorStop(.7, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); }
+  else if (pat === 'lateral') { x.fillRect(w * .18, 0, w * .12, h); x.fillRect(w * .7, 0, w * .12, h); }
+  else if (pat === 'chevron') { x.lineWidth = h / 22; for (let k = 0; k < 4; k++) { x.beginPath(); x.moveTo(w * .25, h * (.15 + k * .2)); x.lineTo(w * .5, h * (.27 + k * .2)); x.lineTo(w * .75, h * (.15 + k * .2)); x.stroke(); } }
+  else if (pat === 'bolinhas') for (let y = h / 16; y < h; y += h / 8) for (let u = (y / (h / 8)) % 2 ? w / 24 : 0; u < w; u += w / 12) { x.beginPath(); x.arc(u, y, h / 40, 0, Math.PI * 2); x.fill(); }
+  else if (pat === 'camuflado') { const r = mulberry(7); for (let i = 0; i < 60; i++) { x.beginPath(); x.ellipse(r() * w, r() * h, 6 + r() * 16, 4 + r() * 10, r() * 3, 0, Math.PI * 2); x.fill(); } }
+  else if (pat === 'ombros') x.fillRect(0, 0, w, h * .2);
+  else if (pat === 'ondas') { x.lineWidth = h / 30; for (let k = 0; k < 7; k++) { x.beginPath(); for (let u = 0; u <= w; u += 4) { const y = h * (.08 + k * .14) + Math.sin(u / w * Math.PI * 8) * h * .025; u ? x.lineTo(u, y) : x.moveTo(u, y); } x.stroke(); } }
+  else if (pat === 'tropical') { const r = mulberry(11); for (let i = 0; i < 26; i++) { const cx = r() * w, cy = r() * h, a = r() * 6.3; x.beginPath(); x.ellipse(cx, cy, 16, 5, a, 0, Math.PI * 2); x.fill(); } }
+  x.restore();
+}
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function shirtTex(o) {
   return canvasTex(256, 256, (x, w, h) => {
     x.fillStyle = o.shirt; x.fillRect(0, 0, w, h);
+    if (o.pattern && o.pattern !== 'liso') drawPattern(x, w, h, o.pattern, o.shirt2 || o.trim);
+    if (o.logo) { x.fillStyle = o.shirt2 || o.trim; x.font = 'bold ' + Math.round(h * .07) + 'px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.logo.toUpperCase().slice(0, 14), w * .5, h * .3); }
     for (let i = 0; i < 2600; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)'; x.fillRect(Math.random() * w, Math.random() * h, 2, 1); }
     x.fillStyle = o.trim; x.fillRect(w * .2, 0, w * .06, h); x.fillRect(w * .74, 0, w * .06, h); x.fillRect(0, 0, w, h * .05);
     x.font = 'bold ' + Math.round(h * .24) + 'px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
@@ -366,4 +385,4 @@ function profR(prof, y) {
   return best;
 }
 
-export { setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
+export { drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };

@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary } from './00-base';
+import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
@@ -118,7 +118,23 @@ function crLookHTML() {
     + (me.fem ? '' : '<label class="cr-field">Barba ' + sel('crLkBeard', BEARDS, L.beard) + '</label>')
     + '<label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
     + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label></div>'
+    + crOutfitHTML()
     + '<p class="cr-note">Vale a partir da próxima partida.</p>';
+}
+// uniforme próprio: modelo, estampa, cores e o logo de um patrocinador ativo (a marca paga 20% a mais com o logo na camisa)
+function crOutfitHTML() {
+  const me = $s.CR.me, O = me.look.outfit, W = $s.CR.wardrobe, fem = !!me.fem;
+  const sel = (id, opts, v) => '<select id="' + id + '" class="cr-sel">' + opts.map(([k, n]) => '<option value="' + k + '"' + (k === (v || '') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+  const own = (list, cat) => list.filter(k => cat[k] && (!cat[k].fem || fem)).map(k => [k, cat[k].nome]);
+  let h = '<p class="section-label">Uniforme</p><label class="cr-field">' + sel('crOfOn', [['', 'Uniforme da equipe'], ['1', 'Meu uniforme']], O ? '1' : '') + '</label>';
+  if (!O) return h + '<p class="cr-note">Compre modelos de blusa, estampas e bermuda/saia na Loja e monte o seu.</p>';
+  const sw = (key, cur) => OUTFIT_COLORS.map(c => '<button type="button" class="cr-sw' + (cur === c ? ' sel' : '') + '" data-of-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
+  h += '<div class="cr-look"><label class="cr-field">Blusa ' + sel('crOfTop', own(W.tops, TOP_KINDS), O.top) + '</label><label class="cr-field">Estampa ' + sel('crOfPat', own(W.pats, PATTERNS), O.pat) + '</label>'
+    + '<label class="cr-field">Embaixo ' + sel('crOfBot', own(W.bots, BOT_KINDS), O.bot) + '</label>'
+    + '<label class="cr-field">Logo ' + sel('crOfLogo', [['', 'Sem logo']].concat($s.CR.sponsors.map(x => [x.brand, x.brand])), O.logo) + '</label></div>'
+    + '<div class="cr-sws"><div><span class="cr-lbl">Cor da blusa</span>' + sw('c1', O.c1) + '</div><div><span class="cr-lbl">Cor da estampa</span>' + sw('c2', O.c2) + '</div><div><span class="cr-lbl">Cor de baixo</span>' + sw('bc', O.bc) + '</div></div>'
+    + ($s.CR.sponsors.length ? '<p class="cr-note">Com o logo de um patrocinador na blusa, ele paga 20% a mais por semana.</p>' : '');
+  return h;
 }
 function bindLook() {
   const L = () => $s.CR.me.look, done = () => { crSyncChars(); saveCareer(); renderCareer(); };
@@ -129,6 +145,10 @@ function bindLook() {
   on('crLkBeard', v => { L().beard = v; });
   on('crLkAcc', v => { const l = L(); delete l.cap; delete l.visor; delete l.headband; if (v === 'cap') l.cap = '#fbf6ea'; else if (v === 'visor') l.visor = '#fbf6ea'; else if (v === 'band') l.headband = '#ff5a1f'; else l.headband = ''; }); // '' impede a faixa automática
   on('crLkGlass', v => { L().glasses = !!v; });
+  on('crOfOn', v => { if (v) L().outfit = { top: 'tee', pat: 'liso', bot: 'short', c1: '#1f6fd1', c2: '#fbf6ea', bc: '#17324d', logo: '' }; else delete L().outfit; });
+  const OF = () => L().outfit || {};
+  on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = v; });
+  ['c1', 'c2', 'bc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k] = b.getAttribute('data-of-' + k); done(); } })));
 }
 function crPersonRow(c, extra, btn) {
   const fw = c.id === 'crme' ? null : crFormWord(c.id);
@@ -170,9 +190,17 @@ function crShopHTML() {
     const own = !!$s.CR.staff[x.id];
     return '<div class="cr-row' + (own ? ' me' : '') + '"><span class="cr-ic">' + (x.head ? '🧢' : '👤') + '</span><div><b>' + x.nome + '</b><small>' + x.desc + (x.head ? ' Só um técnico principal por vez.' : '') + '</small></div>' + (own ? '<span class="cr-own">contratado</span>' : '<button class="cta sm" data-hire="' + x.id + '"' + ($s.CR.money < x.preco ? ' disabled' : '') + '>' + money(x.preco) + '</button>') + '</div>';
   }).join('');
+  // roupas: modelos de blusa, partes de baixo e estampas (as cores e o logo do patrocinador se escolhem na aba do jogador)
+  const W = $s.CR.wardrobe, fem = !!$s.CR.me.fem;
+  const cl = [['tops', TOP_KINDS, '👕'], ['bots', BOT_KINDS, '🩳'], ['pats', PATTERNS, '🎨']].map(([slot, cat, ic]) => Object.entries(cat).filter(([k, c]) => !c.fem || fem).map(([k, c]) => {
+    const own = W[slot].includes(k);
+    return '<div class="cr-row"><span class="cr-ic">' + ic + '</span><div><b>' + c.nome + '</b><small>' + (slot === 'pats' ? 'Estampa' : slot === 'tops' ? 'Modelo de blusa' : 'Parte de baixo') + '</small></div>'
+      + (own ? '<span class="cr-own">comprado</span>' : '<button class="cta sm" data-cloth="' + slot + ':' + k + '"' + ($s.CR.money < c.preco ? ' disabled' : '') + '>' + money(c.preco) + '</button>') + '</div>';
+  }).join('')).join('');
   return (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '')
     + '<div class="cr-two"><div><p class="section-label">🎾 Raquetes (' + Object.keys(RACKET_STATS).length + ')</p><div class="cr-list">' + rk + '</div></div>'
-    + '<div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list" style="max-height:260px">' + st + '</div><p class="section-label" style="margin-top:10px">🎒 Equipamentos</p><div class="cr-list" style="max-height:220px">' + gr + '</div></div></div>';
+    + '<div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list" style="max-height:260px">' + st + '</div><p class="section-label" style="margin-top:10px">🎒 Equipamentos</p><div class="cr-list" style="max-height:220px">' + gr + '</div></div></div>'
+    + '<p class="section-label" style="margin-top:10px">👕 Roupas (monte o uniforme na aba Jogador)</p><div class="cr-list" style="max-height:260px">' + cl + '</div>';
 }
 function crBizHTML() {
   const tracks = Object.entries(INVEST).map(([k, tr]) => {
@@ -355,6 +383,11 @@ function bindCareerBody() {
   body.querySelectorAll('[data-sp-ok]').forEach(bt => bt.addEventListener('click', () => { const o = $s.CR.spOffers.splice(+bt.dataset.spOk, 1)[0]; if (o && $s.CR.sponsors.length < 2) { $s.CR.sponsors.push(Object.assign(o, { left: o.weeks })); $s.CR.lastMsg = 'Contrato assinado com ' + o.brand + '.'; } saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-sp-no]').forEach(bt => bt.addEventListener('click', () => { $s.CR.spOffers.splice(+bt.dataset.spNo, 1); saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-equip]').forEach(bt => bt.addEventListener('click', () => { $s.CR.racket = bt.dataset.equip; $s.CR.me.look.racket = $s.CR.racket; saveCareer(); renderCareer(); }));
+  body.querySelectorAll('[data-cloth]').forEach(bt => bt.addEventListener('click', () => {
+    const [slot, k] = bt.dataset.cloth.split(':'), c = (slot === 'tops' ? TOP_KINDS : slot === 'bots' ? BOT_KINDS : PATTERNS)[k];
+    if (!c || $s.CR.money < c.preco || $s.CR.wardrobe[slot].includes(k)) return;
+    $s.CR.money -= c.preco; $s.CR.wardrobe[slot].push(k); $s.CR.lastMsg = 'Comprou: ' + c.nome + '. Monte o uniforme na aba Jogador.'; saveCareer(); renderCareer();
+  }));
   body.querySelectorAll('[data-gear]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gear); if ($s.CR.money >= g.preco) { $s.CR.money -= g.preco; if (g.staff) $s.CR.staff[g.id] = true; else $s.CR.gear.push(g.id); $s.CR.lastMsg = 'Comprou: ' + g.nome + '.'; crSyncChars(); saveCareer(); } renderCareer(); }));
   body.querySelectorAll('input[name=crGames]').forEach(r => r.addEventListener('change', () => { $s.CR.games = +r.value; saveCareer(); }));
   const ms = $('crMeSide'); if (ms) ms.addEventListener('change', () => { $s.CR.side = ms.value; saveCareer(); });

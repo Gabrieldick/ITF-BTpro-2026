@@ -1447,6 +1447,7 @@ function careerMatchEnded(won, rating) {
 // ---------- saves antigos ----------
 function crMigrate() {
   if (!$s.CR) return;
+  $s.CR.wardrobe = $s.CR.wardrobe || { tops: ['tee'], bots: ['short'], pats: ['liso'] }; // roupas compradas
   $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0;
   if ($s.CR.staff.tecnico) { delete $s.CR.staff.tecnico; $s.CR.staff.tec2 = true; }
   if ($s.CR.staff.preparador) { delete $s.CR.staff.preparador; $s.CR.staff.prep = true; }
@@ -1533,7 +1534,8 @@ function crMaybeSponsor(force) {
 }
 function crSponsorWeek() {
   let paid = 0; const ended = [];
-  $s.CR.sponsors.forEach(s => { paid += s.weekly; s.left--; if (s.left <= 0) ended.push(s.brand); });
+  const lg = (($s.CR.me.look || {}).outfit || {}).logo; // logo na camisa: a marca paga 20% a mais
+  $s.CR.sponsors.forEach(s => { paid += Math.round(s.weekly * (s.brand === lg ? 1.2 : 1)); s.left--; if (s.left <= 0) ended.push(s.brand); });
   $s.CR.sponsors = $s.CR.sponsors.filter(s => s.left > 0);
   $s.CR.money += paid;
   return (paid ? 'Patrocínios: +' + money(paid) + '.' : '') + (ended.length ? ' Contrato encerrado: ' + ended.join(', ') + '.' : '');

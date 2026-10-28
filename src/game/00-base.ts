@@ -94,6 +94,17 @@ function lookExtras(c) {
   if (L.glasses) { x.glassStyle = r(6) < .3 ? 'redondo' : 'sport'; x.lens = LENS[Math.floor(r(7) * LENS.length)]; }
   return x;
 }
+// roupas (loja da carreira): modelos de blusa, estampas e partes de baixo; as cores o jogador escolhe. id da estampa = o
+// número usado no shader do modelo realista e no desenho da camiseta do boneco desenhado
+const TOP_KINDS = { tee: { nome: 'Camiseta', preco: 0 }, tank: { nome: 'Regata', preco: 180 }, crop: { nome: 'Cropped', preco: 220, fem: true } };
+const BOT_KINDS = { short: { nome: 'Short', preco: 0 }, bermuda: { nome: 'Bermuda', preco: 200 }, saia: { nome: 'Saia pregueada', preco: 240, fem: true } };
+const PATTERNS = {
+  liso: { nome: 'Lisa', preco: 0, id: 0 }, listras: { nome: 'Listras', preco: 150, id: 1 }, faixas: { nome: 'Faixas verticais', preco: 160, id: 2 },
+  diagonal: { nome: 'Faixa diagonal', preco: 200, id: 3 }, degrade: { nome: 'Degradê', preco: 260, id: 4 }, lateral: { nome: 'Painéis laterais', preco: 220, id: 5 },
+  chevron: { nome: 'Chevron', preco: 280, id: 6 }, bolinhas: { nome: 'Bolinhas', preco: 240, id: 7 }, camuflado: { nome: 'Camuflada', preco: 320, id: 8 },
+  ombros: { nome: 'Ombros de outra cor', preco: 200, id: 9 }, ondas: { nome: 'Ondas', preco: 300, id: 10 }, tropical: { nome: 'Tropical (folhas)', preco: 360, id: 11 },
+};
+const OUTFIT_COLORS = ['#ff5a1f', '#ffd23f', '#e2364a', '#ff86c0', '#9b5cff', '#1f6fd1', '#17324d', '#0b7a83', '#3fd17a', '#2e9e57', '#fbf6ea', '#ffffff', '#9aa3ad', '#141414'];
 const GEAR = [
   { id: 'viseira', nome: 'Viseira pro', preco: 150, desc: 'Menos sol no rosto no saque e no smash.', b: { saque: 1, smash: 1 } },
   { id: 'munhequeira', nome: 'Munhequeira e grip premium', preco: 250, desc: 'Empunhadura firme no backhand.', b: { backhand: 2, curta: 1 } },
@@ -304,4 +315,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

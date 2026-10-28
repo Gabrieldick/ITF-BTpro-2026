@@ -2,7 +2,7 @@
 // laço principal e início
 import './18-animacao';
 import * as THREE from 'three';
-import { STEP, RACKET_STATS } from './00-base';
+import { STEP, RACKET_STATS, charById } from './00-base';
 import { makeRacket } from './05-atletas';
 import { S, NET } from './01-estado';
 import { camera, renderer, scene } from './02-render';
@@ -87,7 +87,7 @@ function start(data) {
     setupPoint(); setPaused(true);
   }
   renderBoard();
-  window.__pdo = { NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, PALM, GLB, makeRacket, RACKET_STATS, applyPlayerStyle };
+  window.__pdo = { NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, PALM, GLB, makeRacket, RACKET_STATS, applyPlayerStyle, assignCharacters, charById };
   loadModels().then(ok => {
     assignCharacters(); configureMode();
     if (!ok) { const fs2 = document.getElementById('fsPlayers'); if (fs2) fs2.hidden = true; }

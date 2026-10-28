@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { assetBuf } from '../assets';
-import { G, KITS, V3, charById, clamp, effA, hScale, heightOf, nameOf, racketBonus, rand , lookExtras } from './00-base';
+import { PATTERNS, G, KITS, V3, charById, clamp, effA, hScale, heightOf, nameOf, racketBonus, rand , lookExtras } from './00-base';
 import { S } from './01-estado';
 import { camera, canvasTex, col, mat, scene } from './02-render';
 import { RACKETS, SHADOW_TEX, capsuleGeo, makeRacket, setRacketModels } from './05-atletas';
@@ -88,7 +88,7 @@ function attachSkin(p, gltf) {
     }
     k.hand[S] = { mi: new THREE.Matrix4().makeBasis(dl, pl, new V3().crossVectors(dl, pl)).transpose(), fingers, len: wp(m1).distanceTo(wp(H)) };
   }
-  k.mh = new THREE.Box3().setFromObject(root).max.y || 1.8; k.s = 1; // altura do modelo (para a escala pela altura do personagem)
+  k.mh = new THREE.Box3().setFromObject(root).max.y || 1.8; k.s = 1; root.userData.mh = k.mh; // altura do modelo (para a escala pela altura do personagem)
   dressSkin(p, root);
   k.racket.traverse(m => { if (m.isMesh) m.castShadow = true; }); scene.add(k.racket);
   p.skin = k;
@@ -100,6 +100,49 @@ const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
 const HAIR_PARTS = ['Hair', 'HairCards', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards'];
 const BEARDS = ['Beard', 'Goatee', 'Mustache'];
+// estampa da blusa no modelo realista: desenhada no shader pela posição de repouso do tecido (acompanha o tecido no
+// movimento); logo do patrocinador no peito
+const PAT_GLSL = `
+float pHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float pNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(pHash(i), pHash(i + vec2(1.0, 0.0)), f.x), mix(pHash(i + vec2(0.0, 1.0)), pHash(i + vec2(1.0, 1.0)), f.x), f.y); }
+float patF(int id, vec3 q, float H) {
+  float y = q.y / H, x = q.x, yy = q.y;
+  if (id == 1) return step(0.5, fract(y * 22.0));
+  if (id == 2) return step(0.78, fract(x * 14.0 + 0.5));
+  if (id == 3) return 1.0 - step(0.05, abs(x * 0.9 + (yy - H * 0.72) * 0.8));
+  if (id == 4) return smoothstep(0.58, 0.8, y);
+  if (id == 5) return step(0.125, abs(x));
+  if (id == 6) return step(0.55, fract(y * 10.0 + abs(x) * 6.0));
+  if (id == 7) { vec2 g = vec2(x * 18.0, yy * 18.0); g.x += step(1.0, mod(floor(g.y), 2.0)) * 0.5; return 1.0 - step(0.2, length(fract(g) - 0.5)); }
+  if (id == 8) { float n = pNoise(vec2(x, yy) * 9.0) * 0.65 + pNoise(vec2(x, yy) * 23.0) * 0.35; return step(0.56, n); }
+  if (id == 9) return step(0.795, y);
+  if (id == 10) return step(0.6, fract(y * 14.0 + sin(x * 26.0) * 0.22));
+  if (id == 11) { vec2 g = vec2(x, yy) * 7.0; float n = pNoise(g) + 0.5 * pNoise(g * 2.3 + 7.0); float l = abs(fract(g.x * 1.7 + g.y * 0.6) - 0.5); return step(0.92, n) * step(0.12, l); }
+  return 0.0;
+}`;
+const LOGO_TEX = {};
+function logoTex(brand, color) {
+  const k = brand + color; if (LOGO_TEX[k]) return LOGO_TEX[k];
+  const c = document.createElement('canvas'); c.width = 512; c.height = 160; const x = c.getContext('2d');
+  x.fillStyle = color; x.textAlign = 'center'; x.textBaseline = 'middle'; let fs = 96; x.font = '900 ' + fs + 'px Arial, sans-serif';
+  while (x.measureText(brand.toUpperCase()).width > 480 && fs > 30) { fs -= 6; x.font = '900 ' + fs + 'px Arial, sans-serif'; }
+  x.fillText(brand.toUpperCase(), 256, 80);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (LOGO_TEX[k] = t);
+}
+function patShirt(m, id, c2, logo, logoCol, H) {
+  const U = m.userData.pat || (m.userData.pat = { uPat: { value: 0 }, uC2: { value: new THREE.Color() }, uH: { value: 1.76 }, uLogo: { value: null }, uLogoOn: { value: 0 } });
+  U.uPat.value = id; U.uC2.value.copy(c2); U.uH.value = H; U.uLogo.value = logo ? logoTex(logo, logoCol) : null; U.uLogoOn.value = logo ? 1 : 0;
+  if (m.userData.patOn) return; m.userData.patOn = true;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\nuniform int uPat; uniform vec3 uC2; uniform float uH; uniform sampler2D uLogo; uniform float uLogoOn;' + PAT_GLSL)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+      diffuseColor.rgb = mix(diffuseColor.rgb, uC2, patF(uPat, vRest, uH));
+      if (uLogoOn > 0.5 && vRest.z > 0.0) { vec2 lu = vec2((vRest.x + 0.09) / 0.18, (vRest.y - uH * 0.735) / 0.056); if (lu.x > 0.0 && lu.x < 1.0 && lu.y > 0.0 && lu.y < 1.0) { vec4 lc = texture2D(uLogo, lu); diffuseColor.rgb = mix(diffuseColor.rgb, lc.rgb, lc.a); } }`);
+  };
+  m.customProgramCacheKey = () => 'patShirt'; m.needsUpdate = true;
+}
 function dressSkin(p, root) {
   const look = p.look || {}, c = p.char || {}, fem = !!look.fem;
   let h = 2166136261; for (const ch of String(c.id || c.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
@@ -108,11 +151,12 @@ function dressSkin(p, root) {
   const show = (n, on) => (parts[n] || []).forEach(o => { o.visible = on; o.userData.off = !on; });
   const matOf = n => (parts[n] || [])[0] && parts[n][0].material;
   // roupa: homens de camiseta (às vezes regata); mulheres de regata + short, cropped + saia, camiseta + saia ou macacão (regata + saia da mesma cor)
-  let top, skirt = false, dress = false;
-  if (fem) { const o = Math.floor(r(1) * 4); top = ['tank', 'crop', 'tee', 'tank'][o]; skirt = o > 0; dress = o === 3; }
-  else top = r(1) < .72 ? 'tee' : 'tank';
+  let top, skirt = false, dress = false, berm = false;
+  if (look.top) { top = look.top === 'crop' && !fem ? 'tee' : look.top; skirt = fem && look.bottom === 'saia'; berm = look.bottom === 'bermuda'; } // uniforme próprio
+  else if (fem) { const o = Math.floor(r(1) * 4); top = ['tank', 'crop', 'tee', 'tank'][o]; skirt = o > 0; dress = o === 3; }
+  else { top = r(1) < .72 ? 'tee' : 'tank'; berm = r(6) < .25; }
   ['tee', 'tank', 'crop'].forEach(t => show('Top_' + t, t === top));
-  show('Skirt', skirt);
+  show('Skirt', skirt); show('Bermuda', berm && !skirt); show('Shorts', !(berm && !skirt));
   // cabelo: cada corte é um conjunto de peças do arquivo (casca, mechas, borda, rabo, coque…); barba idem
   const hs = look.hairStyle || '';
   const cut = fem ? ({ coque: ['Hair', 'HairCards', 'HairFringe', 'Bun'], longo: ['Hair', 'HairLong', 'HairFringe'], cacheado: ['Hair', 'HairLong', 'HairFringe'], curto: ['Hair', 'HairBob', 'HairFringe'] }[hs] || ['Hair', 'HairCards', 'HairFringe', 'Pony', 'PonyCards'])
@@ -137,7 +181,10 @@ function dressSkin(p, root) {
   for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => tint(o.material, look.skin || '#c68a62', SKIN_BASE));
   for (const n of HAIR_PARTS.concat(BEARDS, BEARDS.map(x => x + 'Edge'))) (parts[n] || []).forEach(o => tint(o.material, look.hair || '#2a1a0e', HAIR_BASE));
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
-  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) m.color.copy(shirt); });
+  // estampa: a do uniforme próprio; os outros jogadores ganham uma (sempre a mesma para cada um) na cor do detalhe do time
+  const pat = look.pattern || ['liso', 'liso', 'liso', 'listras', 'lateral', 'ombros', 'degrade', 'faixas', 'chevron'][Math.floor(r(7) * 9)];
+  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) { m.color.copy(shirt); patShirt(m, PATTERNS[pat] ? PATTERNS[pat].id : 0, col(look.shirt2 || look.trim || '#fbf6ea'), look.logo, look.shirt2 || look.trim || '#fbf6ea', p.skin ? p.skin.mh : (root.userData.mh || 1.76)); } });
+  if (matOf('Bermuda')) matOf('Bermuda').color.copy(shorts);
   if (matOf('Shorts')) matOf('Shorts').color.copy(dress ? shirt : shorts);
   if (matOf('Skirt')) matOf('Skirt').color.copy(dress ? shirt : shorts);
   const trim = col(look.trim || '#fbf6ea');
@@ -303,7 +350,10 @@ function assignCharacters() {
     if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .885)); a = m; }
     p.char = Object.assign({}, c, { a });
     const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
-    const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
+    // uniforme próprio (carreira): blusa, estampa, cores, parte de baixo e logo do patrocinador no lugar do uniforme da equipe
+    const OF = c.look && c.look.outfit;
+    if (OF) Object.assign(look, { shirt: OF.c1, shirt2: OF.c2, pattern: OF.pat, top: OF.top, bottom: OF.bot, shorts: OF.bc, logo: OF.logo || '' });
+    const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (OF ? JSON.stringify(OF) : '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
     if (p.lookKey !== lk || (GLB.male && GLB.female && !p.skin)) { rebuildModel(p, look); p.lookKey = lk; } // (os modelos 3D podem ter terminado de carregar depois)
     p.playStyle = playStyleOf(c);
     p.skill = p.isHuman ? null : charSkill(p);

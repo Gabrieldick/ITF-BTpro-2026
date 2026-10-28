@@ -189,10 +189,10 @@ def top_keep(p, kind, m=0.):
         return abs(p[0]) < ax - m
     if p[1] > neckline(p, P.get('neckF', .28), .08) - m: return False
     return (not arm) or sleeve_t(p) < P.get('sleeve', .38) - m * .3
-def shorts_keep(p, m=0.):
+def shorts_keep(p, m=0., L=None):
     if p[1] > WAIST0 + .05 - m: return False
     if p[1] > j0('upperleg01.L')[1] + .3: return True
-    return thigh_t(p) < P.get('shortLen', .5) - m * .3
+    return thigh_t(p) < (L or P.get('shortLen', .5)) - m * .3
 def armfrac(v):
     d = VW.get(v, {}); t = sum(d.values()) or 1; return sum(w for b, w in d.items() if 'Arm' in b or 'Hand' in b) / t
 def top_keep_v(v, m):
@@ -232,6 +232,9 @@ for kind in TOPS:
     finepart('Top_' + kind if ALL else 'Shirt', top_sup, SHIRT_M, lambda p, k=kind: top_keep(p, k), shirt_disp, cuts=2)
 TOP = TOPS[0]
 finepart('Shorts', sh_sup, mat('Shorts', srgb(botC if BOT == 'shorts' else P.get('under', botC)), .8), shorts_keep, lambda p: .065)
+if ALL:  # bermuda (loja da carreira): até perto do joelho, mais solta embaixo
+    bm_sup = [f for f in tf if any(shorts_keep(V0[v], 0, .8) for v in f[0])]
+    finepart('Bermuda', bm_sup, mat('Bermuda', srgb(botC), .82), lambda p: shorts_keep(p, 0, .8), lambda p: .07 + .06 * smooth01(.3, .8, thigh_t(p)) * (p[1] < j0('upperleg01.L')[1] + .3))
 if BOT in ('skirt', 'dress') or (ALL and fem):  # saia pregueada por cima do short: da cintura até o comprimento pedido
     hem = j0('upperleg01.L')[1] - P.get('skirtLen', 2.1)
     sk = [f for f in F if f[2] == 'helper-skirt']
