@@ -270,13 +270,14 @@ function updateHuman(dt, c = localCtl()) {
   const len = Math.hypot(ix, iz);
   p.inputX = ix; p.inputZ = iz;
   const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
-  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1);
+  if (p.diveRec > 0) p.diveRec = Math.max(0, p.diveRec - dt);
+  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8); // depois do mergulho: começa a 55% e volta ao normal
   let tvx = ix * spd, tvz = iz * spd;
   if (p.dive) {
     p.dive.t += dt;
     if (p.dive.t < .28) { tvx = p.dive.dx * p.dive.spd; tvz = p.dive.dz * p.dive.spd; p.vel.x = tvx; p.vel.z = tvz; }
     else { tvx = 0; tvz = 0; p.vel.x *= .6; p.vel.z *= .6; if (!p.dive.landed) { p.dive.landed = true; puff(p.pos.x, p.pos.z, 14, .9); } }
-    if (p.dive.t >= p.dive.dur) p.dive = null;
+    if (p.dive.t >= p.dive.dur) { p.dive = null; p.diveRec = .8; } // levantou: ainda volta devagar por ~0,8 s
   }
   const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');
   if (serving) {

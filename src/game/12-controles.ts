@@ -139,7 +139,7 @@ function tryDive(type, p = human) {
     if (pos.y < C.ballR) break;
     if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && pos.y < 1.1) {
       const dx = pos.x - p.pos.x, dz = pos.z - p.pos.z, d = Math.hypot(dx, dz), r = 1.35;
-      if (d > r * .95 && d < r + 1.25 && t > .12) { S.hadDive = true; p.dive = { t: 0, dur: .9, dx: dx / d, dz: dz / d, spd: Math.min(7, (d - r * .7) / .28) }; return; }
+      if (d > r * .95 && d < r + 1.25 && t > .12) { S.hadDive = true; p.dive = { t: 0, dur: 1.35, dx: dx / d, dz: dz / d, spd: Math.min(7, (d - r * .7) / .28) }; return; } // ~1 s no chão
     }
   }
 }

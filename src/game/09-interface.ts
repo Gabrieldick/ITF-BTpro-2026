@@ -376,7 +376,7 @@ function drillNext() {
   const st = D.seq[d.step || 0];
   if (st === 'saque') return drillServe();
   S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; ball.threat = 0; d.lastR = null;
-  human.swing.t = -1; human.charging = false; human.dive = null;
+  human.swing.t = -1; human.charging = false; human.dive = null; human.diveRec = 0;
   // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
   const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2], buscar: [1, 2.6, 2] }[st];
   const z0 = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2] }[D.seq[0]];
@@ -434,7 +434,7 @@ function drillServe() {
   const d = S.drill;
   d.tgt = d.lvl === 1 || d.lvl === 3 ? ['aberto', 'meio', 'fundo'][Math.floor(Math.random() * 3)] : null;
   S.server = 0; S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; S.hitId++; ball.state = 'held'; ball.vel.set(0, 0, 0); ball.gk = 1; ball.finisher = false; d.lastR = null;
-  $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.dive = null; p.feed = null; });
+  $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.dive = null; p.diveRec = 0; p.feed = null; });
   MTR.active = false; el.meter.hidden = true;
   S.serverPlayer = human; human.pos.set((d.n % 2 ? -.7 : .7), 0, 8.6);
   const coach = $s.teams[1][0]; coach.pos.set(0, 0, -(ZONE3 + .3));
