@@ -143,6 +143,14 @@ function doHit(p, type, q, isServe, mod) {
       } else if (!pop && Math.random() < lerp(.75, .45, dk) * (ball.finPerf ? 1.2 : 1)) pop = true; // a que volta: quase sempre levantada
     }
   }
+  // defesa colada na rede contra smash forte que não é finalização (do meio/fundo): a bola chega rápido, quase sem tempo de
+  // reação; quanto mais perto da rede e mais potente o smash (o perfeito é o mais potente), mais vai na rede, sai ou levanta
+  if (!isServe && !ball.finisher && ball.smashPow > 0 && !netFin && Math.abs(p.pos.z) < 3.4) {
+    const close = clamp((3.4 - Math.abs(p.pos.z)) / 1.8, 0, 1), dk = lerp(1.15, .65, Math.min(1, attrK(p, 'def')));
+    if (wild && close > .3) finOut = true; // a que espirrou aqui sai de verdade
+    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)), r2 = Math.random();
+    if (!wild && !pop && r2 < pl) { const u = r2 / pl; if (u < .45) netFin = true; else if (u < .85) finOut = wild = true; else { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } }
+  }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
   // defesa: quanto melhor o golpe (timing/posição) e o atributo, mais baixa e rápida ela volta; só a ruim flutua
   if (!pop && key === 'defesa') {
