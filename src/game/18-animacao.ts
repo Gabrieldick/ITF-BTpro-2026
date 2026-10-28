@@ -333,7 +333,9 @@ function updateCamera(dt) {
     const d = dupla() ? 1 : 0, V = CAM3[S.settings.cam3] || CAM3.padrao, dk = (S.settings.camDist || 100) / 100, hk = (S.settings.camHeight || 100) / 100;
     const bz = lerp(6, human.pos.z, V.zf); // profundidade que a câmera acompanha
     tmpA.set(human.pos.x * V.fx[d], V.ly + (V.h[d] - V.ly) * dk * hk, bz + V.back[d] * dk); camPos.lerp(tmpA, k);
-    tmpB.set(human.pos.x * V.lx[d], V.ly, bz + V.lz); camLook.lerp(tmpB, k);
+    // bola muito alta (lob alto): a câmera olha um pouco para cima, para ela não sumir da tela e "reaparecer" já caindo
+    const hb = ball.state === 'live' ? clamp((ball.pos.y - 4) * .45, 0, 2.6) : 0;
+    tmpB.set(human.pos.x * V.lx[d], V.ly + hb, bz + V.lz); camLook.lerp(tmpB, k);
   } else {
     const bob = Math.abs(Math.sin(human.gait)) * .025 * Math.min(1, Math.hypot(human.vel.x, human.vel.z) / 4);
     if (fpBodyOn) { human.model.headG.localToWorld(_eye.set(-.04, .11, -.06)); camPos.copy(_eye); }

@@ -8,7 +8,7 @@
 // Também dá para fazer um campeonato: chave com todos da sala (completada com CPU), uma partida por vez.
 import './19-loop';
 import { $s } from '../state';
-import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, velMul, accOf, accelStep, backZ, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, voleioOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
+import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, velMul, accOf, accelStep, backZ, backAcc, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, voleioOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
@@ -722,7 +722,7 @@ function predictOwn(dt, now, newest, ix, iz) {
   if (!PR.on) { Object.assign(PR, { on: true, x: p.pos.x, z: p.pos.z, vx: p.vel.x, vz: p.vel.z, hist: [] }); }
   const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (p.charging ? .75 : 1);
   const tvx = ix * spd, tvz = backZ(PR.z > 0 ? 0 : 1, iz * spd); // mesma aceleração (e para trás mais lento) do anfitrião; lado pela posição (a tela do convidado pode estar espelhada)
-  [PR.vx, PR.vz] = accelStep(PR.vx, PR.vz, tvx, tvz, dt, accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (p.burst > 0 && len > .1 ? 1.6 : 1));
+  [PR.vx, PR.vz] = accelStep(PR.vx, PR.vz, tvx, tvz, dt, backAcc(PR.z > 0 ? 0 : 1, tvz, accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (p.burst > 0 && len > .1 ? 1.6 : 1)));
   PR.x += PR.vx * dt; PR.z += PR.vz * dt;
   const lim = C.halfW + 3, recv = S.mode === 'serve' || S.mode === 'toss'; // quem não saca fica atrás dos 3 m até o saque
   PR.x = clamp(PR.x, -lim, lim); PR.z = clamp(PR.z, recv ? ZONE3 + .05 : .4, 11.5);

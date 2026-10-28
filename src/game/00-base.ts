@@ -280,9 +280,11 @@ function accelStep(vx, vz, tvx, tvz, dt, acc) {
   const ts = Math.hypot(tvx, tvz), sp = Math.hypot(vx, vz), brake = ts < sp - .1 || tvx * vx + tvz * vz < .5 * ts * sp;
   const m = Math.min(dv, (brake ? ACC_STOP : acc) * dt); return [vx + dvx / dv * m, vz + dvz / dv * m];
 }
-// correr para trás (de costas para a rede, atrás de um lob) é mais lento: a parte do movimento que se afasta da rede vale 78%
-const BACK_K = .78;
+// correr para trás (de costas para a rede, atrás de um lob) é mais lento: a parte do movimento que se afasta da rede vale 68%
+// e a arrancada para trás é mais fraca (precisa virar o corpo): quem está colado na rede não busca um lob bom no fundo
+const BACK_K = .68, BACK_ACC = .55;
 const backZ = (team, vz) => (team === 0 ? vz > 0 : vz < 0) ? vz * BACK_K : vz;
+const backAcc = (team, vz, acc) => (team === 0 ? vz > .3 : vz < -.3) ? acc * BACK_ACC : acc;
 // distância "de corrida" até um ponto: o trecho para trás conta como mais longo
 const runDist = (team, dx, dz) => Math.hypot(dx, (team === 0 ? dz > 0 : dz < 0) ? dz / BACK_K : dz);
 // tempo para correr x metros saindo parado (acelerando até a velocidade máxima v)
@@ -301,4 +303,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, runDist, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

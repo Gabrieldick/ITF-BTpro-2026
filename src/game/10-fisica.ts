@@ -173,17 +173,22 @@ function doHit(p, type, q, isServe, mod) {
     // finalização com a barra perfeita: um foguete para baixo, mesmo para quem ainda não tem tanta força
     if (mod.perfect) spec.speed *= 1.05;
   }
-  // smash contra lob chutado perfeito: quem chega lá correu para trás e bate mal (fraco, impreciso, erra mais).
-  // Se alcançou ainda na zona de finalização (o lob não passou), é finalização normal
-  if (!isServe && key === 'smash' && ball.kick && !finisher) {
-    finisher = false; spec.speed *= .62; spec.noise *= 2; spec.label = 'SMASH RECUANDO';
-    mod.misBoost = (mod.misBoost || 0) + .28 * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
+  // encoberto pelo lob (estava na rede quando o lob saiu): volta correndo de costas e devolve mal — fraco, impreciso, erra e
+  // levanta mais (menos para quem é rápido). O peso (ball.lobSev) vem do lob: chutado perfeito 1, médio ~.55, alto ~.4
+  const lobBeat = !isServe && ball.lobSev > 0 && !!ball.kickBeat && ball.kickBeat.includes(p), sev = lobBeat ? ball.lobSev : 0;
+  // smash recuando: se alcançou ainda na zona de finalização (o lob não passou), é finalização normal
+  if (lobBeat && key === 'smash' && !finisher && sev >= .5) {
+    spec.speed *= lerp(1, .62, sev); spec.noise *= lerp(1, 2, sev); spec.label = 'SMASH RECUANDO';
+    mod.misBoost = (mod.misBoost || 0) + .3 * sev * lerp(1.2, .7, attrK(p, 'smash')); mod.oppMissBoost = 0;
   }
-  // qualquer outra devolução de quem estava na rede e foi encoberto pelo lob chutado: volta correndo de costas e devolve mal
-  // (fraco, impreciso, erra e levanta mais; menos para quem é rápido)
-  if (!isServe && key !== 'smash' && ball.kick && ball.kickBeat && ball.kickBeat.includes(p)) {
-    const vk = Math.min(1, attrK(p, 'vel')); mod.misBoost = (mod.misBoost || 0) + lerp(.24, .12, vk); spec.noise *= 1.4; mod.speedMul = (mod.speedMul || 1) * .88;
-    if (!pop && Math.random() < lerp(.35, .2, vk)) { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } // levantou (como o pop da pressão)
+  // smash batido ainda correndo para trás (voltando atrás de um lob, mesmo dos 3 m): sai mais fraco e mais impreciso
+  if (!isServe && key === 'smash' && !finisher && !mod.volley && spec.label !== 'SMASH RECUANDO') {
+    const bv = p.team === 0 ? p.vel.z : -p.vel.z, k = clamp((bv - 1) / 1.8, 0, 1);
+    if (k > 0) { spec.speed *= lerp(1, .78, k); spec.noise *= 1 + .6 * k; mod.misBoost = (mod.misBoost || 0) + .14 * k; mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - k); if (k > .4) spec.label = 'SMASH RECUANDO'; }
+  }
+  if (lobBeat && key !== 'smash') {
+    const vk = Math.min(1, attrK(p, 'vel')); mod.misBoost = (mod.misBoost || 0) + lerp(.3, .16, vk) * sev; spec.noise *= 1 + .45 * sev; mod.speedMul = (mod.speedMul || 1) * (1 - .14 * sev);
+    if (!pop && Math.random() < lerp(.45, .28, vk) * sev) { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } // levantou (como o pop da pressão)
   }
   // smash na devolução de saque: contra saque rasante é difícil (bola baixa, pouco tempo para subir na rede) e sai ruim;
   // só contra saque que subiu muito (saque muito ruim) o smash sai normal. Vale para todos
@@ -211,7 +216,7 @@ function doHit(p, type, q, isServe, mod) {
     // lob com pouca força sai chutado: baixo, rápido e caindo forte; só o carregado sobe alto e devagar
     // médio (meio da barra, .32–.75): já sobe bem acima de quem está na rede (~4–6 m), mas menos que o alto e caindo com menos
     // constância no fundo; o alto (.75–1) é o mais alto e o mais fundo
-    spec.T = lp < .32 ? lerp(.95, 2.6, Math.pow(lp, 2.2)) : lp < .75 ? lerp(1.4, 1.8, Math.pow((lp - .32) / .43, .8)) : lerp(2, 2.6, (lp - .75) / .25);
+    spec.T = lp < .32 ? lerp(.95, 2.6, Math.pow(lp, 2.2)) : lp < .75 ? lerp(1.4, 1.8, Math.pow((lp - .32) / .43, .8)) : lerp(2, 2.3, (lp - .75) / .25); // alto: até ~8 m
     spec.depth = [lerp(4.8, 6.4, Math.pow(lp, 1.4)), lerp(7.1, 7.6, lp)]; if (lp > .32 && lp < .75) spec.noise *= 1.25;
     spec.margin = lerp(.25, .4, lp); spec.gk = lerp(1.6, 1.1, Math.sqrt(lp));
     spec.label = lp < .35 ? 'LOB CHUTADO' : lp < .75 ? 'LOB' : 'LOB ALTO';
@@ -289,22 +294,15 @@ function doHit(p, type, q, isServe, mod) {
   if (dir > 0 && tgt.z < .4) tgt.z = .4;
   let v;
   if (spec.kick && !pop) {
-    // lob chutado perfeito: acima do alcance do smash de quem está na frente dos 3 m, inclusive se ele der um passo e meio para
-    // trás, e ainda acima do alcance normal até uns 3 m atrás dele (não dá para recuar e pegar no meio da quadra); só então
-    // despenca no fundo (gravidade maior = efeito de bola caindo forte). Se não couber no tempo, a bola sobe um pouco mais devagar
-    const nets = $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6).sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z));
-    const np = nets[0], nd = nets[nets.length - 1];
-    const z1 = (np ? np.pos.z : dir * 2.2) + dir * 1.1, H1 = (np ? 3.0 * hScale(np) : 3.0) + .45;
-    const z2 = (nd ? nd.pos.z : dir * 2.2) + dir * 3.2, H2 = (nd ? 2.6 * hScale(nd) : 2.6) + .15;
+    // lob chutado perfeito: passa acima do alcance do smash de quem está colado na rede, mesmo recuando (≥ 3,3 m de altura
+    // aos 3,2 m da rede), e despenca no fundo: quem estava colado não chega mais; quem estava nos 3 m ainda chega para o smash,
+    // sem folga. Efeito de queda até ~2,6× a gravidade; se não couber, a bola voa um pouco mais (até ~1,05 s)
+    const zK = dir * 3.2, HK = 3.3;
     const yAt = z => { const t = (z - ball.pos.z) / v.z; return t <= 0 ? 99 : ball.pos.y + v.y * t - .5 * G * spec.gk * t * t; };
-    for (let j = 0; j < 6; j++) {
+    for (let j = 0; j < 2; j++) {
       spec.gk = 1.3;
-      for (let i = 0; i < 40; i++) {
-        v = solveShot(ball.pos, tgt, spec);
-        if ((yAt(z1) >= H1 && yAt(z2) >= H2) || spec.gk >= 4.5) break;
-        spec.gk *= 1.06;
-      }
-      if (yAt(z1) >= H1 && yAt(z2) >= H2) break;
+      for (let i = 0; i < 20; i++) { v = solveShot(ball.pos, tgt, spec); if (yAt(zK) >= HK || spec.gk >= 2.6) break; spec.gk *= 1.04; }
+      if (yAt(zK) >= HK) break;
       spec.T += .05;
     }
   } else if (!pop && !wild && spec.speed && (finisher || topK > 0 || (isServe && type === 'smash'))) {
@@ -353,7 +351,11 @@ function doHit(p, type, q, isServe, mod) {
   }
   ball.threat = threat;
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
-  { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop; ball.kickBeat = ball.kick ? $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 3.6) : null;
+  { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
+  // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o
+  // peso de ter sido encoberto
+  ball.lobSev = key === 'lob' && !isServe && !pop && !wild ? (spec.kick ? 1 : (spec.T || 0) >= 1.95 ? .4 : (spec.T || 0) >= 1.35 ? .55 : 0) : 0;
+  ball.kickBeat = ball.lobSev ? $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 2.4) : null;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
   S.lastTeam = p.team; S.hitId++; S.rally++;
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
