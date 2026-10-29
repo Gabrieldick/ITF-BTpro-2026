@@ -12,7 +12,8 @@ const READY = P({});
 // quadros-chave em u = 0, .3 (armado), .45 (contato), .75 (terminação), 1
 const KU = [0, .3, .45, .75, 1];
 const SMASH_U = [0, .3, .37, .45, .72, 1]; // o smash tem uma fase extra: a raquete cai atrás das costas
-const uOf = t => t.startsWith('smash') ? SMASH_U : KU;
+const SERVE_HIT_U = [0, .16, .33, .45, .72, 1]; // saque: mais tempo para a raquete cair atrás das costas (contato no mesmo .45)
+const uOf = t => t === 'smash_saque' ? SERVE_HIT_U : t.startsWith('smash') ? SMASH_U : KU;
 const ACT = {
   smash: [READY,
     P({ rh: [.32, .68, .18], rp: [.8, .9, .1], wx: -.5, lh: [-.05, 1.05, -.32], lp: [-.6, 0, .6], tw: -.85, lean: -.28, bend: -.12, crouch: .2 }),
@@ -95,9 +96,11 @@ Object.assign(ACT, {
     READY],
   // golpe do saque: da posição de troféu a raquete cai atrás das costas, as pernas empurram (corpo sobe), o tronco gira,
   // o contato sai com o braço todo esticado e a terminação cruza o corpo até o lado esquerdo, com o peso indo para a frente
-  smash_saque: [READY,
-    P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.85, lean: -.26, bend: -.12, crouch: .34, stag: .1, feet: .5 }),
-    P({ rh: [.24, .52, .34], rp: [.5, 1.0, .1], wx: -1.7, wr: .2, lh: [-.06, .66, -.24], lp: [-.8, -.2, .3], tw: -.55, lean: -.32, bend: -.1, crouch: .06, feet: .55 }),
+  // saque: a batida começa do troféu (sem voltar para a pose de espera); o cotovelo sobe e a raquete cai atrás das costas
+  // (cabeça da raquete apontando para baixo), faz a laçada subindo até o contato no alto e termina cruzando o corpo
+  smash_saque: [P({ rh: [.3, .7, .2], rp: [.7, .9, .2], wx: -1.0, lh: [.05, 1.0, -.34], lp: [-.9, 0, .3], tw: -.85, lean: -.26, bend: -.12, crouch: .34, stag: .1, feet: .5 }),
+    P({ rh: [.26, .6, .27], rp: [.5, 1.0, .0], wx: -.55, wr: .25, lh: [-.02, .8, -.3], lp: [-.85, -.1, .3], tw: -.78, lean: -.3, bend: -.12, crouch: .3, stag: .1, feet: .52 }),
+    P({ rh: [.15, .42, .28], rp: [.3, 1.0, -.1], wx: 0, wr: .3, lh: [-.08, .6, -.24], lp: [-.8, -.25, .3], tw: -.55, lean: -.32, bend: -.1, crouch: .14, feet: .55 }),
     P({ rh: [.16, 1.12, -.24], rp: [.5, .3, .7], wx: .25, wr: .25, lh: [-.24, .38, -.06], lp: [-.8, -.4, .2], tw: .22, lean: .04, bend: -.02, crouch: 0 }),
     P({ rh: [-.3, .12, -.26], rp: [.7, .2, -.3], wx: .6, wr: 1.2, lh: [-.2, .26, .14], lp: [-.8, -.5, 0], tw: .85, lean: .55, bend: .1, crouch: .24, lunge: .3 }),
     READY],
