@@ -112,10 +112,11 @@ function doHit(p, type, q, isServe, mod) {
     const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5 + (key === 'defesa' ? .06 : 0), 0, 1);
     grade = qq;
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
-    let pOut = pressure * (1 - qq) * .45 * risk * wDef, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef;
+    const fpE = S.femPace ? .6 : 1; // feminino: a pancada força menos o erro (mais trocas)
+    let pOut = pressure * (1 - qq) * .45 * risk * wDef * fpE, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef * fpE;
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
-    if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk; pPop += .14 * ball.smashPow * dk; }
+    if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk * fpE; pPop += .14 * ball.smashPow * dk * fpE; }
     const r0 = Math.random();
     if (r0 < pOut) wild = true; else if (r0 < pOut + pPop) pop = true;
   }
@@ -130,7 +131,7 @@ function doHit(p, type, q, isServe, mod) {
       if (fc.team !== p.team) { fc.team = p.team; fc.n = 0; }
       const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), kf = { defesa: 1, lob: 1.04, drive: 1.06, curta: 1.1, smash: 1.1 }[key] || 1.05;
       const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
-      const pf = Math.min(.97, ((ball.finPerf ? lerp(.95, .85, dk) : lerp(.9, .7, dk)) * lerp(1.08, .92, tq) + fc.n * .06) * kf), r1 = Math.random();
+      const pf = Math.min(.97, ((ball.finPerf ? lerp(.95, .85, dk) : lerp(.9, .7, dk)) * lerp(1.08, .92, tq) + fc.n * .06) * kf) * (S.femPace ? .6 : 1), r1 = Math.random(); // feminino: a finalização define menos
       fc.n++;
       if (r1 < pf) {
         wild = pop = false; const u = r1 / pf;
@@ -148,7 +149,7 @@ function doHit(p, type, q, isServe, mod) {
   if (!isServe && !ball.finisher && ball.smashPow > 0 && !netFin && Math.abs(p.pos.z) < 3.4) {
     const close = clamp((3.4 - Math.abs(p.pos.z)) / 1.8, 0, 1), dk = lerp(1.15, .65, Math.min(1, attrK(p, 'def')));
     if (wild && close > .3) finOut = true; // a que espirrou aqui sai de verdade
-    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)), r2 = Math.random();
+    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)) * (S.femPace ? .55 : 1), r2 = Math.random();
     if (!wild && !pop && r2 < pl) { const u = r2 / pl; if (u < .45) netFin = true; else if (u < .85) finOut = wild = true; else { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } }
   }
   // curta contra bola rápida (smash, saque forte): o toque é uma aposta — vai na rede, levanta ou sai bem mais que a defesa;
@@ -234,8 +235,11 @@ function doHit(p, type, q, isServe, mod) {
     if (mod.lobKick) { spec.T = 1; spec.depth = [6.7, 7.5]; spec.margin = .5; spec.kick = true; spec.label = 'LOB CHUTADO'; } // mais rápido e fundo
     lobLong = Math.max(0, mod.lobPower - 1);
   }
-  if (spec.speed) spec.speed *= mod.speedMul || 1;
-  if (spec.T) spec.T /= mod.speedMul || 1;
+  // jogo feminino (só mulheres em quadra): bola mais lenta — smash e saque perdem mais, o resto um pouco —, o que dá mais
+  // tempo para defender e alonga as trocas (~1,5 a 2× o masculino)
+  const fpK = S.femPace ? 1 - (key === 'smash' ? .2 : isServe ? .14 : .09) : 1;
+  if (spec.speed) spec.speed *= (mod.speedMul || 1) * fpK;
+  if (spec.T) spec.T /= (mod.speedMul || 1) * fpK;
   spec.noise *= mod.noiseMul || 1;
   // saque lob PERFEITO: sobe mais que o lob mais alto do jogo normal, cai devagar e fundo (o recebedor erra mais)
   if (isServe && type === 'lob' && mod.perfect) {
@@ -362,7 +366,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = (mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o
   // peso de ter sido encoberto
