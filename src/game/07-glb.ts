@@ -420,7 +420,7 @@ function driveSkin(p) {
   const k = p.skin, m = p.model, B = k.B;
   const vis = m.group.visible; k.holder.visible = vis; k.racket.visible = vis;
   if (!vis) return;
-  k.holder.position.copy(m.group.position); k.holder.rotation.y = m.group.rotation.y + k.faceFix;
+  k.holder.position.copy(m.group.position); k.holder.quaternion.copy(m.group.quaternion).multiply(_kFace.setFromAxisAngle(_kY, k.faceFix)); // rotação inteira do boneco (o peixinho tomba o corpo)
   for (const b of k.all) b.quaternion.copy(b.userData.rq);
   B.Hips.position.copy(B.Hips.userData.rp);
   k.holder.updateMatrixWorld(true);
@@ -484,6 +484,7 @@ function applyLefty(p) {
   p.lefty = !!(p.char && p.char.canhoto);
   p.model.group.scale.set(hScale(p) * (p.lefty ? -1 : 1), hScale(p), hScale(p));
 }
+const _kFace = new THREE.Quaternion(), _kY = new THREE.Vector3(0, 1, 0);
 function applyPlayerStyle() {
   const on = S.settings.players === '3d';
   for (const p of ALL) {

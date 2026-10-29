@@ -598,7 +598,8 @@ function crSimWorld(rnd, list, aw, ovrs) {
       }
     });
   });
-  if (best && best.perf > .75) { const T = TIERS[best.t]; crNews(pairName(best.a, best.b) + ' vencem o ' + T.curto + ' ' + T.cities[Math.floor(rnd() * T.cities.length)].replace(/^(BT\d+|Sand Series) /, '') + ' (' + pairTenure(best.a, best.b) + ').', '🏆'); }
+  if (best && best.perf > .75) { const T = TIERS[best.t], wt = $s.CR.wkTour, mine = c => wt && wt.w === aw && wt.name.includes(c.replace(/^(BT\d+|Sand Series) /, '')); // nunca o torneio que você jogou na semana
+    const cs = T.cities.filter(c => !mine(c)); if (cs.length) crNews(pairName(best.a, best.b) + ' vencem o ' + T.curto + ' ' + cs[Math.floor(rnd() * cs.length)].replace(/^(BT\d+|Sand Series) /, '') + ' (' + pairTenure(best.a, best.b) + ').', '🏆'); }
 }
 // um ano inteiro de resultados do mundo (criação da carreira e migração dos saves antigos)
 function crSimYear(seedK, list) {
@@ -1034,21 +1035,38 @@ function crEnter(opt) {
     }
   }
   // de vez em quando um astro de nível mais alto joga um BT10 a BT200 com um parceiro de ocasião (no máximo a cada 6 semanas)
-  let star = null;
-  if (opt.tier >= 3 && opt.tier <= 6 && !opt.special && field.length >= 4 && absWeek() - ($s.CR.lastStar || -99) >= 6 && rnd() < .22) {
-    const cands = crWorld().filter(c => !busy.has(c.id) && crCharOvr(c) >= T.ovr[1] + 5 && crCharOvr(c) <= T.ovr[1] + 14);
-    if (cands.length) {
-      star = cands[Math.floor(rnd() * cands.length)];
-      const n0 = field.length; field = field.filter(c => c.id !== star.id);
-      const weak = field.pop(); // o mais fraco da chave vira o parceiro do astro
-      if (field.length > n0 - 2) field.pop(); // mantém o número de duplas
-      $s.CR.lastStar = absWeek();
-      field.push(star, weak);
-      { const pm = ($s.CR.pairs || {})[star.id]; if (pm && crChar(pm)) crNews(shortOf(star) + ' joga o ' + T.curto + ' sem ' + shortOf(crChar(pm)) + ' nesta semana, ao lado de ' + shortOf(weak) + '.', '🎾'); }
+  // duplas do top 10 abaixo do BT400: no BT200 de 0 a 2 (às vezes uma delas vem como dupla alternativa: o astro com um
+  // parceiro mais fraco, do país dele ou uma promessa); no BT100 e no BT50, no máximo um astro numa dupla alternativa
+  const stars = [];
+  if (opt.tier >= 3 && opt.tier <= 6 && !opt.special) {
+    const PR = $s.CR.pairs || {}, fem = !!$s.CR.me.fem, seenT = new Set(), TL = [];
+    crWorld().forEach(c => { const m = PR[c.id]; if (!m || seenT.has(c.id)) return; seenT.add(c.id); seenT.add(m); TL.push([c.id, m, npcPts(c.id) + npcPts(m)]); });
+    TL.sort((x, y) => y[2] - x[2]); const top = new Set(); TL.slice(0, 10).forEach(([a, b]) => { top.add(a); top.add(b); });
+    const nTop = opt.tier === 6 ? (rnd() < .35 ? 0 : rnd() < .6 ? 1 : 2) : 0; // BT200: quantas do top 10 aparecem
+    const nAlt = opt.tier === 6 ? (nTop && rnd() < .5 ? 1 : 0) : opt.tier === 5 ? (rnd() < .3 ? 1 : 0) : opt.tier === 4 ? (rnd() < .15 ? 1 : 0) : 0;
+    // tira o top 10 da chave e devolve só as duplas sorteadas (inteiras)
+    const keepP = TL.slice(0, 10).filter(([a, b]) => !busy.has(a) && !busy.has(b)).sort(() => rnd() - .5).slice(0, Math.max(0, nTop - nAlt));
+    const keep = new Set(keepP.flatMap(([a, b]) => [a, b]));
+    field = field.filter(c => !top.has(c.id) || keep.has(c.id));
+    keepP.forEach(([a, b]) => [a, b].forEach(id => { if (!field.some(c => c.id === id)) { const c = crChar(id); if (c) field.unshift(c); } }));
+    // dupla alternativa: astro (do top 10 no BT200; senão quem está bem acima do nível) com um parceiro mais fraco
+    for (let k = 0; k < nAlt; k++) {
+      const pool = crWorld().filter(c => !busy.has(c.id) && !keep.has(c.id) && !stars.some(x => x[0] === c || x[1] === c) && (opt.tier === 6 ? top.has(c.id) : crCharOvr(c) >= T.ovr[1] + 4 && crCharOvr(c) <= T.ovr[1] + 14));
+      if (!pool.length) break;
+      const st = pool[Math.floor(rnd() * pool.length)], age = c => crAgeOf(c) || c.age || 25;
+      const mates = crWorld().filter(c => c.id !== st.id && !busy.has(c.id) && !keep.has(c.id) && crCharOvr(c) >= T.ovr[0] && crCharOvr(c) <= T.ovr[1] - 1 && (c.pais === st.pais || age(c) <= 22));
+      const mt = mates.length ? mates[Math.floor(rnd() * mates.length)] : field[field.length - 1];
+      if (!mt) break;
+      field = field.filter(c => c.id !== st.id && c.id !== mt.id); stars.push([st, mt]);
+      const pm = ($s.CR.pairs || {})[st.id]; if (pm && crChar(pm)) crNews(shortOf(st) + ' joga o ' + T.curto + ' sem ' + shortOf(crChar(pm)) + ' nesta semana, ao lado de ' + (age(mt) <= 22 ? 'uma promessa, ' : '') + shortOf(mt) + '.', '🎾');
     }
+    { const want = Math.max(0, need - 2 * stars.length), ids = new Set(field.map(c => c.id)), used = new Set(stars.flatMap(x => [x[0].id, x[1].id])); // completa a chave com quem está no nível
+      if (field.length < want) { const mid = (T.ovr[0] + T.ovr[1]) / 2; crWorld().filter(c => !busy.has(c.id) && !ids.has(c.id) && !used.has(c.id) && !top.has(c.id) && crCharOvr(c) >= T.ovr[0] - 4 && crCharOvr(c) <= T.ovr[1] + 2).sort((x, y) => Math.abs(crCharOvr(x) - mid) - Math.abs(crCharOvr(y) - mid) + (rnd() - .5) * 6).slice(0, want - field.length).forEach(c => field.push(c)); }
+      field.sort((x, y) => crCharOvr(y) - crCharOvr(x)); field.length = Math.min(field.length, want); }
   }
+  const star = stars.length ? stars[0][0] : null;
   const teams = [{ a: 'crme', b: $s.CR.partner, me: true }];
-  const pairs = star ? field.slice(0, -2) : field;
+  const pairs = field;
   // duplas com variedade: o mais forte que sobrou escolhe parceiro numa janela dos próximos (geralmente perto do nível dele,
   // às vezes bem mais fraco: um 61 com um 57); antes era sempre o vizinho da lista e todas ficavam iguais
   // diferença grande (mais de 6) é rara: na maioria das vezes volta para um parceiro mais próximo
@@ -1059,7 +1077,7 @@ function crEnter(opt) {
     let k = Math.min(left.length - 1, Math.floor(Math.pow(rnd(), 2.2) * Math.min(7, left.length)));
     if (oa - crCharOvr(left[k]) > 6 && rnd() > .15) while (k > 0 && oa - crCharOvr(left[k]) > 4) k--;
     const b = left.splice(k, 1)[0]; teams.push({ a: a.id, b: b.id }); } }
-  if (star) teams.push({ a: star.id, b: field[field.length - 1].id, star: true });
+  stars.forEach(([a, b]) => teams.push({ a: a.id, b: b.id, star: true }));
   // cabeças de chave: as duplas com mais pontos no ranking (soma dos dois) ficam nas pontas da chave — 4 numa chave de
   // 16, 2 numa de 8; o resto segue pela força (overall)
   const tPts = tm => [tm.a, tm.b].reduce((s, id) => s + (!id ? 0 : id === 'crme' ? crPts() : npcPts(id)), 0);
@@ -1069,6 +1087,7 @@ function crEnter(opt) {
   { const rest = teams.splice(Object.keys(seeds).length); rest.sort((x, y) => crTeamOvr(y) - crTeamOvr(x)); teams.push(...rest); }
   const me = teams.findIndex(t => t.me);
   const seedOrder = T.draw === 16 ? SEED16 : SEED8;
+  $s.CR.wkTour = { w: absWeek(), name: opt.name || '' };
   $s.CR.tour = { seeds, tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });

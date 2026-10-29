@@ -3,7 +3,7 @@
 import './17-bola';
 import * as THREE from 'three';
 import { $s } from '../state';
-import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shortOf, attrOf } from './00-base';
+import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, smooth, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
@@ -84,6 +84,7 @@ function armIK(p, arm, sh, target, pole) {
   if (keepOut(_iM, p, .19, .14)) { target.addScaledVector(_iM.sub(_iP), 2); ik2(arm.sh, arm.el, sh, target, pole, .285, .27); }
 }
 // passos por segundo (os dois pés somados) para a velocidade no chão
+const RLX_WX = .55, RLX_WR = .9; // punho andando solto
 const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
 function sideOf(p, pt) { const q = pt || ball.pos; return (q.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1); }
 const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
@@ -133,6 +134,10 @@ function animateAthlete(p, dt) {
     if (ak === 'curta_alta_fh' && p.swing.hit && ball.state === 'live' && S.lastTeam === p.team) { const f = p.team === 0 ? 1 : -1; pose.wr += clamp(Math.atan2(ball.vel.x * f * (p.lefty ? -1 : 1), -ball.vel.z * f), -.7, .7); } }
   else poseAt(p === human && fpBodyOn ? READY_FP_KEYS : READY_KEYS, READY_U, 0, pose);
   if (mirror) mirrorPose(pose);
+  // backhand de verdade: na preparação os ombros giram bem (as costas meio viradas para a rede, o ombro da raquete na
+  // frente), abrem até o contato e passam um pouco depois; o quadril acompanha menos
+  const bhTw = mirror && swingU >= 0 ? (swingU < .25 ? .48 * swingU / .25 : swingU < .45 ? .48 - .33 * (swingU - .25) / .2 : swingU < .75 ? .15 - .22 * (swingU - .45) / .3 : -.07 * (1 - (swingU - .75) / .25)) : 0;
+  p.bhTw = (p.bhTw || 0) + (bhTw - (p.bhTw || 0)) * Math.min(1, dt * 20);
   // backhand baixo com as duas mãos: a mão livre vai junto no cabo
   p.twoH = mirror && swingU >= 0 && pose.rh[1] < .38 ? Math.min(1, (.38 - pose.rh[1]) / .15) : 0;
   // a postura real persegue a postura-alvo: sem estalos ao começar, trocar de lado ou terminar um golpe
@@ -172,7 +177,16 @@ function animateAthlete(p, dt) {
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
   if (mateC && cel.t > .7) { const fy = Math.atan2(-(mateC.pos.x - p.pos.x), -(mateC.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
   else p.celYaw = undefined;
-  m.group.rotation.y = yaw;
+  m.group.rotation.set(0, yaw, 0); // (inteira: o tombo do peixinho não pode acumular de um quadro para o outro)
+  // peixinho de verdade: o corpo inteiro se lança na direção da bola, fica quase deitado na areia (de lado ou de peito) e
+  // depois se levanta; a esticada curta (sev baixo) continua só o afundo. tiltK: 0 em pé → 1 deitado
+  let tiltK = 0, tiltA = 0;
+  if (p.dive && !p.debug) { const D = p.dive, sevF = clamp(((D.sev ?? 1) - .35) / .45, 0, 1), up = Math.min(.45, D.dur * .4);
+    const tk = D.t < .26 ? smooth(0, .26, D.t) : D.t > D.dur - up ? smooth(0, up, D.dur - D.t) : 1;
+    tiltK = tk * sevF; tiltA = tiltK * 1.38;
+    if (tiltA > .01) { const ld = [Math.cos(yaw) * D.dx - Math.sin(yaw) * D.dz, Math.sin(yaw) * D.dx + Math.cos(yaw) * D.dz]; // direção do mergulho no espaço do jogador
+      _e.set(ld[1], 0, -ld[0]).normalize(); _q1.setFromAxisAngle(_e, tiltA); m.group.quaternion.multiply(_q1); } }
+  p.tiltK = tiltK;
   if (p.jump > 0) p.jump = Math.max(0, p.jump - dt);
   // mais split steps: (1) adversário armando o smash → pulinho antes do contato, para aterrissar pronto para defender;
   // (2) voltou correndo para a posição (ex.: depois de uma curta) e parou → pulinho de prontidão
@@ -188,13 +202,14 @@ function animateAthlete(p, dt) {
   const spU = p.split > 0 ? 1 - p.split / .26 : -1;
   const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .1 : 0);
   m.group.position.set(p.pos.x, jy, p.pos.z);
+  if (tiltK > 0) { const D = p.dive, la = D.t < .26 ? Math.sin(Math.PI * D.t / .26) * .14 : 0, sh = Math.sin(tiltA) * .5; m.group.position.x -= D.dx * sh; m.group.position.z -= D.dz * sh; m.group.position.y += la + Math.sin(tiltA) * .05; } // voo curto na saída; o corpo deitado fica centrado onde o jogador está
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
   p.strK = (p.strK || 0) + ((sp > .25 ? 1 : 0) - (p.strK || 0)) * Math.min(1, dt * (sp > .25 ? 10 : 6));
   const gF = stepCad(sp) / 2; // ciclos por segundo (por perna), igual à cadência dos pés
   if (p.strK > .01 && !p.feet) p.gait += dt * Math.PI * 2 * gF; // (com pés plantados a fase vem dos próprios passos, lá embaixo)
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
-  const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = (dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1) * (p.dive ? .45 + .55 * (p.dive.sev ?? 1) : 1); // esticada curta: só abaixa
+  const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = (dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1) * (p.dive ? .45 + .55 * (p.dive.sev ?? 1) : 1) * (1 - .85 * tiltK); // esticada curta: só abaixa (no peixinho deitado o tombo já faz isso)
   // bola longe do corpo no golpe: o jogador se estica (passo em afundo para o lado dela, tronco inclinado, mais baixo se a bola é baixa)
   let reachK = 0, reachS = 1, reachLow = 0;
   if (swingU >= 0 && swingU < .8 && ball.state === 'live' && p.swing.type !== 'smash') {
@@ -207,9 +222,10 @@ function animateAthlete(p, dt) {
   p.reachK = (p.reachK || 0) + (reachK - (p.reachK || 0)) * Math.min(1, dt * 14);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
-  const crouch = pose.crouch * (1 - run * .35) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouchD = crouch * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
-  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouch - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
+  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
   if (!p.prevVel) p.prevVel = new V3();
   const acx = dt > 0 ? (p.vel.x - p.prevVel.x) / dt : 0, acz = dt > 0 ? (p.vel.z - p.prevVel.z) / dt : 0; p.prevVel.copy(p.vel);
@@ -218,9 +234,9 @@ function animateAthlete(p, dt) {
   p.accR = (p.accR || 0) + (clamp(cya * acx - sya * acz, -14, 14) - (p.accR || 0)) * Math.min(1, dt * 8);
   const accLean = clamp(p.accF * .022, -.22, .22), accRoll = clamp(p.accR * .018, -.16, .16);
   m.hips.position.x += clamp(-p.accR * .006, -.05, .05);
-  m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6), Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
+  m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6) + p.bhTw * .35, Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
-  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .1 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
+  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .17 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.bhTw * .65 + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: cada pé fica plantado no mundo até ficar longe de onde deveria estar (posição da pose + um pouco à frente, onde o
@@ -259,18 +275,20 @@ function animateAthlete(p, dt) {
   const hipY = m.hips.position.y, reach = Math.sqrt(Math.max(.01, .83 * .83 - (hipY - .07) * (hipY - .07)));
   // passada que a velocidade pede → quanto o quadril precisa descer para a perna alcançar (gente de verdade abaixa uns
   // centímetros num passo longo); vale no quadro seguinte, suave
-  { const need = Math.min(sp * (2 / cad) * (1 - swF) * dirK, .9) / hs / 2 + .03, hc = Math.max(.7, .07 + Math.sqrt(Math.max(0, .83 * .83 - need * need)));
+  { const need = Math.min(sp * (2 / cad) * (1 - swF) * dirK, .9) / hs * .4 + .03, hc = Math.max(.7, .07 + Math.sqrt(Math.max(0, .83 * .83 - need * need)));
     p.hipCap = sp > .4 ? (p.hipCap ?? hc) + (hc - (p.hipCap ?? hc)) * Math.min(1, dt * 8) : Math.min(9, (p.hipCap ?? 9) + dt * .6); }
   const T0 = 2 / cad, capW = Math.min(1.7 * reach, .9) * Math.sqrt(hs) * dirK; // (gente mais baixa: passada proporcionalmente maior, não passinhos) // ciclo de cada pé (s) · distância que o pé fica no chão (m)
   const thrW = clamp(Math.min(sp * T0 * (1 - swF) * dirK, capW), .14, .8);
   const Te = sp > .3 ? Math.min(T0, thrW / (sp * (1 - swF))) : T0; // perna curta para a velocidade: passos mais rápidos, não mais longos
-  const leadD = thrW / 2, thr = thrW / hs, stepDur = clamp(swF * Te, .12, .4), spn = Math.max(sp, .01);
+  const leadD = thrW * .4, thr = thrW / hs, stepDur = clamp(swF * Te, .12, .4), spn = Math.max(sp, .01);
   // corrida cruzada (de lado para trás ou lateral longa): pés perto da linha do corpo e o de trás cruza pela frente
   const crossK = clamp((Math.abs(lvx) - 1.8) / 1.5, 0, 1) * clamp(Math.abs(p.moveTurn || 0) / .6, 0, 1);
+  // deslocamento lateral de jogo (sem cruzar): base mais aberta, os pés não se juntam
+  const shuf = clamp(Math.abs(lvx) / 1.4, 0, 1) * (1 - lvu) * (1 - crossK) * (1 - (p.rlx || 0));
   const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1;
-    let fx = s * (1 - .7 * crossK) * (.17 - .07 * p.rlx + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
+    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     loc.push([fx + lvx / spn * mx * leadD / hs, fz + lvz / spn * leadD / hs]); // onde o pé deveria estar (local)
   }
@@ -327,10 +345,10 @@ function animateAthlete(p, dt) {
     let rollT = 0;
     if (air) rollT = .35;
     else if (F.st) { const t = Math.min(1, F.st.t); rollT = t < .4 ? .65 * (1 - t / .4) : 0; }
-    else if (!p.dive && thr > 0) { const rr = wants[i] / thr; rollT = rr > .55 ? .5 * clamp((rr - .55) / .45, 0, 1) * Math.min(1, sp / 1.2) : 0; fy += Math.sin(L.roll || 0) * .12; }
+    else if (!p.dive && thr > 0) { const rr = wants[i] / thr; rollT = rr > .45 ? .75 * clamp((rr - .45) / .55, 0, 1) * Math.min(1, sp / 1.2) : 0; fy += Math.sin(L.roll || 0) * .14; } // saída: o calcanhar sobe e a ponta empurra (a perna de trás estica sem o quadril afundar)
     L.roll = (L.roll || 0) + (rollT - (L.roll || 0)) * Math.min(1, dt * 22);
     _a.set(fx - m.hips.position.x, fy - m.hips.position.y, fz - m.hips.position.z).applyQuaternion(_hq);
-    _b.set(s * .12, 0, -1).applyQuaternion(_hq);
+    _b.set(s * (.12 + .55 * clamp((Math.abs(fx) - .17) / .25, 0, 1)), 0, -1).applyQuaternion(_hq); // base aberta: joelho aponta para fora (sobre o pé), não para dentro
     ik2(L.thigh, L.knee, L.thigh.position, _a, _b, .42, .43);
     _q1.copy(m.hips.quaternion).multiply(L.thigh.quaternion).multiply(L.knee.quaternion).invert();
     L.ankle.quaternion.copy(_q1);
@@ -370,9 +388,9 @@ function animateAthlete(p, dt) {
       if (fade > 0) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1) * fade); }
     }
   }
-  else if (!p.charging && run > .3) _c.z += Math.cos(p.gait) * .08 * run * lvu; // braço da raquete balança pouco na corrida
+  else if (!p.charging && run > .3) { _c.z += Math.cos(p.gait) * .13 * run * lvu; _c.y += Math.abs(Math.sin(p.gait)) * .03 * run; } // braço da raquete balança pouco na corrida
   // solto: raquete desce ao lado do corpo e o braço balança (ao contrário da perna do mesmo lado)
-  if (swingU < 0 && !p.charging && p.rlx > .01) { const am = .03 + .07 * run; _e.set(.13, .2 + .04 * run + Math.sin(p.gait * 2) * .012, -.3 + Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
+  if (swingU < 0 && !p.charging && p.rlx > .01) { const am = .03 + .07 * run; _e.set(.12, .02 + .08 * run + Math.sin(p.gait * 2) * .012, -.27 + Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
   _b.fromArray(pose.rp);
   const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   // quem perdeu o ponto reage (um jeito por ponto e por jogador): mão na cabeça, raquete batendo na areia, mãos na cintura
@@ -385,8 +403,10 @@ function animateAthlete(p, dt) {
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(.18, 1.05, -.05); _b.set(.8, 0, .3); }
   if (lsW > 0) { if (lsK === 'rkup') _e.set(.2, .95, -.15); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
+  // peixinho: o braço da raquete vai esticado para a frente do mergulho (para onde a bola está)
+  if (tiltK > .05 && p.dive) { _g.set(p.dive.dx, 0, p.dive.dz).applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); _e.copy(shR).addScaledVector(_g, .62); _c.lerp(_e, tiltK * (swingU >= 0 && !p.swing.hit ? .45 : .85)); }
   armIK(p, m.armR, shR, _c, _b);
-  m.armR.wrist.rotation.set(pose.wx, pose.wr, 0);
+  { const rl = swingU < 0 && !p.charging ? (p.rlx || 0) : 0; m.armR.wrist.rotation.set(lerp(pose.wx, RLX_WX, rl), lerp(pose.wr, RLX_WR, rl), 0); } // andando solto: raquete inclinada para a frente, na cintura
   _c.fromArray(pose.lh); _b.fromArray(pose.lp);
   if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
@@ -394,14 +414,15 @@ function animateAthlete(p, dt) {
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
   if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z -= Math.cos(p.gait) * .17 * run * lvu; }
   // mão livre: na frente do corpo, apoiando a raquete pelo pescoço (pronta para o backhand); correndo solta um pouco e balança
-  if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .02 + .1 * run; _e.set(-.02 - .1 * run, .2 + .03 * run, -.31 + .1 * run - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
+  if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .02 + .1 * run; _e.set(-.01 - .12 * run, .08 + .06 * run, -.3 + .1 * run - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
   if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
   }
   // mão livre: no peixinho vai à areia para apoiar; esticando para uma bola longe, abre para o outro lado (equilíbrio)
   if (p.twoH > 0 && !celPh) { _e.fromArray(pose.rh); _e.x += .07; _e.y += .03; _e.z += .04; _c.lerp(_e, p.twoH); }
-  if (diveK > .05) { _e.set(-.3, -.6, -.4); _c.lerp(_e, clamp(diveK * 1.4, 0, 1)); }
+  if (tiltK > .05) { _g.set(0, -1, 0).applyQuaternion(_q1.copy(m.spine.getWorldQuaternion(_q1)).invert()); _e.set(-.12, .35, -.25).addScaledVector(_g, .45); _c.lerp(_e, tiltK); } // peixinho: a mão livre vai à areia embaixo do peito
+  else if (diveK > .05) { _e.set(-.3, -.6, -.4); _c.lerp(_e, clamp(diveK * 1.4, 0, 1)); }
   else if (swingU >= 0 && p.reachK > .15 && !celPh) { _e.set(-reachS * .48, .28, -.04); _c.lerp(_e, .7 * p.reachK); }
   if (lsW > 0) { if (lsK === 'fist') _e.set(-.2, .5 + .08 * Math.abs(Math.sin(lose.t * 10)), -.2); else if (lsK === 'head') _e.set(-.12, .8, .02); else if (lsK === 'hips') _e.set(-.22, .02, .03); else _e.set(-.2, .02, -.1); _c.lerp(_e, lsW); }
   armIK(p, m.armL, shL, _c, _b);
