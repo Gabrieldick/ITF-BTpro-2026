@@ -52,7 +52,7 @@ const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.516, smartAim: 2.412, g
 // pesos da busca da IA Planejadora (planShot): erro, saída pela linha, folga de chegada, contra-ataque, pressão, alcance e
 // um bônus por golpe; thr: nota mínima para a busca assumir a jogada; PLN_TUNED também vem do treino
 const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0, thr: .75 };
-const PLN_TUNED = Object.assign({}, PLN_BASE, { thr: 1.019, err: .818, out: 1.205, marg: .205, counter: 1.843, press: .5, reach: .836, bSmash: .3, bDef: .3, bCurta: -.008, bLob: -.214, bKick: -.107 }); // treino: 61,4% contra a Lendária, 47,6% contra a versão anterior, 50,4% contra a Treinada, 85,6% no verde
+const PLN_TUNED = Object.assign({}, PLN_BASE, { thr: 1.095, err: 1.624, out: 1.55, marg: .207, counter: 1.658, press: .494, reach: .89, bSmash: .187, bDef: .211, bCurta: -.017, bLob: -.069, bKick: -.056 }); // treino: 69,0% contra a Lendária, 51,4% contra a versão anterior, 50,1% contra a Treinada, 90,6% no verde
 // modo de IA de cada jogador: só no jogo rápido (time adversário) ou no treino do simulador (S.simAI)
 function aiModeOf(p) {
   if (S.simAI) return (S.simAI[p.team] || {}).mode || '';
