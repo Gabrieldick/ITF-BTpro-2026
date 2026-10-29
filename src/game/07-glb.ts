@@ -211,6 +211,13 @@ function logoTex(brand, color) {
 // roupa balançando: a barra (da camisa, da saia, a boca do short) se atrasa nas arrancadas e freadas e com o vento da
 // corrida; peso 0 no alto da peça e 1 na barra (pela altura na pose de repouso); só metade do deslocamento que entraria
 // no corpo, para o tecido não atravessar a pele
+// dobras do tecido: relevo procedural (só sombreamento) — ondas na barra, diagonais nas axilas; nos shorts, na boca da
+// perna. Perturba a normal pela derivada da altura (como um bump map), sem textura
+const FOLD_FRAG = h => `
+  { float hf = ${h};
+    vec2 dH = vec2(dFdx(hf), dFdy(hf)) * .004;
+    vec3 sX = normalize(dFdx(-vViewPosition)), sY = normalize(dFdy(-vViewPosition)), R1 = cross(sY, normal), R2 = cross(normal, sX);
+    float fd = dot(sX, R1) * faceDirection; normal = normalize(abs(fd) * normal - sign(fd) * (dH.x * R1 + dH.y * R2)); }`;
 const SWAY_VERT = `
   { float sw_w = 1.0 - smoothstep(uSwY.x, uSwY.y, position.y); vec2 sn = normalize(objectNormal.xz + 1e-4);
     float into = dot(sn, uSway.xz) < 0.0 ? .3 : 1.0; transformed += uSway * sw_w * sw_w * into * uSwY.z; }`;
@@ -218,7 +225,8 @@ function swayRange(o, k) { const g = o.geometry; if (!g.boundingBox) g.computeBo
 function swayCloth(o, sway, k) {
   const m = o.material; if (!m || m.userData.swayOn) return; m.userData.swayOn = true;
   const U = { uSway: sway, uSwY: { value: swayRange(o, k) } };
-  m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec3 uSway; uniform vec3 uSwY;').replace('#include <begin_vertex>', '#include <begin_vertex>' + SWAY_VERT); };
+  m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec3 uSway; uniform vec3 uSwY; varying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;' + SWAY_VERT);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uSwY; varying vec3 vRest;').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + FOLD_FRAG('sin(vRest.y * 60. + vRest.x * 28. + sin(vRest.x * 40.) * 1.2) * (1. - smoothstep(uSwY.x + .01, uSwY.x + .12, vRest.y)) * .7')); };
   m.customProgramCacheKey = () => 'swayCloth'; m.needsUpdate = true;
 }
 function patShirt(m, id, c2, logo, logoCol, H, sweat, sway, swY) {
@@ -228,7 +236,8 @@ function patShirt(m, id, c2, logo, logoCol, H, sweat, sway, swY) {
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 uSway; uniform vec3 uSwY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;' + SWAY_VERT);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\nuniform int uPat; uniform vec3 uC2; uniform float uH; uniform sampler2D uLogo; uniform float uLogoOn; uniform float uSweat;' + PAT_GLSL)
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\nuniform int uPat; uniform vec3 uC2; uniform float uH; uniform sampler2D uLogo; uniform float uLogoOn; uniform float uSweat; uniform vec3 uSwY;' + PAT_GLSL)
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>' + FOLD_FRAG('sin(vRest.y * 85. + sin(vRest.x * 23.) * 1.6) * (1. - smoothstep(uSwY.x + .02, uSwY.x + .16, vRest.y)) * .6 + sin((abs(vRest.x) * 1.2 + vRest.y) * 70.) * smoothstep(.12, .16, abs(vRest.x)) * (1. - smoothstep(.22, .26, abs(vRest.x))) * smoothstep(uH * .7, uH * .73, vRest.y) * (1. - smoothstep(uH * .79, uH * .81, vRest.y)) * .45'))
       .replace('#include <map_fragment>', `#include <map_fragment>
       diffuseColor.rgb = mix(diffuseColor.rgb, uC2, patF(uPat, vRest, uH));
       // suor: tecido molhado escurece — faixa no meio das costas, no peito e nas axilas, com borda irregular
