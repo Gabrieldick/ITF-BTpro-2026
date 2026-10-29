@@ -16,6 +16,7 @@ import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato'
 import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
 import { sideOf } from './18-animacao';
+import { warmShaders } from './02-render';
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
 const el = {
@@ -686,6 +687,7 @@ function newMatch(guest) {
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
   configureMode();
+  warmShaders();
   { // rede: 1,80 m só no profissional masculino (carreira: BT10 para cima); feminino, misto e amador: 1,70 m
     const allMale = $s.players.every(p => !p.char || !p.char.fem);
     const pro = S.careerActive && $s.CR && $s.CR.tour ? $s.CR.tour.tier >= 3 && !($s.CR.tour.special === 'estadual' && $s.CR.tour.tier < 3) : true;

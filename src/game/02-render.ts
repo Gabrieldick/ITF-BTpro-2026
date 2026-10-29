@@ -41,4 +41,15 @@ sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
 scene.add(sun); scene.add(sun.target);
 
-export { HORIZON, MAX_ANISO, SUN_DIR, camera, canvasTex, col, hemi, mat, renderer, scene, sun };
+// aquecimento dos shaders: um quadro com tudo visível (marcas na areia, poeira, indicador do saque, peças de roupa…) e sem
+// recorte da câmera, para o navegador compilar todos os programas (inclusive os de sombra) de uma vez, no começo da
+// partida; antes, cada efeito compilava na primeira vez que aparecia e o jogo travava 1–2 s no meio do ponto. O segundo
+// quadro, já normal, é o que aparece na tela (os dois saem na mesma tarefa)
+function warmShaders() {
+  const hid = [], cull = [];
+  scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } if (o.frustumCulled) { cull.push(o); o.frustumCulled = false; } });
+  try { renderer.render(scene, camera); } catch (e) { /* segue: só não aquece */ }
+  hid.forEach(o => { o.visible = false; }); cull.forEach(o => { o.frustumCulled = true; });
+  renderer.render(scene, camera);
+}
+export { warmShaders, HORIZON, MAX_ANISO, SUN_DIR, camera, canvasTex, col, hemi, mat, renderer, scene, sun };
