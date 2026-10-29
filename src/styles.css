@@ -830,3 +830,17 @@ body[data-tags="off"] .tag { display: none; }
 .cr-tweet .ic { font-size: 18px; line-height: 1.2; }
 .cr-tweet small { opacity: .6; }
 .cr-tweet p { margin: 2px 0 0; font-size: 13px; }
+
+.mx { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; align-items: flex-start; }
+.mx > div { flex: 1 1 200px; }
+.mx-bar { display: flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 12px; }
+.mx-bar > span { width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mx-bar > div { flex: 1; display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.08); }
+.mx-bar i, .mx-leg i { display: inline-block; font-style: normal; font-size: 11px; text-align: center; color: #111; }
+.mx-bar i.win, .mx-leg i.win { background: #4fd18b; } .mx-bar i.err, .mx-leg i.err { background: #ffb11f; }
+.mx-leg i { width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin: 0 2px 0 8px; }
+.mx-hist { display: flex; gap: 6px; height: 70px; align-items: flex-end; }
+.mx-hist > div { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.mx-hist i { display: block; width: 100%; background: #33c3ff; border-radius: 3px 3px 0 0; min-height: 2px; }
+.mx-hist small { font-size: 10px; opacity: .7; }
+.mx-heat { flex: 0 0 auto !important; text-align: center; } .mx-heat img { width: 96px; height: 96px; border-radius: 6px; display: block; margin: 0 auto 4px; image-rendering: pixelated; } .mx-heat small { font-size: 10px; opacity: .7; }

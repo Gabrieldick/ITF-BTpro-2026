@@ -81,6 +81,8 @@ function step(dt) {
   }
   updateBall(dt);
   if (S.mode === 'dead') S.ptT = (S.ptT || 0) + dt;
+  // mapa de calor: onde o seu jogador ficou durante os ralis (meia quadra 8 × 8 m, rede em cima)
+  if (S.mode === 'rally' && S.posHeat && !S.spectate) { S.heatT = (S.heatT || 0) + dt; if (S.heatT > .2) { S.heatT = 0; const p = human, f = p.team === 0 ? 1 : -1, cx = Math.floor(clamp((p.pos.x * f + 4) / 8, 0, .999) * 8), cz = Math.floor(clamp(p.pos.z * f / 8, 0, .999) * 8); S.posHeat[cz * 8 + cx]++; } }
   if (S.mode === 'dead' && !sideWalkStep(dt) && S.celebrate) celebrateStep(dt); // troca de lado: caminhada até o poste
   if (S.mode === 'dead') {
     S.deadT -= dt;

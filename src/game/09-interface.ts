@@ -550,6 +550,7 @@ function pointTo(w, reason, kind) {
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   S.ptWin = w; S.ptT = 0; S.ptN = (S.ptN || 0) + 1; // reações entre pontos (18-animacao)
+  if (S.rallyLog) S.rallyLog.push(S.rally);
   const ev = awardPoint(w);
   updateLiveRating();
   let isTitle = false;
@@ -693,7 +694,7 @@ function newMatch(guest) {
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
   S.highlights = []; S.clips = [];
-  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.perf = { sum: 0, n: 0, ev: {} }; S.lastHit = null; S.attempt = null; S.streak = null;
+  S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.posHeat = new Array(64).fill(0); S.rallyLog = []; S.perf = { sum: 0, n: 0, ev: {} }; S.lastHit = null; S.attempt = null; S.streak = null;
   updateLiveRating();
   if (!guest) setWeather();
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
@@ -716,8 +717,24 @@ function renderMatchStats() {
   const line = (lbl, k, cls) => '<tr class="' + (cls || '') + '"><td>' + lbl + '</td>' + teams.map(tm => tm.map(x => '<td>' + val(x.s, k) + '</td>').join('') + (tm.length > 1 ? '<td class="tt">' + sum(tm, k) + '</td>' : '')).join('') + '</tr>';
   $('stTable').innerHTML = '<table class="mstats"><thead><tr><th></th>' + head + '</tr></thead><tbody>'
     + rows.map(r => line(r[0], r[1])).join('') + line('Pontos vencedores', win, 'sum')
-    + line('Erros forçados', 'fe', 'err') + line('Erros não forçados', 'ue', 'err') + '</tbody></table>';
+    + line('Erros forçados', 'fe', 'err') + line('Erros não forçados', 'ue', 'err') + '</tbody></table>' + matchExtras(teams, win);
 }
+// como cada dupla ganhou os pontos (vencedores x erros do adversário), tamanho dos ralis e mapa de calor da sua posição
+function matchExtras(teams, win) {
+  const W = teams.map(tm => tm.reduce((t, x) => t + win(x.s), 0)), E = teams.map(tm => tm.reduce((t, x) => t + x.s.fe + x.s.ue, 0));
+  const bar = ti => { const a = W[ti], b = E[1 - ti], tot = Math.max(1, a + b); return '<div class="mx-bar"><span class="t' + ti + '">' + esc2(ti === 0 ? (S.spectate ? teamNames(0) : dupla() ? 'Vocês' : 'Você') : teamNames(1)) + '</span><div><i class="win" style="width:' + (a / tot * 100) + '%">' + (a || '') + '</i><i class="err" style="width:' + (b / tot * 100) + '%">' + (b || '') + '</i></div></div>'; };
+  const R = S.rallyLog || [], B = [[1, 2], [3, 4], [5, 6], [7, 9], [10, 99]], cnt = B.map(([a, b]) => R.filter(r => r >= a && r <= b).length), mx = Math.max(1, ...cnt);
+  const hist = '<div class="mx-hist">' + B.map(([a, b], i) => '<div><i style="height:' + (cnt[i] / mx * 100) + '%"></i><small>' + (b > 50 ? a + '+' : a + '–' + b) + '</small></div>').join('') + '</div>';
+  let heat = '';
+  if (S.posHeat && S.posHeat.some(v => v > 0) && !S.spectate) { const c = document.createElement('canvas'); c.width = 96; c.height = 96; const x = c.getContext('2d'), mxh = Math.max(...S.posHeat);
+    x.fillStyle = '#d9c49a'; x.fillRect(0, 0, 96, 96);
+    S.posHeat.forEach((v, i) => { if (!v) return; const col = i % 8, row = Math.floor(i / 8), k = v / mxh; x.fillStyle = 'rgba(' + Math.round(255) + ',' + Math.round(200 - 170 * k) + ',' + Math.round(40) + ',' + (.15 + .75 * k) + ')'; x.fillRect(col * 12, row * 12, 12, 12); });
+    x.strokeStyle = '#fff'; x.lineWidth = 2; x.strokeRect(1, 1, 94, 94); x.fillStyle = '#fff'; x.fillRect(0, 0, 96, 3); // rede em cima
+    heat = '<div class="mx-heat"><img src="' + c.toDataURL() + '" alt=""><small>Onde você jogou (rede em cima)</small></div>'; }
+  return '<div class="mx"><div><p class="section-label">Como os pontos foram ganhos</p>' + bar(0) + bar(1) + '<small class="mx-leg"><i class="win"></i> golpes vencedores <i class="err"></i> erros do adversário</small></div>'
+    + '<div><p class="section-label">Tamanho dos ralis (golpes)</p>' + hist + '</div>' + heat + '</div>';
+}
+const esc2 = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 // carreira: simula o resto da partida ponto a ponto, pela força das duplas (e as estrelas); a nota fica a do que já foi jogado
 function simulateRest() {
   if (!S.careerActive || NET.role || S.mode === 'over') return;
