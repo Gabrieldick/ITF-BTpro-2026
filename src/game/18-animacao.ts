@@ -196,57 +196,78 @@ function animateAthlete(p, dt) {
   m.spine.rotation.set(-(pose.lean + run * .1 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
-  // pernas: pés presos na areia
-  const cy = Math.cos(yaw), sy = Math.sin(yaw);
-  let lvx = cy * p.vel.x - sy * p.vel.z, lvz = sy * p.vel.x + cy * p.vel.z;
-  const fwd = -lvz;
-  const lv = Math.hypot(lvx, lvz) || 1; lvx /= lv; lvz /= lv;
-  // ciclo do pé: no apoio fica preso na areia (recua na velocidade do corpo); no balanço sobe em arco e avança.
-  // apoio mais curto correndo que andando; o tamanho do passo é o que a velocidade pede (sem o pé escorregar)
-  const duty = lerp(.6, .4, run), stride = Math.min(.55, Math.max(sp, .6) * duty / (2 * gF)) * p.strK;
-  const footCyc = ph => { const t = ((ph / (Math.PI * 2)) % 1 + 1) % 1; if (t < duty) return [1 - 2 * t / duty, 0, -1]; const u = (t - duty) / (1 - duty); return [-Math.cos(Math.PI * u), Math.sin(Math.PI * u), u]; };
-  if (!p.footLock) { p.footLock = [null, null]; p.footOff = [[0, 0], [0, 0]]; }
+  // pernas: cada pé fica plantado no mundo até ficar longe de onde deveria estar (posição da pose + um pouco à frente, onde o
+  // corpo vai estar); aí dá um passo em arco até lá. Um pé de cada vez (correndo rápido os passos se sobrepõem: fase de voo).
+  // Vale para qualquer direção, giro do corpo, golpe e afundo — o pé só se move dando passo, nunca desliza
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), mx = p.lefty ? -1 : 1, hs = Math.abs(m.group.scale.y) || 1;
+  const lvx = cy * p.vel.x - sy * p.vel.z, lvz = sy * p.vel.x + cy * p.vel.z; // velocidade no espaço do jogador (m/s)
+  const fwd = -lvz, lvu = Math.abs(lvz) / (Math.hypot(lvx, lvz) || 1); // para a frente (m/s) · fração do movimento que é frente/trás
+  const toW = (lx, lz) => [p.pos.x + (cy * lx * mx + sy * lz) * hs, p.pos.z + (-sy * lx * mx + cy * lz) * hs];
+  const toL = (w) => { const dx = (w[0] - p.pos.x) / hs, dz = (w[1] - p.pos.z) / hs; return [(cy * dx - sy * dz) * mx, sy * dx + cy * dz]; };
   const air = jy > .05;
+  if (!p.feet) p.feet = [{ w: null, st: null }, { w: null, st: null }];
+  // salto: parado sai e cai com as duas pernas; correndo/de lado/para trás (smash de trás, saque) sai em uma perna, faz a
+  // tesoura no ar e cai na outra (a segunda apoia logo depois)
+  if (air && !p.wasAir) {
+    const one = spU < 0 && (sp > 1.3 || (S.mode === 'toss' && S.serverPlayer === p) || (p.swing.t >= 0 && p.swing.type === 'smash' && lvz > .6));
+    const tk = p.feet[0].st ? 1 : p.feet[1].st ? 0 : (lvz > .3 ? (p.lefty ? 1 : 0) : (p.lefty ? 0 : 1)); // perna de impulso: a que está apoiada
+    p.jumpMode = one ? { tk } : null;
+  }
+  p.wasAir = air;
+  const jp = p.jumpDur ? clamp(1 - p.jump / p.jumpDur, 0, 1) : .5;
+  const leadD = Math.min(.24, sp * .065), thr = Math.min(.6, .15 + sp * .09), spn = Math.max(sp, .01); // pé pousa um pouco à frente (até 24 cm)
+  const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
-    const s = i ? 1 : -1, L = m.legs[i];
+    const s = i ? 1 : -1;
     let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
-    const shuffle = sp > .25 && sp < 4.2 ? Math.abs(lvx) : 0; // deslocamento lateral: passo cruzado vira passo lateral
-    const ph = p.gait + (i ? Math.PI * (1 - .45 * shuffle) : 0);
-    let lift = 0;
-    let swU = -1;
-    if (p.strK > .01) { const [fp, fl, u] = footCyc(ph); swU = u; fx += lvx * stride * (1 - .4 * shuffle) * fp; fz += lvz * stride * fp; lift = fl * (.05 + Math.min(sp, 6) * .022) * Math.max(run, .35) * p.strK; }
-    // pé grudado na areia: ao tocar o chão a posição dele fica gravada no mundo até levantar (o corpo passa por cima);
-    // no balanço a diferença para o ciclo some aos poucos (sem estalo). Golpe, mergulho e salto soltam o pé
-    const lockOK = !air && lift < .005 && lungeA < .05 && !p.dive && !(swingU >= 0 && swingU < .9);
-    if (lockOK) {
-      if (!p.footLock[i]) p.footLock[i] = [p.pos.x + cy * fx + sy * fz, p.pos.z - sy * fx + cy * fz];
-      const dx = p.footLock[i][0] - p.pos.x, dz = p.footLock[i][1] - p.pos.z, lx = cy * dx - sy * dz, lz = sy * dx + cy * dz;
-      if (Math.hypot(lx - fx, lz - fz) < .18 + .2 * p.strK) { p.footOff[i][0] = lx - fx; p.footOff[i][1] = lz - fz; fx = lx; fz = lz; }
-      else { p.footLock[i] = null; p.footOff[i][0] = p.footOff[i][1] = 0; } // esticou demais: o pé solta e acompanha
+    loc.push([fx + lvx / spn * mx * leadD / hs, fz + lvz / spn * leadD / hs]); // onde o pé deveria estar (local)
+  }
+  for (let i = 0; i < 2; i++) {
+    const F = p.feet[i], O = p.feet[1 - i], D = loc[i];
+    if (!F.w && !F.st) F.w = toW(D[0], D[1]);
+    if (F.w && !air && !p.dive) { const l = toL(F.w); wants[i] = Math.hypot(l[0] - D[0], l[1] - D[1]); }
+  }
+  for (let i = 0; i < 2; i++) {
+    const s = i ? 1 : -1, L = m.legs[i], F = p.feet[i], O = p.feet[1 - i], D = loc[i];
+    let fx, fz, fy = .07;
+    if (air || p.dive) {
+      // no ar / mergulho: o pé segue a pose (solto do chão)
+      fx = D[0]; fz = D[1];
+      if (air && p.jumpMode && spU < 0) {
+        const tk = i === p.jumpMode.tk; // impulso: sai atrás, cruza para a frente no meio (tesoura) e volta atrás; a outra sobe o joelho e desce para pousar primeiro
+        if (tk) { fz += .26 - .5 * Math.sin(Math.PI * jp) + .02; fy += .1 + .2 * Math.sin(Math.PI * jp) + .1 * jp; }
+        else { fz += -.22 * Math.sin(Math.PI * Math.min(1, jp * 1.25)); fy += .26 * Math.sin(Math.PI * Math.min(1, jp * 1.2)) * (1 - jp * .6); }
+      } else if (air) { const sw = jp < .45 ? 1 : -1; fy += .1 + ((s > 0) === (sw > 0) ? .12 : .02); fz += (s > 0 ? .2 : -.12) * sw; }
+      F.w = null;
+      F.st = { from: toW(fx, fz), y0: fy - .07, t: 0, dur: air && p.jumpMode && i === p.jumpMode.tk ? .16 : .06, h: .02 };
+    } else if (F.st) {
+      // passo em andamento: arco até o alvo (que acompanha o corpo até o pé pousar)
+      F.st.t += dt / F.st.dur; const t = Math.min(1, F.st.t), k = t * t * (3 - 2 * t), tg = toW(D[0], D[1]);
+      const w = [F.st.from[0] + (tg[0] - F.st.from[0]) * k, F.st.from[1] + (tg[1] - F.st.from[1]) * k];
+      [fx, fz] = toL(w); fy += (F.st.y0 || 0) * (1 - k) + Math.pow(Math.sin(Math.PI * t), .55) * F.st.h; // sai e chega do chão rápido (o arco fica no alto)
+      if (t >= 1) {
+        F.w = tg; F.st = null;
+        if (sp > 1.2 && m.group.visible) { stamp(tg[0], tg[1], yaw); if (sp > 3.5 && particles.visible) puff(tg[0], tg[1], 2, .35); }
+      }
     } else {
-      p.footLock[i] = null;
-      const k = swU >= 0 ? 1 - swU : Math.max(0, 1 - dt * 10) ; p.footOff[i][0] *= swU >= 0 ? 1 : k; p.footOff[i][1] *= swU >= 0 ? 1 : k;
-      if (swU >= 0) { fx += p.footOff[i][0] * k; fz += p.footOff[i][1] * k; if (swU > .97) p.footOff[i][0] = p.footOff[i][1] = 0; }
+      // plantado: fica onde está; passo quando se afastou do lugar certo (o mais longe vai primeiro; correndo, sobrepõe)
+      [fx, fz] = toL(F.w);
+      const otherOK = !O.st || (sp > 1.8 && O.st.t > .5);
+      const go = wants[i] > thr * (O.st ? 1 : .999) && otherOK && (wants[i] >= wants[1 - i] || wants[1 - i] <= thr || O.st);
+      if (go || wants[i] > .75) {
+        const st = { from: F.w.slice(), y0: 0, t: 0, dur: clamp(.8 * thr / Math.max(sp, .6), .09, .24), h: .045 + Math.min(sp, 6) * .02 }; // o passo acaba antes do outro pé precisar ir
+        F.st = st; F.w = null;
+      }
     }
-    let fy = .07 + lift;
-    if (air) {
-      const jp = p.jumpDur ? 1 - p.jump / p.jumpDur : .5, sw = jp < .45 ? 1 : -1;
-      fy += .1 + ((s > 0) === (sw > 0) ? .12 : .02); fz += (s > 0 ? .2 : -.12) * sw;
-    }
-    const grounded = lift < .005 && !air;
-    if (grounded && !p.footDown[i] && sp > 1.2 && m.group.visible) {
-      const wx = p.pos.x + cy * fx + sy * fz, wz = p.pos.z - sy * fx + cy * fz;
-      stamp(wx, wz, yaw);
-      if (sp > 3.5 && particles.visible) puff(wx, wz, 2, .35);
-    }
-    p.footDown[i] = grounded;
     _a.set(fx - m.hips.position.x, fy - m.hips.position.y, fz - m.hips.position.z).applyQuaternion(_hq);
     _b.set(s * .12, 0, -1).applyQuaternion(_hq);
     ik2(L.thigh, L.knee, L.thigh.position, _a, _b, .42, .43);
     _q1.copy(m.hips.quaternion).multiply(L.thigh.quaternion).multiply(L.knee.quaternion).invert();
     L.ankle.quaternion.copy(_q1);
   }
+  // ao pousar de um salto em uma perna: a de impulso apoia um pouco depois (o passo dela já está armado acima)
+  if (!air && p.jumpMode) p.jumpMode = null;
   // braços
   const shR = m.armR.sh.position, shL = m.armL.sh.position;
   _c.fromArray(pose.rh);
@@ -264,7 +285,7 @@ function animateAthlete(p, dt) {
       if (fade > 0) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1) * fade); }
     }
   }
-  else if (!p.charging && run > .3) _c.z -= Math.cos(p.gait) * .08 * run * Math.abs(lvz); // braço da raquete balança pouco na corrida
+  else if (!p.charging && run > .3) _c.z -= Math.cos(p.gait) * .08 * run * lvu; // braço da raquete balança pouco na corrida
   _b.fromArray(pose.rp);
   const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
@@ -276,7 +297,7 @@ function animateAthlete(p, dt) {
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(-.18, 1.05, -.05); _b.set(-.8, 0, .3); }
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
-  if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z += Math.cos(p.gait) * .17 * run * Math.abs(lvz); }
+  if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z += Math.cos(p.gait) * .17 * run * lvu; }
   if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
@@ -293,7 +314,7 @@ function animateAthlete(p, dt) {
   m.headG.rotation.set(p.headPitch, p.headYaw, 0);
   if (m.tail) {
     m.tail.rotation.x += (-(.25 + clamp(fwd * .06, -.2, .5) + jy * 1.5) - m.tail.rotation.x) * Math.min(1, dt * 5);
-    m.tail.rotation.z += (clamp(lvx * sp * .05, -.4, .4) - m.tail.rotation.z) * Math.min(1, dt * 5);
+    m.tail.rotation.z += (clamp(lvx * .05, -.4, .4) - m.tail.rotation.z) * Math.min(1, dt * 5);
   }
   m.blob.position.y = .012 - jy; const bs = 1 - jy; m.blob.scale.set(bs, bs, 1);
   m.group.updateMatrixWorld(true);
