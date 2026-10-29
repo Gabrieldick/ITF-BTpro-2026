@@ -123,12 +123,18 @@ function animateAthlete(p, dt) {
   } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1), pose);
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
-  else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; let ak = swingKey(p); if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh'; poseAt(ACT[ak], uOf(ak), swingU, pose);
+  else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; let ak = swingKey(p); if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh';
+    // golpe pela situação (só a animação): bola rápida no peito perto da rede vira bloqueio
+    if (swingU < (p.swU0 ?? 1) - .2 || p.swKey0 !== swingKey(p)) { p.swKey0 = swingKey(p); const bs = Math.hypot(ball.vel.x, ball.vel.z); p.swAlt = ak === 'defesa' && bs > 13 && ball.pos.y > .75 && ball.pos.y < 1.6 && Math.abs(p.pos.z) < 3.4 ? 'defesa_bloqueio' : ''; }
+    if (p.swAlt && ak === 'defesa') ak = p.swAlt;
+    poseAt(ACT[ak], uOf(ak), swingU, pose);
     if (!p.swSty || swingU < (p.swU0 ?? 1) - .2 || p.swSty.ak !== ak) { p.swSty = pickStyle(ak, p.char) || {}; p.swSty.ak = ak; } p.swU0 = swingU; styleSwing(pose, ak, swingU, p.swSty);
     // curta alta de forehand: depois do toque a face da raquete acompanha para onde a curta foi
     if (ak === 'curta_alta_fh' && p.swing.hit && ball.state === 'live' && S.lastTeam === p.team) { const f = p.team === 0 ? 1 : -1; pose.wr += clamp(Math.atan2(ball.vel.x * f * (p.lefty ? -1 : 1), -ball.vel.z * f), -.7, .7); } }
   else poseAt(p === human && fpBodyOn ? READY_FP_KEYS : READY_KEYS, READY_U, 0, pose);
   if (mirror) mirrorPose(pose);
+  // backhand baixo com as duas mãos: a mão livre vai junto no cabo
+  p.twoH = mirror && swingU >= 0 && pose.rh[1] < .38 ? Math.min(1, (.38 - pose.rh[1]) / .15) : 0;
   // a postura real persegue a postura-alvo: sem estalos ao começar, trocar de lado ou terminar um golpe
   const acting = swingU >= 0 || p.charging || (S.mode === 'toss' && S.serverPlayer === p) || (S.mode === 'replay' && p.rpToss >= 0);
   if (p.debug) blendPose(p.pose, pose, 1); else springPose(p.pose, pose, p.poseV || (p.poseV = {}), acting ? 38 : 15, acting ? .72 : .9, dt);
@@ -394,6 +400,7 @@ function animateAthlete(p, dt) {
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
   }
   // mão livre: no peixinho vai à areia para apoiar; esticando para uma bola longe, abre para o outro lado (equilíbrio)
+  if (p.twoH > 0 && !celPh) { _e.fromArray(pose.rh); _e.x += .07; _e.y += .03; _e.z += .04; _c.lerp(_e, p.twoH); }
   if (diveK > .05) { _e.set(-.3, -.6, -.4); _c.lerp(_e, clamp(diveK * 1.4, 0, 1)); }
   else if (swingU >= 0 && p.reachK > .15 && !celPh) { _e.set(-reachS * .48, .28, -.04); _c.lerp(_e, .7 * p.reachK); }
   if (lsW > 0) { if (lsK === 'fist') _e.set(-.2, .5 + .08 * Math.abs(Math.sin(lose.t * 10)), -.2); else if (lsK === 'head') _e.set(-.12, .8, .02); else if (lsK === 'hips') _e.set(-.22, .02, .03); else _e.set(-.2, .02, -.1); _c.lerp(_e, lsW); }

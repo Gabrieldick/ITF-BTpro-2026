@@ -105,7 +105,14 @@ Object.assign(ACT, {
     P({ rh: [-.3, .12, -.26], rp: [.7, .2, -.3], wx: .6, wr: 1.2, lh: [-.2, .26, .14], lp: [-.8, -.5, 0], tw: .85, lean: .55, bend: .1, crouch: .24, lunge: .3 }),
     READY],
 });
-ACT.smash_salto = ACT.smash;
+// smash em salto (bola bem alta): tronco bem arqueado na preparação e contato mais alto
+ACT.smash_salto = ACT.smash.map((k, i) => i === 1 ? P(Object.assign({}, k, { lean: -.46, bend: -.16, lh: [-.05, 1.12, -.3], rh: [.34, .74, .24] })) : i === 3 ? P(Object.assign({}, k, { rh: [.16, 1.14, -.3], lean: .02 })) : k);
+// bloqueio de voleio (bola rápida na altura do peito perto da rede): raquete na frente do peito, quase sem preparação
+ACT.defesa_bloqueio = [READY,
+  P({ rh: [.18, .52, -.4], rp: [.8, -.2, .3], wx: .9, wr: .6, lh: [-.05, .44, -.38], lp: [-.9, -.4, 0], tw: -.08, lean: .2, crouch: .16, lunge: .2 }),
+  P({ rh: [.12, .54, -.56], rp: [.8, -.2, .2], wx: .8, wr: .6, lh: [-.08, .42, -.36], lp: [-.9, -.4, 0], tw: 0, lean: .24, crouch: .18, lunge: .3 }),
+  P({ rh: [.1, .52, -.58], rp: [.8, -.2, .2], wx: .8, wr: .6, lh: [-.1, .42, -.34], lp: [-.9, -.4, 0], tw: .02, lean: .24, crouch: .18, lunge: .28 }),
+  READY];
 // golpe do saque por baixo: a raquete vem de trás, por baixo, bate na altura da cintura com a face aberta e termina alta na frente
 ACT.smash_saquebaixo = [READY,
   P({ rh: [.36, .0, .26], rp: [.8, -.7, .5], wx: 1.8, wr: .5, lh: [-.02, .6, -.4], lp: [-.9, -.3, .2], tw: -.6, lean: .25, crouch: .25, stag: .55 }),
