@@ -471,16 +471,19 @@ function crPairBoard(n) {
 }
 // fim de temporada: compara os pontos de cada dupla com o que o nível dela prometia
 function crPairsSeason() {
-  const P = crPairs(true), B = $s.CR.pairBad = $s.CR.pairBad || {};
+  const P = crPairs(true), B = $s.CR.pairBad = $s.CR.pairBad || {}, RK0 = $s.CR.pairRk || {}, RK1 = {};
   for (const fem of [false, true]) {
     const L = []; for (const a in P) { const b = P[a]; if (a < b && crChar(a) && !!crChar(a).fem === fem) L.push({ a, b, o: (crCharOvr(crChar(a)) + crCharOvr(crChar(b))) / 2, p: npcPts(a) + npcPts(b) }); }
     const byO = L.slice().sort((x, y) => y.o - x.o), byP = L.slice().sort((x, y) => y.p - x.p);
     byO.forEach((t, i) => { if (i > 60) return; const k = t.a + '|' + t.b, pr = byP.indexOf(t), bad = pr - i > Math.max(3, L.length * .12);
-      const wk = pairWeeks(t.a, t.b), keep = pr < 10 || wk < SEASON_WEEKS; // dupla boa (top 10 em pontos) ou com menos de um ano junta não se separa
-      B[k] = bad && !keep ? (B[k] || 0) + 1 : 0;
-      if (bad && !keep && Math.random() < (B[k] >= 2 ? .75 : .3)) { if (fem === !!$s.CR.me.fem) crNews('Fim da parceria: ' + pairName(t.a, t.b) + ' se separam depois de ' + (B[k] >= 2 ? 'duas temporadas abaixo do esperado' : 'uma temporada ruim') + ' (' + pairTenure(t.a, t.b).replace('juntos ', '') + ' de dupla).', '💔'); pairSplit(t.a, t.b); delete P[t.a]; delete P[t.b]; delete B[k]; }
+      // dupla boa (top 10 em pontos) que segue bem, ou com menos de um ano junta, não se separa; mas quem despencou no
+      // ranking em relação ao ano anterior (ex.: de 3ª para 12ª) pode se separar mesmo sendo forte, e cada um acha outra dupla fixa
+      RK1[k] = pr; const wk = pairWeeks(t.a, t.b), fell = RK0[k] != null && pr - RK0[k] >= 6, keep = wk < SEASON_WEEKS || (pr < 10 && !fell);
+      B[k] = (bad || fell) && !keep ? (B[k] || 0) + 1 : 0;
+      if ((bad || fell) && !keep && Math.random() < (B[k] >= 2 ? .75 : fell ? .45 : .3)) { if (fem === !!$s.CR.me.fem) crNews('Fim da parceria: ' + pairName(t.a, t.b) + ' se separam depois de ' + (fell ? 'cair de ' + (RK0[k] + 1) + 'ª para ' + (pr + 1) + 'ª no ranking de duplas' : B[k] >= 2 ? 'duas temporadas abaixo do esperado' : 'uma temporada ruim') + ' (' + pairTenure(t.a, t.b).replace('juntos ', '') + ' de dupla).', '💔'); pairSplit(t.a, t.b); delete P[t.a]; delete P[t.b]; delete B[k]; }
       else if (i < 6 && pr <= 2 && fem === !!$s.CR.me.fem) crNews(pairName(t.a, t.b) + ' fecham a temporada entre as melhores duplas do mundo (' + (pr + 1) + 'ª em pontos, ' + pairTenure(t.a, t.b) + ').', '🔥'); });
   }
+  $s.CR.pairRk = RK1;
   crPairs(false);
 }
 const crCharOvr = c => c.id === 'crme' ? crMeOvr() : overall(effA(c.a, racketBonus(c.look && c.look.racket), crFormB(c.id)));
