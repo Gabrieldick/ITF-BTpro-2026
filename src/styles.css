@@ -900,3 +900,12 @@ body[data-tags="off"] .tag { display: none; }
 .cr-card.one:hover button { background: var(--ui-acc); color: #041232; border-color: var(--ui-acc); }
 .cr-card.up { border-color: rgba(255,138,61,.6); }
 .am-wl { font: 700 12px var(--f-ui, inherit); color: var(--ui-sub, #9fb3d1); white-space: nowrap; margin: 0 6px; }
+/* barrinha do potencial: progresso até o próximo número */
+.pot-bar { display: grid; gap: 3px; margin: 6px 0 2px; max-width: 420px; font-size: .78rem; }
+.pot-bar span { opacity: .9; }
+.pot-bar span em { font-style: normal; font-weight: 700; margin-left: 6px; color: #9cff6a; }
+.pot-bar span em.dn { color: #ff7a6a; }
+.pot-bar i { display: block; height: 7px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; }
+.pot-bar i b { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #4fb4ff, #b8ff3c); transition: width .5s ease; }
+.pot-bar.gated i b { background: linear-gradient(90deg, #ffb13c, #ffd23f); }
+.perf-pot .pot-bar { margin-top: 6px; }

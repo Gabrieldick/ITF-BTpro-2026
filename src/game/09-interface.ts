@@ -13,7 +13,7 @@ import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam } from './12-controles';
 import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
-import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded } from './14-carreira';
+import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded, crPotBarHTML } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
 import { sideOf } from './18-animacao';
 import { warmShaders } from './02-render';
@@ -769,8 +769,12 @@ function showOver() {
   }
   const inChamp = !!S.champActive, inCareer = !!S.careerActive;
   if (inChamp && !NET.role) champMatchEnded(w === 0); // (campeonato local: um aberto antes não conta numa partida online)
-  if (inCareer) careerMatchEnded(w === 0, rating === null ? undefined : rating);
-  if (inCareer && rating !== null && $s.CR && $s.CR.tour && $s.CR.tour.log) { const last = $s.CR.tour.log[$s.CR.tour.log.length - 1] || ''; const m = last.match(/potencial \+[0-9,]+/); if (m) prependStats('<p class="cr-note perf-pot">Carreira: ' + m[0] + ' (o potencial é o teto dos seus atributos)</p>'); }
+  if (inCareer) { // carreira: o que a partida rendeu (potencial e pontos de evolução) com a barrinha até o próximo número
+    const pot0 = $s.CR ? $s.CR.potCur : 0, pe0 = $s.CR ? $s.CR.pe : 0;
+    careerMatchEnded(w === 0, rating === null ? undefined : rating);
+    if ($s.CR) try { const dp = ($s.CR.potCur || 0) - (pot0 || 0), de = Math.round(($s.CR.pe - pe0) * 10) / 10;
+      prependStats('<div class="cr-note perf-pot">Carreira: ' + (de > 0 ? '+' + String(de).replace('.', ',') + ' pontos de evolução · ' : '') + (Math.abs(dp) > .004 ? 'potencial ' + (dp > 0 ? '+' : '−') + Math.abs(dp).toFixed(2).replace('.', ',') : 'potencial sem mudança' + (rating !== null && rating < 5.5 ? ' (nota abaixo de 5,5)' : '')) + crPotBarHTML(0) + '</div>'); } catch (e) { console.error('potencial', e); }
+  }
   // nível da conta: XP por partida da carreira e do online (quem só assiste não ganha)
   if (S.onMatchEnd && !S.spectate && (inCareer || NET.role)) try { S.onMatchEnd({ won: w === 0, career: inCareer, online: !!NET.role, rating, pts: S.stats.pts, addLine: prependStats }); } catch (e) { console.error('xp', e); }
   $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
