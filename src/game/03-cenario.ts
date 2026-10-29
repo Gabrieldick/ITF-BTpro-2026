@@ -2,11 +2,44 @@
 // céu, mar, areia, quadra e cenário da praia
 import './02-render';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { C, HALF_W, SHORE_Z, V3, WATERLINE, ZONE3, clamp, fbm, rand, smooth } from './00-base';
 import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene, sun } from './02-render';
+// juntar o cenário parado: centenas de peças pequenas (palmeiras, quiosques, prédios, arquibancadas, placas) viravam uma
+// chamada de desenho cada (e outra na sombra). Junta, dentro de cada grupo, as peças visíveis com o mesmo material numa
+// malha só; o que se mexe é InstancedMesh (fica de fora), e quem precisa ficar separado marca userData.dyn
+const _mInv = new THREE.Matrix4(), _mRel = new THREE.Matrix4();
+// material igual por propriedades (as peças do cenário criam um material novo a cada uma, mesmo com a mesma cor)
+const matKey = m => m.map || m.emissiveMap || m.normalMap || m.alphaMap || m.onBeforeCompile.toString() !== THREE.Material.prototype.onBeforeCompile.toString() || !m.isMeshStandardMaterial ? m.uuid
+  : [m.type, m.color.getHexString(), m.emissive.getHexString(), m.emissiveIntensity, m.roughness, m.metalness, m.flatShading, m.side, m.transparent, m.opacity, m.vertexColors, m.envMapIntensity, m.depthWrite, m.visible].join('|');
+// keep: as peças originais ficam (o chamador esconde o grupo de origem); cada material vira uma malha, mesmo que seja uma peça só
+function mergeStatic(root, target, keep) {
+  const roots = Array.isArray(root) ? root : [root]; target = target || roots[0];
+  target.updateMatrixWorld(true); roots.forEach(r => r.updateMatrixWorld(true)); _mInv.copy(target.matrixWorld).invert();
+  const buckets = new Map();
+  roots.forEach(root => root.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.userData.dyn || Array.isArray(o.material) || !o.geometry || o.geometry.morphAttributes.position) return;
+    for (let a = o; a && a !== root; a = a.parent) if (!a.visible || a.userData.dyn) return;
+    _mRel.multiplyMatrices(_mInv, o.matrixWorld); if (_mRel.determinant() < 0) return; // espelhada: inverteria as faces
+    const g = o.geometry, sig = Object.keys(g.attributes).sort().map(k => k + g.attributes[k].itemSize).join(',') + (g.index ? 'i' : 'n');
+    const k = matKey(o.material) + sig + o.castShadow + o.receiveShadow + o.renderOrder;
+    if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push([o, _mRel.clone()]);
+  }));
+  buckets.forEach(list => {
+    if (list.length < 2 && !keep) return;
+    const geos = list.map(([o, m]) => { const gg = o.geometry.clone(); for (const n in gg.morphAttributes) delete gg.morphAttributes[n]; gg.applyMatrix4(m); return gg; });
+    const merged = mergeGeometries(geos, false); geos.forEach(g => g.dispose()); if (!merged) return;
+    const o0 = list[0][0], mesh = new THREE.Mesh(merged, o0.material);
+    mesh.castShadow = o0.castShadow; mesh.receiveShadow = o0.receiveShadow; mesh.renderOrder = o0.renderOrder; mesh.name = 'merged';
+    target.add(mesh); if (!keep) list.forEach(([o]) => o.parent.remove(o));
+  });
+}
+// guarda-sóis e palmeiras: juntos numa malha por material (refeito a cada arena, porque cada uma esconde uns e mostra outros)
+const PROPM = new THREE.Group(); PROPM.name = 'props-juntos';
 const PROPS = []; // guarda-sóis e palmeiras perto da quadra (somem quando há arquibancada)
 // ambiente (mar, areia, quadra, decoração e arena): gira 180° na troca de lado; o céu fica (só o sol muda de lado)
 const ENV = new THREE.Group(); ENV.name = 'ambiente'; scene.add(ENV);
+setTimeout(() => confMesh(), 0); // o confete já existe (escondido) para o aquecimento dos shaders compilar
 // ---------- Céu procedural com nuvens e sol ----------
 const SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 w = modelMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*w; }';
 const SKY_FS = [
@@ -616,6 +649,10 @@ function applyArena(a) {
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
   indoorHall(a);
   if (!a.indoor && (a.amateur || a.size >= 1)) beachDecor(a);
+  mergeStatic(ARENA.group); ENV.children.forEach(g => { if (g.name === 'cidade') mergeStatic(g); });
+  if (!PROPM.parent) ENV.add(PROPM);
+  PROPM.children.forEach(m => m.geometry.dispose()); PROPM.clear();
+  const vis = PROPS.filter(g => g.visible); mergeStatic(vis, PROPM, true); vis.forEach(g => { g.visible = false; });
 }
 // ambiente fechado (points e arenas cobertas): paredes, telhado com fileiras de luz; sem céu, mar, palmeiras nem sol forte
 const LIGHT0 = { sun: null, hemi: null, hemiC: null, hemiG: null };
@@ -812,13 +849,17 @@ function indoorHall(a) {
 }
 // confete do título: papéis coloridos caindo sobre a quadra
 const CONF = { mesh: null, items: [], t: 0 };
-function confetti() {
+function confMesh() {
   if (!CONF.mesh) {
     CONF.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(.09, .06), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), 360);
     CONF.mesh.frustumCulled = false; scene.add(CONF.mesh);
     const c = new THREE.Color(), cols = ['#ff5a1f', '#ffd23f', '#4fd18b', '#2457c5', '#fbf6ea', '#e2364a', '#7fd6db'];
     for (let i = 0; i < 360; i++) CONF.mesh.setColorAt(i, c.set(cols[i % cols.length]).convertSRGBToLinear());
+    CONF.mesh.visible = false;
   }
+}
+function confetti() {
+  confMesh();
   CONF.items = Array.from({ length: 360 }, () => ({ x: rand(-6, 6), y: rand(5, 11), z: rand(-6, 8), vx: rand(-.4, .4), vy: rand(-1.6, -.8), rx: rand(0, 6), ry: rand(0, 6), w: rand(3, 8) }));
   CONF.t = 7; CONF.mesh.visible = true;
 }

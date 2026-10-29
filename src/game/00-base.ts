@@ -172,6 +172,10 @@ const GEAR = [
   { id: 'labvideo', nome: 'Laboratório de vídeo 3D', preco: 50000, desc: 'Cada golpe medido quadro a quadro.', b: { lob: 1, curta: 1 } },
   { id: 'raqia', nome: 'Raquete com sensor e IA de treino', preco: 65000, desc: 'O treino se ajusta ao seu golpe, dia a dia.', b: { backhand: 1, voleio: 1 } },
   { id: 'cttreino', nome: 'Centro de treino particular com areia oficial', preco: 90000, desc: 'A quadra do Mundial no seu quintal.', b: { saque: 1, leitura: 1 } },
+  { id: 'equipe24', nome: 'Equipe de performance 24 horas', preco: 150000, desc: 'Fisiologista, nutricionista e preparador viajando com você.', b: { vel: 1, def: 1 } },
+  { id: 'genetica', nome: 'Análise genética e nutrição de precisão', preco: 220000, desc: 'Dieta e carga sob medida para o seu corpo.', b: { forca: 1, smash: 1 } },
+  { id: 'arenaclima', nome: 'Arena coberta com clima controlado', preco: 350000, desc: 'Treina com vento, calor e chuva simulados.', b: { lob: 1, voleio: 1 } },
+  { id: 'olhodigital', nome: 'Sistema de câmeras de arbitragem no seu treino', preco: 500000, desc: 'Cada bola medida ao centímetro, todo dia.', b: { curta: 1, leitura: 1 } },
 ];
 const gearSum = ids => { const b = {}; (ids || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = Math.min(GEAR_CAP, (b[k] || 0) + g.b[k]); }); return b; };
 // equipe técnica: contrato até o fim da temporada

@@ -80,8 +80,12 @@ const NAME_BANK = {
   ARG: { m: ['Nicolás', 'Joaquín', 'Facundo', 'Tomás'], f: ['Sofía', 'Valentina', 'Micaela', 'Agustina'], s: ['Fernández', 'González', 'Gómez', 'Díaz', 'Acosta'] },
 };
 const COUNTRY_W = [['BRA', .42], ['ITA', .2], ['ESP', .1], ['FRA', .06], ['RUS', .07], ['POR', .07], ['ARG', .08]];
-const SKINS = ['#f1cfae', '#e2b48f', '#d2a07a', '#c68a5e', '#a8704a', '#8d5a3b', '#6b4229'];
-const HAIRS = ['#120c08', '#2b1d14', '#3a2615', '#5a3a1e', '#6a3f1d', '#a8743a', '#c99a5a', '#7a5a3a'];
+// tons de pele (do mais claro ao mais escuro) e cores de cabelo: naturais (castanhos, loiros, ruivos, grisalhos) e, só para
+// quem escolhe na carreira, as tingidas (platinado, rosa, azul, verde, roxo, laranja)
+const SKINS = ['#f7e1cf', '#f1cfae', '#ebc29d', '#e2b48f', '#d9a882', '#d2a07a', '#c68a5e', '#b97d55', '#a8704a', '#9a6342', '#8d5a3b', '#7a4b30', '#6b4229', '#553422', '#3f2618'];
+const HAIRS_NAT = ['#0d0907', '#120c08', '#2b1d14', '#3a2615', '#4a301c', '#5a3a1e', '#6a3f1d', '#7a5a3a', '#8b5a2b', '#a8743a', '#c99a5a', '#d8b87a', '#e8d3a0', '#b5502a', '#8c2f1a', '#8f8f8f', '#cfcfcf'];
+const HAIRS = HAIRS_NAT.concat(['#f2f0e6', '#e24a8a', '#3a6fd8', '#2fb37a', '#8a4fd8', '#ff6a2a']);
+const HAIRS_NPC = HAIRS_NAT.slice(0, 15); // gerados: sem grisalho nem tingido
 const STYLES = {
   atacante: { nome: 'Atacante', d: { forca: 5, smash: 6, saque: 4, def: -4, curta: -4, lob: -3, backhand: -2, vel: 0 } },
   defensor: { nome: 'Defensor', d: { def: 6, vel: 5, backhand: 3, smash: -4, forca: -4, saque: -3, curta: 0, lob: 0 } },
@@ -116,7 +120,7 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
       const ovr = Math.round(35 + 51 * Math.pow(rnd(), 1.25)); // de ~35 (amador C) a ~86
       const style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']);
       const fem = g === 'f';
-      const look = { skin: pick(SKINS), hair: pick(HAIRS), num: String(10 + Math.floor(rnd() * 89)) };
+      const look = { skin: pick(SKINS), hair: pick(HAIRS_NPC), num: String(10 + Math.floor(rnd() * 89)) };
       const acc = rnd(); if (acc < .35) look.cap = pick(['#fbf6ea', '#17324d', '#0b7a83']); else if (acc < .65) look.visor = pick(['#fbf6ea', '#17324d', '#ff5a1f']);
       if (rnd() < .5) look.glasses = true; if (rnd() < .5) look.band = true; if (fem) look.tank = true;
       look.racket = pick(ovr < 52 ? ['basica', 'tropic'] : ovr < 58 ? ['tropic', 'brisa', 'fibra'] : ovr < 64 ? ['fibra', 'mare', 'coral', 'duna'] : ovr < 72 ? ['duna', 'medusa', 'proteo', 'coral', 'mare', 'tufao'] : ovr < 80 ? ['kronos', 'atol', 'proteo', 'ventosul', 'recife', 'tufao', 'medusa'] : ['supercarbon', 'tsunami', 'eclipse', 'recife', ovr > 85 ? 'zenite' : 'kronos']);
@@ -135,7 +139,7 @@ function crLocals() {
   const out = [], rnd = mulberry($s.CR.seed + 90917), bank = NAME_BANK.BRA, pick = arr => arr[Math.floor(rnd() * arr.length)];
   for (const [uf] of STATES) for (let k = 0; k < 3; k++) for (const g of ['m', 'f']) for (let i = 0; i < LOCAL_N; i++) {
     const [o0, o1] = LOCAL_OVR[k], ovr = o0 + Math.floor(rnd() * (o1 - o0 + 1)), style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']), fem = g === 'f';
-    const look = { skin: pick(SKINS), hair: pick(HAIRS), num: String(10 + Math.floor(rnd() * 89)), racket: pick(ovr < 45 ? ['basica', 'tropic'] : ovr < 52 ? ['tropic', 'brisa', 'fibra'] : ['fibra', 'areia', 'mare']) };
+    const look = { skin: pick(SKINS), hair: pick(HAIRS_NPC), num: String(10 + Math.floor(rnd() * 89)), racket: pick(ovr < 45 ? ['basica', 'tropic'] : ovr < 52 ? ['tropic', 'brisa', 'fibra'] : ['fibra', 'areia', 'mare']) };
     if (rnd() < .35) look.cap = pick(['#fbf6ea', '#17324d', '#0b7a83']); else if (rnd() < .5) look.visor = pick(['#fbf6ea', '#17324d']); if (fem) look.tank = true;
     out.push({ id: 'l' + g + uf + k + '_' + i, name: pick(bank[g]) + ' ' + pick(bank.s), alt: Math.round(fem ? 168 + (rnd() - .5) * 14 : 181 + (rnd() - .5) * 16), pais: 'BRA', uf, estilo: STYLES[style].nome, build: pick(['atletico', 'esguio', 'compacto', 'forte']), fem, canhoto: rnd() < .12 || undefined, a: makeAttrs(ovr, style, rnd), look, local: true });
   }

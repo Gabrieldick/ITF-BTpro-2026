@@ -10,7 +10,7 @@ import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
 import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
 import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, diveMark, fpArm, fpWrist, loadModels } from './07-glb';
-import { HITS, applyGfx, getResScale, setResScale } from './08-audio';
+import { HITS, applyGfx, getResScale, setResScale, setMenuRes } from './08-audio';
 import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
 import { MTR, applyCam, inPlay, setPaused, syncMenu } from './12-controles';
 import { step } from './17-bola';
@@ -46,12 +46,14 @@ function perfTick(now, gap) {
   }
 }
 addEventListener('keydown', e => { if (e.key && e.key.toLowerCase() === 'f' && !e.repeat && !(e.target && e.target.tagName === 'INPUT')) { FPS.show = !FPS.show; if (FPS.el) FPS.el.hidden = !FPS.show; } });
-let menuDraw = 0;
+let menuMode = false, menuN = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  // com um menu cobrindo a tela (menu, carreira, campeonato) a quadra atrás quase não aparece: desenha só 4 vezes por segundo,
-  // assim a página responde na hora (o hover dos botões demorava porque cada quadro 3D ocupava o navegador)
-  if (!NET.role && document.body.classList.contains('in-menu')) { if (now - menuDraw < 250) { last = now; return; } menuDraw = now; last = now - 16; }
+  // com um menu aberto (menu, carreira, campeonato) a quadra vira fundo: metade da resolução e sombras a cada 4 quadros,
+  // assim o fundo segue fluido e a página responde na hora (o hover dos botões demorava com o 3D pesado atrás)
+  const inMenu = !NET.role && document.body.classList.contains('in-menu');
+  if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu); renderer.shadowMap.autoUpdate = !inMenu; renderer.shadowMap.needsUpdate = true; }
+  if (inMenu && ++menuN % 4 === 0) renderer.shadowMap.needsUpdate = true;
   perfTick(now, now - last);
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === 'guest') { if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião

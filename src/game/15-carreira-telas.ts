@@ -137,7 +137,7 @@ function crCalendarHTML() {
   const legend = [[3, 'BT10'], [4, 'BT50'], [5, 'BT100'], [6, 'BT200'], [7, 'BT400'], [8, 'Sand Series'], [9, 'Mundial']].map(([t, n]) => '<span style="--tc:' + TIER_COR[t] + '">' + n + '</span>').join('');
   return '<p class="section-label">Calendário · temporada ' + $s.CR.season + ' · você está na semana ' + $s.CR.week + '/' + SEASON_WEEKS + '</p>'
     + (reg ? '<div class="cr-card gold"><div class="eyebrow">Inscrito nesta semana</div><b>' + esc(reg.name) + '</b></div>' : '')
-    + (crMaxTier() < 3 ? '<p class="cr-note">O ITF BT10 libera com ' + TIERS[3].req + ' pontos no ranking ou com um título no Amador A. Os amadores e estaduais aparecem na Agenda, semana a semana.</p>' : '<p class="cr-note">Torneios do seu nível (e um acima). As inscrições abrem na segunda da semana do torneio, na Agenda.</p>')
+    + (crMaxTier() < 3 ? '<p class="cr-note">O ITF BT10 libera com ' + TIERS[3].req + ' pontos no ranking ou com um título no Amador A. Os amadores e estaduais aparecem na Agenda, semana a semana.</p>' : '<p class="cr-note">Como profissional, você pode jogar qualquer torneio do circuito, até o Sand Series (os acima do seu nível têm adversários bem mais fortes). As inscrições abrem na segunda da semana do torneio, na Agenda.</p>')
     + '<div class="cr-legend">' + legend + '</div>'
     + (months ? '<div class="cr-cal">' + months + '</div>' : '<p class="cr-note">Nenhum torneio profissional no resto da temporada.</p>');
 }
