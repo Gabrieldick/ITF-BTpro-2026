@@ -600,7 +600,11 @@ export { startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers,
 
 // pausa: tática e formação da dupla podem mudar no meio do jogo
 { const ts = $('pTacSel'), fs = $('pFormSel');
-  const syncP = () => { const box = $('pTac'); if (box) box.hidden = S.settings.mode !== 'dupla'; if (ts) ts.value = S.settings.tactic || 'normal'; if (fs) fs.value = S.settings.formation || 'normal'; };
+  const rs = $('pResSel'), gs = $('pGfxSel'); // resolução e gráficos também mudam no meio do jogo (valem na hora)
+  const syncP = () => { const box = $('pTac'); if (box) box.hidden = S.settings.mode !== 'dupla'; if (ts) ts.value = S.settings.tactic || 'normal'; if (fs) fs.value = S.settings.formation || 'normal'; if (rs) rs.value = S.settings.res || 'auto'; if (gs) gs.value = S.settings.gfx === 'leve' ? 'leve' : 'alto'; };
+  const radio = (n, v) => { const r = document.querySelector('input[name=' + n + '][value="' + v + '"]'); if (r) r.checked = true; };
+  if (rs) rs.addEventListener('change', () => { S.settings.res = rs.value; radio('res', rs.value); applyGfx(); saveSettings(); });
+  if (gs) gs.addEventListener('change', () => { S.settings.gfx = gs.value; radio('gfx', gs.value); applyGfx(); saveSettings(); });
   if (ts) ts.addEventListener('change', () => { S.settings.tactic = ts.value; saveSettings(); });
   if (fs) fs.addEventListener('change', () => { S.settings.formation = fs.value; saveSettings(); });
   const pz = $('pause'); if (pz) new MutationObserver(() => { if (!pz.hidden) syncP(); }).observe(pz, { attributes: true, attributeFilter: ['hidden'] }); }

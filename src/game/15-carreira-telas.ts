@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
+import { GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
@@ -304,11 +304,13 @@ function crShopHTML() {
     const bonus = bonusChips(r.b), tot = Object.values(r.b).reduce((t, v) => t + v, 0), kd = rkKind(r.b);
     return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small></div>' + (eq ? '' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + '>' + money(price) + '</button>') + '</div>';
   }).join('');
-  const gr = GEAR.map(g => {
-    const own = $s.CR.gear.includes(g.id);
-    const bonus = bonusChips(g.b);
-    return '<div class="cr-row"><span class="cr-ic">🎒</span><div><b>' + g.nome + '</b><small>' + g.desc + '</small><small>' + bonus + '</small></div>' + (own ? '<span class="cr-own">comprado</span>' : '<button class="cta sm" data-gear="' + g.id + '"' + ($s.CR.money < g.preco ? ' disabled' : '') + '>' + money(g.preco) + '</button>') + '</div>';
-  }).join('');
+  // equipamentos por categoria: um em uso de cada (como a raquete); comprar o melhor de uma categoria já põe em uso
+  const on = new Set(gearOn($s.CR.gear, $s.CR.gearEq));
+  const gr = GEAR_SLOTS.map(([sl, nm]) => '<p class="section-label" style="margin-top:6px">' + nm + '</p>' + GEAR.filter(g => g.slot === sl).sort((a, b) => a.preco - b.preco).map(g => {
+    const own = $s.CR.gear.includes(g.id), use = on.has(g.id), bonus = bonusChips(g.b);
+    return '<div class="cr-row' + (use ? ' me' : '') + '"><span class="cr-ic">🎒</span><div><b>' + g.nome + (use ? ' · em uso' : '') + '</b><small>' + g.desc + '</small><small>' + bonus + '</small></div>'
+      + (use ? '<button class="ghost sm" data-gearoff="' + sl + '">Tirar</button>' : own ? '<button class="ghost sm" data-gearuse="' + g.id + '">Usar</button>' : '<button class="cta sm" data-gear="' + g.id + '"' + ($s.CR.money < g.preco ? ' disabled' : '') + '>' + money(g.preco) + '</button>') + '</div>';
+  }).join('')).join('');
   const st = STAFF.map(x => {
     const own = !!$s.CR.staff[x.id];
     return '<div class="cr-row' + (own ? ' me' : '') + '"><span class="cr-ic">' + (x.head ? '🧢' : '👤') + '</span><div><b>' + x.nome + '</b><small>' + x.desc + (x.head ? ' Só um técnico principal por vez.' : '') + '</small></div>' + (own ? '<span class="cr-own">contratado</span>' : '<button class="cta sm" data-hire="' + x.id + '"' + ($s.CR.money < x.preco ? ' disabled' : '') + '>' + money(x.preco) + '</button>') + '</div>';
@@ -316,7 +318,7 @@ function crShopHTML() {
   const sub = SHOP_TABS.map(([k, n]) => '<button type="button" class="' + (shopTab === k ? 'sel' : '') + '" data-shop="' + k + '">' + n + '</button>').join('');
   const head = (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '') + '<div class="cr-tabs cr-shop-tabs">' + sub + '</div>';
   if (shopTab === 'raquetes') return head + '<p class="section-label">🎾 Raquetes (' + Object.keys(RACKET_STATS).length + ')</p><div class="cr-list">' + rk + '</div>';
-  if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Cada um dá +1; somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
+  if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Um em uso por categoria, como a raquete (quanto melhor, mais caro). Somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
   return head + crClothesHTML(shopTab);
 }
 // ---------- loja de roupas: parte de cima, de baixo, estampas, acessórios e a vitrine das exclusivas ----------
@@ -569,7 +571,9 @@ function bindCareerBody() {
     $s.CR.money -= c.preco; W[slot].push(k); if (c.ex) $s.CR.fama = ($s.CR.fama || 0) + 2;
     $s.CR.lastMsg = 'Comprou: ' + c.nome + (c.ex ? ' (peça exclusiva: +2 de fama)' : '') + '. ' + (slot === 'acc' ? 'Use na aba Jogador.' : 'Monte o uniforme na aba Jogador.'); saveCareer(); renderCareer();
   }));
-  body.querySelectorAll('[data-gear]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gear); if ($s.CR.money >= g.preco) { $s.CR.money -= g.preco; if (g.staff) $s.CR.staff[g.id] = true; else $s.CR.gear.push(g.id); $s.CR.lastMsg = 'Comprou: ' + g.nome + '.'; crSyncChars(); saveCareer(); } renderCareer(); }));
+  body.querySelectorAll('[data-gear]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gear); if ($s.CR.money >= g.preco) { $s.CR.money -= g.preco; if (g.staff) $s.CR.staff[g.id] = true; else { $s.CR.gear.push(g.id); const E = $s.CR.gearEq = $s.CR.gearEq || {}, cur = GEAR.find(x => x.id === E[g.slot]); if (!cur || cur.preco < g.preco) E[g.slot] = g.id; } $s.CR.lastMsg = 'Comprou: ' + g.nome + '.'; crSyncChars(); saveCareer(); } renderCareer(); }));
+  body.querySelectorAll('[data-gearuse]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gearuse); if (g) { ($s.CR.gearEq = $s.CR.gearEq || {})[g.slot] = g.id; crSyncChars(); saveCareer(); } renderCareer(); }));
+  body.querySelectorAll('[data-gearoff]').forEach(bt => bt.addEventListener('click', () => { ($s.CR.gearEq = $s.CR.gearEq || {})[bt.dataset.gearoff] = null; crSyncChars(); saveCareer(); renderCareer(); }));
   body.querySelectorAll('input[name=crGames]').forEach(r => r.addEventListener('change', () => { $s.CR.games = +r.value; saveCareer(); }));
   const ms = $('crMeSide'); if (ms) ms.addEventListener('change', () => { $s.CR.side = ms.value; saveCareer(); });
   if (crTab === 'jogador') { const eb = $('crEditBtn'); if (eb) eb.addEventListener('click', openEditor); }

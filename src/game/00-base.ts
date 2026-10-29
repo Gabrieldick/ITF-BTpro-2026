@@ -143,41 +143,51 @@ const PATTERNS = {
   onca: { nome: 'Onça-pintada', preco: 4500, id: 23, ex: { rank: 100 } }, marmore: { nome: 'Mármore', preco: 6000, id: 20, ex: { rank: 50 } },
 };
 const OUTFIT_COLORS = ['#ff5a1f', '#ffd23f', '#e2364a', '#ff86c0', '#9b5cff', '#1f6fd1', '#17324d', '#0b7a83', '#3fd17a', '#2e9e57', '#fbf6ea', '#ffffff', '#9aa3ad', '#141414'];
-// equipamentos: +1 cada (os mais caros, +1 em dois atributos); somados, no máximo +2 por atributo (GEAR_CAP)
-const GEAR_CAP = 2;
+// equipamentos por categoria (como a raquete): você pode ter vários, mas usa um de cada categoria; quanto melhor, mais caro.
+// Somados, no máximo +3 por atributo (GEAR_CAP) — e com a raquete ainda há retorno decrescente
+const GEAR_CAP = 3;
+const GEAR_SLOTS = [['cabeca', '🧢 Cabeça'], ['oculos', '🕶️ Óculos'], ['grip', '✋ Empunhadura'], ['pes', '🦶 Pés'], ['corpo', '👕 Corpo'], ['tec', '📊 Tecnologia'], ['fisico', '💪 Preparação física'], ['treino', '🎾 Treino']];
 const GEAR = [
-  { id: 'viseira', nome: 'Viseira pro', preco: 300, desc: 'Menos sol no rosto no saque.', b: { saque: 1 } },
-  { id: 'munhequeira', nome: 'Munhequeira e grip premium', preco: 400, desc: 'Empunhadura firme no backhand.', b: { backhand: 1 } },
-  { id: 'meia', nome: 'Meia de areia', preco: 500, desc: 'Arranque melhor na areia quente.', b: { vel: 1 } },
-  { id: 'handgrip', nome: 'Hand grip e elásticos', preco: 600, desc: 'Antebraço mais forte.', b: { forca: 1 } },
-  { id: 'oculos', nome: 'Óculos esportivos', preco: 700, desc: 'Enxerga a bola contra o sol.', b: { def: 1 } },
-  { id: 'faixa', nome: 'Faixa de cabelo pro', preco: 800, desc: 'Suor longe dos olhos no lob.', b: { lob: 1 } },
-  { id: 'joelheira', nome: 'Joelheira de compressão', preco: 1000, desc: 'Mais firmeza nas bolas baixas.', b: { curta: 1 } },
-  { id: 'overgrip', nome: 'Kit overgrip pro', preco: 1200, desc: 'Raquete firme no smash.', b: { smash: 1 } },
-  { id: 'camisauv', nome: 'Camisa UV de competição', preco: 1600, desc: 'Leve e fresca nos ralis longos.', b: { def: 1 } },
-  { id: 'cones', nome: 'Kit de cones e escada de agilidade', preco: 2200, desc: 'Passos curtos e rápidos perto da rede.', b: { voleio: 1 } },
-  { id: 'tornozeleira', nome: 'Tornozeleira estabilizadora', preco: 3000, desc: 'Apoio firme nas mudanças de direção.', b: { vel: 1 } },
-  { id: 'gripcouro', nome: 'Grip de couro sob medida', preco: 3800, desc: 'Toque mais fino nas bolas curtas.', b: { curta: 1 } },
-  { id: 'relogio', nome: 'Relógio com GPS e carga de treino', preco: 5000, desc: 'Controle de carga: pernas descansadas.', b: { vel: 1 } },
-  { id: 'polarizado', nome: 'Óculos polarizados de elite', preco: 6500, desc: 'Lê a bola contra o sol do meio-dia.', b: { lob: 1 } },
-  { id: 'cordas', nome: 'Raquete balanceada em fábrica', preco: 8000, desc: 'Peso e equilíbrio ajustados ao seu braço.', b: { forca: 1 } },
-  { id: 'suplem', nome: 'Plano de suplementação', preco: 10000, desc: 'Recuperação e explosão.', b: { smash: 1 } },
-  { id: 'palmilha', nome: 'Palmilhas sob medida', preco: 12000, desc: 'Pisada estável na areia fofa.', b: { def: 1 } },
-  { id: 'sensor', nome: 'Sensor de golpes com análise em vídeo', preco: 15000, desc: 'Corrige o toque do backhand.', b: { backhand: 1 } },
-  { id: 'scout', nome: 'Software de scouting dos rivais', preco: 18000, desc: 'Você sabe para onde eles jogam.', b: { leitura: 1 } },
-  { id: 'maqvoleio', nome: 'Máquina lançadora de alta velocidade', preco: 22000, desc: 'Reflexo de rede no treino.', b: { voleio: 1 } },
-  { id: 'biomec', nome: 'Avaliação biomecânica completa', preco: 28000, desc: 'Ajusta o movimento do saque e do smash.', b: { saque: 1, smash: 1 } },
-  { id: 'eletro', nome: 'Eletroestimulação de recuperação', preco: 34000, desc: 'Músculos prontos todo dia.', b: { forca: 1, vel: 1 } },
-  { id: 'neuro', nome: 'Treino de reação neurocognitivo', preco: 42000, desc: 'Lê e reage antes do adversário bater.', b: { def: 1, leitura: 1 } },
-  { id: 'labvideo', nome: 'Laboratório de vídeo 3D', preco: 50000, desc: 'Cada golpe medido quadro a quadro.', b: { lob: 1, curta: 1 } },
-  { id: 'raqia', nome: 'Raquete com sensor e IA de treino', preco: 65000, desc: 'O treino se ajusta ao seu golpe, dia a dia.', b: { backhand: 1, voleio: 1 } },
-  { id: 'cttreino', nome: 'Centro de treino particular com areia oficial', preco: 90000, desc: 'A quadra do Mundial no seu quintal.', b: { saque: 1, leitura: 1 } },
-  { id: 'equipe24', nome: 'Equipe de performance 24 horas', preco: 150000, desc: 'Fisiologista, nutricionista e preparador viajando com você.', b: { vel: 1, def: 1 } },
-  { id: 'genetica', nome: 'Análise genética e nutrição de precisão', preco: 220000, desc: 'Dieta e carga sob medida para o seu corpo.', b: { forca: 1, smash: 1 } },
-  { id: 'arenaclima', nome: 'Arena coberta com clima controlado', preco: 350000, desc: 'Treina com vento, calor e chuva simulados.', b: { lob: 1, voleio: 1 } },
-  { id: 'olhodigital', nome: 'Sistema de câmeras de arbitragem no seu treino', preco: 500000, desc: 'Cada bola medida ao centímetro, todo dia.', b: { curta: 1, leitura: 1 } },
+  { id: 'viseira', slot: 'cabeca', nome: 'Viseira pro', preco: 300, desc: 'Menos sol no rosto no saque.', b: { saque: 1 } },
+  { id: 'faixa', slot: 'cabeca', nome: 'Faixa técnica de cabelo', preco: 1500, desc: 'Suor longe dos olhos no saque e no lob.', b: { saque: 1, lob: 1 } },
+  { id: 'boneice', slot: 'cabeca', nome: 'Boné com resfriamento', preco: 18000, desc: 'Cabeça fresca no sol do meio-dia.', b: { saque: 2, lob: 1 } },
+  { id: 'visorhud', slot: 'cabeca', nome: 'Viseira antirreflexo de competição', preco: 120000, desc: 'Enxerga o lançamento contra qualquer sol.', b: { saque: 2, lob: 2 } },
+  { id: 'oculos', slot: 'oculos', nome: 'Óculos esportivos', preco: 700, desc: 'Enxerga a bola contra o sol.', b: { def: 1 } },
+  { id: 'polarizado', slot: 'oculos', nome: 'Óculos polarizados de elite', preco: 6500, desc: 'Lê a bola contra o sol do meio-dia.', b: { def: 1, leitura: 1 } },
+  { id: 'oculosfoto', slot: 'oculos', nome: 'Óculos fotocromáticos pro', preco: 30000, desc: 'A lente se ajusta à luz a cada ponto.', b: { def: 2, leitura: 1 } },
+  { id: 'neuro', slot: 'oculos', nome: 'Óculos de treino de reação', preco: 200000, desc: 'Lê e reage antes do adversário bater.', b: { def: 2, leitura: 2 } },
+  { id: 'overgrip', slot: 'grip', nome: 'Kit overgrip pro', preco: 400, desc: 'Raquete firme no smash.', b: { smash: 1 } },
+  { id: 'munhequeira', slot: 'grip', nome: 'Munhequeira e grip premium', preco: 1800, desc: 'Empunhadura firme no smash e no backhand.', b: { smash: 1, backhand: 1 } },
+  { id: 'gripcouro', slot: 'grip', nome: 'Grip de couro sob medida', preco: 14000, desc: 'Toque mais fino no backhand e na curta.', b: { backhand: 2, curta: 1 } },
+  { id: 'cordas', slot: 'grip', nome: 'Raquete balanceada em fábrica', preco: 90000, desc: 'Peso e equilíbrio ajustados ao seu braço.', b: { smash: 2, backhand: 2 } },
+  { id: 'meia', slot: 'pes', nome: 'Meia de areia', preco: 500, desc: 'Arranque melhor na areia quente.', b: { vel: 1 } },
+  { id: 'tornozeleira', slot: 'pes', nome: 'Tornozeleira estabilizadora', preco: 3000, desc: 'Apoio firme nas mudanças de direção.', b: { vel: 1, def: 1 } },
+  { id: 'palmilha', slot: 'pes', nome: 'Palmilhas sob medida', preco: 25000, desc: 'Pisada estável na areia fofa.', b: { vel: 2, def: 1 } },
+  { id: 'meiagraf', slot: 'pes', nome: 'Meia de areia com sola de grafeno', preco: 150000, desc: 'Explosão em qualquer areia.', b: { vel: 2, def: 2 } },
+  { id: 'camisauv', slot: 'corpo', nome: 'Camisa UV de competição', preco: 1000, desc: 'Leve e fresca nos ralis longos.', b: { def: 1 } },
+  { id: 'joelheira', slot: 'corpo', nome: 'Joelheira de compressão', preco: 4000, desc: 'Mais firmeza nas bolas baixas.', b: { curta: 1, def: 1 } },
+  { id: 'compressao', slot: 'corpo', nome: 'Kit de compressão de recuperação', preco: 28000, desc: 'Pernas inteiras no terceiro set.', b: { def: 2, vel: 1 } },
+  { id: 'trajepro', slot: 'corpo', nome: 'Traje de compressão sob medida', preco: 140000, desc: 'Cada músculo no lugar certo.', b: { def: 2, curta: 2 } },
+  { id: 'relogio', slot: 'tec', nome: 'Relógio com GPS e carga de treino', preco: 2500, desc: 'Controle de carga e de tempo de jogo.', b: { leitura: 1 } },
+  { id: 'sensor', slot: 'tec', nome: 'Sensor de golpes com análise em vídeo', preco: 9000, desc: 'Corrige o toque: curtas e lobs mais precisos.', b: { curta: 1, lob: 1 } },
+  { id: 'scout', slot: 'tec', nome: 'Software de scouting dos rivais', preco: 35000, desc: 'Você sabe para onde eles jogam.', b: { leitura: 2, curta: 1 } },
+  { id: 'labvideo', slot: 'tec', nome: 'Laboratório de vídeo 3D', preco: 60000, desc: 'Cada golpe medido quadro a quadro.', b: { lob: 2, curta: 1 } },
+  { id: 'olhodigital', slot: 'tec', nome: 'Câmeras de arbitragem no seu treino', preco: 400000, desc: 'Cada bola medida ao centímetro, todo dia.', b: { leitura: 2, lob: 2 } },
+  { id: 'handgrip', slot: 'fisico', nome: 'Hand grip e elásticos', preco: 600, desc: 'Antebraço mais forte.', b: { forca: 1 } },
+  { id: 'suplem', slot: 'fisico', nome: 'Plano de suplementação', preco: 8000, desc: 'Recuperação e explosão.', b: { forca: 1, smash: 1 } },
+  { id: 'eletro', slot: 'fisico', nome: 'Eletroestimulação de recuperação', preco: 40000, desc: 'Músculos prontos todo dia.', b: { forca: 2, vel: 1 } },
+  { id: 'equipe24', slot: 'fisico', nome: 'Equipe de performance 24 horas', preco: 120000, desc: 'Fisiologista, nutricionista e preparador viajando com você.', b: { forca: 2, vel: 2 } },
+  { id: 'genetica', slot: 'fisico', nome: 'Análise genética e nutrição de precisão', preco: 250000, desc: 'Dieta e carga sob medida para o seu corpo.', b: { forca: 2, smash: 2 } },
+  { id: 'cones', slot: 'treino', nome: 'Kit de cones e escada de agilidade', preco: 2200, desc: 'Passos curtos e rápidos perto da rede.', b: { voleio: 1 } },
+  { id: 'maqvoleio', slot: 'treino', nome: 'Máquina lançadora de alta velocidade', preco: 18000, desc: 'Reflexo de rede no treino.', b: { voleio: 1, saque: 1 } },
+  { id: 'biomec', slot: 'treino', nome: 'Avaliação biomecânica completa', preco: 45000, desc: 'Ajusta o movimento do saque e do voleio.', b: { saque: 2, voleio: 1 } },
+  { id: 'raqia', slot: 'treino', nome: 'Raquete com sensor e IA de treino', preco: 90000, desc: 'O treino se ajusta ao seu golpe, dia a dia.', b: { voleio: 2, backhand: 1 } },
+  { id: 'cttreino', slot: 'treino', nome: 'Centro de treino particular com areia oficial', preco: 180000, desc: 'A quadra do Mundial no seu quintal.', b: { voleio: 2, saque: 2 } },
+  { id: 'arenaclima', slot: 'treino', nome: 'Arena coberta com clima controlado', preco: 500000, desc: 'Treina com vento, calor e chuva simulados.', b: { voleio: 2, lob: 2 } },
 ];
 const gearSum = ids => { const b = {}; (ids || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = Math.min(GEAR_CAP, (b[k] || 0) + g.b[k]); }); return b; };
+// o que está em uso: um por categoria (save antigo sem escolha: o melhor que você tem de cada)
+const gearOn = (owned, eq) => GEAR_SLOTS.map(([sl]) => { const id = eq && eq[sl]; if (id && (owned || []).includes(id)) return id; const best = GEAR.filter(g => g.slot === sl && (owned || []).includes(g.id)).sort((a, b) => b.preco - a.preco)[0]; return eq && sl in eq ? null : best ? best.id : null; }).filter(Boolean);
 // equipe técnica: contrato até o fim da temporada
 const STAFF = [
   { id: 'tec1', nome: 'Técnico de clube', preco: 1200, desc: '+25% de pontos de evolução.', head: 1, xp: .25 },
@@ -408,4 +418,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

@@ -113,7 +113,7 @@ function doHit(p, type, q, isServe, mod) {
     grade = qq;
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
     const fpE = S.femPace ? .6 : 1; // feminino: a pancada força menos o erro (mais trocas)
-    let pOut = pressure * (1 - qq) * .45 * risk * wDef * fpE, pPop = pressure * (.12 + (1 - qq) * .9) * risk * wDef * fpE;
+    let pOut = pressure * (1 - qq) * .45 * risk * wDef * fpE, pPop = pressure * (.06 + (1 - qq) * .85) * risk * wDef * fpE; // (defesa boa levanta bem menos: a que flutua na rede é exceção)
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
     if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk * fpE; pPop += .14 * ball.smashPow * dk * fpE; }
@@ -141,7 +141,7 @@ function doHit(p, type, q, isServe, mod) {
           return { key, label: 'FUROU', mis: true, pop: false, wild: false, grade: 0, pressure, backhand: bhSide, contact: '', curtaK: 0, whiff: true };
         }
         if (u < .6) netFin = true; else finOut = wild = true;
-      } else if (!pop && Math.random() < lerp(.75, .45, dk) * (ball.finPerf ? 1.2 : 1)) pop = true; // a que volta: quase sempre levantada
+      } else if (!pop && Math.random() < lerp(.7, .3, dk) * (ball.finPerf ? 1.2 : 1)) pop = true; // a que volta: quase sempre levantada (quem defende muito bem segura mais baixa)
     }
   }
   // defesa colada na rede contra smash forte que não é finalização (do meio/fundo): a bola chega rápido, quase sem tempo de
@@ -288,9 +288,11 @@ function doHit(p, type, q, isServe, mod) {
   let curtaK = 0;
   if (key === 'curta' && !pop && !isServe) {
     const tq = mod.timing === undefined ? q : q * .4 + mod.timing * .6; // o toque na hora certa (anel verde) é o que mais conta
-    curtaK = clamp((tq - .45) / .4, 0, 1) * lerp(.65, 1, clamp((attrK(p, 'curta') - .35) / .6, 0, 1));
+    // quem tem a curta muito boa (atributo alto) acerta o toque com mais frequência e a bola morre ainda mais rente
+    const hiA = clamp((attrK(p, 'curta') - .8) / .15, 0, 1);
+    curtaK = clamp((tq - .45) / .4 + hiA * .18, 0, 1) * lerp(.65, 1, clamp((attrK(p, 'curta') - .35) / .6, 0, 1));
     // curta boa (mais ainda a matadora) cai mais perto da rede e despenca mais rápido: difícil de buscar para qualquer um
-    spec.gk = lerp(.95, 1.63, Math.pow(curtaK, 1.2)) * (vr === 'baixa' ? .93 : 1);
+    spec.gk = lerp(.95, 1.63 + .22 * hiA, Math.pow(curtaK, 1.2)) * (vr === 'baixa' ? .93 : 1);
     spec.margin = lerp(.14, .09, curtaK);
     spec.depth = [lerp(1.1, 1.08, curtaK), lerp(2.5, 2.35, curtaK)];
     if (curtaK > .86 && !finisher) spec.label = 'CURTA MATADORA';
@@ -314,7 +316,7 @@ function doHit(p, type, q, isServe, mod) {
     // lob chutado perfeito: passa acima do alcance do smash de quem está colado na rede, mesmo recuando (≥ 3,3 m de altura
     // aos 3,2 m da rede), e despenca no fundo: quem estava colado não chega mais; quem estava nos 3 m ainda chega para o smash,
     // sem folga. Efeito de queda até ~2,6× a gravidade; se não couber, a bola voa um pouco mais (até ~1,05 s)
-    const zK = dir * 3.2, HK = 3.3;
+    const zK = dir * 3.2, HK = 3.6; // (um pouco mais alto)
     const yAt = z => { const t = (z - ball.pos.z) / v.z; return t <= 0 ? 99 : ball.pos.y + v.y * t - .5 * G * spec.gk * t * t; };
     for (let j = 0; j < 2; j++) {
       spec.gk = 1.3;

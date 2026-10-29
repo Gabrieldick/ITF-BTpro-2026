@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
+import { gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -339,7 +339,7 @@ function crSlots() {
 // personagem de um save (para jogar online): atributos com os equipamentos e a raquete em uso
 function crCharFromSave(c) {
   if (!c || !c.me || !c.me.a) return null;
-  const gb = gearSum(c.gear);
+  const gb = gearSum(gearOn(c.gear, c.gearEq));
   const me = c.me, rk = c.racket === 'assinatura' ? 'zenite' : c.racket || 'basica';
   // mesmo limite da carreira: raquete + equipamento somam com retorno decrescente (a raquete entra de novo na partida, então desconta)
   const rb = racketBonus(rk), eq = {}; for (const [k] of ATTRS) { const t = (gb[k] || 0) + (rb[k] || 0); eq[k] = (t > 2 ? Math.min(3, 2 + (t - 2) * .25) : t) - (rb[k] || 0); }
@@ -389,7 +389,7 @@ function crSyncChars() {
   $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER, crLocals()).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
-function crGearBonus() { return gearSum($s.CR.gear); } // no máximo +2 por atributo somando tudo
+function crGearBonus() { return gearSum(gearOn($s.CR.gear, $s.CR.gearEq)); } // um por categoria; no máximo +3 por atributo somando tudo
 // energia no desempenho (todos os atributos): abaixo de 10 → −4, de 20 → −3, de 30 → −2, de 45 → −1; acima de 85 → +1
 const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -4 : e < 20 ? -3 : e < 30 ? -2 : e < 45 ? -1 : e > 85 ? 1 : 0; };
 function crFatigue() { const p = crEnergyMod(); const b = {}; for (const [k] of ATTRS) b[k] = p; return b; }
@@ -1760,7 +1760,7 @@ const EVENTS = {
   crise: { w: 0, ok: () => false, choice: () => { const c = 250 * (crMaxTier() + 1); return { text: 'Três derrotas seguidas. A confiança sumiu e o jogo travou.', opts: ['Psicólogo esportivo (' + money(c) + ': +1 em tudo por 3 semanas)', 'Uma semana de descanso total (+40 de energia)', 'Seguir assim (−1 em tudo por 3 semanas)'], data: { c } }; },
     resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; $s.CR.conf = 3; return 'Sessões com o psicólogo: cabeça no lugar (+1 em todos os atributos por 3 semanas).'; } if (i === 1) { $s.CR.energy = Math.min(100, $s.CR.energy + 40); return 'Semana de descanso: +40 de energia e cabeça leve.'; } $s.CR.slump = 3; return 'Você seguiu, mas sem confiança: −1 em todos os atributos por 3 semanas.'; } },
   furto: { w: .8, ok: () => $s.CR.gear.length > 0 && crMaxTier() >= 3, choice: () => { const id = $s.CR.gear[Math.floor(Math.random() * $s.CR.gear.length)], g = GEAR.find(x => x.id === id); return { text: 'Furtaram sua mochila na viagem: ' + g.nome + ' sumiu.', opts: ['Repor (' + money(g.preco) + ')', 'Ficar sem'], data: { id, c: g.preco } }; },
-    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; return 'Equipamento reposto.'; } $s.CR.gear = $s.CR.gear.filter(x => x !== d.id); return 'Você vai jogar sem esse equipamento.'; } },
+    resolve: (i, d) => { if (i === 0 && $s.CR.money >= d.c) { $s.CR.money -= d.c; return 'Equipamento reposto.'; } $s.CR.gear = $s.CR.gear.filter(x => x !== d.id); const E = $s.CR.gearEq || {}; for (const k in E) if (E[k] === d.id) delete E[k]; return 'Você vai jogar sem esse equipamento.'; } },
 };
 function crRollEvent() {
   const list = Object.entries(EVENTS).filter(([, e]) => e.ok());
