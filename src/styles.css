@@ -402,7 +402,7 @@ em.dn { color: #c2410c; font-style: normal; font-weight: 800; margin-left: 2px; 
 .cr-slot .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .cr-file { cursor: pointer; display: inline-flex; align-items: center; }
 
-#fpsBox { position: fixed; left: 8px; bottom: 8px; z-index: 50; background: rgba(0,0,0,.55); color: #fff; font: 700 12px/1 system-ui, sans-serif; padding: 5px 8px; border-radius: 6px; pointer-events: none; }
+#fpsBox { position: fixed; left: 50%; top: 6px; transform: translateX(-50%); white-space: nowrap; z-index: 50; background: rgba(0,0,0,.55); color: #fff; font: 700 12px/1 system-ui, sans-serif; padding: 5px 8px; border-radius: 6px; pointer-events: none; }
 
 /* estatísticas do fim do jogo */
 .mstats-wrap { overflow-x: auto; }

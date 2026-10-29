@@ -162,6 +162,10 @@
         <input type="radio" name="res" id="resM" value="media"><label for="resM">Média</label>
         <input type="radio" name="res" id="resH" value="alta"><label for="resH">Alta</label>
       </div><p class="credit" style="margin:.4rem 0 0;font-size:.72rem;opacity:.7">Automática baixa a resolução quando o jogo não segura 60 fps (pode pixelar). Alta fica sempre nítida; Baixa é a mais leve.</p></fieldset>
+      <fieldset class="seg"><legend>Indicador de FPS</legend><div class="pills">
+        <input type="radio" name="fps" id="fpsOff" value="0" checked><label for="fpsOff">Escondido</label>
+        <input type="radio" name="fps" id="fpsOn" value="1"><label for="fpsOn">Mostrar</label>
+      </div><p class="credit" style="margin:.4rem 0 0;font-size:.72rem;opacity:.7">No alto da tela: quadros por segundo e quanto tempo cada parte leva (atalho: tecla F).</p></fieldset>
       <fieldset class="seg" id="fsPlayers"><legend>Jogadores</legend><div class="pills">
         <input type="radio" name="players" id="plDraw" value="desenhado" checked><label for="plDraw">Desenhado</label>
         <input type="radio" name="players" id="pl3d" value="3d"><label for="pl3d">Realista</label>
@@ -463,6 +467,7 @@
       <label>Altura da câmera <input type="range" id="pCamHeight" min="40" max="250" step="5" value="100"> <span id="pCamHeightV">100%</span></label>
       <label>Resolução <select id="pResSel" class="cr-sel"><option value="auto">Automática</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select></label>
       <label>Gráficos <select id="pGfxSel" class="cr-sel"><option value="alto">Alto</option><option value="leve">Leve</option></select></label>
+      <label><input type="checkbox" id="pFps"> Mostrar FPS</label>
     </div>
   </div>
 </div>

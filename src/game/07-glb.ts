@@ -40,7 +40,9 @@ function attachSkin(p, gltf) {
   const B = {}, all = [];
   root.traverse(o => {
     if (o.isMesh) {
-      o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+      // sombra: detalhes pequenos e as mechas recortadas (olhos, cílios, óculos, barba, cards de cabelo) não aparecem no mapa
+      // de sombra (~1,4 cm por pixel) e custavam metade da passada de sombra; a casca do cabelo já faz a silhueta da cabeça
+      o.castShadow = !/^(Eyes|Lashes|Brow|Glasses|Beard|Goatee|Mustache|HairFringe|HairCards|HairCurlyCards|HairTiedCards|HairLong|HairBob|PonyCards|Teeth|Tongue)/.test(o.name); o.receiveShadow = true; o.frustumCulled = false;
       if (o.material) {
         o.material = o.material.clone(); o.material.envMapIntensity = .6;
         // barba e raspado ficam a 1–2 mm da pele: puxados para a frente na profundidade (não piscam com a pele de longe)
@@ -50,6 +52,12 @@ function attachSkin(p, gltf) {
     if (o.isBone) { const k = o.name.replace(/^mixamorig[:_]?/, ''); B[k] = o; o.userData.rq = o.quaternion.clone(); o.userData.rp = o.position.clone(); all.push(o); }
   });
   if (!B.Hips || !B.RightHand || !B.LeftFoot) { scene.remove(holder); return; }
+  // um esqueleto só por jogador: o clone dava um para cada peça (corpo, blusa, short, cabelo…), e cada um recalculava os 52
+  // ossos e mandava a textura deles para a placa de vídeo todo quadro (~60 por quadro com 4 jogadores)
+  { let sh = null; root.traverse(o => { if (!o.isSkinnedMesh) return; if (!sh) { sh = o.skeleton; return; }
+    const sk = o.skeleton; if (sk === sh || sk.bones.length !== sh.bones.length) return;
+    for (let i = 0; i < sk.bones.length; i++) if (sk.bones[i] !== sh.bones[i] || !sk.boneInverses[i].equals(sh.boneInverses[i])) return;
+    o.skeleton = sh; }); }
   holder.updateMatrixWorld(true);
   const wp = b => b.getWorldPosition(new V3());
   const d = (a, b) => wp(B[a]).distanceTo(wp(B[b]));

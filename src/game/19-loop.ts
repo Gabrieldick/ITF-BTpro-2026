@@ -12,7 +12,7 @@ import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
 import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, diveMark, fpArm, fpWrist, loadModels } from './07-glb';
 import { HITS, applyGfx, getResScale, setResScale, setMenuRes } from './08-audio';
 import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
-import { MTR, applyCam, inPlay, setPaused, syncMenu } from './12-controles';
+import { MTR, applyCam, inPlay, setPaused, syncMenu, saveSettings } from './12-controles';
 import { step } from './17-bola';
 import { doHit } from './10-fisica';
 import { READY_FP, updateCamera, updateVisuals } from './18-animacao';
@@ -20,12 +20,12 @@ import { RP, recordTick, replayCamera, replayTick, startReplay } from './21-repl
 // ---------- Loop ----------
 let last = performance.now();
 // medição de fps a cada segundo: 2 s seguidos abaixo de 54 reduz a resolução; com folga, volta aos poucos
-const FPS = { n: 0, t: 0, good: 0, bad: 0, lockUntil: 0, lastUp: -1e9, el: null, show: false };
+const FPS = { n: 0, t: 0, good: 0, bad: 0, lockUntil: 0, lastUp: -1e9, el: null, show: false, ms: [0, 0, 0, 0] }; // ms: física, animação, cenário+câmera, render (soma do segundo)
 function perfTick(now, gap) {
-  if (gap > 100) return; // aba escondida/pausa longa
+  if (gap > 400) return; // aba escondida/pausa longa
   FPS.n++; FPS.t += gap;
   if (FPS.t < 1000) return;
-  const fps = FPS.n * 1000 / FPS.t; FPS.n = 0; FPS.t = 0;
+  const fps = FPS.n * 1000 / FPS.t; FPS.n = 0; FPS.t = 0; FPS.last = fps;
   const sc = getResScale();
   if (S.settings.autoRes !== false && (S.settings.res || 'auto') === 'auto' && inPlay()) {
     if (fps < 54) {
@@ -42,10 +42,18 @@ function perfTick(now, gap) {
   }
   if (FPS.show) {
     if (!FPS.el) { FPS.el = document.createElement('div'); FPS.el.id = 'fpsBox'; document.body.appendChild(FPS.el); }
-    FPS.el.textContent = Math.round(fps) + ' fps · ' + Math.round(renderer.getPixelRatio() * 100) + '% res';
+    const k = n0 => (FPS.ms[n0] / Math.max(1, fps)).toFixed(1);
+    FPS.el.textContent = Math.round(fps) + ' fps · ' + Math.round(renderer.getPixelRatio() * 100) + '% res · ' + k(0) + '/' + k(1) + '/' + k(2) + '/' + k(3) + ' ms (física/animação/cenário/render) · ' + renderer.info.render.calls + ' draws';
   }
+  FPS.ms = [0, 0, 0, 0];
 }
-addEventListener('keydown', e => { if (e.key && e.key.toLowerCase() === 'f' && !e.repeat && !(e.target && e.target.tagName === 'INPUT')) { FPS.show = !FPS.show; if (FPS.el) FPS.el.hidden = !FPS.show; } });
+// indicador de fps: opção nas configurações (e na pausa) ou a tecla F
+function setFpsShow(on) { FPS.show = !!on; S.settings.showFps = FPS.show; if (FPS.el) FPS.el.hidden = !FPS.show;
+  const r = document.querySelector('input[name=fps][value="' + (FPS.show ? 1 : 0) + '"]'); if (r) r.checked = true; const c = document.getElementById('pFps'); if (c) c.checked = FPS.show; }
+addEventListener('keydown', e => { if (e.key && e.key.toLowerCase() === 'f' && !e.repeat && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) { setFpsShow(!FPS.show); saveSettings(); } });
+document.querySelectorAll('input[name=fps]').forEach(r => r.addEventListener('change', () => { setFpsShow(r.value === '1'); saveSettings(); }));
+{ const c = document.getElementById('pFps'); if (c) c.addEventListener('change', () => { setFpsShow(c.checked); saveSettings(); }); }
+setFpsShow(S.settings.showFps);
 let menuMode = false, menuN = 0;
 function frame(now) {
   requestAnimationFrame(frame);
@@ -55,6 +63,7 @@ function frame(now) {
   const inMenu = !NET.role && document.body.classList.contains('in-menu');
   if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu); renderer.shadowMap.autoUpdate = !inMenu; renderer.shadowMap.needsUpdate = true; }
   perfTick(now, now - last);
+  const t0 = performance.now();
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === 'guest') { if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião
   else if (!S.paused && inPlay()) {
@@ -63,6 +72,7 @@ function frame(now) {
     const n = Math.max(1, Math.round(dt / STEP)), h = dt / n;
     for (let i = 0; i < n; i++) step(h);
   }
+  const t1 = performance.now(); FPS.ms[0] += t1 - t0;
   if (NET.role === 'host' && NET.hostTick) NET.hostTick(now);
   const tsec = now / 1000;
   seaMat.uniforms.time.value = tsec; sky.material.uniforms.time.value = tsec;
@@ -70,10 +80,13 @@ function frame(now) {
   if (S.mode === 'replay' && RP.list) vdt = replayTick(dt);
   else if (!S.paused && inPlay()) recordTick(dt);
   updateVisuals(vdt);
+  const t2 = performance.now(); FPS.ms[1] += t2 - t1;
   updateArena(dt);
   updateCamera(dt);
   if (S.mode === 'replay') replayCamera(dt);
+  const t3 = performance.now(); FPS.ms[2] += t3 - t2;
   renderer.render(scene, camera);
+  FPS.ms[3] += performance.now() - t3;
 }
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 // ---------- Início (com hot reload do viewer) ----------

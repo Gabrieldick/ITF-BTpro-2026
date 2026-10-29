@@ -65,7 +65,9 @@ function racketGeo(key) {
   if (RACKET_GEOS[key]) return RACKET_GEOS[key];
   const cfg = RACKET_HOLES[key] || RACKET_HOLES[(RACKETS[key] || {}).holes] || RACKET_HOLES.proteo;
   const s = racketOutline();
-  cfg.pts.forEach(([x, y]) => { const h = new THREE.Path(); h.absarc(x, y, cfg.r, 0, Math.PI * 2, true); s.holes.push(h); });
+  // furos: polígono de 10 lados (com o furo de ~1 cm não dá para ver a diferença do círculo; o arco virava 20 lados com
+  // chanfro em cada um e a cabeça da raquete passava de 19 mil triângulos)
+  cfg.pts.forEach(([x, y]) => { const h = new THREE.Path(); for (let k = 0; k <= 10; k++) { const a = -k / 10 * Math.PI * 2; if (k) h.lineTo(x + Math.cos(a) * cfg.r, y + Math.sin(a) * cfg.r); else h.moveTo(x + cfg.r, y); } s.holes.push(h); });
   cfg.throat.forEach(tri => {
     const h = new THREE.Path(); const c = tri.reduce((a, p) => [a[0] + p[0] / 3, a[1] + p[1] / 3], [0, 0]);
     // cantos arredondados: cada vértice puxado um pouco para o centro
@@ -75,7 +77,7 @@ function racketGeo(key) {
     for (let i = 1; i <= 3; i++) { const v = pt(i), m = mid(i, i + 1); h.quadraticCurveTo(v[0], v[1], m[0], m[1]); }
     s.holes.push(h);
   });
-  const g = new THREE.ExtrudeGeometry(s, { depth: .016, bevelEnabled: true, bevelThickness: .0035, bevelSize: .003, bevelSegments: 3, curveSegments: 10 });
+  const g = new THREE.ExtrudeGeometry(s, { depth: .016, bevelEnabled: true, bevelThickness: .0035, bevelSize: .003, bevelSegments: 2, curveSegments: 10 });
   g.translate(0, 0, -.008);
   return (RACKET_GEOS[key] = g);
 }

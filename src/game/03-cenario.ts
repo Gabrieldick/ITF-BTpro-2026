@@ -41,7 +41,9 @@ const PROPS = []; // guarda-sóis e palmeiras perto da quadra (somem quando há 
 const ENV = new THREE.Group(); ENV.name = 'ambiente'; scene.add(ENV);
 setTimeout(() => confMesh(), 0); // o confete já existe (escondido) para o aquecimento dos shaders compilar
 // ---------- Céu procedural com nuvens e sol ----------
-const SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 w = modelMatrix*vec4(position,1.); gl_Position = projectionMatrix*viewMatrix*w; }';
+// o céu fica na profundidade máxima e é desenhado depois do resto: só os pixels de céu que aparecem calculam as nuvens
+// (antes ele vinha primeiro e as nuvens eram calculadas na tela inteira, embaixo da areia e da quadra)
+const SKY_VS = 'varying vec3 vDir; void main(){ vDir = position; vec4 w = modelMatrix*vec4(position,1.); gl_Position = (projectionMatrix*viewMatrix*w).xyww; }';
 const SKY_FS = [
   'uniform vec3 sunDir; uniform float time; uniform float ground; uniform float cloudsOn; varying vec3 vDir;',
   'float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }',
@@ -77,7 +79,7 @@ function skyMaterial(ground) {
   });
 }
 const sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 48, 24), skyMaterial(0));
-sky.renderOrder = -10; sky.frustumCulled = false;
+sky.renderOrder = 1000; sky.frustumCulled = false;
 scene.add(sky);
 // luz ambiente e reflexos a partir de uma cópia do céu
 try {
@@ -213,11 +215,19 @@ sandMat.onBeforeCompile = sh => {
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;')
     .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvSandW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
   sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;\nuniform sampler2D tChurn, tChurnN;\nuniform vec2 uCourt;\nfloat sandCourt() { return 1.0 - smoothstep(0.0, 4.0, max(abs(vSandW.x) - uCourt.x, abs(vSandW.z) - uCourt.y)); }')
-    .replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', `vec2 uvB = vMapUv * 0.371 + vec2(0.13, 0.57);
+    // areia de fora e areia revirada da quadra: só lê as texturas do lado que aparece (na transição, as duas); as derivadas
+    // vêm de fora do if (dentro dele o mipmap automático não vale)
+    .replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', `vec2 uvB = vMapUv * 0.371 + vec2(0.13, 0.57), sdx = dFdx(vMapUv), sdy = dFdy(vMapUv);
     float ct = sandCourt();
-    vec4 sampledDiffuseColor = mix(mix(texture2D(map, vMapUv), texture2D(map, uvB), 0.45), mix(texture2D(tChurn, vMapUv), texture2D(tChurn, uvB * 1.7), 0.4), ct);`)
-    .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `vec2 nuvB = vNormalMapUv * 0.371 + vec2(0.13, 0.57);
-    vec3 mapN = mix(mix(texture2D(normalMap, vNormalMapUv).xyz, texture2D(normalMap, nuvB).xyz, 0.45), mix(texture2D(tChurnN, vNormalMapUv).xyz, texture2D(tChurnN, nuvB * 1.7).xyz, 0.4), sandCourt()) * 2.0 - 1.0;`);
+    vec4 sBase = vec4(0.), sChurn = vec4(0.);
+    if (ct < 0.999) sBase = mix(textureGrad(map, vMapUv, sdx, sdy), textureGrad(map, uvB, sdx * 0.371, sdy * 0.371), 0.45);
+    if (ct > 0.001) sChurn = mix(textureGrad(tChurn, vMapUv, sdx, sdy), textureGrad(tChurn, uvB * 1.7, sdx * 0.63, sdy * 0.63), 0.4);
+    vec4 sampledDiffuseColor = mix(sBase, sChurn, ct);`)
+    .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `vec2 nuvB = vNormalMapUv * 0.371 + vec2(0.13, 0.57), ndx = dFdx(vNormalMapUv), ndy = dFdy(vNormalMapUv);
+    float nct = sandCourt(); vec3 nBase = vec3(0.), nChurn = vec3(0.);
+    if (nct < 0.999) nBase = mix(textureGrad(normalMap, vNormalMapUv, ndx, ndy).xyz, textureGrad(normalMap, nuvB, ndx * 0.371, ndy * 0.371).xyz, 0.45);
+    if (nct > 0.001) nChurn = mix(textureGrad(tChurnN, vNormalMapUv, ndx, ndy).xyz, textureGrad(tChurnN, nuvB * 1.7, ndx * 0.63, ndy * 0.63).xyz, 0.4);
+    vec3 mapN = mix(nBase, nChurn, nct) * 2.0 - 1.0;`);
 };
 const sand = new THREE.Mesh(sandGeo, sandMat);
 sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0, 90);
