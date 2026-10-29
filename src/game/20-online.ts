@@ -97,12 +97,16 @@ const escHtml = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&
 function openOnline() {
   ac(); readMenu(); // usa o que está marcado no menu (games, dificuldade, jogadores)
   msg('');
-  if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); $('onName').value = ON.name; setTimeout(() => $('onCode').focus(), 0); }
+  if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); fillName(); setTimeout(() => $('onCode').focus(), 0); }
   if (!QQ.on) { qFill(); qLoadCloud(); } // carreiras da conta (nuvem) para a fila
   if (!NET.role) { renderRoomList(); rlChannel().catch(() => { RL.state = 'erro'; renderRoomList(); }); }
 }
 function closeOnline() { if (QQ.on) queueStop(); $('online').hidden = true; el.menu.hidden = false; syncMenu(); }
+// nome na sala: com conta (e nome de usuário dos Amigos), é sempre o da conta; sem conta, o que a pessoa digitar
+const acctName = () => { const A = window.__pdoAM && window.__pdoAM.AM; return A && A.me && A.name ? A.name : ''; };
+function fillName() { const a = acctName(), f = $('onName'); f.value = a || ON.name; f.readOnly = !!a; f.title = a ? 'Nome da sua conta' : ''; }
 function myName() {
+  const a = acctName(); if (a) return a;
   const n = ($('onName').value || '').trim().slice(0, 16) || 'Jogador';
   ON.name = n; try { localStorage.setItem('pdo-online-name', n); } catch (e) {}
   return n;
@@ -783,7 +787,7 @@ function leave(text) {
   if (ON.backup) { for (const k in ON.backup) S.settings[k] = ON.backup[k]; ON.backup = null; }
   if (was) toLobbyScreen();
   assignCharacters(); configureMode(); applyRackets(); applyPlayerStyle();
-  showPart('onStart'); $('onName').value = ON.name; msg(text || ''); chipStatus();
+  showPart('onStart'); fillName(); msg(text || ''); chipStatus();
 }
 // sai da partida (sem desconectar) para a tela da sala
 function toLobbyScreen() {
