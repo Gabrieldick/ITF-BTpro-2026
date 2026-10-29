@@ -607,4 +607,4 @@ export { startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers,
   if (gs) gs.addEventListener('change', () => { S.settings.gfx = gs.value; radio('gfx', gs.value); applyGfx(); saveSettings(); });
   if (ts) ts.addEventListener('change', () => { S.settings.tactic = ts.value; saveSettings(); });
   if (fs) fs.addEventListener('change', () => { S.settings.formation = fs.value; saveSettings(); });
-  const pz = $('pause'); if (pz) new MutationObserver(() => { if (!pz.hidden) syncP(); }).observe(pz, { attributes: true, attributeFilter: ['hidden'] }); }
+  const pz = $('pause'); if (pz && typeof MutationObserver !== 'undefined') new MutationObserver(() => { if (!pz.hidden) syncP(); }).observe(pz, { attributes: true, attributeFilter: ['hidden'] }); }

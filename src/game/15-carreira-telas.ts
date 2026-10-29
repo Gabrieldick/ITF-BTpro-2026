@@ -27,9 +27,9 @@ function openCareer() {
 }
 let crFeedOpen = false, crPairsOpen = false;
 // coluna do lado (tela larga) ou dois quadros que abrem e fecham (celular): duplas do circuito e feed com as notícias
-const crWideQ = window.matchMedia('(min-width: 1120px)');
+const crWideQ = window.matchMedia ? window.matchMedia('(min-width: 1120px)') : { matches: true, addEventListener() {} }; // (o simulador de treino roda sem navegador)
 function crSideLayout() { document.querySelector('.cr-card-main').classList.toggle('wide', !!$s.CR && crWideQ.matches); }
-crWideQ.addEventListener('change', () => { crSideLayout(); if ($s.CR && !$('career').hidden) renderCrSide(); });
+if (crWideQ.addEventListener) crWideQ.addEventListener('change', () => { crSideLayout(); if ($s.CR && !$('career').hidden) renderCrSide(); });
 function renderCrSide() {
   crSideLayout();
   const wide = crWideQ.matches, side = $('crSide');
