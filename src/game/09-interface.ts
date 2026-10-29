@@ -549,6 +549,7 @@ function pointTo(w, reason, kind) {
   S.lastPoint = { w, kind, text: reason, cat: S.lastHit && S.lastHit.cat, rally: S.rally, dive: !!S.hadDive };
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
+  S.ptWin = w; S.ptT = 0; S.ptN = (S.ptN || 0) + 1; // reações entre pontos (18-animacao)
   const ev = awardPoint(w);
   updateLiveRating();
   let isTitle = false;

@@ -80,6 +80,7 @@ function step(dt) {
     if (S.aiServeT <= 0) startToss(S.serverPlayer, chooseAIServe(S.serverPlayer));
   }
   updateBall(dt);
+  if (S.mode === 'dead') S.ptT = (S.ptT || 0) + dt;
   if (S.mode === 'dead' && !sideWalkStep(dt) && S.celebrate) celebrateStep(dt); // troca de lado: caminhada até o poste
   if (S.mode === 'dead') {
     S.deadT -= dt;
