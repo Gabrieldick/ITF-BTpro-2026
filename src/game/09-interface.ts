@@ -244,7 +244,7 @@ const PERF_TXT = { defBoa: 'defesas boas', defLevantou: 'defesas que levantaram'
   furou: 'bolas furadas', erroF: 'erros forçados', e_curta: 'erros de curta', e_lob: 'erros de lob', e_smash: 'erros de smash', e_defesa: 'erros de defesa',
   e_drive: 'erros de drive', e_voleio: 'erros de voleio', e_saque: 'saques errados', defIn: 'defesas que passaram', lobIn: 'lobs que passaram' };
 const WIN_V = { smash: .6, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .5, saque: .5 };
-const ERR_V = { curta: -.78, lob: -.65, smash: -.65, defesa: -.58, drive: -.55, voleio: -.55, saque: -.5 }; // erros (vermelho) pesam mais que acertos
+const ERR_V = { curta: -.69, lob: -.58, smash: -.58, defesa: -.52, drive: -.48, voleio: -.48, saque: -.44 }; // erros (vermelho) pesam mais que acertos
 const perfOn = p => !!p && p === human && !p.netHuman && !S.spectate && !NET.role && !S.drill && !!S.perf;
 function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; if (S.careerActive && S.mode === 'rally') updateLiveRating(); }
 // sua defesa e seu lob contam no painel (DEF / LOB) quando passam e ficam dentro: o adversário rebate ou a bola cai do lado dele
@@ -258,7 +258,7 @@ function perfShot(p, sw, r) {
   if (sw.type === 'defesa' && r.pressure > .25 && !r.wild && !r.pop) perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa');
   // curta: verde soma, amarela (lenta) não tira; descontrolada também não tira na hora (só se virar erro)
   if (sw.type === 'curta' && !r.pop && !r.wild) { if (r.curtaK > .86) perfAdd(p, .35, 'curtaTop'); else if (r.curtaK >= .5) perfAdd(p, .12, 'curtaBoa'); }
-  if (sw.meter && sw.meter.res === 'perfeito') perfAdd(p, .12, 'smashPerf'); // smash fora do verde que entra não tira nada
+  if (sw.meter && sw.meter.res === 'perfeito') perfAdd(p, .15, 'smashPerf'); // smash fora do verde que entra não tira nada
   if (sw.lob && sw.lob.kick) perfAdd(p, .25, 'lobChutado');
   if (r.label === 'FINALIZAÇÃO') perfAdd(p, .15, 'finaliz');
 }
@@ -269,8 +269,8 @@ function rateFrom(wonB) {
   const pp = S.stats.pts, lost = Math.max(0, pp[1] - (S.perf.mateErr || 0)), bal = (pp[0] - lost) / Math.max(8, pp[0] + lost);
   // começo de jogo pesa menos (divide por pelo menos √20): poucos pontos bons não disparam a nota; passando de 45 pontos vale
   // a média por ponto (divide por n): numa partida muito longa a soma das jogadas não infla a nota sozinha
-  const n = S.perf.n, fk = n <= 45 ? 1.7 / Math.sqrt(Math.max(20, n)) : 1.7 * Math.sqrt(45) / n;
-  let r = 5.6 + S.perf.sum * fk + wonB + bal * (dupla() ? .55 : 1.2);
+  const n = S.perf.n, fk = n <= 45 ? 1.85 / Math.sqrt(Math.max(20, n)) : 1.85 * Math.sqrt(45) / n;
+  let r = 6 + S.perf.sum * fk + wonB + bal * (dupla() ? .55 : 1.2);
   // jogo limpo: muitas jogadas boas e (quase) nenhum erro seu ganha um bônus (até +1,2); cada erro seu tira 1/4 dele (forçado, 1/8)
   { const ev = S.perf.ev, cnt = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
     const errs = cnt(/^(e_|furou)/) + cnt(/^erroF$/) * .5, good = cnt(/^(w_|finaliz|ptBola|smashPerf|defBoa|curtaTop|curtaBoa|lobChutado)/);
@@ -281,7 +281,7 @@ function rateFrom(wonB) {
 function matchRating(won) {
   if (!S.perf || S.spectate || NET.role) return null;
   // saldo de pontos pesa também (sozinho na simples mais que na dupla): perder de lavada não dá nota média
-  return rateFrom(won ? .4 : -.6);
+  return rateFrom(won ? .35 : -.4);
 }
 // nota ao vivo (canto de cima à direita) nas partidas da carreira: a mesma conta da nota final, sem o bônus de vitória
 function updateLiveRating() {
@@ -334,7 +334,7 @@ function creditPoint(w, kind) {
     if (at && at.hitId === S.hitId && at.p.team !== w) {
       const st = statOf(at.p); if (at.hard) st.fe++; else st.ue++; at.p.mErr = (at.p.mErr || 0) + 1; // erros na partida (a CPU esperta foca em quem erra mais)
       if (S.perf && at.p !== human && at.p.team === human.team) S.perf.mateErr = (S.perf.mateErr || 0) + 1;
-      perfAdd(at.p, at.hard ? -.28 : -.55, at.hard ? 'erroF' : 'furou');
+      perfAdd(at.p, at.hard ? -.25 : -.5, at.hard ? 'erroF' : 'furou');
       if (at.hard && lh && lh.p.team === w) return forcedTxt(creditForcer({ p: lh.p, cat: lh.cat }), at.p);
       return phrase(at.hard ? 'Erro forçado' : 'Erro não forçado', at.p);
     }
