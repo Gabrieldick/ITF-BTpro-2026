@@ -575,6 +575,8 @@ function crSimWorld(rnd, list, aw, ovrs) {
   if (cal.includes(9)) { const pts = id => { const a = R[id]; return a ? bestN(a.filter(x => Math.floor(x / 10000) > lim).map(x => x - Math.floor(x / 10000) * 10000)) : 0; }, seen = new Set(), L = [];
     all.forEach(c => { const m = P[c.id]; if (!m || m === $s.CR.partner || c.id === $s.CR.partner || seen.has(c.id) || !byId.has(m)) return; seen.add(c.id); seen.add(m); L.push([c, pts(c.id) + pts(m)]); });
     [true, false].forEach(fm => L.filter(x => !!x[0].fem === fm).sort((x, y) => y[1] - x[1]).slice(0, 16).forEach(x => { wc.add(x[0].id); wc.add(P[x[0].id]); })); }
+  // 1) quem quer jogar o quê nesta semana
+  const teams = [];
   all.forEach(c => {
     if (done.has(c.id)) return;
     const mate = P[c.id] && P[c.id] !== $s.CR.partner ? byId.get(P[c.id]) || null : null, team = mate ? [c, mate] : [c];
@@ -586,15 +588,39 @@ function crSimWorld(rnd, list, aw, ovrs) {
     // a elite joga quase todos os Sand Series e o Mundial; escolhe só alguns BT400 (descansa entre as etapas grandes)
     const pp = t === 9 ? 1 : t === 8 ? .9 : t === 7 && nt === 8 ? .45 : t >= 3 ? .55 : .45;
     const play = t >= mt && (t < 9 || wc.has(c.id)) && rnd() < pp;
-    let pts = 0, perf = 0;
-    if (play) { const T = TIERS[t]; perf = (o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6;
-      const idx = perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4; pts = T.pts[Math.min(idx, T.pts.length - 1)];
-      if (live && mate && !!c.fem === !!$s.CR.me.fem && t >= 7 && (!best || t > best.t || (t === best.t && perf > best.perf))) best = { t, perf, a: c.id, b: mate.id }; }
+    teams.push({ c, mate, team, o, mt, t, play, pts: 0 });
+  });
+  // 2) profissionais: chaves de verdade (16 duplas por torneio, um campeão, um vice, duas semis…); quem não entra na chave
+  // (as vagas vão pelo nível) cai para o torneio de baixo que tiver na semana. Antes cada dupla sorteava o próprio
+  // resultado sozinha e, com dezenas de inscritos, "semifinalistas" sobravam: o ranking ficava achatado e inflado
+  const EVN = { 3: 8, 4: 6, 5: 4, 6: 2, 7: 1, 8: 1, 9: 1 }, PLACE = [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+  [false, true].forEach(fm => {
+    let carry = [];
+    for (let t = 9; t >= 3; t--) {
+      const here = teams.filter(x => x.play && x.t === t && !!x.c.fem === fm).concat(carry.filter(x => x.mt <= t)); carry = [];
+      if (!here.length) continue;
+      if (!cal.includes(t)) { if (t > 3) carry = here; continue; }
+      here.forEach(x => { x.seed = x.o + gaussR(rnd) * 1.2; });
+      here.sort((a, b) => b.seed - a.seed);
+      const k = Math.min(EVN[t], Math.ceil(here.length / 16)), inn = here.slice(0, k * 16); carry = here.slice(k * 16);
+      const ev = Array.from({ length: k }, () => []); inn.forEach((x, i) => { const r = Math.floor(i / k) % 2 ? k - 1 - i % k : i % k; ev[r].push(x); }); // cabeças espalhadas
+      const T = TIERS[t];
+      ev.forEach(E => { E.forEach(x => { x.perf = x.o + gaussR(rnd) * 2.2; }); E.sort((a, b) => b.perf - a.perf);
+        E.forEach((x, i) => { x.t = t; x.done = true; x.pts = T.pts[PLACE[Math.min(i, 15)]] || 0; });
+        const w = E[0]; if (live && w && w.mate && !!w.c.fem === !!$s.CR.me.fem && t >= 7 && (!best || t > best.t)) best = { t, perf: 1, a: w.c.id, b: w.mate.id }; });
+    }
+  });
+  teams.forEach(x => {
+    const { c, mate, team, t } = x;
+    let play = x.play, pts = x.pts;
+    if (play && t >= 3 && !x.done) play = false; // não coube em nenhuma chave
+    if (play && t < 3) { const T = TIERS[t], perf = (x.o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6; // amadores: muitos torneios locais
+      pts = T.pts[Math.min(perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4, T.pts.length - 1)]; }
     // semana sem torneio da dupla: às vezes um dos dois joga sozinho um torneio menor (BT200 ou abaixo) com parceiro de ocasião
     let solo = null;
-    if (!play && mate && t >= 5 && rnd() < .07) { const x = team[rnd() < .5 ? 0 : 1], ts = Math.max(3, Math.min(6, t - 2)), T = TIERS[ts];
-      const pf = (ovOf(x) - 3 - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .7, ix = pf > 1.25 ? 0 : pf > .75 ? 1 : pf > .25 ? 2 : pf > -.35 ? 3 : 4;
-      solo = { id: x.id, t: ts, pts: T.pts[Math.min(ix, T.pts.length - 1)] }; }
+    if (!play && mate && t >= 5 && rnd() < .07) { const s1 = team[rnd() < .5 ? 0 : 1], ts = Math.max(3, Math.min(6, t - 2)), T = TIERS[ts];
+      const pf = (ovOf(s1) - 3 - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .7, ix = pf > 1.25 ? 0 : pf > .75 ? 1 : pf > .25 ? 2 : pf > -.35 ? 3 : 4;
+      solo = { id: s1.id, t: ts, pts: T.pts[Math.min(ix, T.pts.length - 1)] }; }
     team.forEach(x => {
       let arr = R[x.id];
       if (play) { if (pts > 0) { arr = arr || []; arr.push(aw * 10000 + pts); } crCatAdd(x.id, t, pts, aw, x.pais !== 'BRA'); }
@@ -606,7 +632,7 @@ function crSimWorld(rnd, list, aw, ovrs) {
       }
     });
   });
-  if (best && best.perf > .75) { const T = TIERS[best.t], wt = $s.CR.wkTour, mine = c => wt && wt.w === aw && wt.name.includes(c.replace(/^(BT\d+|Sand Series) /, '')); // nunca o torneio que você jogou na semana
+  if (best) { const T = TIERS[best.t], wt = $s.CR.wkTour, mine = c => wt && wt.w === aw && wt.name.includes(c.replace(/^(BT\d+|Sand Series) /, '')); // nunca o torneio que você jogou na semana
     const cs = T.cities.filter(c => !mine(c)); if (cs.length) crNews(pairName(best.a, best.b) + ' vencem o ' + T.curto + ' ' + cs[Math.floor(rnd() * cs.length)].replace(/^(BT\d+|Sand Series) /, '') + ' (' + pairTenure(best.a, best.b) + ').', '🏆'); }
 }
 // um ano inteiro de resultados do mundo (criação da carreira e migração dos saves antigos)
@@ -683,7 +709,7 @@ function crCreate(o) {
   const me = { id: 'crme', uf: (o.pais || 'BRA') === 'BRA' ? o.uf || 'SP' : undefined, name: o.name || 'Você', alt: o.alt, pais: o.pais || 'BRA', estilo: STYLES[o.style].nome, build: o.build || 'atletico', fem: o.fem, canhoto: o.canhoto || undefined,
     a: attrs || makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : o.acc === 'band' ? { headband: '#ff5a1f' } : {}, o.hairStyle ? { hairStyle: o.hairStyle } : {}, !o.fem && o.beard ? { beard: o.beard } : { beard: '' }, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
   $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: (promessa ? 17 : 22) + Math.round(st * .8),
-    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, ptsV: 2, titles: {}, maxTier: st, startTier: st,
+    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, ptsV: 3, titles: {}, maxTier: st, startTier: st,
     partner: null, chemBy: {}, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
@@ -1749,10 +1775,12 @@ function crMigrate() {
   if ($s.CR.npcR && $s.CR.localV !== 1) { crSimYear(9191, crLocals()); $s.CR.localV = 1; saveCareer(); } // atletas locais: um ano de resultados
   // pontos do BT200, BT400 e Sand Series recalibrados (o nº 1 tinha ~6.000; no circuito real fica perto de 5.000):
   // converte os resultados já guardados (seus e dos outros) para a tabela nova
-  if ($s.CR.ptsV !== 2) { const M = { 210: 200, 150: 140, 95: 90, 450: 400, 320: 280, 200: 180, 110: 100, 750: 600, 530: 420, 340: 270, 180: 145, 75: 60 };
+  if (!$s.CR.ptsV) { const M = { 210: 200, 150: 140, 95: 90, 450: 400, 320: 280, 200: 180, 110: 100, 750: 600, 530: 420, 340: 270, 180: 145, 75: 60 };
     ($s.CR.results || []).forEach(r => { if (M[r.pts]) r.pts = M[r.pts]; });
     const R = $s.CR.npcR || {}; for (const id in R) R[id] = R[id].map(x => { const w = Math.floor(x / 10000), v = x - w * 10000; return w * 10000 + (M[v] || v); });
     $s.CR.ptsV = 2; RK.key = ''; saveCareer(); }
+  // os resultados dos outros passam a sair de chaves de verdade (o ranking antigo era achatado): refaz o último ano deles
+  if ($s.CR.ptsV === 2 && $s.CR.npcR) { $s.CR.npcR = {}; crSimYear(53); $s.CR.ptsV = 3; RK.key = ''; saveCareer(); }
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);

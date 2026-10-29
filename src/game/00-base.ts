@@ -311,14 +311,15 @@ const ROSTER = [
   { id: 'seron', name: 'Maria Martines Seron', alt: 178, pais: 'ESP', estilo: 'Consistência', build: 'esguio', fem: true, a: { forca: 75, vel: 78, def: 78, backhand: 77, curta: 77, lob: 77, smash: 75, saque: 75 }, look: { lens: '#e8700a', glassStyle: 'sport', headband: '', visor: '', cap: '', skin: '#e2b48f', hair: '#2b1d14', hairStyle: 'tranca', glasses: true, tank: true, num: '76', racket: 'proteo' } },
 ];
 // patrocínios reais (marcas com uma letra trocada): uniforme e raquete da marca de cada atleta
-const SPONSOR_KITS = {
-  nux: { logo: 'NUX', c1: '#111214', c2: '#d8ff3a', bc: '#111214', pat: 'lateral' },
-  herues: { logo: "HERUE'S", c1: '#0e0e10', c2: '#ff5a1f', bc: '#0e0e10', pat: 'diagonal' },
-  zanb: { logo: 'ZANB', c1: '#f6f4f0', c2: '#b0895a', bc: '#1b1b1d', pat: 'chevron' },
-  anasport: { logo: 'ANA SPORT', c1: '#f4f5f6', c2: '#141414', bc: '#141414', pat: 'lateral' },
-  lacosta: { logo: 'LACOSTA', c1: '#fbf6ea', c2: '#0f6b3a', bc: '#fbf6ea', pat: 'liso' },
-  mormaji: { logo: 'MORMAJI', c1: '#7a1fa2', c2: '#e2364a', bc: '#1b1b1d', pat: 'degrade' },
+const SPONSOR_KITS = { // várias linhas de cada marca: quem é da mesma marca não sai com a mesma blusa
+  nux: [{ c1: '#111214', c2: '#d8ff3a', bc: '#111214', pat: 'lateral' }, { c1: '#f4f4f2', c2: '#111214', bc: '#111214', pat: 'diagonal' }, { c1: '#c8f03a', c2: '#111214', bc: '#2a2c30', pat: 'faixas' }, { c1: '#5d6066', c2: '#f4f4f2', bc: '#111214', pat: 'degrade' }],
+  herues: [{ c1: '#0e0e10', c2: '#ff5a1f', bc: '#0e0e10', pat: 'diagonal' }, { c1: '#f6f6f4', c2: '#ff5a1f', bc: '#0e0e10', pat: 'lateral' }, { c1: '#ff5a1f', c2: '#0e0e10', bc: '#0e0e10', pat: 'chevron' }, { c1: '#3a1460', c2: '#9b3fd0', bc: '#0e0e10', pat: 'degrade' }, { c1: '#ffc21a', c2: '#0e0e10', bc: '#0e0e10', pat: 'faixas' }],
+  zanb: [{ c1: '#f6f4f0', c2: '#b0895a', bc: '#1b1b1d', pat: 'chevron' }, { c1: '#1b1b1d', c2: '#c9a26a', bc: '#1b1b1d', pat: 'diagonal' }, { c1: '#ffd21a', c2: '#101113', bc: '#101113', pat: 'lateral' }],
+  anasport: [{ c1: '#f4f5f6', c2: '#141414', bc: '#141414', pat: 'lateral' }, { c1: '#17181a', c2: '#d9c08a', bc: '#17181a', pat: 'faixas' }, { c1: '#b08a5e', c2: '#f4f5f6', bc: '#141414', pat: 'diagonal' }],
+  lacosta: [{ c1: '#fbf6ea', c2: '#0f6b3a', bc: '#fbf6ea', pat: 'liso' }, { c1: '#14233f', c2: '#fbf6ea', bc: '#14233f', pat: 'listras' }],
+  mormaji: [{ c1: '#7a1fa2', c2: '#e2364a', bc: '#1b1b1d', pat: 'degrade' }, { c1: '#f6f4f0', c2: '#7a1fa2', bc: '#7a1fa2', pat: 'lateral' }],
 };
+const SPONSOR_LOGO = { nux: 'NUX', herues: "HERUE'S", zanb: 'ZANB', anasport: 'ANA SPORT', lacosta: 'LACOSTA', mormaji: 'MORMAJI' };
 // id: [marca da roupa, raquete (vazio = mantém), modelo de cima]
 const SPONSORED = {
   gianote: ['nux', 'zenite', 'teeDry'], spot: ['herues', 'aurora', 'tankDry'], capeletti: ['herues', 'eclipse', 'teeDry'], barao: ['herues', 'eclipse', 'teeDry'],
@@ -326,8 +327,9 @@ const SPONSORED = {
   gaspar: ['herues', 'proteo', 'tank'], valentim: ['herues', 'proteo', 'tank'], casadi: ['nux', 'atol', 'tank'], kudina: ['nux', 'recife', 'tank'], semena: ['nux', 'recife', 'tank'],
   marquezin: ['mormaji', 'mare', 'tank'], chou: ['lacosta', '', 'tank'],
 };
-ROSTER.forEach(c => { const sp = SPONSORED[c.id]; if (!sp) return; const K = SPONSOR_KITS[sp[0]];
-  c.look.outfit = { top: sp[2], pat: K.pat, c1: K.c1, c2: K.c2, bot: c.fem ? 'shortinho' : 'shortDry', bc: K.bc, logo: K.logo };
+const kitN = {};
+ROSTER.forEach(c => { const sp = SPONSORED[c.id]; if (!sp) return; const V = SPONSOR_KITS[sp[0]], i = kitN[sp[0]] = (kitN[sp[0]] ?? -1) + 1, K = V[i % V.length];
+  c.look.outfit = { top: sp[2], pat: K.pat, c1: K.c1, c2: K.c2, bot: c.fem ? 'shortinho' : 'shortDry', bc: K.bc, logo: SPONSOR_LOGO[sp[0]] };
   if (sp[1]) c.look.racket = sp[1]; });
 // mais jogadores para a partida rápida, do nível amador ao circuito (overall ~52 a 80); fictícios
 {
