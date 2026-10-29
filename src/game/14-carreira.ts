@@ -937,10 +937,16 @@ function crEnter(opt) {
     if (oa - crCharOvr(left[k]) > 6 && rnd() > .15) while (k > 0 && oa - crCharOvr(left[k]) > 4) k--;
     const b = left.splice(k, 1)[0]; teams.push({ a: a.id, b: b.id }); } }
   if (star) teams.push({ a: star.id, b: field[field.length - 1].id, star: true });
-  teams.sort((x, y) => crTeamOvr(y) - crTeamOvr(x));
+  // cabeças de chave: as duplas com mais pontos no ranking (soma dos dois) ficam nas pontas da chave — 4 numa chave de
+  // 16, 2 numa de 8; o resto segue pela força (overall)
+  const tPts = tm => [tm.a, tm.b].reduce((s, id) => s + (!id ? 0 : id === 'crme' ? crPts() : npcPts(id)), 0);
+  teams.sort((x, y) => tPts(y) - tPts(x) || crTeamOvr(y) - crTeamOvr(x));
+  const nSeeds = T.draw === 16 ? 4 : 2, seeds = {};
+  for (let i = 0; i < nSeeds && i < teams.length; i++) if (tPts(teams[i]) > 0) seeds[i] = i + 1;
+  { const rest = teams.splice(Object.keys(seeds).length); rest.sort((x, y) => crTeamOvr(y) - crTeamOvr(x)); teams.push(...rest); }
   const me = teams.findIndex(t => t.me);
   const seedOrder = T.draw === 16 ? SEED16 : SEED8;
-  $s.CR.tour = { tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+  $s.CR.tour = { seeds, tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
   $s.CR.lastMsg = star ? 'Surpresa na chave: ' + nameOf(star) + ' (OVR ' + crCharOvr(star) + ') veio jogar este torneio. Se vencer a dupla dele, ele pode querer jogar com você.' : ''; crTourDays(); saveCareer();

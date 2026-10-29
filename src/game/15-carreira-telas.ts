@@ -360,7 +360,7 @@ function crTourHTML() {
   const br = '<div class="bracket-wrap"><div class="bracket" style="grid-template-columns:repeat(' + crNRounds() + ',minmax(150px,1fr));min-width:' + (crNRounds() * 170) + 'px">' + names.map((nm, r) => {
     const rd = t.rounds[r] || [];
     return '<div class="rd"><h4>' + nm + '</h4>' + (rd.length ? rd.map(m => {
-      const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const tm = t.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === t.me ? ' me' : ''); return '<div class="tm ' + cls + '">' + (i !== t.me && crRivalsIn(tm).length ? '🔥 ' : '') + crTeamName(tm) + '<b>' + crTeamOvr(tm) + '</b></div>'; };
+      const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const tm = t.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === t.me ? ' me' : ''); return '<div class="tm ' + cls + '">' + (i !== t.me && crRivalsIn(tm).length ? '🔥 ' : '') + crTeamName(tm) + (t.seeds && t.seeds[i] ? ' <i class="seed">[' + t.seeds[i] + ']</i>' : '') + '<b>' + crTeamOvr(tm) + '</b></div>'; };
       return '<div class="m' + (m.a === t.me || m.b === t.me ? ' mine' : '') + '">' + row(m.a) + row(m.b) + (m.score ? '<div class="tm"><b>' + m.score + '</b></div>' : '') + '</div>';
     }).join('') : '<div class="m"><div class="tm l">a definir</div></div>') + '</div>';
   }).join('') + '</div></div>';

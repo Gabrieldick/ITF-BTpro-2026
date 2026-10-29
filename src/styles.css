@@ -820,3 +820,5 @@ body[data-tags="off"] .tag { display: none; }
 .cr-edit-prev small { color: rgba(255,255,255,.55); font-size: 12px; }
 .cr-edit-opts { overflow: auto; min-height: 0; padding-right: 4px; }
 @media (max-width: 720px) { .cr-edit-body { grid-template-columns: 1fr; } .cr-edit-prev canvas { width: 220px; height: 300px; } }
+
+.bracket .tm .seed { font-style: normal; font-size: .8em; opacity: .75; margin-left: 2px; }
