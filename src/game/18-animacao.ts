@@ -316,6 +316,13 @@ function animateAthlete(p, dt) {
         F.st = st; F.w = null;
       }
     }
+    // rolagem do pé: no fim do apoio o calcanhar sobe (gira na ponta), na saída a ponta empurra para baixo, no ar os dedos
+    // ficam esticados; o modelo 3D inclina o pé com isso (L.roll)
+    let rollT = 0;
+    if (air) rollT = .35;
+    else if (F.st) { const t = Math.min(1, F.st.t); rollT = t < .4 ? .65 * (1 - t / .4) : 0; }
+    else if (!p.dive && thr > 0) { const rr = wants[i] / thr; rollT = rr > .55 ? .5 * clamp((rr - .55) / .45, 0, 1) * Math.min(1, sp / 1.2) : 0; fy += Math.sin(L.roll || 0) * .12; }
+    L.roll = (L.roll || 0) + (rollT - (L.roll || 0)) * Math.min(1, dt * 22);
     _a.set(fx - m.hips.position.x, fy - m.hips.position.y, fz - m.hips.position.z).applyQuaternion(_hq);
     _b.set(s * .12, 0, -1).applyQuaternion(_hq);
     ik2(L.thigh, L.knee, L.thigh.position, _a, _b, .42, .43);

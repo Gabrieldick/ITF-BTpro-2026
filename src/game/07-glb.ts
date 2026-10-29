@@ -384,9 +384,11 @@ function driveSkin(p) {
   limbIK(B.LeftUpLeg, B.LeftLeg, B.LeftFoot, l0.thigh, l0.knee, l0.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07, k.lim.LeftUpLeg, k.lim.LeftLeg);
   limbIK(B.RightUpLeg, B.RightLeg, B.RightFoot, l1.thigh, l1.knee, l1.ankle, k.leg[0], k.leg[1], .85, false, k.footH - .07, k.lim.RightUpLeg, k.lim.RightLeg);
   // pés planos na areia
-  [['LeftFoot', 'LeftToeBase', k.toe.L], ['RightFoot', 'RightToeBase', k.toe.R]].forEach(([f, t, v]) => {
+  [['LeftFoot', 'LeftToeBase', k.toe.L, l0], ['RightFoot', 'RightToeBase', k.toe.R, l1]].forEach(([f, t, v, lg]) => {
     if (!B[f] || !B[t]) return;
-    B[f].getWorldPosition(_k3); _k1.copy(v).applyQuaternion(k.holder.quaternion).add(_k3); aimBone(B[f], B[t], _k1);
+    B[f].getWorldPosition(_k3); _k1.copy(v).applyQuaternion(k.holder.quaternion);
+    if (lg.roll) { _k2.set(_k1.z, 0, -_k1.x).normalize(); _kq.setFromAxisAngle(_k2, lg.roll); _k1.applyQuaternion(_kq); } // ponta do pé para baixo
+    _k1.add(_k3); aimBone(B[f], B[t], _k1);
   });
   // mão da raquete: orientada pelo cabo da raquete do rig; dedos fecham em volta; raquete encaixada no punho
   const H = B[R + 'Hand'], Hd = k.hand[R], Ho = k.hand[O];
