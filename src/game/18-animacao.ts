@@ -9,7 +9,7 @@ import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
 import { pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf } from './04-poses';
 import { ALL, human } from './06-modelos';
-import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, fpArm, fpWrist, landRing, particles, puff, reachRing, stamp, trail, trailGeo, trailPos, updateParticles } from './07-glb';
+import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, fpArm, fpWrist, landRing, particles, puff, reachRing, scuffMark, stamp, trail, trailGeo, trailPos, updateParticles } from './07-glb';
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
 import { canHit, predictLanding, reachOf } from './10-fisica';
 import { defRing, updateAimMarker } from './11-mira';
@@ -296,6 +296,10 @@ function animateAthlete(p, dt) {
       [fx, fz] = toL(w); if (crossK > 0 && s * mx * Math.sign(lvx) < 0) fz -= Math.sin(Math.PI * t) * .16 * crossK; fy += (F.st.y0 || 0) * (1 - k) + Math.pow(Math.sin(Math.PI * t), .9 - .3 * run) * F.st.h; // andando: arco baixo e redondo; correndo: sai e chega rápido
       if (t >= 1) {
         const land = F.st.y0; F.w = tg; F.st = null; p.dip = Math.max(p.dip || 0, .008 + .022 * run + (land ? .03 : 0)); // o peso cai no pé: joelho cede um pouco
+        // pisada que tumultua a areia: pouso de salto, arrancada/freada forte ou corrida rápida (de vez em quando) arrasta areia
+        if (m.group.visible && (land || Math.abs(p.accF || 0) > 7 || Math.abs(p.accR || 0) > 7 || (sp > 3.2 && Math.random() < .3))) {
+          const hard = clamp(Math.max(Math.abs(p.accF || 0), Math.abs(p.accR || 0)) / 14, 0, 1);
+          if (land || hard > .5 || Math.random() < .55) scuffMark(tg[0], tg[1], p.vel.x || -Math.sin(yaw) * .1, p.vel.z || -Math.cos(yaw) * .1, .22 + .2 * hard + (land ? .12 : 0) + Math.random() * .08); }
         if ((sp > .5 || land) && m.group.visible) { stamp(tg[0], tg[1], yaw, s * mx, clamp((sp - 3) / 3, 0, 1)); if (sp > 3.5 && particles.visible) puff(tg[0], tg[1], 2, .35); }
       }
     } else {

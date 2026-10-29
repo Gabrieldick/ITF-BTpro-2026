@@ -591,7 +591,7 @@ function decalLayer(tex, n, w, h, op = 1) {
   m.frustumCulled = false; m.receiveShadow = true; ENV.add(m); return { m, n, i: 0 };
 }
 const FP_N = 320;
-const prints = decalLayer(FOOT, FP_N, .14, .3), oldPrints = decalLayer(FOOT, 220, .14, .3, .55), marks = decalLayer(CRATER, 40, .16, .16), smears = decalLayer(SMEAR, 8, .7, 1.5);
+const prints = decalLayer(FOOT, FP_N, .14, .3), oldPrints = decalLayer(FOOT, 220, .14, .3, .55), marks = decalLayer(CRATER, 40, .16, .16), smears = decalLayer(SMEAR, 48, .7, 1.5);
 const dummyObj = new THREE.Object3D();
 // x, z no mundo (já com a troca de lado aplicada) → espaço do cenário
 function putDecal(L, x, z, ang, sx = 1, sz = 1, lift = .004) {
@@ -624,6 +624,8 @@ function stamp(x, z, ang, side = 1, deep = 0) { putDecal(prints, x, z, ang + (Ma
 // bola tocando a areia: pequena cratera (e um pouco alongada na direção em que vinha)
 function ballMark(x, z, vx = 0, vz = 0) { const v = Math.hypot(vx, vz); putDecal(marks, x, z, v > .1 ? Math.atan2(vx, vz) : Math.random() * 6.3, 1, 1 + Math.min(.8, v * .05), .005); }
 // peixinho: marca do corpo deslizando na direção do mergulho, começando um pouco antes de onde parou
+// pé arrastando (arrancada, freada, pouso): a mesma marca do peixinho, bem menor, na direção do movimento; k = tamanho
+function scuffMark(x, z, vx, vz, k = .35) { const v = Math.hypot(vx, vz) || 1; putDecal(smears, x - vx / v * .1 * k, z - vz / v * .1 * k, Math.atan2(vx, vz) + Math.PI, k * (.8 + Math.random() * .4), k * (.7 + Math.random() * .5), .0036); }
 function diveMark(x, z, dx, dz) { const a = Math.atan2(dx, dz); putDecal(smears, x - dx * .5, z - dz * .5, a + Math.PI, 1, 1, .0035); }
 // Grãos de areia levantados
 const PN = 120;
@@ -679,4 +681,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, trail, trailGeo, trailPos, updateParticles };
+export { makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, scuffMark, trail, trailGeo, trailPos, updateParticles };
