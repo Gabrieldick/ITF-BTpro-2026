@@ -267,6 +267,7 @@ function localInput() {
 function updateHuman(dt, c = localCtl()) {
   if (S.sideWalk && S.mode === 'dead') return; // trocando de lado: a caminhada conduz
   const p = c.p, humanPlan = c.plan, s = p.team === 0 ? 1 : -1, opp = 1 - p.team;
+  if (p.forceVel) { p.vel.copy(p.forceVel); p.pos.addScaledVector(p.vel, dt); return; } // (teste de animação: anda reto numa velocidade fixa)
   const [ix, iz] = c.remote ? [c.ix, c.iz] : localInput();
   const len = Math.hypot(ix, iz);
   p.inputX = ix; p.inputZ = iz;
@@ -547,6 +548,7 @@ function receiveX(p) {
 }
 function updateAI(p, dt) {
   if (S.sideWalk && S.mode === 'dead') return; // trocando de lado: a caminhada conduz
+  if (p.forceVel) { p.vel.copy(p.forceVel); p.pos.addScaledVector(p.vel, dt); return; } // (teste de animação: anda reto numa velocidade fixa)
   if (S.drill && p.team === 1) { // no treino o professor só lança: faz o golpe e solta a bola no contato, não rebate
     p.vel.set(0, 0, 0);
     if (p.swing.t >= 0) {

@@ -144,7 +144,14 @@ function animateAthlete(p, dt) {
   const bsp = Math.hypot(ball.vel.x, ball.vel.z);
   const lowT = !busy && ball.state === 'live' && S.lastTeam !== p.team && bsp > 10 && Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) < 8 ? clamp((bsp - 10) / 6, .5, 1) : 0;
   p.lowK = (p.lowK || 0) + (lowT - (p.lowK || 0)) * Math.min(1, dt * 10);
-  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep);
+  // locomoção solta: entre pontos (ou com a bola longe, indo para o outro lado) o jogador anda/corre ereto, pés sob o
+  // corpo, braços balançando e o corpo virado para onde vai — a base baixa de jogo fica para quando a bola vem
+  const away = ball.state === 'live' && S.lastTeam === p.team && ball.vel.z * fT < -3;
+  const rlxT = busy || p.lowK > .2 ? 0 : (ball.state !== 'live' || S.mode === 'dead' ? 1 : away ? .55 : 0) * clamp((sp - .4) / .8, 0, 1);
+  p.rlx = (p.rlx || 0) + (rlxT - (p.rlx || 0)) * Math.min(1, dt * (rlxT > (p.rlx || 0) ? 3 : 9));
+  const hd = Math.atan2(latV, -back), turnT = p.rlx > .3 && sp > 1 && Math.abs(hd) < 1.9 ? clamp(-hd, -1.5, 1.5) * p.rlx : 0;
+  p.rlxTurn = (p.rlxTurn || 0) + (turnT - (p.rlxTurn || 0)) * Math.min(1, dt * 5);
+  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep) * (1 - p.rlx) + p.rlxTurn * (1 - p.prep);
   const cel = S.mode === 'dead' && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
   if (mateC && cel.t > .7) { const fy = Math.atan2(-(mateC.pos.x - p.pos.x), -(mateC.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
@@ -168,7 +175,7 @@ function animateAthlete(p, dt) {
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
   p.strK = (p.strK || 0) + ((sp > .25 ? 1 : 0) - (p.strK || 0)) * Math.min(1, dt * (sp > .25 ? 10 : 6));
   const gF = stepCad(sp) / 2; // ciclos por segundo (por perna), igual à cadência dos pés
-  if (p.strK > .01) p.gait += dt * Math.PI * 2 * gF;
+  if (p.strK > .01 && !p.feet) p.gait += dt * Math.PI * 2 * gF; // (com pés plantados a fase vem dos próprios passos, lá embaixo)
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
   const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = (dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1) * (p.dive ? .45 + .55 * (p.dive.sev ?? 1) : 1); // esticada curta: só abaixa
@@ -183,9 +190,9 @@ function animateAthlete(p, dt) {
   }
   p.reachK = (p.reachK || 0) + (reachK - (p.reachK || 0)) * Math.min(1, dt * 14);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
-  const crouch = pose.crouch * (1 - run * .35) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouch = pose.crouch * (1 - run * .35) * (1 - .8 * (p.rlx || 0)) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
-  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22, .92 - crouch - .08 * lungeA + run * .025 * Math.cos(2 * p.gait), -.05 * lungeA);
+  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22, Math.min(.92 - crouch - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
   if (!p.prevVel) p.prevVel = new V3();
   const acx = dt > 0 ? (p.vel.x - p.prevVel.x) / dt : 0, acz = dt > 0 ? (p.vel.z - p.prevVel.z) / dt : 0; p.prevVel.copy(p.vel);
@@ -194,9 +201,9 @@ function animateAthlete(p, dt) {
   p.accR = (p.accR || 0) + (clamp(cya * acx - sya * acz, -14, 14) - (p.accR || 0)) * Math.min(1, dt * 8);
   const accLean = clamp(p.accF * .022, -.22, .22), accRoll = clamp(p.accR * .018, -.16, .16);
   m.hips.position.x += clamp(-p.accR * .006, -.05, .05);
-  m.hips.rotation.set(0, Math.sin(p.gait) * .11 * run, Math.cos(p.gait) * .035 * run);
+  m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6), Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
-  m.spine.rotation.set(-(pose.lean + run * .1 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.sin(p.gait) * .16 * run * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
+  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .1 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - p.prep * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: cada pé fica plantado no mundo até ficar longe de onde deveria estar (posição da pose + um pouco à frente, onde o
@@ -224,13 +231,21 @@ function animateAthlete(p, dt) {
   // passada: cadência de gente (≈2 passos/s andando, ≈3,8 correndo) → cada pé fica no chão por uma distância thrW (pousa
   // metade à frente, sai metade atrás) e voa o resto do ciclo; de lado os passos são mais curtos; gente mais baixa, passada
   // um pouco menor. Tudo em metros no mundo; thr/limites no espaço do modelo (÷ hs)
-  const cad = stepCad(sp), swF = .4 + .22 * clamp((sp - 1.5) / 3, 0, 1);
-  const thrW = Math.min(clamp(sp * (2 / cad) * (1 - swF), .14, .8) * (.65 + .35 * lvu), .66 * hs); // (até onde a perna alcança)
-  const leadD = thrW / 2, thr = thrW / hs, stepDur = clamp((2 * sp / cad - thrW) / Math.max(sp, .6), .16, .45), spn = Math.max(sp, .01);
+  const cad = stepCad(sp), swF = .4 + .2 * clamp((sp - 2.6) / 2.4, 0, 1), dirK = .75 + .25 * lvu;
+  // alcance da perna no chão: depende da altura do quadril (agachado alcança menos); o pé apoia de reach à frente até reach atrás
+  const hipY = m.hips.position.y, reach = Math.sqrt(Math.max(.01, .83 * .83 - (hipY - .07) * (hipY - .07)));
+  // passada que a velocidade pede → quanto o quadril precisa descer para a perna alcançar (gente de verdade abaixa uns
+  // centímetros num passo longo); vale no quadro seguinte, suave
+  { const need = Math.min(sp * (2 / cad) * (1 - swF) * dirK, .9) / hs / 2 + .03, hc = Math.max(.7, .07 + Math.sqrt(Math.max(0, .83 * .83 - need * need)));
+    p.hipCap = sp > .4 ? (p.hipCap ?? hc) + (hc - (p.hipCap ?? hc)) * Math.min(1, dt * 8) : Math.min(9, (p.hipCap ?? 9) + dt * .6); }
+  const T0 = 2 / cad, capW = Math.min(1.7 * reach, .9) * hs * dirK; // ciclo de cada pé (s) · distância que o pé fica no chão (m)
+  const thrW = clamp(Math.min(sp * T0 * (1 - swF) * dirK, capW), .14, .8);
+  const Te = sp > .3 ? Math.min(T0, thrW / (sp * (1 - swF))) : T0; // perna curta para a velocidade: passos mais rápidos, não mais longos
+  const leadD = thrW / 2, thr = thrW / hs, stepDur = clamp(swF * Te, .12, .4), spn = Math.max(sp, .01);
   const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1;
-    let fx = s * (.17 + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
+    let fx = s * (.17 - .07 * p.rlx + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     loc.push([fx + lvx / spn * mx * leadD / hs, fz + lvz / spn * leadD / hs]); // onde o pé deveria estar (local)
   }
@@ -256,9 +271,9 @@ function animateAthlete(p, dt) {
       // passo em andamento: arco até o alvo (que acompanha o corpo até o pé pousar)
       F.st.t += dt / F.st.dur; const t = Math.min(1, F.st.t), k = t * t * (3 - 2 * t), tg = toW(D[0], D[1]);
       const w = [F.st.from[0] + (tg[0] - F.st.from[0]) * k, F.st.from[1] + (tg[1] - F.st.from[1]) * k];
-      [fx, fz] = toL(w); fy += (F.st.y0 || 0) * (1 - k) + Math.pow(Math.sin(Math.PI * t), .55) * F.st.h; // sai e chega do chão rápido (o arco fica no alto)
+      [fx, fz] = toL(w); fy += (F.st.y0 || 0) * (1 - k) + Math.pow(Math.sin(Math.PI * t), .9 - .3 * run) * F.st.h; // andando: arco baixo e redondo; correndo: sai e chega rápido
       if (t >= 1) {
-        const land = F.st.y0; F.w = tg; F.st = null;
+        const land = F.st.y0; F.w = tg; F.st = null; p.dip = Math.max(p.dip || 0, .008 + .022 * run + (land ? .03 : 0)); // o peso cai no pé: joelho cede um pouco
         if ((sp > .5 || land) && m.group.visible) { stamp(tg[0], tg[1], yaw, s * mx, clamp((sp - 3) / 3, 0, 1)); if (sp > 3.5 && particles.visible) puff(tg[0], tg[1], 2, .35); }
       }
     } else {
@@ -267,11 +282,11 @@ function animateAthlete(p, dt) {
       // andando: um pé de cada vez. Correndo: alternado por fase — este pé sai meio ciclo depois do outro ter saído (se
       // atrasado, sai mesmo assim um pouco depois do limite), senão os dois acabam pousando juntos (galope)
       let go;
-      if (sp <= 1.8) go = wants[i] > thr * (O.st ? 1 : .999) && !O.st && (wants[i] >= wants[1 - i] || wants[1 - i] <= thr);
+      if (sp <= 2.6) go = wants[i] > thr * (O.st ? 1 : .999) && !O.st && (wants[i] >= wants[1 - i] || wants[1 - i] <= thr);
       else { const since = p.gT - (O.lt ?? -9); go = (wants[i] > thr * .8 && since >= .9 / cad) || (wants[i] > thr * 1.25 && since > .08); }
       if (go || wants[i] > Math.max(.75, thr * 1.6)) {
         F.lt = p.gT;
-        const st = { from: F.w.slice(), y0: 0, t: 0, dur: stepDur, h: .045 + Math.min(sp, 6) * .02 };
+        const st = { from: F.w.slice(), y0: 0, t: 0, dur: stepDur, h: .025 + Math.min(sp, 6) * .014 };
         F.st = st; F.w = null;
       }
     }
@@ -283,6 +298,13 @@ function animateAthlete(p, dt) {
   }
   // ao pousar de um salto em uma perna: a de impulso apoia um pouco depois (o passo dela já está armado acima)
   if (!air && p.jumpMode) p.jumpMode = null;
+  // ritmo do corpo a partir dos pés: fase do passo (braços e quadril balançam junto), sobe e desce (andando o corpo passa
+  // por cima da perna de apoio e sobe; correndo afunda no apoio e sobe no voo) e o joelho que cede ao pisar
+  { const F0 = p.feet[0].st, F1 = p.feet[1].st, sw = !air && !p.dive ? (F0 ? F0 : F1) : null;
+    if (sw) { const ph = (F0 ? 0 : Math.PI) + Math.PI * Math.min(1, sw.t), d = Math.atan2(Math.sin(ph - p.gait), Math.cos(ph - p.gait)); p.gait += d; }
+    const bobT = sw ? (lerp(.014, -.026, clamp((sp - 2.2) / 2, 0, 1)) * Math.sin(Math.PI * Math.min(1, sw.t)) * p.strK) : 0;
+    p.bobY = (p.bobY || 0) + (bobT - (p.bobY || 0)) * Math.min(1, dt * 18);
+    p.dip = (p.dip || 0) * Math.exp(-dt * 11); }
   // braços
   const shR = m.armR.sh.position, shL = m.armL.sh.position;
   _c.fromArray(pose.rh);
@@ -300,7 +322,9 @@ function animateAthlete(p, dt) {
       if (fade > 0) { _g.copy(_e).sub(shR).normalize(); _e.addScaledVector(_g, -.34); _c.lerp(_e, Math.min(1, w * 1.1) * fade); }
     }
   }
-  else if (!p.charging && run > .3) _c.z -= Math.cos(p.gait) * .08 * run * lvu; // braço da raquete balança pouco na corrida
+  else if (!p.charging && run > .3) _c.z += Math.cos(p.gait) * .08 * run * lvu; // braço da raquete balança pouco na corrida
+  // solto: raquete desce ao lado do corpo e o braço balança (ao contrário da perna do mesmo lado)
+  if (swingU < 0 && !p.charging && p.rlx > .01) { const am = .1 + .14 * Math.min(1, sp / 4); _e.set(.25, .06 + .05 * run, -.14 + Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
   _b.fromArray(pose.rp);
   const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
@@ -312,7 +336,8 @@ function animateAthlete(p, dt) {
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(-.18, 1.05, -.05); _b.set(-.8, 0, .3); }
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
-  if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z += Math.cos(p.gait) * .17 * run * lvu; }
+  if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z -= Math.cos(p.gait) * .17 * run * lvu; }
+  if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .12 + .16 * Math.min(1, sp / 4); _e.set(-.24, .04 + .06 * run, -.06 - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
   if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
