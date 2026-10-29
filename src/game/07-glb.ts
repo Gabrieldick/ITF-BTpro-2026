@@ -453,6 +453,8 @@ function rebuildModel(p, look) {
 // visual do personagem em quadra: extras do id, aparência dele, uniforme do time (ou o uniforme próprio da carreira)
 function charLook(c, team, idx) {
   const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
+  // jogadoras quase nunca usam boné: vira viseira (a maioria) ou faixa, na mesma cor (a sua jogadora da carreira escolhe)
+  if (c.fem && look.cap && c.id !== 'crme') { let h = 0; for (const ch of String(c.id || c.name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; if (h % 10 < 7) look.visor = look.cap; else look.headband = look.cap; look.cap = ''; }
   const OF = c.look && c.look.outfit; // blusa, estampa, cores, parte de baixo e logo do patrocinador no lugar do uniforme da equipe
   if (OF) Object.assign(look, { shirt: OF.c1, shirt2: OF.c2, pattern: OF.pat, top: OF.top, bottom: OF.bot, shorts: OF.bc, logo: OF.logo || '' });
   return look;
