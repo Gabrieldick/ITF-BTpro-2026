@@ -44,8 +44,22 @@ async function syncXp() {
   try { const n = Math.min(2000, LV.pend), r = await sbRest('rpc/add_xp', { method: 'POST', body: JSON.stringify({ n }) }); if (typeof r === 'number') { LV.pend -= n; LV.srv = r; LV.xp = r + LV.pend; lvSave(); render(); } } catch (e) {}
   xpBusy = false;
 }
+// vitórias e derrotas no online: guardadas no aparelho e somadas na conta pelo add_result (supabase/vitorias.sql)
+const WL = { w: 0, l: 0, pw: 0, pl: 0 };
+try { Object.assign(WL, JSON.parse(localStorage.getItem('pdo-wl') || '{}')); } catch (e) {}
+const wlSave = () => { try { localStorage.setItem('pdo-wl', JSON.stringify(WL)); } catch (e) {} };
+let wlBusy = false;
+async function syncWL() {
+  if (wlBusy || !CL.sess || (!WL.pw && !WL.pl) || !AM.name || AM.hasWL === false) return;
+  wlBusy = true;
+  try { const w = Math.min(50, WL.pw), l = Math.min(50, WL.pl), r = await sbRest('rpc/add_result', { method: 'POST', body: JSON.stringify({ w, l }) });
+    const t = Array.isArray(r) ? r[0] : r; if (t && typeof t.wins === 'number') { WL.pw -= w; WL.pl -= l; WL.w = t.wins + WL.pw; WL.l = t.losses + WL.pl; wlSave(); render(); } } catch (e) { if (/add_result|function/.test(e.message)) AM.hasWL = false; }
+  wlBusy = false;
+}
+const wlTxt = () => '<span class="am-wl" title="Partidas online: vitórias – derrotas">' + WL.w + 'V – ' + WL.l + 'D</span>';
 const lvBar = (xp, wide) => { const v = lvOf(xp); return '<span class="am-lv' + (wide ? ' wide' : '') + '" title="' + v.cur + ' / ' + v.need + ' XP para o nível ' + (v.L + 1) + '"><b>Nv ' + v.L + '</b>' + (wide ? '<i><u style="width:' + Math.round(v.cur / v.need * 100) + '%"></u></i><small>' + v.cur + '/' + v.need + ' XP</small>' : '') + '</span>'; };
 S.onMatchEnd = o => {
+  if (o.online) { if (o.won) { WL.w++; WL.pw++; } else { WL.l++; WL.pl++; } wlSave(); syncWL(); }
   const r = typeof o.rating === 'number' ? o.rating : null;
   const gain = Math.round(o.career ? 40 + (o.won ? 30 : 0) + (r !== null ? clampN((r - 6) * 10, 0, 40) : 0) : 35 + (o.won ? 25 : 0) + Math.min(20, (o.pts && o.pts[0]) || 0));
   const before = lvOf(LV.xp).L; LV.xp += gain; LV.pend += gain; lvSave();
@@ -73,6 +87,9 @@ async function loadAll0() {
     if (AM.hasXp !== false) AM.hasXp = true;
     AM.name = p && p[0] ? p[0].username : null; AM.nameLoaded = true; AM.setup = true; AM.err = '';
     if (p && p[0] && typeof p[0].xp === 'number') { LV.srv = p[0].xp; LV.xp = p[0].xp + LV.pend; lvSave(); syncXp(); }
+    // V–D da conta (só depois do supabase/vitorias.sql; sem as colunas, fica o do aparelho)
+    if (AM.hasWL !== false) { const q = await sbRest('profiles?select=wins,losses&user_id=eq.' + me).catch(() => { AM.hasWL = false; return null; });
+      if (q && q[0] && typeof q[0].wins === 'number') { AM.hasWL = true; WL.w = q[0].wins + WL.pw; WL.l = q[0].losses + WL.pl; wlSave(); syncWL(); } }
     const fr = await sbRest('friendships?select=requester,addressee,status') || [];
     const ids = [...new Set(fr.map(f => f.requester === me ? f.addressee : f.requester))];
     const names = ids.length ? await sbRest('profiles?select=user_id,username' + XS() + '&user_id=in.(' + ids.join(',') + ')') || [] : [];
@@ -265,7 +282,7 @@ function render() {
     const inc = AM.friends.filter(f => f.st === 'pending-in'), out = AM.friends.filter(f => f.st === 'pending-out'), ok = AM.friends.filter(f => f.st === 'ok'), room = myRoom();
     const order = { on: 0, dnd: 1, away: 2, off: 3 };
     ok.sort((a, b) => (order[AM.pres[a.id] || 'off'] - order[AM.pres[b.id] || 'off']) || a.name.localeCompare(b.name));
-    h = '<div class="am-me"><span>Você: <b>@' + esc(AM.name) + '</b></span><button type="button" class="ghost xs" data-am="editname">trocar</button>' + lvBar(LV.xp, true)
+    h = '<div class="am-me"><span>Você: <b>@' + esc(AM.name) + '</b></span><button type="button" class="ghost xs" data-am="editname">trocar</button>' + wlTxt() + lvBar(LV.xp, true)
       + '<select id="amSt"><option value="auto">🟢 Online (ausente após 3 min fora)</option><option value="dnd">⛔ Não perturbe (sem som)</option><option value="invis">⚪ Aparecer offline</option></select></div>'
       + '<div class="am-row"><input id="amAdd" type="text" maxlength="17" placeholder="Adicionar amigo pelo nome de usuário" autocomplete="off"><button type="button" class="cta sm" data-am="add">Adicionar</button></div>'
       + (inc.length ? '<div class="am-sec"><b>Pedidos de amizade</b>' + inc.map(f => '<div class="am-fr"><span>@' + esc(f.name) + '</span><span class="am-act"><button type="button" class="cta xs" data-am="accept" data-id="' + f.id + '">Aceitar</button><button type="button" class="ghost xs" data-am="decline" data-id="' + f.id + '">Recusar</button></span></div>').join('') + '</div>' : '')

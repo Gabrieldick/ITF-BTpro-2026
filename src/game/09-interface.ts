@@ -760,19 +760,19 @@ function showOver() {
   $('stPts').textContent = `${S.stats.pts[0]}–${S.stats.pts[1]}`;
   $('stRally').textContent = S.stats.maxRally;
   $('stSmash').textContent = S.stats.smashes;
-  renderMatchStats();
+  try { renderMatchStats(); } catch (e) { console.error('estatísticas', e); } // nada aqui pode impedir o XP e o V–D do fim
   // nota do seu jogador
-  const rating = matchRating(w === 0);
+  const rating = (() => { try { return matchRating(w === 0); } catch (e) { return null; } })();
   if (rating !== null) {
     const sm = perfSummary(), esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     prependStats('<div class="perf-box"><div class="perf-n' + (rating >= 7.5 ? ' hi' : rating < 5.5 ? ' lo' : '') + '">' + rating.toFixed(1).replace('.', ',') + '<small>SUA NOTA</small></div><div><b>' + (sm.good.length ? esc(sm.good.join(' · ')) : 'Pouca participação nos pontos') + '</b>' + (sm.bad.length ? '<span>' + esc(sm.bad.join(' · ')) + '</span>' : '') + '</div></div>');
   }
   const inChamp = !!S.champActive, inCareer = !!S.careerActive;
-  if (inChamp) champMatchEnded(w === 0);
+  if (inChamp && !NET.role) champMatchEnded(w === 0); // (campeonato local: um aberto antes não conta numa partida online)
   if (inCareer) careerMatchEnded(w === 0, rating === null ? undefined : rating);
   if (inCareer && rating !== null && $s.CR && $s.CR.tour && $s.CR.tour.log) { const last = $s.CR.tour.log[$s.CR.tour.log.length - 1] || ''; const m = last.match(/potencial \+[0-9,]+/); if (m) prependStats('<p class="cr-note perf-pot">Carreira: ' + m[0] + ' (o potencial é o teto dos seus atributos)</p>'); }
   // nível da conta: XP por partida da carreira e do online (quem só assiste não ganha)
-  if (S.onMatchEnd && !S.spectate && (inCareer || NET.role)) S.onMatchEnd({ won: w === 0, career: inCareer, online: !!NET.role, rating, pts: S.stats.pts, addLine: prependStats });
+  if (S.onMatchEnd && !S.spectate && (inCareer || NET.role)) try { S.onMatchEnd({ won: w === 0, career: inCareer, online: !!NET.role, rating, pts: S.stats.pts, addLine: prependStats }); } catch (e) { console.error('xp', e); }
   $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
   $('btnReplay').hidden = !(S.highlights && S.highlights.length);
   el.over.hidden = false;
