@@ -142,7 +142,6 @@ function swingVar(type, y, p, aimX) {
   return '';
 }
 if (typeof window !== 'undefined') window.__pdoACT = ACT;
-if (typeof window !== 'undefined') queueMicrotask(() => { window.__pdoSTY = STY; });
 const swingKey = p => p.swing.var && ACT[p.swing.type + '_' + p.swing.var] ? p.swing.type + '_' + p.swing.var : p.swing.type;
 // saque: bola na mão, lançamento, posição de troféu
 const SERVE_U = [0, .15, .32, 1]; // pêndulo rápido, braço esticado em cima aos 30% (a bola sai da mão) e o resto até o troféu
@@ -187,6 +186,7 @@ const STY = {
   toque: [{}, { d1: { rh: [-.08, 0, -.1], tw: .15 }, d2: { rh: [.04, 0, .16] } }, { d2: { rh: [-.05, -.15, -.1], wx: .3, lean: .05 } },
     { d2: { rh: [0, .18, -.05], wx: -.25 } }, { d1: { crouch: .06, lean: .06 }, d2: { crouch: .05, rh: [.06, -.04, -.06] } }],
 };
+if (typeof window !== 'undefined') window.__pdoSTY = STY;
 const styFam = ak => ak === 'smash_saque' ? 'saque' : ak === 'smash_ventaglio' || ak === 'smash_saquebaixo' ? '' : ak.startsWith('smash') ? 'smash' : ak === 'lob' ? 'lob' : 'toque';
 // sorteio: metade das vezes o preferido do jogador (do id), senão qualquer um; intensidade também varia
 function pickStyle(ak, c) {

@@ -97,6 +97,57 @@ function attachSkin(p, gltf) {
 }
 // veste o modelo realista conforme o personagem: o arquivo traz todas as peças (blusas, short, saia, cabelo, rabo de cavalo,
 // manguito, meião, óculos); escolhe as do personagem (sempre as mesmas para ele) e pinta pele, cabelo e uniforme do time
+// Pele: (1) poros — mapa de normais fino e repetido (células de Worley + rugas), gerado aqui (não pesa no download), que
+// some de longe para não cintilar; (2) a luz "atravessa" a pele: o difuso se estende um pouco além da linha de sombra e
+// essa faixa puxa para o vermelho (sangue sob a pele), em vez do corte cinza de plástico; (3) brilho irregular (rugosidade
+// varia com manchas finas) e suor: ao longo da partida a pele fica mais brilhante (molhada)
+const PORE = (() => {
+  const N = 256, H = new Float32Array(N * N), G = 32, pts = [];
+  let sd = 12345; const rnd = () => { sd = (sd * 1103515245 + 12345) >>> 0; return (sd >>> 8) / 16777216; };
+  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) pts.push([(i + rnd()) / G, (j + rnd()) / G, .5 + rnd() * .7]);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const u = x / N, v = y / N, ci = Math.floor(u * G), cj = Math.floor(v * G); let d1 = 9, w = 1;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const ii = (ci + di + G) % G, jj = (cj + dj + G) % G, q = pts[jj * G + ii];
+      let dx = q[0] - u, dy = q[1] - v; dx -= Math.round(dx); dy -= Math.round(dy);
+      const d = Math.hypot(dx, dy) * G; if (d < d1) { d1 = d; w = q[2]; }
+    }
+    // poro = covinha no centro da célula; borda das células = sulcos finos (a "malha" da pele)
+    H[y * N + x] = -Math.exp(-(d1 * d1) / (.06 * w)) * .9 + Math.min(1, d1) * .25;
+  }
+  // rugas finas cruzadas (repetem no ladrilho)
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const u = x / N * Math.PI * 2, v = y / N * Math.PI * 2; H[y * N + x] += .08 * Math.sin(u * 11 + v * 7 + Math.sin(v * 3) * 2) + .06 * Math.sin(u * 5 - v * 13 + Math.sin(u * 2) * 3); }
+  const D = new Uint8Array(N * N * 4), at = (x, y) => H[((y + N) % N) * N + ((x + N) % N)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let nx = (at(x - 1, y) - at(x + 1, y)) * 1.6, ny = (at(x, y - 1) - at(x, y + 1)) * 1.6; const L = Math.hypot(nx, ny, 1);
+    const k = (y * N + x) * 4, lo = .5 + .5 * Math.sin(x / N * Math.PI * 6 + Math.sin(y / N * Math.PI * 4) * 2) * Math.sin(y / N * Math.PI * 4 + 1.3); // manchas largas (brilho/suor)
+    D[k] = (nx / L * .5 + .5) * 255; D[k + 1] = (-ny / L * .5 + .5) * 255; D[k + 2] = (1 / L * .5 + .5) * 255; D[k + 3] = lo * 255;
+  }
+  const t = new THREE.DataTexture(D, N, N, THREE.RGBAFormat); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = 4; t.needsUpdate = true;
+  return t;
+})();
+const SKIN_LIGHT = THREE.ShaderChunk.lights_physical_pars_fragment.replace('reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseColor );',
+  `{ float nl = dot( geometryNormal, directLight.direction ), wr = saturate( ( nl + .4 ) / 1.4 );
+    vec3 sss = mix( vec3( 1., .42, .3 ), vec3( 1. ), smoothstep( -.05, .5, nl ) );
+    reflectedLight.directDiffuse += wr * sss * directLight.color * BRDF_Lambert( material.diffuseColor ); }`);
+function skinShader(m, U) {
+  if (!m || m.userData.skinOn) return; m.userData.skinOn = true;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPore; uniform float uPoreK, uSweat;')
+      .replace('#include <lights_physical_pars_fragment>', SKIN_LIGHT)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      #if defined( USE_NORMALMAP_TANGENTSPACE ) && defined( USE_MAP )
+      { vec2 pu = vMapUv * 46.0; vec4 pt = texture2D( uPore, pu );
+        float fw = length( fwidth( pu ) ) * 256.0, pk = uPoreK * ( 1.0 - smoothstep( 1.5, 6.0, fw ) );
+        vec3 dn = pt.xyz * 2.0 - 1.0; normal = normalize( normal + ( tbn[0] * dn.x + tbn[1] * dn.y ) * pk );
+        float lo = texture2D( uPore, vMapUv * 3.0 ).a;
+        roughnessFactor = clamp( roughnessFactor * ( .82 + .36 * lo ) * ( 1.0 - uSweat * ( .3 + .35 * lo ) ), .2, 1.0 ); }
+      #endif`);
+  };
+  m.customProgramCacheKey = () => 'skinPore'; m.needsUpdate = true;
+}
+const skinUniforms = () => ({ uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 } });
 const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
 const HAIR_PARTS = ['Hair', 'HairCards', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards'];
@@ -147,16 +198,23 @@ function logoTex(brand, color) {
   x.fillText(brand.toUpperCase(), 256, 80);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (LOGO_TEX[k] = t);
 }
-function patShirt(m, id, c2, logo, logoCol, H) {
-  const U = m.userData.pat || (m.userData.pat = { uPat: { value: 0 }, uC2: { value: new THREE.Color() }, uH: { value: 1.76 }, uLogo: { value: null }, uLogoOn: { value: 0 } });
+function patShirt(m, id, c2, logo, logoCol, H, sweat) {
+  const U = m.userData.pat || (m.userData.pat = { uPat: { value: 0 }, uC2: { value: new THREE.Color() }, uH: { value: 1.76 }, uLogo: { value: null }, uLogoOn: { value: 0 }, uSweat: sweat || { value: 0 } });
   U.uPat.value = id; U.uC2.value.copy(c2); U.uH.value = H; U.uLogo.value = logo ? logoTex(logo, logoCol) : null; U.uLogoOn.value = logo ? 1 : 0;
   if (m.userData.patOn) return; m.userData.patOn = true;
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\nuniform int uPat; uniform vec3 uC2; uniform float uH; uniform sampler2D uLogo; uniform float uLogoOn;' + PAT_GLSL)
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\nuniform int uPat; uniform vec3 uC2; uniform float uH; uniform sampler2D uLogo; uniform float uLogoOn; uniform float uSweat;' + PAT_GLSL)
       .replace('#include <map_fragment>', `#include <map_fragment>
       diffuseColor.rgb = mix(diffuseColor.rgb, uC2, patF(uPat, vRest, uH));
+      // suor: tecido molhado escurece — faixa no meio das costas, no peito e nas axilas, com borda irregular
+      { float hy = vRest.y / uH, ax = abs(vRest.x), nz = sin(vRest.x * 61.0 + vRest.y * 23.0) * sin(vRest.y * 47.0 - vRest.x * 17.0) * .35;
+        float back = (1.0 - smoothstep(.08, .2, ax + nz * .06)) * smoothstep(.56, .66, hy) * (1.0 - smoothstep(.78, .84, hy)) * step(vRest.z, 0.0);
+        float chest = (1.0 - smoothstep(.04, .11, ax + nz * .04)) * smoothstep(.66, .71, hy) * (1.0 - smoothstep(.76, .8, hy)) * step(0.0, vRest.z);
+        float pit = (1.0 - smoothstep(.03, .07, abs(ax - .17) + nz * .03)) * smoothstep(.68, .72, hy) * (1.0 - smoothstep(.76, .79, hy));
+        float sw = clamp((max(back, max(chest * .8, pit)) - (1.0 - uSweat) * 1.1 + .1) * 1.6, 0.0, 1.0);
+        diffuseColor.rgb *= 1.0 - .4 * sw; }
       if (uLogoOn > 0.5 && vRest.z > 0.0) { vec2 lu = vec2((vRest.x + 0.09) / 0.18, (vRest.y - uH * 0.735) / 0.056); if (lu.x > 0.0 && lu.x < 1.0 && lu.y > 0.0 && lu.y < 1.0) { vec4 lc = texture2D(uLogo, lu); diffuseColor.rgb = mix(diffuseColor.rgb, lc.rgb, lc.a); } }`);
   };
   m.customProgramCacheKey = () => 'patShirt'; m.needsUpdate = true;
@@ -197,11 +255,13 @@ function dressSkin(p, root) {
   root.traverse(o => { if (o.isMesh && o.morphTargetDictionary) for (const k in o.morphTargetDictionary) o.morphTargetInfluences[o.morphTargetDictionary[k]] = shape[k] || 0; });
   // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
   for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => tint(o.material, look.skin || '#c68a62', SKIN_BASE));
+  const SU = p.skinU || (p.skinU = skinUniforms()); SU.uPoreK.value = S.settings.gfx === 'leve' ? 0 : .8;
+  for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => skinShader(o.material, SU));
   for (const n of HAIR_PARTS.concat(BEARDS, BEARDS.map(x => x + 'Edge'))) (parts[n] || []).forEach(o => tint(o.material, look.hair || '#2a1a0e', HAIR_BASE));
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
   // estampa: a do uniforme próprio; os outros jogadores ganham uma (sempre a mesma para cada um) na cor do detalhe do time
   const pat = look.pattern || ['liso', 'liso', 'listras', 'lateral', 'ombros', 'degrade', 'faixas', 'chevron', 'tresfaixas', 'faixaslado', 'gola', 'peito', 'geodegrade', 'pinceladas'][Math.floor(r(7) * 14)];
-  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) { m.color.copy(shirt); patShirt(m, PATTERNS[pat] ? PATTERNS[pat].id : 0, col(look.shirt2 || look.trim || '#fbf6ea'), look.logo, look.shirt2 || look.trim || '#fbf6ea', p.skin ? p.skin.mh : (root.userData.mh || 1.76)); } });
+  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) { m.color.copy(shirt); patShirt(m, PATTERNS[pat] ? PATTERNS[pat].id : 0, col(look.shirt2 || look.trim || '#fbf6ea'), look.logo, look.shirt2 || look.trim || '#fbf6ea', p.skin ? p.skin.mh : (root.userData.mh || 1.76), (p.skinU || (p.skinU = skinUniforms())).uSweat); } });
   if (matOf('Bermuda')) matOf('Bermuda').color.copy(shorts);
   if (matOf('Shorts')) matOf('Shorts').color.copy(dress ? shirt : shorts);
   if (matOf('Skirt')) matOf('Skirt').color.copy(dress ? shirt : shorts);

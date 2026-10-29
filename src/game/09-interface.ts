@@ -697,7 +697,7 @@ function newMatch(guest) {
   if (!guest) setWeather();
   el.over.hidden = true; el.menu.hidden = true; el.pause.hidden = true; S.paused = false;
   document.body.classList.remove('in-menu');
-  clearPrints();
+  clearPrints(); [human, partner, cpuA, cpuB].forEach(q => { q.sweat = 0; });
   applyCam(); applyGfx(); applyRackets(); applyPlayerStyle();
   if (guest) { S.mode = 'serve'; ball.state = 'held'; renderBoard(); return; }
   if (NET.onNewMatch) NET.onNewMatch();

@@ -209,6 +209,8 @@ function animateAthlete(p, dt) {
   const toL = (w) => { const dx = (w[0] - p.pos.x) / hs, dz = (w[1] - p.pos.z) / hs; return [(cy * dx - sy * dz) * mx, sy * dx + cy * dz]; };
   const air = jy > .05;
   p.gT = (p.gT || 0) + dt;
+  // suor: cresce com o tempo em quadra e com a corrida (~10 min de partida para ficar bem molhado)
+  if (p.skinU) { p.sweat = Math.min(1, (p.sweat || 0) + dt * (.0006 + sp * .0004)); p.skinU.uSweat.value = .15 + .85 * p.sweat; }
   if (!p.feet) p.feet = [{ w: null, st: null }, { w: null, st: null }];
   // salto: parado sai e cai com as duas pernas; correndo/de lado/para trás (smash de trás, saque) sai em uma perna, faz a
   // tesoura no ar e cai na outra (a segunda apoia logo depois)
