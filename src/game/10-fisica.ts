@@ -156,8 +156,9 @@ function doHit(p, type, q, isServe, mod) {
   if (key === 'curta' && !isServe && !netFin && !wild && !pop && inSpeed > 11) {
     const sk = clamp((inSpeed - 11) / 9, 0, 1) * (ball.smashPow ? 1.25 : 1) * (ball.finisher ? 1.2 : 1);
     const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
-    const pc = Math.min(.8, sk * lerp(.62, .26, tq) * lerp(1.15, .8, attrK(p, 'curta'))), r3 = Math.random();
-    if (r3 < pc) { const u = r3 / pc; if (u < .45) netFin = true; else if (u < .7) pop = true; else wild = true; }
+    // devolução de saque: o saque forte faz a curta errar mais — e o erro típico é a bola não morrer (sobe/sai), não a rede
+    const ret = S.rally === 1, pc = Math.min(.85, sk * lerp(.62, .26, tq) * lerp(1.15, .8, attrK(p, 'curta')) * (ret ? (ball.servePerf ? 1.5 : 1.3) : 1)), r3 = Math.random();
+    if (r3 < pc) { const u = r3 / pc; if (u < (ret ? .25 : .45)) netFin = true; else if (u < (ret ? .72 : .7)) pop = true; else wild = true; }
   }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
   // defesa: quanto melhor o golpe (timing/posição) e o atributo, mais baixa e rápida ela volta; só a ruim flutua
@@ -288,6 +289,8 @@ function doHit(p, type, q, isServe, mod) {
     spec.margin = lerp(.14, .09, curtaK);
     spec.depth = [lerp(1.1, 1.08, curtaK), lerp(2.5, 2.35, curtaK)];
     if (curtaK > .86 && !finisher) spec.label = 'CURTA MATADORA';
+    // contra saque bom e potente a curta de devolução não sai tão curta: cai mais longe da rede e mais alcançável
+    if (S.rally === 1) { const sv = clamp((inSpeed - 12) / 8, 0, 1) * (ball.servePerf ? 1.25 : 1); curtaK *= 1 - .55 * Math.min(1, sv); spec.gk = Math.min(spec.gk, lerp(1.3, 1.0, Math.min(1, sv))); spec.depth = [spec.depth[0] + .7 * sv, spec.depth[1] + 1.1 * sv]; if (curtaK <= .86 && spec.label === 'CURTA MATADORA') spec.label = SHOTS[key].label; }
   }
   const err = 1.15 - q;
   // na finalização a mira curta (W) vai só até o meio: mais curta, a bola precisaria subir para passar a rede e perderia a velocidade
