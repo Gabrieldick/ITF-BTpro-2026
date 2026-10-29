@@ -10,8 +10,8 @@ import { toMenu } from './15-carreira-telas';
 // ---------- Campeonato ----------
 // duplas que jogam juntas no circuito (ids do elenco); quem não tiver par conhecido é pareado pelo ranking
 const REAL_PAIRS = {
-  masc: [['spot', 'gianote'], ['barao', 'capeletti'], ['gigio', 'mola'], ['lock', 'gine'], ['ramires', 'allan'], ['balerini', 'barro'], ['reck', 'amorin']],
-  fem: [['kudina', 'semena'], ['chou', 'marquezin'], ['gaspar', 'valentim'], ['casadi', 'grael'], ['cimadi', 'daino'], ['tripa', 'vida'], ['dias', 'miler'], ['justi', 'nobre']],
+  masc: [['spot', 'gianote'], ['barao', 'capeletti'], ['gigio', 'mola'], ['lock', 'gine'], ['ramires', 'allan'], ['balerini', 'barro'], ['reck', 'amorin'], ['testa', 'branco'], ['guegano', 'galeazzi'], ['ponti', 'bollettinari'], ['jublin', 'bazzi'], ['buemo', 'psilva']],
+  fem: [['kudina', 'semena'], ['chou', 'marquezin'], ['gaspar', 'valentim'], ['casadi', 'grael'], ['cimadi', 'daino'], ['tripa', 'vida'], ['dias', 'miler'], ['justi', 'nobre'], ['seron', 'pereira'], ['magalhaes', 'bray'], ['lmelo', 'pansani'], ['iotte', 'damata'], ['nogueiro', 'preisner']],
   misto: [['barao', 'valentim'], ['gigio', 'marquezin'], ['lock', 'chou'], ['mola', 'nogueiro'], ['ramires', 'grael'], ['burmak', 'daino']],
 };
 let CH = null;
