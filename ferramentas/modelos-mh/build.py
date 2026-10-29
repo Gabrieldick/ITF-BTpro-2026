@@ -174,6 +174,10 @@ WAIST0 = P.get('waist', 1.35)
 ARMX = abs(j0('upperarm01.L')[0]) - .4  # depois disso é braço
 def sleeve_t(p):
     s = 'L' if p[0] > 0 else 'R'; return along(p, j0(f'upperarm01.{s}'), j0(f'lowerarm01.{s}'))
+def calf_t(p):
+    s = 'L' if p[0] > 0 else 'R'; return along(p, j0(f'lowerleg01.{s}'), j0(f'foot.{s}'))
+def fore_t(p):
+    s = 'L' if p[0] > 0 else 'R'; return along(p, j0(f'lowerarm01.{s}'), j0(f'wrist.{s}'))
 def thigh_t(p):
     s = 'L' if p[0] > 0 else 'R'; return along(p, j0(f'upperleg01.{s}'), j0(f'lowerleg01.{s}'))
 def neckline(p, depthF, depthB):  # altura do decote naquele ponto (redondo, mais fundo no meio)
@@ -182,12 +186,23 @@ def neckline(p, depthF, depthB):  # altura do decote naquele ponto (redondo, mai
 def top_keep(p, kind, m=0.):
     if p[1] < WAIST0 - P.get('hemDrop', .3) + m: return False  # barra
     arm = KW['arm'] > .5 and abs(p[0]) > ARMX - .2
+    if kind == 'sbra':  # top esportivo: alças largas e barra logo abaixo do peito
+        if p[1] < P.get('braHem', 3.62) + m: return False
+        if p[1] > neckline(p, P.get('neckF', .75) + .15, .55) - m: return False
+        ax = 1.05 + .55 * min(1., max(0., (4.95 - p[1]) / .65))
+        return abs(p[0]) < ax - m
+    if kind == 'cav':  # camiseta cavada: gola redonda, sem manga, cava funda
+        if p[1] > neckline(p, P.get('neckF', .28), .08) - m: return False
+        if arm: return False
+        ax = 1.3 + .45 * min(1., max(0., (4.6 - p[1]) / .6))
+        return abs(p[0]) < ax - m
     if kind in ('tank', 'crop'):
         if kind == 'crop' and p[1] < P.get('cropHem', 3.6) + m: return False
         if p[1] > neckline(p, P.get('neckF', .75), P.get('neckB', .4)) - m: return False
         ax = .95 + .62 * min(1., max(0., (4.95 - p[1]) / .65))  # cava: alça estreita em cima, abre até a lateral
         return abs(p[0]) < ax - m
     if p[1] > neckline(p, P.get('neckF', .28), .08) - m: return False
+    if kind == 'long': return (not arm) or fore_t(p) < P.get('cuff', .9) - m * .3  # manga longa até o punho
     return (not arm) or sleeve_t(p) < P.get('sleeve', .38) - m * .3
 def shorts_keep(p, m=0., L=None):
     if p[1] > WAIST0 + .05 - m: return False
@@ -199,7 +214,8 @@ def top_keep_v(v, m):
     KW['arm'] = armfrac(v); return top_keep(V0[v], TOP, m)
 tf = [f for f in F if f[2] == 'helper-tights']
 ALL = bool(P.get('all'))  # modelo do jogo: todas as peças no mesmo arquivo (o jogo liga/desliga e pinta)
-TOPS = (['tank', 'crop', 'tee'] if fem else ['tee', 'tank']) if ALL else [P.get('top', 'tank' if fem else 'tee')]
+TOPS = (['tank', 'crop', 'tee', 'long', 'sbra', 'cav'] if fem else ['tee', 'tank', 'long', 'cav']) if ALL else [P.get('top', 'tank' if fem else 'tee')]
+SHORTEST = .3 if ALL else P.get('shortLen', .5)  # o short mais curto do arquivo (a pele só sai onde todos cobrem)
 BOT = P.get('bottom', 'shorts')  # shorts | skirt | dress
 TOP = TOPS[0]
 sh_sup = [f for f in tf if any(shorts_keep(V0[v]) for v in f[0])]
@@ -209,7 +225,7 @@ sh_sup = [f for f in tf if any(shorts_keep(V0[v]) for v in f[0])]
 # que a blusa do jogador cobre (o ombro não atravessa a camiseta)
 def cover(vs):
     global TOP
-    if all(shorts_keep(V0[v], .3) for v in vs): return None
+    if all(shorts_keep(V0[v], .3, SHORTEST) for v in vs): return None
     cs = []
     for k in TOPS:
         TOP = k
@@ -223,10 +239,10 @@ shirtC = P.get('shirt', '#1f6fd1'); botC = shirtC if BOT == 'dress' else P.get('
 SHIRT_M = mat('Shirt', srgb(shirtC), .8)
 for kind in TOPS:
     TOP = kind
-    LOOSE = P.get('loose', .2 if (kind == 'tee' and not fem) else .12 if kind == 'tee' else .06)
+    LOOSE = P.get('loose', .2 if (kind in ('tee', 'long', 'cav') and not fem) else .12 if kind in ('tee', 'long', 'cav') else .03 if kind == 'sbra' else .06)
     def shirt_disp(p, L=LOOSE):
         g = P.get('clothGap', .1)
-        if KW['arm'] > .5: return g + L * .3 * min(1, max(0, sleeve_t(p) / .4))  # manga solta
+        if KW['arm'] > .5: return g + L * .3 * min(1, max(0, sleeve_t(p) / .4)) * (1 - .7 * smooth01(.35, .85, fore_t(p)))  # manga solta (a longa justa no punho)
         return g + L * smooth01(4.4, WAIST0 - .3, p[1]) * (1 + .15 * math.sin(p[0] * 9))  # folga do peito para baixo (dobras leves)
     top_sup = [f for f in tf if any(top_keep_v(v, 0) for v in f[0])]
     finepart('Top_' + kind if ALL else 'Shirt', top_sup, SHIRT_M, lambda p, k=kind: top_keep(p, k), shirt_disp, cuts=2)
@@ -235,6 +251,10 @@ finepart('Shorts', sh_sup, mat('Shorts', srgb(botC if BOT == 'shorts' else P.get
 if ALL:  # bermuda (loja da carreira): até perto do joelho, mais solta embaixo
     bm_sup = [f for f in tf if any(shorts_keep(V0[v], 0, .8) for v in f[0])]
     finepart('Bermuda', bm_sup, mat('Bermuda', srgb(botC), .82), lambda p: shorts_keep(p, 0, .8), lambda p: .07 + .06 * smooth01(.3, .8, thigh_t(p)) * (p[1] < j0('upperleg01.L')[1] + .3))
+if ALL:  # shortinho (mais curto), bermuda de compressão (justa até o joelho) e legging 3/4 (só elas)
+    for nm, L, d in (('ShortS', .3, .065), ('Compress', .95, .045)) + ((('Legging', 1.62, .042),) if fem else ()):
+        sup = [f for f in tf if any(shorts_keep(V0[v], 0, L) for v in f[0])] if True else None
+        finepart(nm, sup, mat(nm, srgb(botC), .8), lambda p, L=L: shorts_keep(p, 0, L), lambda p, d=d: d)
 if BOT in ('skirt', 'dress') or (ALL and fem):  # saia pregueada por cima do short: da cintura até o comprimento pedido
     hem = j0('upperleg01.L')[1] - P.get('skirtLen', 2.1)
     sk = [f for f in F if f[2] == 'helper-skirt']
@@ -242,6 +262,9 @@ if BOT in ('skirt', 'dress') or (ALL and fem):  # saia pregueada por cima do sho
         a = math.atan2(p[0], p[2] - .1); k = smooth01(WAIST0, hem, p[1])
         return .07 + (P.get('pleats', .09) * abs(math.sin(a * 9)) + .12) * k
     finepart('Skirt', sk, mat('Skirt', srgb(botC if BOT == 'dress' else P.get('skirtC', botC)), .8), lambda p: hem < p[1] < WAIST0 + (.2 if BOT == 'dress' else .05), skirt_disp, cuts=3)
+    if ALL:  # saia curta (mesmas pregas, barra bem mais alta)
+        hem = j0('upperleg01.L')[1] - P.get('skirtLenS', 1.35)
+        finepart('SkirtS', sk, mat('SkirtS', srgb(P.get('skirtC', botC)), .8), lambda p: hem < p[1] < WAIST0 + .05, skirt_disp, cuts=3)
 # ---------- cabelo e barba ----------
 # base: casca fina sobre a pele da cabeça (acima da linha do cabelo) com textura de fios que correm na direção do
 # penteado; por cima, mechas (tiras com fios na transparência) que crescem andando pela superfície da cabeça: cada passo
@@ -599,15 +622,14 @@ for side in (1, -1):
 nt = em.materials[0].node_tree; cn = nt.nodes.new('ShaderNodeVertexColor'); cn.layer_name = 'Col'
 nt.links.new(cn.outputs['Color'], nt.nodes['Principled BSDF'].inputs['Base Color'])
 # manguito de compressão (um braço) e meião (panturrilhas): casca justa sobre a pele
-def calf_t(p):
-    s = 'L' if p[0] > 0 else 'R'; return along(p, j0(f'lowerleg01.{s}'), j0(f'foot.{s}'))
-def fore_t(p):
-    s = 'L' if p[0] > 0 else 'R'; return along(p, j0(f'lowerarm01.{s}'), j0(f'wrist.{s}'))
 if P.get('armSleeve') or ALL:  # 'R' (braço da raquete) ou 'L'
     sg = 1 if P.get('armSleeve') == 'L' else -1
     arm_sup = [f for f in body_f if all(V0[v][0] * sg > ARMX - .2 for v in f[0]) and any(armfrac(v) > .4 for v in f[0])]
     finepart('ArmSleeve', arm_sup, mat('ArmSleeve', srgb(P.get('sleeveC', '#ffffff')), .7),
              lambda p: KW['arm'] > .5 and p[0] * sg > 0 and (sleeve_t(p) > .55 or fore_t(p) > -.2) and fore_t(p) < .93, lambda p: .03)
+if ALL:  # munhequeiras (os dois punhos)
+    wr_sup = [f for f in body_f if all(abs(V0[v][0]) > ARMX - .2 for v in f[0]) and any(armfrac(v) > .4 for v in f[0])]
+    finepart('Wristband', wr_sup, mat('Wristband', srgb('#ffffff'), .95), lambda p: KW['arm'] > .5 and .72 < fore_t(p) < .9, lambda p: .07)
 if P.get('calf') or ALL:
     leg_sup = [f for f in body_f if V0[f[0][0]][1] < -2.5]
     finepart('Calf', leg_sup, mat('Calf', srgb(P.get('calfC', '#d7eef0')), .7), lambda p: .12 < calf_t(p) < .86, lambda p: .03)
@@ -792,6 +814,8 @@ if RENDER:
     if 'show' in P:  # prévia de um corte/barba: esconde as outras peças de cabelo
         for o in sc.objects:
             if o.name in ('Hair', 'HairCards', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Beard', 'Goatee', 'Mustache', 'HairCurlyCards', 'HairFringe', 'BeardEdge', 'GoateeEdge', 'MustacheEdge', 'Cap', 'CapBrim', 'Visor', 'VisorBrim', 'Headband') and o.name.replace('Edge', '').replace('Brim', '') not in P['show']: o.hide_render = True
+    for o in sc.objects:
+        if o.name in P.get('hideParts', []) or o.name.split('.')[0] in P.get('hideParts', []): o.hide_render = True
     # prévia: Cycles na CPU, luz de sol + preenchimento, câmera frontal 3/4
     sc.render.engine = 'CYCLES'; sc.cycles.samples = 48; sc.cycles.device = 'CPU'
     sc.render.resolution_x, sc.render.resolution_y = 640, 900

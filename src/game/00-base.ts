@@ -96,8 +96,39 @@ function lookExtras(c) {
 }
 // roupas (loja da carreira): modelos de blusa, estampas e partes de baixo; as cores o jogador escolhe. id da estampa = o
 // número usado no shader do modelo realista e no desenho da camiseta do boneco desenhado
-const TOP_KINDS = { tee: { nome: 'Camiseta', preco: 0 }, tank: { nome: 'Regata', preco: 180 }, crop: { nome: 'Cropped', preco: 220, fem: true } };
-const BOT_KINDS = { short: { nome: 'Short', preco: 0 }, bermuda: { nome: 'Bermuda', preco: 200 }, saia: { nome: 'Saia pregueada', preco: 240, fem: true } };
+// g: peça do modelo (default = a própria chave); f: tecido (dry: furadinho, satin: acetinado, gold: fio de ouro, black:
+// black label, glitter: brilho, carbon: trama de carbono); ex: exclusiva, pede ranking (rank), título (title = nível) ou fama
+const TOP_KINDS = {
+  tee: { nome: 'Camiseta', preco: 0 }, tank: { nome: 'Regata', preco: 180 }, crop: { nome: 'Cropped', preco: 220, fem: true },
+  cav: { nome: 'Camiseta cavada', preco: 300 }, sbra: { nome: 'Top esportivo', preco: 350, fem: true }, long: { nome: 'Manga longa UV', preco: 480 },
+  teeDry: { nome: 'Camiseta dry-fit', preco: 650, g: 'tee', f: 'dry' }, tankDry: { nome: 'Regata dry-fit', preco: 600, g: 'tank', f: 'dry' },
+  cavDry: { nome: 'Cavada dry-fit', preco: 700, g: 'cav', f: 'dry' }, cropDry: { nome: 'Cropped dry-fit', preco: 640, g: 'crop', f: 'dry', fem: true },
+  teeSat: { nome: 'Camiseta de compressão acetinada', preco: 1100, g: 'tee', f: 'satin' }, sbraSat: { nome: 'Top acetinado', preco: 1200, g: 'sbra', f: 'satin', fem: true },
+  longSat: { nome: 'Manga longa térmica Pro', preco: 1800, g: 'long', f: 'satin' }, tankCarb: { nome: 'Regata Carbono', preco: 9500, g: 'tank', f: 'carbon', ex: { rank: 100 } },
+  cavCarb: { nome: 'Cavada Carbono', preco: 11000, g: 'cav', f: 'carbon', ex: { rank: 100 } }, teeBlack: { nome: 'Camiseta Black Label', preco: 18000, g: 'tee', f: 'black', ex: { rank: 30 } },
+  tankBlack: { nome: 'Regata Black Label', preco: 16000, g: 'tank', f: 'black', ex: { rank: 30 } }, cropGlit: { nome: 'Cropped Diamante', preco: 35000, g: 'crop', f: 'glitter', fem: true, ex: { fama: 80 } },
+  sbraGlit: { nome: 'Top Diamante', preco: 32000, g: 'sbra', f: 'glitter', fem: true, ex: { fama: 80 } }, teeGold: { nome: 'Camiseta Fio de Ouro', preco: 28000, g: 'tee', f: 'gold', ex: { rank: 10 } },
+  cavGold: { nome: 'Cavada Fio de Ouro', preco: 30000, g: 'cav', f: 'gold', ex: { rank: 10 } }, longGold: { nome: 'Manga longa Edição Mundial', preco: 60000, g: 'long', f: 'gold', ex: { title: 9 } },
+};
+const BOT_KINDS = {
+  short: { nome: 'Short', preco: 0 }, bermuda: { nome: 'Bermuda', preco: 200 }, saia: { nome: 'Saia pregueada', preco: 240, fem: true },
+  shortinho: { nome: 'Short curto', preco: 220 }, saiaC: { nome: 'Saia curta', preco: 300, fem: true }, compress: { nome: 'Bermuda de compressão', preco: 380 },
+  legging: { nome: 'Legging 3/4', preco: 420, fem: true }, shortDry: { nome: 'Short dry-fit', preco: 520, g: 'short', f: 'dry' },
+  shortSat: { nome: 'Short acetinado', preco: 900, g: 'shortinho', f: 'satin' }, compCarb: { nome: 'Compressão Carbono', preco: 8000, g: 'compress', f: 'carbon', ex: { rank: 100 } },
+  bermBlack: { nome: 'Bermuda Black Label', preco: 12000, g: 'bermuda', f: 'black', ex: { rank: 30 } }, leggBlack: { nome: 'Legging Black Label', preco: 13000, g: 'legging', f: 'black', fem: true, ex: { rank: 30 } },
+  saiaGlit: { nome: 'Saia Diamante', preco: 20000, g: 'saiaC', f: 'glitter', fem: true, ex: { fama: 80 } }, shortGold: { nome: 'Short Fio de Ouro', preco: 15000, g: 'short', f: 'gold', ex: { rank: 10 } },
+};
+// acessórios (loja): slot = onde vai; cor escolhida no editor do jogador; lentes e peças de cabeça especiais mudam o material
+const ACCESS = {
+  munhe: { nome: 'Munhequeiras', preco: 150, slot: 'wrist', ic: '🩹' }, manguito: { nome: 'Manguito de compressão', preco: 260, slot: 'sleeve', ic: '💪' },
+  meiao: { nome: 'Meião de compressão', preco: 240, slot: 'calf', ic: '🧦' }, lenteAzul: { nome: 'Lente espelhada azul', preco: 900, slot: 'lens', lens: '#2a6cff', ic: '🕶️' },
+  lenteVerm: { nome: 'Lente espelhada vermelha', preco: 900, slot: 'lens', lens: '#ff3b2a', ic: '🕶️' }, lenteVerde: { nome: 'Lente espelhada verde', preco: 900, slot: 'lens', lens: '#2fd16a', ic: '🕶️' },
+  lenteOuro: { nome: 'Lente espelhada dourada', preco: 7500, slot: 'lens', lens: '#ffc640', ic: '🕶️', ex: { rank: 30 } },
+  cabBlack: { nome: 'Boné/viseira Black Label', preco: 6000, slot: 'headfab', fab: 'black', ic: '🧢', ex: { rank: 30 } },
+  cabGold: { nome: 'Boné/viseira Fio de Ouro', preco: 9000, slot: 'headfab', fab: 'gold', ic: '👑', ex: { rank: 10 } },
+  munheGold: { nome: 'Munhequeiras Fio de Ouro', preco: 5000, slot: 'wristfab', fab: 'gold', ic: '✨', ex: { rank: 10 } },
+};
+const FABRIC_NOME = { dry: 'dry-fit', satin: 'acetinado', carbon: 'trama de carbono', black: 'Black Label', glitter: 'brilho diamante', gold: 'fio de ouro' };
 const PATTERNS = {
   liso: { nome: 'Lisa', preco: 0, id: 0 }, listras: { nome: 'Listras', preco: 150, id: 1 }, faixas: { nome: 'Faixas verticais', preco: 160, id: 2 },
   diagonal: { nome: 'Faixa diagonal', preco: 200, id: 3 }, degrade: { nome: 'Degradê', preco: 260, id: 4 }, lateral: { nome: 'Painéis laterais', preco: 220, id: 5 },
@@ -108,6 +139,8 @@ const PATTERNS = {
   gola: { nome: 'Gola e punhos contrastantes', preco: 260, id: 14 }, respingos: { nome: 'Respingos de tinta', preco: 420, id: 15 },
   geodegrade: { nome: 'Geométrica em degradê', preco: 440, id: 16 }, peito: { nome: 'Faixa no peito', preco: 280, id: 17 },
   ventilada: { nome: 'Laterais ventiladas', preco: 320, id: 18 }, pinceladas: { nome: 'Pinceladas vibrantes', preco: 460, id: 19 },
+  xadrez: { nome: 'Xadrez', preco: 380, id: 22 }, pixel: { nome: 'Camuflada pixel', preco: 520, id: 24 }, raios: { nome: 'Raios', preco: 640, id: 21 },
+  onca: { nome: 'Onça-pintada', preco: 4500, id: 23, ex: { rank: 100 } }, marmore: { nome: 'Mármore', preco: 6000, id: 20, ex: { rank: 50 } },
 };
 const OUTFIT_COLORS = ['#ff5a1f', '#ffd23f', '#e2364a', '#ff86c0', '#9b5cff', '#1f6fd1', '#17324d', '#0b7a83', '#3fd17a', '#2e9e57', '#fbf6ea', '#ffffff', '#9aa3ad', '#141414'];
 const GEAR = [
@@ -358,4 +391,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

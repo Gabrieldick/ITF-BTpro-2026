@@ -864,3 +864,32 @@ body[data-tags="off"] .tag { display: none; }
 
 .bracket .m.path { outline: 2px dashed rgba(255,210,63,.75); outline-offset: 2px; }
 .bracket .tm svg { width: 14px; height: 10px; vertical-align: -1px; margin-right: 2px; }
+
+/* loja de roupas */
+.cr-shop-tabs { margin-bottom: 4px; }
+.cr-grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; max-height: none; }
+.cr-gsvg { width: 40px; height: 40px; display: block; }
+.cr-cloth.ex { background: linear-gradient(135deg, rgba(255,198,64,.14), rgba(255,255,255,.04)); border-color: rgba(255,198,64,.45); }
+.rk-tag.ex { background: rgba(255,198,64,.2); color: #ffd36b; }
+.cr-lock { font-size: 12px; opacity: .8; white-space: nowrap; }
+
+/* cards do dia com ilustração no canto */
+.cr-act { position: relative; overflow: hidden; min-height: 150px; padding-right: 38%; }
+.cr-act > *:not(.cr-act-art) { position: relative; z-index: 1; }
+.cr-act-art { position: absolute; right: -6px; bottom: -6px; width: 38%; max-width: 150px; height: auto; opacity: .95; pointer-events: none; }
+.cr-act .cta-row { flex-wrap: wrap; }
+.cr-act.act-desc { padding-right: 12px; }
+.cr-act.act-desc .cr-act-art { width: 38%; opacity: .55; }
+.act-fis { background: linear-gradient(135deg, rgba(255,90,31,.16), transparent 60%), var(--ui-card, #13264a); }
+.act-des { background: linear-gradient(135deg, rgba(63,209,122,.16), transparent 60%), var(--ui-card, #13264a); }
+.act-aula { background: linear-gradient(135deg, rgba(47,183,201,.16), transparent 60%), var(--ui-card, #13264a); }
+.act-desc { background: linear-gradient(135deg, rgba(255,134,192,.14), transparent 60%), var(--ui-card, #13264a); }
+.cr-nextcal { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* calendário */
+.cr-cal { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+.cr-calm { display: grid; gap: 6px; }
+.cr-calev { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.05); border-left: 4px solid var(--tc); }
+.cr-calev.dim { opacity: .55; }
+.cr-calev b { color: #fff; font-size: 13px; } .cr-calev small { display: block; opacity: .7; font-size: 11.5px; }
+.cr-cald { text-align: center; } .cr-cald b { font-size: 20px; display: block; line-height: 1; }
+.cr-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; } .cr-legend span { border-left: 4px solid var(--tc); padding: 1px 6px; background: rgba(255,255,255,.05); border-radius: 4px; }

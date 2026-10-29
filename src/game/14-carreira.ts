@@ -1570,6 +1570,7 @@ function careerMatchEnded(won, rating) {
 function crMigrate() {
   if (!$s.CR) return;
   $s.CR.wardrobe = $s.CR.wardrobe || { tops: ['tee'], bots: ['short'], pats: ['liso'] }; // roupas compradas
+  $s.CR.wardrobe.acc = $s.CR.wardrobe.acc || []; if ($s.CR.me && $s.CR.me.look && !$s.CR.me.look.acc) $s.CR.me.look.acc = {}; // acessórios (o seu jogador não sorteia munhequeira/manguito)
   $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0;
   if ($s.CR.staff.tecnico) { delete $s.CR.staff.tecnico; $s.CR.staff.tec2 = true; }
   if ($s.CR.staff.preparador) { delete $s.CR.staff.preparador; $s.CR.staff.prep = true; }
