@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS } from './00-base';
+import { ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
@@ -10,7 +10,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax } from './14-carreira';
+import { crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -199,7 +199,7 @@ function refreshPreview() {
 }
 function crPersonRow(c, extra, btn) {
   const fw = c.id === 'crme' ? null : crFormWord(c.id);
-  return '<div class="cr-row"><span class="ovr sm">' + crCharOvr(c) + (fw ? '<i class="cr-form ' + (fw[0][0] === '▲' ? 'up' : 'dn') + '" title="' + fw[1] + '">' + fw[0] + '</i>' : '') + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · ' + (c.id === 'crme' ? c.estilo : 'joga ' + PLAY_STYLES[playStyleOf(c)].nome.toLowerCase()) + ' · ' + Math.round(heightOf(c) * 100) + ' cm' + (c.canhoto ? ' · canhoto' : '') + (extra ? ' · ' + extra : '') + '</small></div>' + (btn || '') + '</div>';
+  return '<div class="cr-row" data-prof="' + c.id + '"><span class="ovr sm">' + crCharOvr(c) + (fw ? '<i class="cr-form ' + (fw[0][0] === '▲' ? 'up' : 'dn') + '" title="' + fw[1] + '">' + fw[0] + '</i>' : '') + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · ' + (c.id === 'crme' ? c.estilo : 'joga ' + PLAY_STYLES[playStyleOf(c)].nome.toLowerCase()) + ' · ' + Math.round(heightOf(c) * 100) + ' cm' + (c.canhoto ? ' · canhoto' : '') + (extra ? ' · ' + extra : '') + '</small></div>' + (btn || '') + '</div>';
 }
 function crPartnersHTML() {
   const cur = $s.CR.partner ? crChar($s.CR.partner) : null;
@@ -283,13 +283,13 @@ function crRankingHTML() {
   if (crRankView === 'uf' && uf) {
     const r = crStateRanking(uf), me = r.findIndex(x => x.id === 'crme');
     const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
-    return tabs + '<p class="section-label">Ranking de ' + esc(STATES.find(x => x[0] === uf)[1]) + ' · ' + r.length + ' atletas · você é o ' + (me + 1) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + uf + ' · OVR ' + crCharOvr(c) + ' · ' + (crRanking().findIndex(y => y.id === x.id) + 1) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
+    return tabs + '<p class="section-label">Ranking de ' + esc(STATES.find(x => x[0] === uf)[1]) + ' · ' + r.length + ' atletas · você é o ' + (me + 1) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '" data-prof="' + x.id + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + uf + ' · OVR ' + crCharOvr(c) + ' · ' + (crRanking().findIndex(y => y.id === x.id) + 1) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
   }
   if (crRankView === 'pts') return tabs + crMyPtsHTML();
   if (crRankView === 'nac') { // ranking nacional: só os atletas do seu país (mesmos pontos do mundial)
     const all = crRanking(), r = all.filter(x => { const c = crChar(x.id); return c && c.pais === pais; }), me = r.findIndex(x => x.id === 'crme');
     const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
-    return tabs + '<p class="section-label">Ranking ' + esc(natName) + ' · ' + r.length + ' atletas · você é o ' + (me + 1) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + (c.pais === 'BRA' && crUf(c) ? crUf(c) + ' · ' : '') + 'OVR ' + crCharOvr(c) + ' · ' + (all.indexOf(x) + 1) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
+    return tabs + '<p class="section-label">Ranking ' + esc(natName) + ' · ' + r.length + ' atletas · você é o ' + (me + 1) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '" data-prof="' + x.id + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + (c.pais === 'BRA' && crUf(c) ? crUf(c) + ' · ' : '') + 'OVR ' + crCharOvr(c) + ' · ' + (all.indexOf(x) + 1) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
   }
   return tabs + crRankingGeral();
 }
@@ -305,7 +305,7 @@ function crSelRankHTML(uf) {
     + (mc ? 'Você não joga mais ' + (mc === 1 ? 'a categoria C' : mc === 2 ? 'as categorias C e B' : 'os amadores') + '.' : 'Você pode jogar todas as categorias.')
     + (mc === 2 && n[4] < 70 ? ' Faltam ' + (70 - n[4]) + ' pts no profissional para sair da A.' : '') + '</p>';
   return pills + '<p class="section-label">' + esc(STATES.find(x => x[0] === uf)[1]) + ' · ' + (k < 3 ? 'categoria ' : '') + CAT_NAMES[k] + ' · ' + r.length + ' atletas' + (me >= 0 ? ' · você é o ' + (me + 1) + 'º' : mc > k ? ' · você não está mais nesta categoria' : '') + '</p>'
-    + '<div class="cr-list">' + (show.length ? show.map(x => { const i = r.indexOf(x), c = x.c, pick = sq.includes(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + (pick ? ' <small>· convocado</small>' : '') + '</b><small>OVR ' + x.ovr + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') : '<p class="cr-note">Ninguém nesta categoria.</p>') + '</div>'
+    + '<div class="cr-list">' + (show.length ? show.map(x => { const i = r.indexOf(x), c = x.c, pick = sq.includes(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '" data-prof="' + x.id + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + (pick ? ' <small>· convocado</small>' : '') + '</b><small>OVR ' + x.ovr + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') : '<p class="cr-note">Ninguém nesta categoria.</p>') + '</div>'
     + (sq.some(id => !r.find(x => x.id === id)) ? '<p class="cr-note">Faltou gente na categoria: completa com ' + sq.filter(id => !r.find(x => x.id === id)).map(id => esc(nameOf(crChar(id)))).join(' e ') + ' (de uma categoria abaixo).</p>' : '')
     + status;
 }
@@ -329,7 +329,7 @@ function crMyPtsHTML() {
 function crRankingGeral() {
   const r = crRanking(), me = r.findIndex(x => x.id === 'crme');
   const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
-  return '<p class="section-label">Ranking ' + ($s.CR.me.fem ? 'feminino' : 'masculino') + ' (' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · OVR ' + crCharOvr(c) + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
+  return '<p class="section-label">Ranking ' + ($s.CR.me.fem ? 'feminino' : 'masculino') + ' (' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '" data-prof="' + x.id + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · OVR ' + crCharOvr(c) + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
 }
 function crRivalsHTML() {
   const l = Object.entries($s.CR.h2hP || {}).filter(([id]) => crRivalP(id)).sort((a, b) => (b[1].w + b[1].l) - (a[1].w + a[1].l)).slice(0, 10);
@@ -363,9 +363,12 @@ function crTourHTML() {
   const t = $s.CR.tour, T = crTourT(t), names = crRoundNames(crNRounds());
   const br = '<div class="bracket-wrap"><div class="bracket" style="grid-template-columns:repeat(' + crNRounds() + ',minmax(150px,1fr));min-width:' + (crNRounds() * 170) + 'px">' + names.map((nm, r) => {
     const rd = t.rounds[r] || [];
-    return '<div class="rd"><h4>' + nm + '</h4>' + (rd.length ? rd.map(m => {
-      const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const tm = t.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === t.me ? ' me' : ''); return '<div class="tm ' + cls + '">' + (i !== t.me && crRivalsIn(tm).length ? '🔥 ' : '') + crTeamName(tm) + (t.seeds && t.seeds[i] ? ' <i class="seed">[' + t.seeds[i] + ']</i>' : '') + '<b>' + crTeamOvr(tm) + '</b></div>'; };
-      return '<div class="m' + (m.a === t.me || m.b === t.me ? ' mine' : '') + '">' + row(m.a) + row(m.b) + (m.score ? '<div class="tm"><b>' + m.score + '</b></div>' : '') + '</div>';
+    return '<div class="rd"><h4>' + nm + '</h4>' + (rd.length ? rd.map((m, mi) => {
+      const flags = tm => [...new Set([tm.a, tm.b].filter(Boolean).map(id => (crChar(id) || {}).pais).filter(Boolean))].map(c => flagSVG(c)).join('') + ' ';
+      const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const tm = t.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === t.me ? ' me' : ''); return '<div class="tm ' + cls + '">' + (i !== t.me && crRivalsIn(tm).length ? '🔥 ' : '') + (tm.label ? '' : flags(tm)) + crTeamName(tm) + (t.seeds && t.seeds[i] ? ' <i class="seed">[' + t.seeds[i] + ']</i>' : '') + '<b>' + crTeamOvr(tm) + '</b></div>'; };
+      // caminho até a final: os jogos que a sua dupla ainda pode jogar ficam marcados
+      const r0 = t.rounds[0] || [], my0 = r0.findIndex(x => x.a === t.me || x.b === t.me), onPath = t.alive && my0 >= 0 && r > t.round && mi === (my0 >> r);
+      return '<div class="m' + (m.a === t.me || m.b === t.me ? ' mine' : '') + (onPath ? ' path' : '') + '">' + row(m.a) + row(m.b) + (m.score ? '<div class="tm"><b>' + m.score + '</b></div>' : '') + '</div>';
     }).join('') : '<div class="m"><div class="tm l">a definir</div></div>') + '</div>';
   }).join('') + '</div></div>';
   const mm = crMyMatch();
@@ -752,3 +755,39 @@ el.btnSnd.addEventListener('click', e => { toggleSound(); e.currentTarget.blur()
 $('btnPause').addEventListener('click', e => { togglePause(); e.currentTarget.blur(); });
 
 export { adjustFov, money, rkInfo, startFromMenu, syncAssistButtons, toMenu, toggleAssist };
+
+// ---------- perfil do jogador (toque num nome do ranking/parceiros) ----------
+const PF = { el: null, r: null, scene: null, cam: null, model: null, raf: 0, rot: .4 };
+function openProfile(id) {
+  if (!$s.CR || id === 'crme') return;
+  const c = crChar(id); if (!c) return;
+  if (!PF.el) {
+    const m = document.createElement('div'); m.id = 'crProf'; m.className = 'cr-edit'; m.hidden = true;
+    m.innerHTML = '<div class="cr-edit-box"><div class="cr-edit-head"><b id="crProfName"></b><button type="button" class="cta sm" id="crProfOk">Fechar</button></div><div class="cr-edit-body"><div class="cr-edit-prev"><canvas id="crProfCv" width="300" height="420"></canvas></div><div class="cr-edit-opts" id="crProfInfo"></div></div></div>';
+    document.body.append(m); PF.el = m;
+    PF.r = new THREE.WebGLRenderer({ canvas: $('crProfCv'), antialias: true, alpha: true }); PF.r.outputColorSpace = THREE.SRGBColorSpace; PF.r.toneMapping = THREE.ACESFilmicToneMapping; PF.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    PF.scene = new THREE.Scene(); PF.scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a7458, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(2, 4, 3); PF.scene.add(sun);
+    PF.cam = new THREE.PerspectiveCamera(30, 300 / 420, .1, 20);
+    $('crProfOk').addEventListener('click', () => { PF.el.hidden = true; cancelAnimationFrame(PF.raf); });
+    m.addEventListener('click', e => { if (e.target === m) { PF.el.hidden = true; cancelAnimationFrame(PF.raf); } });
+  }
+  if (PF.model) { PF.scene.remove(PF.model); PF.model = null; }
+  try { PF.model = makePreview(c); } catch (e) { PF.model = null; }
+  if (PF.model) { PF.scene.add(PF.model); const h = new THREE.Box3().setFromObject(PF.model).max.y || 1.8; PF.cam.position.set(0, h * .6, h * 2.3); PF.cam.lookAt(0, h * .52, 0); }
+  const R = crRanking(), pos = R.findIndex(x => x.id === id), P = crPairs(true), mate = P[id] ? crChar(P[id]) : null;
+  const ageTxt = crAgeOfC(c), A = ATTRS.map(([k, lbl]) => { const v = attrOf(c.a, k); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 60 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + '</b>'; }).join('');
+  const res = (($s.CR.npcR || {})[id] || []).map(x => ({ w: Math.floor(x / 10000), p: x % 10000 })).sort((a, b) => b.p - a.p).slice(0, 5);
+  const sn = shortOf(c), news = ($s.CR.news || []).filter(n => n.t.toUpperCase().includes(sn.toUpperCase())).slice(0, 4);
+  $('crProfName').innerHTML = flagSVG(c.pais) + ' ' + esc(nameOf(c));
+  $('crProfInfo').innerHTML = '<div class="cr-kpis"><div><b>' + crCharOvr(c) + '</b>overall</div><div><b>' + (pos >= 0 ? pos + 1 + 'º' : '—') + '</b>ranking (' + npcPts(id) + ' pts)</div><div><b>' + (ageTxt || '—') + '</b>anos</div><div><b>' + Math.round(heightOf(c) * 100) + '</b>cm</div></div>'
+    + '<p class="cr-note">' + esc(c.estilo || '') + ' · joga ' + esc(PLAY_STYLES[playStyleOf(c)].nome.toLowerCase()) + (c.canhoto ? ' · canhoto' : ' · destro') + '</p>'
+    + '<p class="section-label">Dupla</p><p>' + (mate ? flagSVG(mate.pais) + ' ' + esc(nameOf(mate)) + ' (' + crCharOvr(mate) + ')' : id === $s.CR.partner ? 'Joga com você' : 'Sem dupla fixa') + '</p>'
+    + '<p class="section-label">Atributos</p><div class="bars">' + A + '</div>'
+    + (res.length ? '<p class="section-label">Melhores resultados (últimas 52 semanas)</p><p class="cr-note">' + res.map(r => r.p + ' pts').join(' · ') + '</p>' : '')
+    + (news.length ? '<p class="section-label">Nas notícias</p>' + news.map(n => '<p class="cr-note">' + n.i + ' ' + esc(n.t) + '</p>').join('') : '');
+  PF.el.hidden = false; cancelAnimationFrame(PF.raf);
+  const loop = () => { if (PF.el.hidden) return; PF.rot += .006; if (PF.model) PF.model.rotation.y = PF.rot; PF.r.render(PF.scene, PF.cam); PF.raf = requestAnimationFrame(loop); }; loop();
+}
+const crAgeOfC = c => crAgeOf(c);
+document.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-prof]'); if (!el || e.target.closest('button')) return; if (el.closest('#crBody') || el.closest('#crHead')) openProfile(el.dataset.prof); });

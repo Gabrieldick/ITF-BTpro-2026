@@ -844,3 +844,6 @@ body[data-tags="off"] .tag { display: none; }
 .mx-hist i { display: block; width: 100%; background: #33c3ff; border-radius: 3px 3px 0 0; min-height: 2px; }
 .mx-hist small { font-size: 10px; opacity: .7; }
 .mx-heat { flex: 0 0 auto !important; text-align: center; } .mx-heat img { width: 96px; height: 96px; border-radius: 6px; display: block; margin: 0 auto 4px; image-rendering: pixelated; } .mx-heat small { font-size: 10px; opacity: .7; }
+
+.bracket .m.path { outline: 2px dashed rgba(255,210,63,.75); outline-offset: 2px; }
+.bracket .tm svg { width: 14px; height: 10px; vertical-align: -1px; margin-right: 2px; }
