@@ -200,7 +200,8 @@ function animateAthlete(p, dt) {
   }
   p.reachK = (p.reachK || 0) + (reachK - (p.reachK || 0)) * Math.min(1, dt * 14);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
-  const crouch = pose.crouch * (1 - run * .35) * (1 - .8 * (p.rlx || 0)) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
+  const crouch = pose.crouch * (1 - run * .35) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22, Math.min(.92 - crouch - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
@@ -237,7 +238,10 @@ function animateAthlete(p, dt) {
   if (air && !p.wasAir) {
     const one = spU < 0 && (sp > 1.3 || (S.mode === 'toss' && S.serverPlayer === p) || (p.swing.t >= 0 && p.swing.type === 'smash' && lvz > .6));
     const tk = p.feet[0].st ? 1 : p.feet[1].st ? 0 : (lvz > .3 ? (p.lefty ? 1 : 0) : (p.lefty ? 0 : 1)); // perna de impulso: a que está apoiada
-    p.jumpMode = one ? { tk } : null;
+    // saque: do troféu as duas pernas empurram e saem quase retas, o corpo vai para cima e para a frente; a perna de trás
+    // (lado da raquete) dá um coice para trás e a da frente estica para pousar primeiro dentro da quadra
+    const srv = (S.mode === 'toss' && S.serverPlayer === p) || (p.swing.t >= 0 && p.swing.var === 'saque');
+    p.jumpMode = srv ? { tk: 1, serve: true } : one ? { tk } : null;
   }
   p.wasAir = air;
   const jp = p.jumpDur ? clamp(1 - p.jump / p.jumpDur, 0, 1) : .5;
@@ -277,7 +281,9 @@ function animateAthlete(p, dt) {
       fx = D[0]; fz = D[1];
       if (air && p.jumpMode && spU < 0) {
         const tk = i === p.jumpMode.tk; // impulso: sai atrás, cruza para a frente no meio (tesoura) e volta atrás; a outra sobe o joelho e desce para pousar primeiro
-        if (tk) { fz += .26 - .5 * Math.sin(Math.PI * jp) + .02; fy += .1 + .2 * Math.sin(Math.PI * jp) + .1 * jp; }
+        if (p.jumpMode.serve) { const e = Math.sin(Math.PI * Math.min(1, jp * 1.1));
+          if (tk) { fz += .12 + .24 * e; fy += .04 + .15 * e; } else { fz += -.05 - .14 * jp; fy += .02 + .06 * Math.sin(Math.PI * jp); } }
+        else if (tk) { fz += .26 - .5 * Math.sin(Math.PI * jp) + .02; fy += .1 + .2 * Math.sin(Math.PI * jp) + .1 * jp; }
         else { fz += -.22 * Math.sin(Math.PI * Math.min(1, jp * 1.25)); fy += .26 * Math.sin(Math.PI * Math.min(1, jp * 1.2)) * (1 - jp * .6); }
       } else if (air) { const sw = jp < .45 ? 1 : -1; fy += .1 + ((s > 0) === (sw > 0) ? .12 : .02); fz += (s > 0 ? .2 : -.12) * sw; }
       F.w = null;
