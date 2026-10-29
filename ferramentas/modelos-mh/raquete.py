@@ -10,12 +10,13 @@ out = sys.argv[1]; RENDER = sys.argv[2] if len(sys.argv) > 2 else None
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
 
-# contorno (mesmo desenho do jogo, em metros, ponta em y = +0,16 e garganta em y = -0,205); spline Catmull-Rom
-R = [[.02, -.205], [.03, -.183], [.052, -.148], [.082, -.114], [.116, -.066], [.14, -.011], [.145, .044], [.137, .085], [.11, .126], [.06, .152], [0, .16]]
+# contorno (metade direita, da garganta y = −0,205 até a ponta y = +0,16; spline Catmull-Rom): a cabeça oval das
+# raquetes de beach tennis do circuito (todas têm praticamente a mesma silhueta; o que muda é furação, garganta e arte)
+SHAPES = {
+    'oval': [[.02, -.205], [.03, -.183], [.052, -.148], [.082, -.114], [.116, -.066], [.14, -.011], [.145, .044], [.137, .085], [.11, .126], [.06, .152], [0, .16]],
+}
 k = .82
 def sy(y): return -.12 + (y + .12) * 1.1 if y > -.12 else y
-right = [(x * k, sy(y)) for x, y in R]; left = [(-x * k, sy(y)) for x, y in R[:-1]][::-1]
-ctrl = [(-.02 * k, -.205), (.02 * k, -.205)] + right[1:] + left
 def catmull(pts, n=7):
     out_ = [pts[0]]
     for i in range(len(pts) - 1):
@@ -23,8 +24,14 @@ def catmull(pts, n=7):
         for t in np.linspace(0, 1, n + 1)[1:]:
             out_.append(tuple(.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t ** 3)))
     return out_
-OUTLINE = [ctrl[0]] + catmull(ctrl[1:] + [ctrl[0]])[:-1]
-POLY = np.array(OUTLINE)
+OUTLINE, POLY = None, None
+def set_shape(name):
+    global OUTLINE, POLY
+    R = SHAPES[name]
+    right = [(x * k, sy(y)) for x, y in R]; left = [(-x * k, sy(y)) for x, y in R[:-1]][::-1]
+    ctrl = [(-.02 * k, -.205), (.02 * k, -.205)] + right[1:] + left
+    OUTLINE = [ctrl[0]] + catmull(ctrl[1:] + [ctrl[0]])[:-1]
+    POLY = np.array(OUTLINE)
 def inside(x, y):
     c = False; n = len(POLY)
     for i in range(n):
@@ -48,7 +55,6 @@ def ring(inset, step, y0=-.09, y1=1, xs=None):  # pontos ao longo do contorno, p
             acc = 0; q = a + (b - a) * d / L; nrm = np.array([-(b - a)[1], (b - a)[0]]) / L; q = q + nrm * inset
             if y0 <= q[1] <= y1 and inside(*q) and edge_d(*q) > inset * .8 and (xs is None or xs(q)): pts.append(tuple(q))
     return pts
-# padrões de furação (o jogo escolhe um por modelo): poucas com furos no rosto todo ou em volta inteira
 def grid(dx=.034, dy=.031, inset=.021, y0=-.07):
     p, row = [], 0
     y = y0
@@ -59,27 +65,28 @@ def grid(dx=.034, dy=.031, inset=.021, y0=-.07):
             x += dx
         y += dy; row += 1
     return p
-HOLES = {
-    'full': (.0072, grid()),                                                         # furos no rosto todo
-    'ring': (.0062, ring(.019, .025, -.085) + ring(.042, .027, -.07)),               # duas voltas inteiras
-    'side1': (.0068, ring(.021, .024, -.075, .1, lambda q: abs(q[0]) > .045)),       # uma fileira de cada lado
-    'side2': (.0064, ring(.02, .023, -.075, .095, lambda q: abs(q[0]) > .04) + ring(.043, .025, -.05, .08, lambda q: abs(q[0]) > .04)),  # duas fileiras de cada lado
-    'arc': (.0064, ring(.02, .024, .0, 1) + ring(.043, .026, .03, 1)),               # arco no topo
-    'band': (.0066, [(x, y) for x in (-.027, 0, .027) for y in np.arange(-.04, .12, .028) if inside(x, y)]),  # faixa central
-}
-THROAT = {  # aberturas da garganta (triângulos de cantos arredondados)
-    'tri2': [[(-.011, -.121), (-.05, -.112), (-.017, -.171)], [(.011, -.121), (.05, -.112), (.017, -.171)]],
-    'tri1': [[(-.02, -.142), (.02, -.142), (0, -.178)]],
-    'tri3': [[(-.05, -.112), (-.017, -.116), (-.033, -.15)], [(-.012, -.121), (.012, -.121), (0, -.158)], [(.05, -.112), (.017, -.116), (.033, -.15)]],
-}
-FACES = {'full': 'tri1', 'ring': 'tri1', 'side1': 'tri2', 'side2': 'tri3', 'arc': 'tri2', 'band': 'tri3'}
-def rtri(tri, n=5):  # triângulo com cantos arredondados
-    c = np.mean(tri, axis=0); P = [np.array(p) + (c - np.array(p)) * .12 for p in tri]; out_ = []
-    for i in range(3):
-        a, v, b = (P[i - 1] + P[i]) / 2, P[i], (P[i] + P[(i + 1) % 3]) / 2
-        for t in np.linspace(0, 1, n, endpoint=False): out_.append(tuple((1 - t) ** 2 * a + 2 * (1 - t) * t * v + t * t * b))
-    return out_
-
+def xarms(off=.027, step=.024):  # furos contornando um X grande (os dois braços sem furo)
+    pts = []
+    for (x0, y0, x1, y1) in [(-.085, .125, .07, -.055), (.085, .125, -.07, -.055)]:
+        L = math.hypot(x1 - x0, y1 - y0); nx, ny = -(y1 - y0) / L, (x1 - x0) / L
+        for t in np.arange(0, L, step):
+            cx, cy = x0 + (x1 - x0) * t / L, y0 + (y1 - y0) * t / L
+            for sgn in (1, -1):
+                q = (cx + nx * off * sgn, cy + ny * off * sgn)
+                if inside(*q) and edge_d(*q) > .019 and all(abs((q[0] - a) * (d - b) - (q[1] - b) * (c - a)) / math.hypot(c - a, d - b) > off * .8 for (a, b, c, d) in [(-.085, .125, .07, -.055), (.085, .125, -.07, -.055)]): pts.append(q)
+    return pts
+def horseshoe(c=(0, .03), radii=(.05, .074, .098), step=.024):  # anéis em ferradura em volta do triângulo central
+    pts = []
+    for r in radii:
+        n = max(6, int(2 * math.pi * r / step))
+        for i in range(n):
+            a = i / n * 2 * math.pi
+            if abs(math.atan2(math.sin(a + math.pi / 2), math.cos(a + math.pi / 2))) < .7: continue  # aberto embaixo
+            q = (c[0] + r * math.cos(a), c[1] + r * math.sin(a))
+            if inside(*q) and edge_d(*q) > .018: pts.append(q)
+    return pts
+def star_gaps(c=(0, .025), r=.058):  # furos entre os braços de uma estrela de 4 pontas
+    return [(c[0] + r * math.cos(a), c[1] + r * math.sin(a)) for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4)]
 # posição no jogo: cabo de y = 0 a −0,15; face de −0,15 (garganta) a −0,50 (ponta); espessura em z
 SX, SY = .95, .96
 def place(x, y): return (-x * SX, -(.15 + (y + .205) * SY))
@@ -120,37 +127,66 @@ def spaced(pts, r):  # sem furos encostados (nem no contorno): o preenchimento d
     for q in pts:
         if edge_d(*q) > r + .007 and all(math.hypot(q[0] - o[0], q[1] - o[1]) > 2 * r + .0045 for o in out_): out_.append(q)
     return out_
-for key, (r, pts) in HOLES.items():
-    pts = spaced(pts, r)
-    loops = [OUTLINE] + [[(x + r * math.cos(a), y + r * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 10, endpoint=False)] for x, y in pts] + [rtri(t) for t in THROAT[FACES[key]]]
+def rtri(tri, n=5):  # triângulo com cantos arredondados
+    c = np.mean(tri, axis=0); P = [np.array(p) + (c - np.array(p)) * .12 for p in tri]; out_ = []
+    for i in range(3):
+        a, v, b = (P[i - 1] + P[i]) / 2, P[i], (P[i] + P[(i + 1) % 3]) / 2
+        for t in np.linspace(0, 1, n, endpoint=False): out_.append(tuple((1 - t) ** 2 * a + 2 * (1 - t) * t * v + t * t * b))
+    return out_
+THROAT = {  # aberturas da garganta (triângulos de cantos arredondados)
+    'butterfly': [[(-.008, -.121), (-.047, -.113), (-.012, -.172)], [(.008, -.121), (.047, -.113), (.012, -.172)]],      # borboleta (ponte central)
+    'xfour': [[(-.03, -.114), (.03, -.114), (0, -.137)], [(-.011, -.152), (.011, -.152), (0, -.178)], [(-.046, -.116), (-.016, -.143), (-.026, -.16)], [(.046, -.116), (.016, -.143), (.026, -.16)]],
+    'tri1': [[(-.028, -.125), (.028, -.125), (0, -.178)]],
+    'atri': [[(-.03, -.122), (.03, -.122), (0, -.142)], [(-.017, -.15), (.017, -.15), (0, -.178)]],                    # "A": barra no meio
+    'drop': [[(-.013, -.137), (.013, -.137), (0, -.168)]],
+    'tri2': [[(-.011, -.121), (-.05, -.112), (-.017, -.171)], [(.011, -.121), (.05, -.112), (.017, -.171)]],
+    'tri3': [[(-.05, -.112), (-.017, -.116), (-.033, -.15)], [(-.012, -.121), (.012, -.121), (0, -.158)], [(.05, -.112), (.017, -.116), (.033, -.15)]],
+}
+# desenhos de face: silhueta + furação + garganta (inspirados nas linhas de raquete do circuito 2025/2026, sem marca)
+DESIGNS = {
+    'nox': ('oval', .0068, lambda: ring(.019, .024, .02, 1) + ring(.04, .026, .075, 1) + xarms(), 'tri2'),      # furos contornam um X
+    'heroes': ('oval', .0068, lambda: ring(.021, .026, -.07, .14, lambda q: abs(q[0]) > .062) + ring(.044, .028, -.05, .11, lambda q: abs(q[0]) > .075) + ring(.02, .03, .135, 1), 'tri3'),  # só colunas laterais
+    'kona': ('oval', .0052, lambda: grid(.026, .024, .018, -.075), 'tri1'),                                              # rosto todo, furo miúdo
+    'bee': ('oval', .0066, lambda: grid(.032, .029, .02, -.07), 'tri1'),                                                 # grade com o centro
+    'star': ('oval', .0066, lambda: ring(.024, .034, -.035, 1), 'tri2'),                                              # poucos, na volta de cima
+    'medusa': ('oval', .0064, lambda: horseshoe() + ring(.019, .03, .1, 1), 'tri3'),                                   # ferradura
+    'zand': ('oval', .0066, lambda: ring(.02, .025, -.075) + ring(.042, .027, -.05, 1, lambda q: abs(q[0]) > .055 or q[1] > .1), 'tri3'),
+    'mormaii': ('oval', .0062, lambda: ring(.02, .023, -.06, .11, lambda q: abs(q[0]) > .05) + ring(.04, .025, -.04, .1, lambda q: abs(q[0]) > .062), 'tri1'),  # duas colunas de cada lado
+    'dstar': ('oval', .0066, lambda: ring(.02, .025, -.08) + star_gaps(), 'tri3'),                                      # volta + entre as pontas da estrela
+    'band': ('oval', .0066, lambda: [(x, y) for x in (-.027, 0, .027) for y in np.arange(-.04, .12, .028) if inside(x, y)], 'tri3'),  # faixa central
+    'side1': ('oval', .0068, lambda: ring(.021, .024, -.075, .1, lambda q: abs(q[0]) > .045), 'tri2'),
+    'side2': ('oval', .0064, lambda: ring(.02, .023, -.075, .095, lambda q: abs(q[0]) > .04) + ring(.043, .025, -.05, .08, lambda q: abs(q[0]) > .04), 'tri3'),
+}
+for key, (shape, r, holes, thr) in DESIGNS.items():
+    set_shape(shape)
+    pts = spaced(holes(), r)
+    loops = [OUTLINE] + [[(x + r * math.cos(a), y + r * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 10, endpoint=False)] for x, y in pts] + [rtri(t) for t in THROAT[thr]]
     me = add_curve('F_' + key, loops, THICK, BEV)
     # separa a face (tampas, com a arte) da borda (paredes e chanfro)
     bm = bmesh.new(); bm.from_mesh(me); bm.normal_update()
-    caps = [f for f in bm.faces if abs(f.normal.z) > .985]
-    walls = [f for f in bm.faces if abs(f.normal.z) <= .985]
     me_c = bpy.data.meshes.new('F_' + key); bm2 = bm.copy(); bmesh.ops.delete(bm2, geom=[f for f in bm2.faces if abs(f.normal.z) <= .985], context='FACES'); bm2.to_mesh(me_c); bm2.free()
     me_w = bpy.data.meshes.new('E_' + key); bm3 = bm.copy(); bmesh.ops.delete(bm3, geom=[f for f in bm3.faces if abs(f.normal.z) > .985], context='FACES'); bm3.to_mesh(me_w); bm3.free(); bm.free()
     finish('F_' + key, me_c, lambda co, f: shape_uv(co, f)).data.materials.append(M_FACE)
     finish('E_' + key, me_w, lambda co, f: shape_uv(co, f), smooth_angle=math.radians(50)).data.materials.append(M_EDGE)
-# protetor de aro: perfil em U achatado que abraça a borda da cabeça (do pescoço para cima)
-bp = [p for p in OUTLINE if p[1] > -.07]
-i0 = min(range(len(OUTLINE)), key=lambda i: (OUTLINE[i][1] > -.07, -OUTLINE[i][0]))
-seq = [p for p in OUTLINE[1:] + OUTLINE[:1]]
-# percorre o contorno a partir do lado direito no pescoço até o esquerdo
-right_side = [p for p in OUTLINE if p[0] >= 0 and p[1] > -.07]; left_side = [p for p in OUTLINE if p[0] < 0 and p[1] > -.07]
-arc = sorted(right_side, key=lambda p: p[1]) + sorted(left_side, key=lambda p: -p[1])
-cu = bpy.data.curves.new('Bumper', 'CURVE'); cu.dimensions = '3D'
-sp = cu.splines.new('POLY'); sp.points.add(len(arc) - 1)
-for i, (x, y) in enumerate(arc): px, py = place(x, y); sp.points[i].co = (px, py, 0, 1)
-prof = bpy.data.curves.new('BumperProf', 'CURVE'); prof.dimensions = '2D'; ps = prof.splines.new('POLY')
-U = [(-.0035, -.0128), (.0030, -.0128), (.0052, -.0095), (.0058, 0), (.0052, .0095), (.0030, .0128), (-.0035, .0128)]
-ps.points.add(len(U) - 1)
-for i, (a, b) in enumerate(U): ps.points[i].co = (a, b, 0, 1)
-po = bpy.data.objects.new('BumperProf', prof); sc.collection.objects.link(po)
-cu.bevel_mode = 'OBJECT'; cu.bevel_object = po; cu.use_fill_caps = True
-ob = bpy.data.objects.new('BumperTmp', cu); sc.collection.objects.link(ob)
-dg = bpy.context.evaluated_depsgraph_get(); me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg)); bpy.data.objects.remove(ob); bpy.data.objects.remove(po)
-finish('Bumper', me, smooth_angle=math.radians(60)).data.materials.append(mat('Bumper', (.85, .85, .85), .6))
+    print(key, shape, len(pts), 'furos')
+# protetor de aro (um por silhueta): perfil em U achatado que abraça a borda da cabeça (do pescoço para cima)
+M_BUMP = mat('Bumper', (.85, .85, .85), .6)
+for shape in SHAPES:
+    set_shape(shape)
+    right_side = [p for p in OUTLINE if p[0] >= 0 and p[1] > -.07]; left_side = [p for p in OUTLINE if p[0] < 0 and p[1] > -.07]
+    arc = sorted(right_side, key=lambda p: p[1]) + sorted(left_side, key=lambda p: -p[1])
+    cu = bpy.data.curves.new('Bumper', 'CURVE'); cu.dimensions = '3D'
+    sp = cu.splines.new('POLY'); sp.points.add(len(arc) - 1)
+    for i, (x, y) in enumerate(arc): px, py = place(x, y); sp.points[i].co = (px, py, 0, 1)
+    prof = bpy.data.curves.new('BumperProf', 'CURVE'); prof.dimensions = '2D'; ps = prof.splines.new('POLY')
+    U = [(-.0035, -.0128), (.0030, -.0128), (.0052, -.0095), (.0058, 0), (.0052, .0095), (.0030, .0128), (-.0035, .0128)]
+    ps.points.add(len(U) - 1)
+    for i, (a, b) in enumerate(U): ps.points[i].co = (a, b, 0, 1)
+    po = bpy.data.objects.new('BumperProf', prof); sc.collection.objects.link(po)
+    cu.bevel_mode = 'OBJECT'; cu.bevel_object = po; cu.use_fill_caps = True
+    ob = bpy.data.objects.new('BumperTmp', cu); sc.collection.objects.link(ob)
+    dg = bpy.context.evaluated_depsgraph_get(); me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg)); bpy.data.objects.remove(ob); bpy.data.objects.remove(po)
+    finish('Bumper_' + shape, me, smooth_angle=math.radians(60)).data.materials.append(M_BUMP)
 # cabo: seção octogonal arredondada, alargando na ponteira; UV cilíndrico (o overgrip espiral vem da textura do jogo)
 def lathe(name, prof_, seg=24, oct_=.06):
     bm = bmesh.new(); rings = []
@@ -194,16 +230,16 @@ bpy.ops.export_scene.gltf(filepath=out, export_format='GLB', export_yup=True, ex
 print('OK', out, [o.name for o in sc.objects])
 
 if RENDER:  # prévia: três faces lado a lado
-    sc.render.engine = 'CYCLES'; sc.cycles.samples = 32; sc.render.resolution_x, sc.render.resolution_y = 1600, 700
+    sc.render.engine = 'CYCLES'; sc.cycles.samples = 32; sc.render.resolution_x, sc.render.resolution_y = 2400, 700
     for o in sc.objects: o.hide_render = True
     w = bpy.data.worlds.new('W'); sc.world = w; w.use_nodes = True; w.node_tree.nodes['Background'].inputs[0].default_value = (.8, .85, .9, 1)
-    keys = list(HOLES)
+    keys = ['nox', 'heroes', 'kona', 'bee', 'star', 'medusa', 'zand', 'mormaii', 'dstar']
     for i, key in enumerate(keys):
-        for nm in ('F_' + key, 'E_' + key, 'Bumper', 'Grip', 'Cap', 'Leash'):
-            o = sc.objects[nm] if i == 0 or nm.startswith(('F_', 'E_')) else sc.objects[nm].copy()
+        for nm in ('F_' + key, 'E_' + key, 'Bumper_' + DESIGNS[key][0], 'Grip', 'Cap', 'Leash'):
+            o = sc.objects[nm].copy() if not nm.startswith(('F_', 'E_')) else sc.objects[nm]
             if o.name not in sc.collection.objects: sc.collection.objects.link(o)
             o.hide_render = False; o.location.x = (i - (len(keys) - 1) / 2) * .27
     sun = bpy.data.objects.new('Sun', bpy.data.lights.new('Sun', 'SUN')); sun.data.energy = 4; sun.rotation_euler = (math.radians(30), 0, math.radians(20)); sc.collection.objects.link(sun)
     cam = bpy.data.objects.new('Cam', bpy.data.cameras.new('Cam')); sc.collection.objects.link(cam); sc.camera = cam
-    cam.location = (0, -1.6, -.25); cam.rotation_euler = (math.radians(90), math.radians(180), 0); cam.data.lens = 40
+    cam.location = (0, -2.6, -.25); cam.rotation_euler = (math.radians(90), math.radians(180), 0); cam.data.lens = 40
     sc.render.filepath = RENDER; bpy.ops.render.render(write_still=True)
