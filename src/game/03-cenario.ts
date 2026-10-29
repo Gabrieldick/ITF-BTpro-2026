@@ -485,8 +485,29 @@ function crowd(seats) {
     body.setColorAt(i, c.set(shirts[Math.floor(Math.random() * shirts.length)]).convertSRGBToLinear());
     head.setColorAt(i, c.set(SKIN_C[Math.floor(Math.random() * SKIN_C.length)]).convertSRGBToLinear());
   });
-  ARENA.group.add(body, head);
-  ARENA.crowd.push({ body, head, seats, ph: seats.map(() => Math.random() * 6) });
+  // braços (descem ao lado do corpo; na comemoração metade levanta e balança) e algumas bandeiras erguidas
+  const arms = new THREE.InstancedMesh(new THREE.BoxGeometry(.08, .44, .08), new THREE.MeshStandardMaterial({ roughness: .8 }), seats.length * 2);
+  seats.forEach(([x, y, z, side, along], i) => { const sc = SKIN_C[Math.floor(Math.random() * SKIN_C.length)]; arms.setColorAt(i * 2, c.set(sc).convertSRGBToLinear()); arms.setColorAt(i * 2 + 1, c.set(sc).convertSRGBToLinear()); });
+  const flagIdx = seats.map((_, i) => i).filter(() => Math.random() < .07);
+  if (flagIdx.length) {
+    const FL = [['#009c3b', '#ffdf00', '#002776'], ['#009246', '#ffffff', '#ce2b37'], ['#0055a4', '#ffffff', '#ef4135'], ['#aa151b', '#f1bf00', '#aa151b']];
+    const tex = canvasTex(256, 64, (x, w, h) => FL.forEach((f, k) => { const x0 = k * 64; f.forEach((cc, j) => { x.fillStyle = cc; x.fillRect(x0 + j * 21.3, 0, 22, h); }); if (k === 0) { x.fillStyle = '#ffdf00'; x.beginPath(); x.moveTo(x0 + 32, 10); x.lineTo(x0 + 56, 32); x.lineTo(x0 + 32, 54); x.lineTo(x0 + 8, 32); x.fill(); x.fillStyle = '#002776'; x.beginPath(); x.arc(x0 + 32, 32, 11, 0, 7); x.fill(); } }));
+    flagIdx.forEach(i => { const [x, y, z, side, along] = seats[i], k = Math.floor(Math.random() * 4), g = new THREE.PlaneGeometry(.6, .4), uv = g.attributes.uv; for (let n = 0; n < uv.count; n++) uv.setX(n, (k + uv.getX(n)) / 4);
+      const f = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .9 })); f.position.set(x, y + 1.35, z); f.rotation.y = along === 'z' ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0); ARENA.group.add(f);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .9, 5), new THREE.MeshStandardMaterial({ color: 0x8a6a45 })); st.position.set(x, y + 1.0, z); ARENA.group.add(st); });
+  }
+  ARENA.group.add(body, head, arms);
+  const cr = { body, head, arms, seats, ph: seats.map(() => Math.random() * 6) }; ARENA.crowd.push(cr); crowdArms(cr, 0, 0);
+}
+// braços: abaixados ao lado do corpo, ou (na comemoração, metade do público) levantados balançando
+function crowdArms(cr, t, amp) {
+  cr.seats.forEach(([x, y, z, side, along], i) => {
+    const ang = along === 'z' ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0); _cq.setFromAxisAngle(_upC, ang);
+    const up = amp > .02 && i % 2 === 0, j = Math.max(0, Math.sin(t * 9 + cr.ph[i])) * amp, wave = up ? Math.sin(t * 7 + cr.ph[i]) * .35 : 0;
+    for (const sd of [-1, 1]) { _cp.set(sd * .25, up ? .98 : .3, 0).applyQuaternion(_cq); _cq2.setFromAxisAngle(_fw.set(0, 0, 1).applyQuaternion(_cq), up ? sd * -.25 + wave : sd * .08); _cq2.multiply(_cq);
+      _cm.compose(_cp.set(x + _cp.x, y + _cp.y + j, z + _cp.z), _cq2, _cs); cr.arms.setMatrixAt(i * 2 + (sd > 0 ? 1 : 0), _cm); }
+  });
+  cr.arms.instanceMatrix.needsUpdate = true;
 }
 function boards(x0, z0, len, along, c1, c2, text) {
   const t = canvasTex(1024, 64, (x, w, h) => { x.fillStyle = c1; x.fillRect(0, 0, w, h); x.fillStyle = c2; x.font = 'bold 40px sans-serif'; x.textBaseline = 'middle';
@@ -774,7 +795,7 @@ function updateConfetti(dt) {
 }
 // torcida comemora depois do ponto
 function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); }
-const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cs = new V3(1, 1, 1);
+const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cq2 = new THREE.Quaternion(), _cs = new V3(1, 1, 1), _upC = new V3(0, 1, 0), _fw = new V3();
 function updateArena(dt) {
   updateConfetti(dt);
   updateSideGames(dt);
@@ -794,6 +815,7 @@ function updateArena(dt) {
       _cm.compose(_cp.set(x, y + .75 + j, z), _cq, _cs); cr.head.setMatrixAt(i, _cm);
     });
     cr.body.instanceMatrix.needsUpdate = true; cr.head.instanceMatrix.needsUpdate = true;
+    if (cr.arms) crowdArms(cr, t, amp);
   });
 }
 
