@@ -147,7 +147,7 @@ function skinShader(m, U) {
   };
   m.customProgramCacheKey = () => 'skinPore'; m.needsUpdate = true;
 }
-const skinUniforms = () => ({ uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 } });
+const skinUniforms = () => ({ uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 }, uSway: { value: new THREE.Vector3() } });
 const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
 const HAIR_PARTS = ['Hair', 'HairCards', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards'];
@@ -198,13 +198,26 @@ function logoTex(brand, color) {
   x.fillText(brand.toUpperCase(), 256, 80);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (LOGO_TEX[k] = t);
 }
-function patShirt(m, id, c2, logo, logoCol, H, sweat) {
-  const U = m.userData.pat || (m.userData.pat = { uPat: { value: 0 }, uC2: { value: new THREE.Color() }, uH: { value: 1.76 }, uLogo: { value: null }, uLogoOn: { value: 0 }, uSweat: sweat || { value: 0 } });
+// roupa balançando: a barra (da camisa, da saia, a boca do short) se atrasa nas arrancadas e freadas e com o vento da
+// corrida; peso 0 no alto da peça e 1 na barra (pela altura na pose de repouso); só metade do deslocamento que entraria
+// no corpo, para o tecido não atravessar a pele
+const SWAY_VERT = `
+  { float sw_w = 1.0 - smoothstep(uSwY.x, uSwY.y, position.y); vec2 sn = normalize(objectNormal.xz + 1e-4);
+    float into = dot(sn, uSway.xz) < 0.0 ? .3 : 1.0; transformed += uSway * sw_w * sw_w * into * uSwY.z; }`;
+function swayRange(o, k) { const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); const b = g.boundingBox; return new THREE.Vector3(b.min.y, b.min.y + (b.max.y - b.min.y) * .65, k); }
+function swayCloth(o, sway, k) {
+  const m = o.material; if (!m || m.userData.swayOn) return; m.userData.swayOn = true;
+  const U = { uSway: sway, uSwY: { value: swayRange(o, k) } };
+  m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec3 uSway; uniform vec3 uSwY;').replace('#include <begin_vertex>', '#include <begin_vertex>' + SWAY_VERT); };
+  m.customProgramCacheKey = () => 'swayCloth'; m.needsUpdate = true;
+}
+function patShirt(m, id, c2, logo, logoCol, H, sweat, sway, swY) {
+  const U = m.userData.pat || (m.userData.pat = { uPat: { value: 0 }, uC2: { value: new THREE.Color() }, uH: { value: 1.76 }, uLogo: { value: null }, uLogoOn: { value: 0 }, uSweat: sweat || { value: 0 }, uSway: sway || { value: new THREE.Vector3() }, uSwY: { value: swY || new THREE.Vector3(0, 0, 0) } });
   U.uPat.value = id; U.uC2.value.copy(c2); U.uH.value = H; U.uLogo.value = logo ? logoTex(logo, logoCol) : null; U.uLogoOn.value = logo ? 1 : 0;
   if (m.userData.patOn) return; m.userData.patOn = true;
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, U);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest; uniform vec3 uSway; uniform vec3 uSwY;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;' + SWAY_VERT);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;\nuniform int uPat; uniform vec3 uC2; uniform float uH; uniform sampler2D uLogo; uniform float uLogoOn; uniform float uSweat;' + PAT_GLSL)
       .replace('#include <map_fragment>', `#include <map_fragment>
       diffuseColor.rgb = mix(diffuseColor.rgb, uC2, patF(uPat, vRest, uH));
@@ -261,7 +274,8 @@ function dressSkin(p, root) {
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
   // estampa: a do uniforme próprio; os outros jogadores ganham uma (sempre a mesma para cada um) na cor do detalhe do time
   const pat = look.pattern || ['liso', 'liso', 'listras', 'lateral', 'ombros', 'degrade', 'faixas', 'chevron', 'tresfaixas', 'faixaslado', 'gola', 'peito', 'geodegrade', 'pinceladas'][Math.floor(r(7) * 14)];
-  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) { m.color.copy(shirt); patShirt(m, PATTERNS[pat] ? PATTERNS[pat].id : 0, col(look.shirt2 || look.trim || '#fbf6ea'), look.logo, look.shirt2 || look.trim || '#fbf6ea', p.skin ? p.skin.mh : (root.userData.mh || 1.76), (p.skinU || (p.skinU = skinUniforms())).uSweat); } });
+  ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) { m.color.copy(shirt); patShirt(m, PATTERNS[pat] ? PATTERNS[pat].id : 0, col(look.shirt2 || look.trim || '#fbf6ea'), look.logo, look.shirt2 || look.trim || '#fbf6ea', p.skin ? p.skin.mh : (root.userData.mh || 1.76), (p.skinU || (p.skinU = skinUniforms())).uSweat, p.skinU.uSway, swayRange(parts['Top_' + t][0], t === 'crop' ? .4 : 1)); } });
+  for (const [n, k] of [['Skirt', 1.3], ['Shorts', .45], ['Bermuda', .5]]) (parts[n] || []).forEach(o => swayCloth(o, p.skinU.uSway, k));
   if (matOf('Bermuda')) matOf('Bermuda').color.copy(shorts);
   if (matOf('Shorts')) matOf('Shorts').color.copy(dress ? shirt : shorts);
   if (matOf('Skirt')) matOf('Skirt').color.copy(dress ? shirt : shorts);
