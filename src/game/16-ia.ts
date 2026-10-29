@@ -230,14 +230,15 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, vx, vz, dt, backAcc(p.team, vz, acc));
 }
 function receiving(p) {
-  // até o saque ser batido ninguém passa da linha (3 m no amador, 6 m no profissional), só o sacador: a dupla que recebe e também o parceiro de quem saca.
+  // até o saque ser batido ninguém passa da linha, só o sacador: quem recebe fica atrás dos 3 m; o parceiro do sacador atrás
+  // dos 3 m no amador e dos 6 m no profissional.
   // Depois do saque todos podem avançar (senão a curta de saque seria impossível)
   return p !== S.serverPlayer && (S.mode === 'serve' || S.mode === 'toss');
 }
 function clampPos(p) {
   const lim = C.halfW + 3;
   p.pos.x = clamp(p.pos.x, -lim, lim);
-  const minZ = receiving(p) ? (S.zoneR || ZONE3) + .05 : .4;
+  const minZ = receiving(p) ? (p.team === S.server ? S.zoneR || ZONE3 : ZONE3) + .05 : .4; // parceiro do sacador: linha dos 6 m no profissional
   if (p.team === 0) p.pos.z = clamp(p.pos.z, minZ, 11.5); else p.pos.z = clamp(p.pos.z, -11.5, -minZ);
   if (dupla()) { // companheiros não atravessam um ao outro
     for (const o of $s.teams[p.team]) if (o !== p) {
@@ -595,7 +596,7 @@ function updateAI(p, dt) {
   if (S.mode === 'serve' || S.mode === 'toss') {
     tx = p.team !== S.server && dupla() ? receiveX(p) : p.pos.x; tz = p.pos.z;
     // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
-    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * ((S.zoneR || ZONE3) + Math.max(aiP(p).recvZ ?? 1.1, S.zoneR > 4 ? .15 : -9));
+    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + (aiP(p).recvZ ?? 1.1));
     if (proMascHold(p)) { tz = (p.team === 0 ? 1 : -1) * Math.max(Math.abs(tz), 5.3); if (Math.abs(p.pos.z) < 5.05) p.pos.z = (p.team === 0 ? 1 : -1) * 5.05; }
   }
   if (S.serverPlayer === p && S.serveType !== 'lob' && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) - .22) || p.pendingServe)) {

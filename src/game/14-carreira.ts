@@ -731,11 +731,24 @@ function crCreate(o) {
 }
 // ---------- parceiros ----------
 function crRankBonus() { const r = crRank(), n = crWorld().length + 1; return r <= 10 ? 8 : r <= 25 ? 6 : r <= 50 ? 4 : r <= n * .5 ? 2 : 0; }
+// duplas fixas do top 10 em pontos (dos dois gêneros), guardado por semana
+const TOPP = { key: '', set: null };
+function crTopPairs() {
+  const key = absWeek() + ':' + (RK.gen || 0); if (TOPP.key === key) return TOPP.set;
+  const P = $s.CR.pairs || {}, set = new Set();
+  [false, true].forEach(fm => { const L = []; for (const a in P) { const b = P[a], ca = crChar(a); if (a < b && ca && !!ca.fem === fm) L.push([pairK(a, b), npcPts(a) + npcPts(b)]); }
+    L.sort((x, y) => y[1] - x[1]).slice(0, 10).forEach(x => set.add(x[0])); });
+  TOPP.key = key; TOPP.set = set; return set;
+}
 function crWillPartner(c) {
   if ($s.CR.offers.includes(c.id)) return { ok: true, why: 'Convite aceito' };
   const me = crMeOvr(), o = crCharOvr(c), beat = Math.min(2, $s.CR.beat[c.id] || 0);
   // quem está muito acima no ranking só aceita se você já o venceu (ou se ele mesmo convidar)
   const myPts = crPts(), pts = npcPts(c.id);
+  // dupla fixa do top 10: não basta vencê-los; só larga o parceiro por quem já o venceu duas vezes e é melhor que o parceiro dele
+  const mate = ($s.CR.pairs || {})[c.id];
+  if (mate && mate !== $s.CR.partner && crTopPairs().has(pairK(c.id, mate))) { const mc = crChar(mate);
+    if (beat < 2 || (myPts < npcPts(mate) * .9 && me < (mc ? crCharOvr(mc) : 0) + 2)) return { ok: false, why: 'Fechado com ' + (mc ? shortOf(mc) : 'o parceiro') + ' (dupla do top 10): só troca por quem já o venceu duas vezes e é melhor que o parceiro dele' }; }
   if (!beat && pts > Math.max(myPts * 1.6 + 60, myPts + 120)) return { ok: false, why: 'Muito acima no ranking: só joga com quem o vencer' };
   const lim = me + 3 + Math.floor(crRankBonus() / 2) + beat * 3;
   if (o <= lim) return { ok: true, why: beat ? 'Respeita você: já perdeu para você' : 'Topa jogar com você' };
@@ -1500,7 +1513,7 @@ function crNextWeek(note) {
   const spm = crSponsorWeek(); if (spm) msg += (msg ? ' ' : '') + spm;
   const ivg = crInvWeek(); if (ivg) msg += (msg ? ' ' : '') + 'Negócios renderam ' + money(ivg) + '.';
   crFamaWeek(); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
-  crMaybeSponsor(); crMaybeMaster();
+  crMaybeSponsor(); { const mb = crMaybeMaster(); if (mb) msg += (msg ? ' ' : '') + 'A ' + mb + ' fez uma proposta de patrocínio master (veja Patrocínios).'; }
   if (Math.random() < .3) { const ev = crRollEvent(); if (ev) msg += (msg ? ' ' : '') + ev; }
   if ($s.CR.week > SEASON_WEEKS) {
     const pos = crRank();
@@ -1743,6 +1756,7 @@ function crMigrate() {
       P[a] = b; P[b] = a; pairJoin(a, b, absWeek() - SEASON_WEEKS); });
     if ($s.CR.partner && !$s.CR.tour) $s.CR.partnerTemp = false;
     $s.CR.pairsFix = 1; crPairs(true); }
+  if (!$s.CR.masterV) { $s.CR.masterV = 1; if (!$s.CR.master && !($s.CR.mOffers || []).length) crMaybeMaster(true); }
   // saves de antes do 'juntos há…': as duplas do início do circuito ganham a história de antes; as outras, um ano
   if ($s.CR.pairsInit && !$s.CR.pairSinceV) { $s.CR.pairSinceV = 1; const P = $s.CR.pairs || {}, S0 = $s.CR.pairSince = $s.CR.pairSince || {}, base = new Set(CR_PAIRS0.map(([a, b]) => pairK(a, b)));
     for (const a in P) { const k = pairK(a, P[a]); if (S0[k] != null && absWeek() - S0[k] > 1) continue; let h = 7; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; S0[k] = absWeek() - (base.has(k) ? Math.round((1 + (h % 7) / 2) * SEASON_WEEKS) : SEASON_WEEKS + (h % 30)); } }
@@ -1847,11 +1861,13 @@ const crMasterFree = k => !!$s.CR.master && rkBrand(k) === $s.CR.master.brand &&
 const crRacketOk = k => !$s.CR.master || k === 'assinatura' || rkBrand(k) === $s.CR.master.brand;
 function crMaybeMaster(force) {
   if ($s.CR.master || ($s.CR.mOffers || []).length >= 2 || crMaxTier() < 4) return;
-  if (!force && Math.random() > .03 + ($s.CR.fama || 0) / 500) return;
+  if (!force && Math.random() > .1 + ($s.CR.fama || 0) / 300) return;
   const used = new Set(($s.CR.mOffers || []).map(o => o.brand)), L = MASTER.filter(m => ($s.CR.fama || 0) >= m.fama && !used.has(m.brand)); if (!L.length) return;
   const m = L[Math.floor(Math.random() * L.length)];
   const weekly = Math.round((60 + 40 * Math.pow(crMaxTier() + 1, 1.7) + ($s.CR.fama || 0) * 9) * m.k * rand(.85, 1.15) / 10) * 10;
   ($s.CR.mOffers = $s.CR.mOffers || []).push({ brand: m.brand, weekly, bonus: weekly * 5, weeks: 52 });
+  crNews('A ' + m.brand + ' quer ' + shortOf(crMeChar()) + ' como atleta da marca: proposta de patrocínio master na mesa.', '⭐');
+  return m.brand;
 }
 function crMasterSign(i) {
   const o = ($s.CR.mOffers || []).splice(i, 1)[0]; if (!o || $s.CR.master) return;
@@ -1943,4 +1959,4 @@ function crResolveEvent(i) {
 
 export { MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
