@@ -1008,7 +1008,18 @@ function crEnter(opt) {
     const rk = crCatRanking(opt.tier, opt.uf || $s.CR.me.uf || 'SP').filter(x => !busy.has(x.id)).map(x => x.c);
     if (rk.length >= need) field = rk.slice(0, Math.max(need + 6, 30));
   }
-  field.sort(() => rnd() - .5); field = field.slice(0, need).sort((x, y) => crCharOvr(y) - crCharOvr(x));
+  // BT400, Sand Series e Mundial: as duplas entram pelo ranking (é onde o top 10 vive); a maioria das melhores joga quase
+  // todos, uma ou outra descansa. O resto da chave sai da faixa de nível, como nos menores
+  let pre = [];
+  if (opt.tier >= 7 && !opt.special) {
+    const PR = $s.CR.pairs || {}, fem = !!$s.CR.me.fem, seen = new Set(), L = [];
+    crWorld().forEach(c => { const m = PR[c.id]; if (!m || seen.has(c.id) || busy.has(c.id) || busy.has(m)) return; const mc = crChar(m); if (!mc || !!mc.fem !== fem) return; seen.add(c.id); seen.add(m); L.push([c, mc, npcPts(c.id) + npcPts(m)]); });
+    L.sort((x, y) => y[2] - x[2]);
+    const pIn = i => i < 10 ? (opt.tier >= 8 ? .9 : .75) : i < 25 ? (opt.tier >= 8 ? .7 : .55) : .3;
+    for (let i = 0; i < L.length && pre.length < need - 2; i++) if (rnd() < pIn(i)) pre.push(L[i][0], L[i][1]);
+  }
+  { const inPre = new Set(pre.map(c => c.id)); field = field.filter(c => !inPre.has(c.id)).sort(() => rnd() - .5).slice(0, Math.max(0, need - pre.length)); }
+  field = pre.concat(field).sort((x, y) => crCharOvr(y) - crCharOvr(x));
   // do BT100 para cima as duplas fixas do circuito entram completas: quem veio sem o parceiro traz o parceiro, e saem os
   // avulsos mais fracos para caber (jogar separado só acontece no astro de ocasião abaixo, até o BT200)
   if (opt.tier >= 5 && !opt.special) {
@@ -1589,6 +1600,9 @@ function crMigrate() {
   $s.CR.life = $s.CR.life || {}; $s.CR.lifeS = $s.CR.lifeS || {}; $s.CR.boostW = $s.CR.boostW || 0;
   if ($s.CR.goal === undefined) $s.CR.goal = null;
   if (!$s.CR.pairsInit && $s.CR.pool) crPairs(true); // duplas do circuito (saves antigos)
+  // saves de antes do 'juntos há…': as duplas do início do circuito ganham a história de antes; as outras, um ano
+  if ($s.CR.pairsInit && !$s.CR.pairSinceV) { $s.CR.pairSinceV = 1; const P = $s.CR.pairs || {}, S0 = $s.CR.pairSince = $s.CR.pairSince || {}, base = new Set(CR_PAIRS0.map(([a, b]) => pairK(a, b)));
+    for (const a in P) { const k = pairK(a, P[a]); if (S0[k] != null && absWeek() - S0[k] > 1) continue; let h = 7; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; S0[k] = absWeek() - (base.has(k) ? Math.round((1 + (h % 7) / 2) * SEASON_WEEKS) : SEASON_WEEKS + (h % 30)); } }
   crNewsSeed();
   // estoque de pontos com limite: quem tinha acumulado demais recebe o excedente em dinheiro (uma vez)
   if (!$s.CR.peCapV) { $s.CR.peCapV = 1; const ex = Math.floor(($s.CR.pe || 0) - crPeMax()); if (ex > 0) { const cash = ex * 60; $s.CR.pe = crPeMax(); $s.CR.money += cash; $s.CR.lastMsg = 'Pontos de evolução agora têm estoque máximo (' + crPeMax() + '). Os ' + ex + ' que passavam disso viraram ' + money(cash) + '.'; } }
