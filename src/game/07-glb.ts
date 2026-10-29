@@ -118,6 +118,23 @@ float patF(int id, vec3 q, float H) {
   if (id == 9) return step(0.795, y);
   if (id == 10) return step(0.6, fract(y * 14.0 + sin(x * 26.0) * 0.22));
   if (id == 11) { vec2 g = vec2(x, yy) * 7.0; float n = pNoise(g) + 0.5 * pNoise(g * 2.3 + 7.0); float l = abs(fract(g.x * 1.7 + g.y * 0.6) - 0.5); return step(0.92, n) * step(0.12, l); }
+  float ax = abs(x), z = q.z, kx = H / 1.76; // kx: largura proporcional à altura do modelo
+  // três faixas: do colarinho por cima do ombro até a manga (correm no sentido do braço)
+  if (id == 12) { if (ax < 0.08 * kx || y < 0.66) return 0.0; return (1.0 - step(0.011, abs(z))) + (1.0 - step(0.011, abs(z - 0.034))) + (1.0 - step(0.011, abs(z + 0.034))); }
+  // três faixas descendo pelas laterais do tronco
+  if (id == 13) { if (ax < 0.12 * kx || ax > 0.2 * kx || y > 0.8) return 0.0; return (1.0 - step(0.01, abs(z))) + (1.0 - step(0.01, abs(z - 0.032))) + (1.0 - step(0.01, abs(z + 0.032))); }
+  // gola (em volta do pescoço) e punhos (barra da manga)
+  if (id == 14) { float neck = step(0.805, y) * step(ax, 0.11 * kx); float cuff = step(0.255 * kx, ax) * step(0.6, y); return max(neck, cuff); }
+  // respingos de tinta: manchas grandes e gotinhas em volta
+  if (id == 15) { vec2 g = vec2(x, yy); float n = pNoise(g * 11.0) * 0.7 + pNoise(g * 29.0) * 0.3; float d = pNoise(g * 70.0); return max(step(0.74, n), step(0.9, d) * step(0.55, n)); }
+  // linhas geométricas em diagonal, fortes em cima e sumindo para baixo
+  if (id == 16) { float a1 = 1.0 - step(0.12, abs(fract((x + yy) * 14.0) - 0.5) * 2.0); float a2 = 1.0 - step(0.12, abs(fract((x - yy) * 14.0) - 0.5) * 2.0); return max(a1, a2) * smoothstep(0.58, 0.82, y); }
+  // faixa larga no peito com dois frisos
+  if (id == 17) { float b = step(0.705, y) * (1.0 - step(0.765, y)); float f1 = (1.0 - step(0.004, abs(y - 0.695))) + (1.0 - step(0.004, abs(y - 0.775))); return max(b, f1); }
+  // laterais ventiladas: furinhos em grade nas laterais
+  if (id == 18) { if (ax < 0.115 * kx || y > 0.8) return 0.0; vec2 g = vec2(z, yy) * 90.0; return 1.0 - step(0.28, length(fract(g) - 0.5)); }
+  // pinceladas: degradê com pinceladas horizontais irregulares
+  if (id == 19) { float n = pNoise(vec2(x * 3.0, yy * 26.0)) * 0.6 + pNoise(vec2(x * 9.0, yy * 60.0)) * 0.4; return smoothstep(0.35, 0.75, (y - 0.55) * 3.2 + (n - 0.5) * 0.9); }
   return 0.0;
 }`;
 const LOGO_TEX = {};
@@ -182,7 +199,7 @@ function dressSkin(p, root) {
   for (const n of HAIR_PARTS.concat(BEARDS, BEARDS.map(x => x + 'Edge'))) (parts[n] || []).forEach(o => tint(o.material, look.hair || '#2a1a0e', HAIR_BASE));
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
   // estampa: a do uniforme próprio; os outros jogadores ganham uma (sempre a mesma para cada um) na cor do detalhe do time
-  const pat = look.pattern || ['liso', 'liso', 'liso', 'listras', 'lateral', 'ombros', 'degrade', 'faixas', 'chevron'][Math.floor(r(7) * 9)];
+  const pat = look.pattern || ['liso', 'liso', 'listras', 'lateral', 'ombros', 'degrade', 'faixas', 'chevron', 'tresfaixas', 'faixaslado', 'gola', 'peito', 'geodegrade', 'pinceladas'][Math.floor(r(7) * 14)];
   ['tee', 'tank', 'crop'].forEach(t => { const m = matOf('Top_' + t); if (m) { m.color.copy(shirt); patShirt(m, PATTERNS[pat] ? PATTERNS[pat].id : 0, col(look.shirt2 || look.trim || '#fbf6ea'), look.logo, look.shirt2 || look.trim || '#fbf6ea', p.skin ? p.skin.mh : (root.userData.mh || 1.76)); } });
   if (matOf('Bermuda')) matOf('Bermuda').color.copy(shorts);
   if (matOf('Shorts')) matOf('Shorts').color.copy(dress ? shirt : shorts);

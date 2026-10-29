@@ -273,6 +273,14 @@ function drawPattern(x, w, h, pat, c2) {
   else if (pat === 'camuflado') { const r = mulberry(7); for (let i = 0; i < 60; i++) { x.beginPath(); x.ellipse(r() * w, r() * h, 6 + r() * 16, 4 + r() * 10, r() * 3, 0, Math.PI * 2); x.fill(); } }
   else if (pat === 'ombros') x.fillRect(0, 0, w, h * .2);
   else if (pat === 'ondas') { x.lineWidth = h / 30; for (let k = 0; k < 7; k++) { x.beginPath(); for (let u = 0; u <= w; u += 4) { const y = h * (.08 + k * .14) + Math.sin(u / w * Math.PI * 8) * h * .025; u ? x.lineTo(u, y) : x.moveTo(u, y); } x.stroke(); } }
+  else if (pat === 'tresfaixas') { for (const cx of [w * .2, w * .8]) for (let k = -1; k <= 1; k++) x.fillRect(cx + k * w * .025 - w * .006, 0, w * .012, h * .32); }
+  else if (pat === 'faixaslado') { for (const cx of [w * .25, w * .75]) for (let k = -1; k <= 1; k++) x.fillRect(cx + k * w * .025 - w * .006, h * .2, w * .012, h * .8); }
+  else if (pat === 'gola') { x.fillRect(0, 0, w, h * .06); x.fillRect(w * .15, 0, w * .1, h * .1); x.fillRect(w * .75, 0, w * .1, h * .1); }
+  else if (pat === 'respingos') { const r = mulberry(19); for (let i = 0; i < 26; i++) { const cx = r() * w, cy = r() * h, rr = 6 + r() * 14; x.beginPath(); x.arc(cx, cy, rr, 0, Math.PI * 2); x.fill(); for (let j = 0; j < 6; j++) { x.beginPath(); x.arc(cx + (r() - .5) * rr * 4, cy + (r() - .5) * rr * 4, 1 + r() * 3, 0, Math.PI * 2); x.fill(); } } }
+  else if (pat === 'geodegrade') { x.lineWidth = 2; for (let k = -h; k < w + h; k += 14) { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, c2); g.addColorStop(.6, 'rgba(0,0,0,0)'); x.strokeStyle = g; x.beginPath(); x.moveTo(k, 0); x.lineTo(k + h, h); x.stroke(); x.beginPath(); x.moveTo(k, 0); x.lineTo(k - h, h); x.stroke(); } }
+  else if (pat === 'peito') { x.fillRect(0, h * .22, w, h * .12); x.fillRect(0, h * .19, w, h * .015); x.fillRect(0, h * .355, w, h * .015); }
+  else if (pat === 'ventilada') { for (const cx of [w * .25, w * .75]) for (let y = h * .2; y < h; y += 6) for (let u = -w * .05; u < w * .05; u += 6) { x.beginPath(); x.arc(cx + u, y, 1.4, 0, Math.PI * 2); x.fill(); } }
+  else if (pat === 'pinceladas') { const r = mulberry(23); for (let i = 0; i < 40; i++) { const y = r() * h * .6; x.globalAlpha = .5 + r() * .5; x.fillRect(r() * w - 20, y, 30 + r() * 90, 3 + r() * 6); } x.globalAlpha = 1; }
   else if (pat === 'tropical') { const r = mulberry(11); for (let i = 0; i < 26; i++) { const cx = r() * w, cy = r() * h, a = r() * 6.3; x.beginPath(); x.ellipse(cx, cy, 16, 5, a, 0, Math.PI * 2); x.fill(); } }
   x.restore();
 }

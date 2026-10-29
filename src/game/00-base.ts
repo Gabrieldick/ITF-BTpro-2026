@@ -103,6 +103,11 @@ const PATTERNS = {
   diagonal: { nome: 'Faixa diagonal', preco: 200, id: 3 }, degrade: { nome: 'Degradê', preco: 260, id: 4 }, lateral: { nome: 'Painéis laterais', preco: 220, id: 5 },
   chevron: { nome: 'Chevron', preco: 280, id: 6 }, bolinhas: { nome: 'Bolinhas', preco: 240, id: 7 }, camuflado: { nome: 'Camuflada', preco: 320, id: 8 },
   ombros: { nome: 'Ombros de outra cor', preco: 200, id: 9 }, ondas: { nome: 'Ondas', preco: 300, id: 10 }, tropical: { nome: 'Tropical (folhas)', preco: 360, id: 11 },
+  // inspiradas nas camisas de beach tennis/tênis das marcas grandes (sem nome nem logo delas)
+  tresfaixas: { nome: 'Três faixas no ombro', preco: 380, id: 12 }, faixaslado: { nome: 'Três faixas laterais', preco: 360, id: 13 },
+  gola: { nome: 'Gola e punhos contrastantes', preco: 260, id: 14 }, respingos: { nome: 'Respingos de tinta', preco: 420, id: 15 },
+  geodegrade: { nome: 'Geométrica em degradê', preco: 440, id: 16 }, peito: { nome: 'Faixa no peito', preco: 280, id: 17 },
+  ventilada: { nome: 'Laterais ventiladas', preco: 320, id: 18 }, pinceladas: { nome: 'Pinceladas vibrantes', preco: 460, id: 19 },
 };
 const OUTFIT_COLORS = ['#ff5a1f', '#ffd23f', '#e2364a', '#ff86c0', '#9b5cff', '#1f6fd1', '#17324d', '#0b7a83', '#3fd17a', '#2e9e57', '#fbf6ea', '#ffffff', '#9aa3ad', '#141414'];
 const GEAR = [
