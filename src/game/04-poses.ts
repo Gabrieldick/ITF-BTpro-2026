@@ -142,6 +142,7 @@ function swingVar(type, y, p, aimX) {
   return '';
 }
 if (typeof window !== 'undefined') window.__pdoACT = ACT;
+if (typeof window !== 'undefined') queueMicrotask(() => { window.__pdoSTY = STY; });
 const swingKey = p => p.swing.var && ACT[p.swing.type + '_' + p.swing.var] ? p.swing.type + '_' + p.swing.var : p.swing.type;
 // saque: bola na mão, lançamento, posição de troféu
 const SERVE_U = [0, .15, .32, 1]; // pêndulo rápido, braço esticado em cima aos 30% (a bola sai da mão) e o resto até o troféu
@@ -174,9 +175,36 @@ function poseAt(keys, us, u, out) {
   }
   return out;
 }
+// variações de estilo (só visual, não muda o golpe): cada batida sorteia um jeito de preparar e de terminar — terminação
+// cruzando o corpo, contida na frente, pronada para o lado da raquete, bloqueio, cortada… Somadas à pose em duas
+// "corcovas": a preparação (pico ~.25) e a terminação (pico ~.72); no contato (.45) e nas pontas valem zero, então a
+// raquete encontra a bola no mesmo lugar e volta para a espera sem estalo. Cada jogador tem um jeito preferido
+const STY = {
+  smash: [{}, { d2: { rh: [-.12, -.14, 0], tw: .25, lean: .08 } }, { d2: { rh: [.2, .32, -.08], tw: -.3, lean: -.15, crouch: -.08 } },
+    { d2: { rh: [.36, .14, .05], tw: -.35, wr: -.8 } }, { d1: { lh: [0, .14, 0], tw: -.18, lean: -.06 } }, { d1: { lh: [.06, -.2, .1], tw: .1 }, d2: { rh: [-.06, -.05, 0], tw: .12 } }],
+  saque: [{}, { d2: { rh: [-.1, -.1, 0], tw: .2, lean: .06 } }, { d2: { rh: [.3, .16, .04], tw: -.3, wr: -.7 } }, { d2: { rh: [.12, .25, -.06], tw: -.2, crouch: -.06 } }],
+  lob: [{}, { d2: { rh: [-.05, .26, 0], tw: .15 } }, { d2: { rh: [.05, -.32, -.05], tw: -.2, lean: .05 } }, { d1: { rh: [.06, -.06, .08], tw: -.15 }, d2: { wx: -.4, rh: [0, .06, 0] } }],
+  toque: [{}, { d1: { rh: [-.08, 0, -.1], tw: .15 }, d2: { rh: [.04, 0, .16] } }, { d2: { rh: [-.05, -.15, -.1], wx: .3, lean: .05 } },
+    { d2: { rh: [0, .18, -.05], wx: -.25 } }, { d1: { crouch: .06, lean: .06 }, d2: { crouch: .05, rh: [.06, -.04, -.06] } }],
+};
+const styFam = ak => ak === 'smash_saque' ? 'saque' : ak === 'smash_ventaglio' || ak === 'smash_saquebaixo' ? '' : ak.startsWith('smash') ? 'smash' : ak === 'lob' ? 'lob' : 'toque';
+// sorteio: metade das vezes o preferido do jogador (do id), senão qualquer um; intensidade também varia
+function pickStyle(ak, c) {
+  const fam = styFam(ak), L = STY[fam]; if (!L) return null;
+  let h = 7; for (const ch of String((c && c.id) || '') + fam) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const v = Math.random() < .5 ? L[h % L.length] : L[Math.floor(Math.random() * L.length)];
+  return { v, k: .75 + Math.random() * .5, k1: .7 + Math.random() * .6 };
+}
+const bump = (u, a, b) => u <= a || u >= b ? 0 : Math.sin(Math.PI * (u - a) / (b - a)) ** 2;
+function styleSwing(pose, ak, u, st) {
+  if (!st || !st.v) return;
+  const add = (d, w) => { if (!d || w <= 0) return; for (const k in d) { if (Array.isArray(d[k])) for (let j = 0; j < 3; j++) pose[k][j] += d[k][j] * w; else pose[k] += d[k] * w; } };
+  const sm = ak.startsWith('smash'), c = sm ? .45 : .45;
+  add(st.v.d1, bump(u, .04, c) * st.k1); add(st.v.d2, bump(u, c, 1) * st.k);
+}
 function mirrorPose(o) { // defesa de backhand
   o.rh[0] = -o.rh[0] * .8; o.rp[0] = -o.rp[0] * .4; o.rp[2] = -Math.abs(o.rp[2]) - .3;
   o.tw = -o.tw; o.bend = -o.bend; o.wr = -o.wr; o.lh[0] = .12; o.lunge = -o.lunge;
 }
 
-export { ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, VAR_FX, mirrorPose, newPose, poseAt, swingKey, swingVar, uOf };
+export { STY, pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, VAR_FX, mirrorPose, newPose, poseAt, swingKey, swingVar, uOf };

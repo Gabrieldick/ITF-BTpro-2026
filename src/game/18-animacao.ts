@@ -7,7 +7,7 @@ import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, nameOf, overall, rand, shor
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, sun } from './02-render';
 import { sky } from './03-cenario';
-import { ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf } from './04-poses';
+import { pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf } from './04-poses';
 import { ALL, human } from './06-modelos';
 import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, fpArm, fpWrist, landRing, particles, puff, reachRing, stamp, trail, trailGeo, trailPos, updateParticles } from './07-glb';
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
@@ -110,11 +110,12 @@ function animateAthlete(p, dt) {
   let mirror = false, swingU = -1;
   if (p.debug) {
     if (p.debug.type === 'serve' || p.debug.type === 'servelow') poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose);
-    else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); mirror = /^(defesa|curta|lob)/.test(p.debug.type) && p.debug.side < 0; }
+    else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); styleSwing(pose, p.debug.type, swingU, p.debug.st); mirror = /^(defesa|curta|lob)/.test(p.debug.type) && p.debug.side < 0; }
   } else if (S.mode === 'toss' && S.serverPlayer === p) poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1), pose);
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; let ak = swingKey(p); if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh'; poseAt(ACT[ak], uOf(ak), swingU, pose);
+    if (!p.swSty || swingU < (p.swU0 ?? 1) - .2 || p.swSty.ak !== ak) { p.swSty = pickStyle(ak, p.char) || {}; p.swSty.ak = ak; } p.swU0 = swingU; styleSwing(pose, ak, swingU, p.swSty);
     // curta alta de forehand: depois do toque a face da raquete acompanha para onde a curta foi
     if (ak === 'curta_alta_fh' && p.swing.hit && ball.state === 'live' && S.lastTeam === p.team) { const f = p.team === 0 ? 1 : -1; pose.wr += clamp(Math.atan2(ball.vel.x * f * (p.lefty ? -1 : 1), -ball.vel.z * f), -.7, .7); } }
   else poseAt(p === human && fpBodyOn ? READY_FP_KEYS : READY_KEYS, READY_U, 0, pose);
