@@ -1129,7 +1129,11 @@ function crSimOne(m, isMine) {
   let sa = crTeamOvr(A), sb = crTeamOvr(B);
   if (!t.singles) { if (A.me) sa += crChemLv() * .7 + crMoodBonus() * .5; if (B.me) sb += crChemLv() * .7 + crMoodBonus() * .5; }
   { const st = (3 - ($s.CR.stars || 3)) * 1.5; if (A.me) sa += st; if (B.me) sb += st; } // dificuldade em estrelas vale na partida simulada também
-  const pA = 1 / (1 + Math.exp(-(sa - sb) / 3));
+  // jogos entre as outras duplas: cada dupla tem a 'semana' dela no torneio (fase boa ou ruim, ±1,7 de nível em média) e o
+  // resultado é menos previsível que o seu jogo; assim a favorita chega mais vezes, mas a final nem sempre é a mesma
+  if (!isMine) { const F = t.form = t.form || {}, fk = tm => tm.a + '+' + (tm.b || ''), fm = tm => { const k = fk(tm); if (F[k] == null) F[k] = Math.round(gaussR(Math.random) * 1.7 * 10) / 10; return F[k]; };
+    sa += fm(A); sb += fm(B); }
+  const pA = 1 / (1 + Math.exp(-(sa - sb) / (isMine ? 3 : 4)));
   m.w = Math.random() < pA ? m.a : m.b;
   const N = isMine ? $s.CR.games : 6; m.score = crScore(N);
 }
