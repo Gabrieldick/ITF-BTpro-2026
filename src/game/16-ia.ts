@@ -230,14 +230,14 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, vx, vz, dt, backAcc(p.team, vz, acc));
 }
 function receiving(p) {
-  // até o saque ser batido ninguém passa da linha dos 3 m, só o sacador: a dupla que recebe e também o parceiro de quem saca.
+  // até o saque ser batido ninguém passa da linha (3 m no amador, 6 m no profissional), só o sacador: a dupla que recebe e também o parceiro de quem saca.
   // Depois do saque todos podem avançar (senão a curta de saque seria impossível)
   return p !== S.serverPlayer && (S.mode === 'serve' || S.mode === 'toss');
 }
 function clampPos(p) {
   const lim = C.halfW + 3;
   p.pos.x = clamp(p.pos.x, -lim, lim);
-  const minZ = receiving(p) ? ZONE3 + .05 : .4;
+  const minZ = receiving(p) ? (S.zoneR || ZONE3) + .05 : .4;
   if (p.team === 0) p.pos.z = clamp(p.pos.z, minZ, 11.5); else p.pos.z = clamp(p.pos.z, -11.5, -minZ);
   if (dupla()) { // companheiros não atravessam um ao outro
     for (const o of $s.teams[p.team]) if (o !== p) {
@@ -595,7 +595,7 @@ function updateAI(p, dt) {
   if (S.mode === 'serve' || S.mode === 'toss') {
     tx = p.team !== S.server && dupla() ? receiveX(p) : p.pos.x; tz = p.pos.z;
     // quem recebe espera na linha dos 3 m e, no lançamento do saque, recua um passo para cobrir o saque fundo
-    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * (ZONE3 + (aiP(p).recvZ ?? 1.1));
+    if (S.mode === 'toss' && p.team !== S.server) tz = (p.team === 0 ? 1 : -1) * ((S.zoneR || ZONE3) + Math.max(aiP(p).recvZ ?? 1.1, S.zoneR > 4 ? .15 : -9));
     if (proMascHold(p)) { tz = (p.team === 0 ? 1 : -1) * Math.max(Math.abs(tz), 5.3); if (Math.abs(p.pos.z) < 5.05) p.pos.z = (p.team === 0 ? 1 : -1) * 5.05; }
   }
   if (S.serverPlayer === p && S.serveType !== 'lob' && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) - .22) || p.pendingServe)) {
@@ -659,6 +659,14 @@ function updateAI(p, dt) {
             // IA Treinada/Planejadora: escolhe o momento do golpe como o humano (barra do smash / aperto) e leva o mesmo resultado
             let q = clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), pm = null;
             if (timedAI(p)) { const tm = aiTiming(p, shot, q); q = tm.q; pm = tm.mod; pm.speedMul = (pm.speedMul || 1) * st.speed * (D.pw || 1) * sf; pm.noiseMul = (pm.noiseMul || 1) * st.noise; }
+            // CPU padrão: smash no verde pela técnica (atributo de smash) e pelas estrelas; do fundo cai, mas pouco para os
+            // grandes smashadores (98 de smash no Lendário: ~6 em 10 no verde, ~5 do fundo; um 85 no padrão: ~2 em 10)
+            else if (shot === 'smash' && ball.pos.y >= 1.5 && p.char) {
+              const s01 = clamp(((p.char.a.smash || 70) - 70) / 28, 0, 1), back = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), skN = Math.min(1, attrK(p, 'smash'));
+              const pg = (.05 + .3 * Math.pow(s01, 1.3)) * (1 + (D.up || 0) * 1.2) * (1 - .35 * back * (1 - .6 * s01)) * sf * sf;
+              if (Math.random() < pg) { q = Math.max(q, lerp(.72, .92, skN)); noteTiming(p, true);
+                pm = { speedMul: lerp(1.02, 1.22, skN) * st.speed * (D.pw || 1) * sf, noiseMul: lerp(1.05, .6, skN) * st.noise, oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true }; }
+            }
             // altura do lob pela situação: em apuros, o alto (recuperação); contra quem colou na rede, chutado ou médio por cima;
             // no resto, médio
             const trb = aiTrouble(p, ball.pos.y), lobSit = soft ? { lobPower: rand(.35, .6) } : trb > .5 ? { lobPower: rand(.8, 1) }

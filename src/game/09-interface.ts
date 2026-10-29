@@ -5,7 +5,7 @@ import { $s } from '../state';
 import { C, HALF_W, ZONE3, clamp, nameOf, rand, shortOf, overall } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
-import { applyArena, cheerArena, confetti, linesGroup, setNetHeight, setSide } from './03-cenario';
+import { applyArena, cheerArena, confetti, linesGroup, setNetHeight, setSide, setZoneLine } from './03-cenario';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail, setBallStyle } from './07-glb';
 import { swingVar } from './04-poses';
@@ -601,14 +601,14 @@ function setupPoint() {
   const sgn = t => t === 0 ? 1 : -1;
   if (!dupla()) {
     sp.pos.set(.7 * sgn(sp.team), 0, 8.6 * sgn(sp.team));
-    const r = $s.teams[1 - S.server][0]; r.pos.set(0, 0, (ZONE3 + .3) * sgn(r.team));
+    const r = $s.teams[1 - S.server][0]; r.pos.set(0, 0, ((S.zoneR || ZONE3) + .3) * sgn(r.team));
   } else {
     sp.pos.set(sp.slot * 1.4, 0, 8.6 * sgn(sp.team)); // sacador primeiro: a recepção se ajeita pela posição dele
     $s.players.forEach(p => {
       const s = sgn(p.team);
       if (p === sp) p.pos.set(p.slot * 1.4, 0, 8.6 * s);
-      else if (p.team === S.server) p.pos.set(p.slot * 1.9, 0, (C.netH >= 1.79 ? 5.3 : 4.4) * s); // profissional masculino: parceiro atrás dos 5 m até o saque
-      else p.pos.set(receiveX(p), 0, (ZONE3 + .3) * s);
+      else if (p.team === S.server) p.pos.set(p.slot * 1.9, 0, Math.max(C.netH >= 1.79 ? 5.3 : 4.4, (S.zoneR || ZONE3) + .3) * s); // parceiro atrás da linha até o saque
+      else p.pos.set(receiveX(p), 0, ((S.zoneR || ZONE3) + .3) * s);
     });
   }
   if (!sp.isHuman) S.aiServeT = 1.5;
@@ -693,6 +693,8 @@ function newMatch(guest) {
     const allMale = $s.players.every(p => !p.char || !p.char.fem);
     const pro = S.careerActive && $s.CR && $s.CR.tour ? $s.CR.tour.tier >= 3 && !($s.CR.tour.special === 'estadual' && $s.CR.tour.tier < 3) : true;
     setNetHeight(allMale && pro ? 1.8 : 1.7);
+    // linha do saque (ninguém além do sacador passa dela até o saque ser batido): 6 m no profissional, como no circuito; 3 m no amador
+    S.zoneR = pro ? 6 : ZONE3; setZoneLine(S.zoneR);
   }
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;

@@ -314,7 +314,6 @@ const ROSTER = [
 const SPONSOR_KITS = {
   nux: { logo: 'NUX', c1: '#111214', c2: '#d8ff3a', bc: '#111214', pat: 'lateral' },
   herues: { logo: "HERUE'S", c1: '#0e0e10', c2: '#ff5a1f', bc: '#0e0e10', pat: 'diagonal' },
-  altojiro: { logo: 'ALTO JIRO', c1: '#0b3d5c', c2: '#f2c230', bc: '#0b3d5c', pat: 'faixas' },
   zanb: { logo: 'ZANB', c1: '#f6f4f0', c2: '#b0895a', bc: '#1b1b1d', pat: 'chevron' },
   anasport: { logo: 'ANA SPORT', c1: '#f4f5f6', c2: '#141414', bc: '#141414', pat: 'lateral' },
   lacosta: { logo: 'LACOSTA', c1: '#fbf6ea', c2: '#0f6b3a', bc: '#fbf6ea', pat: 'liso' },
@@ -322,7 +321,7 @@ const SPONSOR_KITS = {
 };
 // id: [marca da roupa, raquete (vazio = mantém), modelo de cima]
 const SPONSORED = {
-  gianote: ['nux', 'zenite', 'teeDry'], spot: ['herues', 'aurora', 'tankDry'], capeletti: ['herues', 'eclipse', 'teeDry'], barao: ['altojiro', 'kronos', 'teeDry'],
+  gianote: ['nux', 'zenite', 'teeDry'], spot: ['herues', 'aurora', 'tankDry'], capeletti: ['herues', 'eclipse', 'teeDry'], barao: ['herues', 'eclipse', 'teeDry'],
   mola: ['zanb', 'zjump', 'tankDry'], ramires: ['zanb', 'ventosul', 'teeDry'], gigio: ['anasport', 'supercarbon', 'teeDry'], bazzi: ['anasport', 'medusa', 'teeDry'],
   gaspar: ['herues', 'proteo', 'tank'], valentim: ['herues', 'proteo', 'tank'], casadi: ['nux', 'atol', 'tank'], kudina: ['nux', 'recife', 'tank'], semena: ['nux', 'recife', 'tank'],
   marquezin: ['mormaji', 'mare', 'tank'], chou: ['lacosta', '', 'tank'],

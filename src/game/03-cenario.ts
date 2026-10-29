@@ -278,8 +278,9 @@ Object.entries(HALF_W).forEach(([k, hw]) => {
   tape(g, hw * 2 + .05, .05, 0, C.halfL); tape(g, hw * 2 + .05, .05, 0, -C.halfL);
   tape(g, .05, C.halfL * 2 + .05, hw, 0); tape(g, .05, C.halfL * 2 + .05, -hw, 0);
   // linha dos 3 m: não é uma linha de verdade na quadra; só um traço apagado por dentro e marcas na lateral (3 m e 5 m)
-  [ZONE3, -ZONE3].forEach(z => { const m = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 - .1, 0.006, .035), tapeFaint); m.position.set(0, 0.003, z); g.add(m); });
-  [ZONE3, 5].forEach(d => [1, -1].forEach(sz => [1, -1].forEach(sx => { const m = new THREE.Mesh(new THREE.BoxGeometry(.32, 0.008, .05), tapeMat); m.position.set(sx * (hw + .16), 0.004, sz * d); g.add(m); })));
+  // (no profissional a linha do saque fica nos 6 m: setZoneLine move o traço)
+  [ZONE3, -ZONE3].forEach(z => { const m = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 - .1, 0.006, .035), tapeFaint); m.position.set(0, 0.003, z); m.userData.zone = Math.sign(z); g.add(m); });
+  [ZONE3, 5, 6].forEach(d => [1, -1].forEach(sz => [1, -1].forEach(sx => { const m = new THREE.Mesh(new THREE.BoxGeometry(.32, 0.008, .05), tapeMat); m.position.set(sx * (hw + .16), 0.004, sz * d); g.add(m); })));
   [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => {
     const p = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .03, 8), mat('#f4f1ea')); p.position.set(a * hw, .015, b * C.halfL); g.add(p);
   });
@@ -302,6 +303,8 @@ const padMat = mat('#1f4fb8', { roughness: .7 });
 const band2 = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .035, .01), mat('#1f4fb8'));
 band2.position.set(0, C.netH - 1.0, 0); ENV.add(band2);
 // altura da rede da partida: 1,80 m no profissional masculino, 1,70 m no feminino, misto e amador
+// traço da linha que segura a recepção (e o parceiro do sacador) até o saque: 3 m no amador, 6 m no profissional
+function setZoneLine(z) { Object.values(linesGroup).forEach(g => g.children.forEach(m => { if (m.userData.zone) m.position.z = m.userData.zone * z; })); }
 function setNetHeight(h) { C.netH = h; net.position.y = h - .5; band.position.y = h - .035; band2.position.y = h - 1.0; }
 [-1, 1].forEach(s => {
   const px = s * (C.netHalf + .12);
@@ -905,4 +908,4 @@ function setSide(flip) {
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { sandH, ENV, setSide, setNetHeight, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
+export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };

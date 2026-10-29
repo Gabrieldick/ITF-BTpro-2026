@@ -725,7 +725,7 @@ function predictOwn(dt, now, newest, ix, iz) {
   [PR.vx, PR.vz] = accelStep(PR.vx, PR.vz, tvx, tvz, dt, backAcc(PR.z > 0 ? 0 : 1, tvz, (accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .85 : 1)) * (p.burst > 0 && len > .1 ? 1.6 : 1)));
   PR.x += PR.vx * dt; PR.z += PR.vz * dt;
   const lim = C.halfW + 3, recv = S.mode === 'serve' || S.mode === 'toss'; // quem não saca fica atrás dos 3 m até o saque
-  PR.x = clamp(PR.x, -lim, lim); PR.z = clamp(PR.z, recv ? ZONE3 + .05 : .4, 11.5);
+  PR.x = clamp(PR.x, -lim, lim); PR.z = clamp(PR.z, recv ? (S.zoneR || ZONE3) + .05 : .4, 11.5);
   PR.hist.push({ t: now, x: PR.x, z: PR.z }); while (PR.hist.length && now - PR.hist[0].t > 1500) PR.hist.shift();
   // o último estado do anfitrião já conta as entradas mandadas até ~1 ida e volta antes de chegar
   const tRef = newest.rcv - ON.rtt;
