@@ -245,6 +245,12 @@ const RK_ART = {
     x.fillStyle = '#9b3fd0'; x.beginPath(); x.moveTo(30, 186); x.lineTo(128, 214); x.lineTo(226, 186); x.lineTo(226, 198); x.lineTo(128, 232); x.lineTo(30, 198); x.closePath(); x.fill();
     x.strokeStyle = '#d58cff'; x.lineWidth = 1.5; for (let i = 0; i < 3; i++) { x.beginPath(); x.moveTo(70, 196 + i * 5); x.lineTo(128, 214 + i * 5); x.lineTo(186, 196 + i * 5); x.stroke(); }
   } },
+  // Z Jump (Zand, Mola): carbono preto com um Z enorme amarelo
+  zjump: { edge: '#ffd21a', grip: '#121314', throat: '#ffd21a', rough: true, draw(x, w, h) {
+    carbonBase(x, w, h, '#101113', .06);
+    x.fillStyle = '#ffd21a'; x.beginPath(); [[62, 46], [194, 46], [194, 70], [100, 150], [194, 150], [194, 174], [62, 174], [62, 150], [156, 70], [62, 70]].forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.closePath(); x.fill();
+    rimLine(x, '#ffd21a', 1.6); wordmark(x, 'ZANB', 190, '#ffffff', 14); wordmark(x, 'Z JUMP', 205, '#ffd21a', 9);
+  } },
   // Fierce (Heroe's, Cappelletti): preta, disco branco, X preto com pontas ciano, aro laranja-vermelho
   eclipse: { edge: '#ff4a1f', grip: '#131315', throat: '#7d8288', rough: true, draw(x, w, h) {
     carbonBase(x, w, h, '#101012', .05);

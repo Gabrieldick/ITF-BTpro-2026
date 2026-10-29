@@ -453,6 +453,24 @@ if HAIRON:
                 pts[k] = pts[k] + (sides[k] * c_ + nrm[k] * s_) * R * min(1, k / 2); out_.append(unit(sides[k] * -s_ + nrm[k] * c_ + sides[k] * .4))
             cards.append((pts, [rng.uniform(.07, .1)] * ns, out_))
         card_obj('HairCurlyCards', cards, CARD_M)
+        # coque samurai: cabelo comprido preso, puxado rente de todos os lados até um coque no alto/atrás da cabeça
+        ks, kn, _ = surf(hd + np.array([0, 1.3, -.55])); KNOT0 = ks  # raiz do coque (na pele do alto da cabeça)
+        _, offT = shell('HairTied', .03, KNOT0, SHELL_M)
+        cards = []
+        for root, p0 in scalp_roots(1500, rng):
+            s_, n, _ = surf(root); L = rng.uniform(.5, 1.1)
+            t0 = rot(flow(root, n, KNOT0), n, rng.normal(0, .05))
+            hf = lambda q0, f: offT(q0) + .006 + .006 * f
+            pts, sides, nrm = grow(root, t0, L, 6, hf, KNOT0, steer=.6)
+            cards.append((pts, [rng.uniform(.1, .15) * (1 - .3 * f) for f in np.linspace(0, 1, 6)], sides))
+        card_obj('HairTiedCards', cards, CARD_M)
+        bc = KNOT0 + kn * .2 + np.array([0, .03, -.05]); bcards = []
+        for k in range(60):  # o coque: mechas enroladas, um pouco mais alto que largo
+            ax_ = unit(rng.normal(0, 1, 3)); u = unit(np.cross(ax_, rng.normal(0, 1, 3))); w_ = np.cross(ax_, u); R = rng.uniform(.15, .21)
+            a0 = rng.uniform(0, 6.3); arc = rng.uniform(3, 4.5)
+            pts = [bc + (u * math.cos(a0 + arc * t) + w_ * math.sin(a0 + arc * t)) * R * np.array([1., 1.1, 1.]) for t in np.linspace(0, 1, 10)]
+            bcards.append((pts, [rng.uniform(.12, .17)] * 10, [ax_] * 10))
+        card_obj('BunM', bcards, CARD_M)
         LONG_B = BACK
         LONG_L = (1.3, 1.9)
     else:
@@ -816,7 +834,7 @@ print('OK', out, 'altura', round(max(v.z for v in VB if True) , 2))
 if RENDER:
     if 'show' in P:  # prévia de um corte/barba: esconde as outras peças de cabelo
         for o in sc.objects:
-            if o.name in ('Hair', 'HairCards', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Beard', 'Goatee', 'Mustache', 'HairCurlyCards', 'HairFringe', 'BeardEdge', 'GoateeEdge', 'MustacheEdge', 'Cap', 'CapBrim', 'Visor', 'VisorBrim', 'Headband') and o.name.replace('Edge', '').replace('Brim', '') not in P['show']: o.hide_render = True
+            if o.name in ('Hair', 'HairTied', 'HairTiedCards', 'BunM', 'HairCards', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Beard', 'Goatee', 'Mustache', 'HairCurlyCards', 'HairFringe', 'BeardEdge', 'GoateeEdge', 'MustacheEdge', 'Cap', 'CapBrim', 'Visor', 'VisorBrim', 'Headband') and o.name.replace('Edge', '').replace('Brim', '') not in P['show']: o.hide_render = True
     for o in sc.objects:
         if o.name in P.get('hideParts', []) or o.name.split('.')[0] in P.get('hideParts', []): o.hide_render = True
     # prévia: Cycles na CPU, luz de sol + preenchimento, câmera frontal 3/4

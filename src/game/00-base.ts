@@ -75,6 +75,7 @@ const RACKET_STATS = {
   corsario: { nome: 'Corsário Hybrid', preco: 62000, desc: 'Híbrida de circuito: completa e muito estável.', b: { smash: 2, def: 2, saque: 2, lob: 2, curta: 2, backhand: 2, forca: 1 } },
   tsunami: { nome: 'Adibas World Cup', preco: 82000, desc: 'A mais potente do circuito: pancada pura.', b: { forca: 6, smash: 5, saque: 3, def: 1, curta: -1 } },
   abismo: { nome: 'Vizion Precision', preco: 108000, desc: 'Defesa de elite: devolve até a finalização.', b: { def: 5, vel: 1, backhand: 4, lob: 3, curta: 2 } },
+  zjump: { nome: 'Zanb Z Jump', preco: 120000, desc: 'Ataque explosivo: smash e saque de quem pula alto.', b: { forca: 4, smash: 5, saque: 3, vel: 1, curta: -1 } },
   eclipse: { nome: 'Herue\'s Fierce', preco: 145000, desc: 'Controle de elite: defesa, curta e lob de outro nível.', b: { def: 5, curta: 4, backhand: 3, lob: 3, vel: 1 } },
   trovao: { nome: 'Shank Predator', preco: 195000, desc: 'Potência máxima com um pouco de toque.', b: { forca: 6, smash: 6, saque: 4, curta: 1 } },
   aurora: { nome: 'Herue\'s Rebel', preco: 255000, desc: 'Quase perfeita: controle e ataque de campeão.', b: { def: 4, curta: 4, lob: 3, backhand: 3, smash: 2, saque: 1, vel: 1 } },
@@ -223,7 +224,7 @@ function effA(a, ...bonuses) {
 }
 const ROSTER = [
   { id: 'spot', name: 'Mattia Spotto', alt: 178, pais: 'ITA', estilo: 'Reflexos na rede', build: 'atletico', a: { forca: 94, vel: 98, def: 96, backhand: 92, curta: 92, lob: 92, smash: 93, saque: 90 }, look: { lens: '#1d4fd8', glassStyle: 'sport', headband: '', visor: '', beard: 'barba', hairStyle: 'curto', skin: '#e2b48f', hair: '#1b120c', cap: '#17324d', glasses: true, band: true, num: '1', racket: 'proteo' } },
-  { id: 'gianote', name: 'Nicolas Gianotty', alt: 186, pais: 'FRA', estilo: 'Voleio agressivo e definição', build: 'esguio', a: { forca: 93, vel: 89, def: 93, backhand: 93, curta: 93, lob: 93, smash: 98, saque: 97 }, look: { glassStyle: 'sport', headband: '', visor: '', beard: '', hairStyle: 'cacheado', skin: '#efc6a3', hair: '#3a2615', cap: '', glasses: true, num: '5', racket: 'kronos' } },
+  { id: 'gianote', name: 'Nicolas Gianotty', alt: 186, pais: 'FRA', estilo: 'Voleio agressivo e definição', build: 'esguio', a: { forca: 93, vel: 89, def: 93, backhand: 93, curta: 93, lob: 93, smash: 98, saque: 97 }, look: { glassStyle: 'sport', headband: '', visor: '', beard: '', hairStyle: 'coque', skin: '#efc6a3', hair: '#3a2615', cap: '', glasses: true, num: '5', racket: 'zenite' } },
   { id: 'barao', name: 'André Baram', alt: 193, pais: 'BRA', estilo: 'Canhoto, saque fortíssimo e jogo aéreo', build: 'atletico', canhoto: true, a: { forca: 94, vel: 88, def: 88, backhand: 88, curta: 88, lob: 88, smash: 95, saque: 97 }, look: { headband: '', visor: '', cap: '#fbf6ea', beard: '', hairStyle: 'curto', skin: '#efc6a3', hair: '#3a2615', glasses: false, band: true, num: '6', racket: 'proteo' } },
   { id: 'mola', name: 'Daniel Molla', alt: 183, pais: 'BRA', estilo: 'Explosão e smash acrobático', build: 'forte', a: { forca: 95, vel: 94, def: 87, backhand: 87, curta: 87, lob: 87, smash: 96, saque: 87 }, look: { hairStyle: 'curto', skin: '#efc6a3', hair: '#2b1d14', visor: '#fbf6ea', glasses: true, band: true, num: '50', racket: 'proteo' } },
   { id: 'gigio', jogo: 'paredao', name: 'Gigio Carianni', alt: 183, pais: 'BRA', estilo: 'Defesa sólida e tática', build: 'compacto', a: { forca: 86, vel: 86, def: 96, backhand: 93, curta: 86, lob: 92, smash: 86, saque: 86 }, look: { hairStyle: 'curto', skin: '#d2a07a', hair: '#2a1a0e', visor: '#17324d', glasses: true, band: true, num: '21', racket: 'medusa' } },
@@ -309,6 +310,26 @@ const ROSTER = [
   { id: 'iotte', name: 'Raquel Iote', alt: 166, pais: 'BRA', estilo: 'Experiência e precisão', build: 'atletico', fem: true, a: { forca: 75, vel: 76, def: 79, backhand: 79, curta: 80, lob: 79, smash: 75, saque: 76 }, look: { skin: '#d8a47e', hair: '#2b1d14', hairStyle: 'coque', visor: '#17324d', glasses: true, tank: true, num: '75', racket: 'kronos' } },
   { id: 'seron', name: 'Maria Martines Seron', alt: 178, pais: 'ESP', estilo: 'Consistência', build: 'esguio', fem: true, a: { forca: 75, vel: 78, def: 78, backhand: 77, curta: 77, lob: 77, smash: 75, saque: 75 }, look: { lens: '#e8700a', glassStyle: 'sport', headband: '', visor: '', cap: '', skin: '#e2b48f', hair: '#2b1d14', hairStyle: 'tranca', glasses: true, tank: true, num: '76', racket: 'proteo' } },
 ];
+// patrocínios reais (marcas com uma letra trocada): uniforme e raquete da marca de cada atleta
+const SPONSOR_KITS = {
+  nux: { logo: 'NUX', c1: '#111214', c2: '#d8ff3a', bc: '#111214', pat: 'lateral' },
+  herues: { logo: "HERUE'S", c1: '#0e0e10', c2: '#ff5a1f', bc: '#0e0e10', pat: 'diagonal' },
+  altojiro: { logo: 'ALTO JIRO', c1: '#0b3d5c', c2: '#f2c230', bc: '#0b3d5c', pat: 'faixas' },
+  zanb: { logo: 'ZANB', c1: '#f6f4f0', c2: '#b0895a', bc: '#1b1b1d', pat: 'chevron' },
+  anasport: { logo: 'ANA SPORT', c1: '#f4f5f6', c2: '#141414', bc: '#141414', pat: 'lateral' },
+  lacosta: { logo: 'LACOSTA', c1: '#fbf6ea', c2: '#0f6b3a', bc: '#fbf6ea', pat: 'liso' },
+  mormaji: { logo: 'MORMAJI', c1: '#7a1fa2', c2: '#e2364a', bc: '#1b1b1d', pat: 'degrade' },
+};
+// id: [marca da roupa, raquete (vazio = mantém), modelo de cima]
+const SPONSORED = {
+  gianote: ['nux', 'zenite', 'teeDry'], spot: ['herues', 'aurora', 'tankDry'], capeletti: ['herues', 'eclipse', 'teeDry'], barao: ['altojiro', 'kronos', 'teeDry'],
+  mola: ['zanb', 'zjump', 'tankDry'], ramires: ['zanb', 'ventosul', 'teeDry'], gigio: ['anasport', 'supercarbon', 'teeDry'], bazzi: ['anasport', 'medusa', 'teeDry'],
+  gaspar: ['herues', 'proteo', 'tank'], valentim: ['herues', 'proteo', 'tank'], casadi: ['nux', 'atol', 'tank'], kudina: ['nux', 'recife', 'tank'], semena: ['nux', 'recife', 'tank'],
+  marquezin: ['mormaji', 'mare', 'tank'], chou: ['lacosta', '', 'tank'],
+};
+ROSTER.forEach(c => { const sp = SPONSORED[c.id]; if (!sp) return; const K = SPONSOR_KITS[sp[0]];
+  c.look.outfit = { top: sp[2], pat: K.pat, c1: K.c1, c2: K.c2, bot: c.fem ? 'shortinho' : 'shortDry', bc: K.bc, logo: K.logo };
+  if (sp[1]) c.look.racket = sp[1]; });
 // mais jogadores para a partida rápida, do nível amador ao circuito (overall ~52 a 80); fictícios
 {
   const SK = ['#f1cfae', '#e2b48f', '#d2a07a', '#c68a5e', '#a8704a', '#8d5a3b', '#6b4229'], HR = ['#120c08', '#2b1d14', '#3a2615', '#5a3a1e', '#6a3f1d', '#a8743a', '#c99a5a'];
