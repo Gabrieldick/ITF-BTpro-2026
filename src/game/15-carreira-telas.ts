@@ -106,6 +106,7 @@ function crPlayerHTML() {
 }
 // aparência do seu jogador: dá para mudar a qualquer momento da carreira (vale a partir da próxima partida)
 const HAIR_ST = [['', 'Automático'], ['curto', 'Curto'], ['raspado', 'Raspado'], ['careca', 'Careca'], ['cacheado', 'Cacheado'], ['topete', 'Topete'], ['moicano', 'Moicano'], ['longo', 'Longo'], ['rabo', 'Rabo de cavalo'], ['coque', 'Coque'], ['tranca', 'Trança']];
+const BUILDS = [['atletico', 'Atlético'], ['esguio', 'Magro'], ['forte', 'Forte (musculoso)'], ['compacto', 'Pesado']]; // só a aparência
 const BEARDS = [['', 'Sem barba'], ['barba', 'Barba'], ['cavanhaque', 'Cavanhaque'], ['bigode', 'Bigode']];
 const ACCS = [['cap', 'Boné'], ['visor', 'Viseira'], ['band', 'Faixa'], ['none', 'Nada']];
 const lookAcc = L => L.cap ? 'cap' : L.visor ? 'visor' : L.headband ? 'band' : 'none';
@@ -117,7 +118,8 @@ function crLookHTML() {
     + '<div class="cr-look"><label class="cr-field">Corte ' + sel('crLkHair', HAIR_ST, L.hairStyle) + '</label>'
     + (me.fem ? '' : '<label class="cr-field">Barba ' + sel('crLkBeard', BEARDS, L.beard) + '</label>')
     + '<label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
-    + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label></div>'
+    + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label>'
+    + '<label class="cr-field">Biotipo ' + sel('crLkBuild', BUILDS, me.build || 'atletico') + '</label></div>'
     + crOutfitHTML()
     + '<p class="cr-note">Vale a partir da próxima partida.</p>';
 }
@@ -145,6 +147,7 @@ function bindLook() {
   on('crLkBeard', v => { L().beard = v; });
   on('crLkAcc', v => { const l = L(); delete l.cap; delete l.visor; delete l.headband; if (v === 'cap') l.cap = '#fbf6ea'; else if (v === 'visor') l.visor = '#fbf6ea'; else if (v === 'band') l.headband = '#ff5a1f'; else l.headband = ''; }); // '' impede a faixa automática
   on('crLkGlass', v => { L().glasses = !!v; });
+  on('crLkBuild', v => { $s.CR.me.build = v; });
   on('crOfOn', v => { if (v) L().outfit = { top: 'tee', pat: 'liso', bot: 'short', c1: '#1f6fd1', c2: '#fbf6ea', bc: '#17324d', logo: '' }; else delete L().outfit; });
   const OF = () => L().outfit || {};
   on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = v; });
@@ -534,7 +537,7 @@ function renderCrNew() {
 function crStart() {
   const v = n => { const i = document.querySelector('input[name=' + n + ']:checked'); return i ? i.value : null; };
   crForm.fem = v('crGen') === 'f'; crForm.style = v('crStyle') || 'completo'; crForm.perfil = v('crPerfil') || 'promessa'; crForm.acc = v('crAcc') || 'cap'; crForm.canhoto = v('crHand') === 'c';
-  crCreate({ uf: $('crUf') ? $('crUf').value : 'SP', hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, attrs: crForm.attrs, start: +($('crStart') ? $('crStart').value : 0) || 0, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
+  crCreate({ uf: $('crUf') ? $('crUf').value : 'SP', hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', build: $('crBuild') ? $('crBuild').value : 'atletico', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, attrs: crForm.attrs, start: +($('crStart') ? $('crStart').value : 0) || 0, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
   crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo ' + TIERS[$s.CR.startTier || 0].nome + ', ache um parceiro e suba no ranking.'; saveCareer(); renderCareer();
 }
 // pelo menu principal sempre abre a tela de escolher/criar (a carreira aberta é salva e fechada); a volta de uma partida continua indo direto

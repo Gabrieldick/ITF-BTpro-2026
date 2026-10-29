@@ -1084,8 +1084,8 @@ function crSimRating(mm, won) {
   const sc = String(mm.score || '').match(/(\d+)\D+(\d+)/), hi = sc ? Math.max(+sc[1], +sc[2]) : 6, lo = sc ? Math.min(+sc[1], +sc[2]) : 3;
   const margin = hi ? (hi - lo) / hi : .4;
   let dOvr = 0; try { if (!t.mixed && mine && opp) dOvr = crTeamOvr(opp) - crTeamOvr(mine); } catch (e) {}
-  // na mesma faixa das notas jogadas: vitória apertada ~7,9, normal ~8,3, lavada ~8,9; derrota apertada ~6,6, de lavada ~5,8
-  let r = won ? 7.6 + margin * 1.3 : 6.9 - margin * 1.1;
+  // na mesma faixa das notas jogadas: vitória apertada ~7,4, normal ~7,8, lavada ~8,4; derrota apertada ~6,2, de lavada ~5,4
+  let r = won ? 7.1 + margin * 1.3 : 6.5 - margin * 1.1;
   r += clamp(dOvr / 10, -.5, .5) * (won ? .6 : .4) + gauss() * .4;
   if (r > 9) r = 9 + (r - 9) * .5;
   return Math.round(clamp(r, 3, 9.6) * 10) / 10;
