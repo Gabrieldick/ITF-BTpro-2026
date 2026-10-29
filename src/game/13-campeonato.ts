@@ -49,7 +49,7 @@ function renderChampSetup() {
   const poolA = ROSTER.filter(c => champPick.cat === 'fem' ? c.fem : !c.fem).sort(byOvr);
   const poolB = ROSTER.filter(c => champPick.cat === 'masc' ? !c.fem : c.fem).sort(byOvr);
   const cu = champPick.custom[champPick.cat] || { a: t.a, b: t.b };
-  const opt = (pool, sel) => pool.map(c => '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + overall(c.a) + ' · ' + nameOf(c) + '</option>').join('');
+  const opt = (pool, sel) => pool.map(c => '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + overall(c.a) + ' · ' + (c.canhoto ? 'L' : 'R') + ' · ' + nameOf(c) + '</option>').join('');
   $('cpA').innerHTML = opt(poolA, cu.a); $('cpB').innerHTML = opt(poolB, cu.b);
 }
 const SEED_ORDER = [[0, 7], [3, 4], [2, 5], [1, 6]];

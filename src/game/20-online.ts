@@ -837,7 +837,7 @@ function renderRoom(force) {
   { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + ' (' + rkSummary(k) + ')</option>').join(''); rs.value = want; } }
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
-    $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + mine.cc.id + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
+    $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + mine.cc.id + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + (mine.cc.canhoto ? 'L' : 'R') + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + (c.canhoto ? 'L' : 'R') + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
     $('onPick').disabled = L.playing;
   }
   document.querySelectorAll('input[name=onKind]').forEach(r => { r.checked = r.value === L.kind; r.disabled = !host || L.playing; });
@@ -860,7 +860,7 @@ function renderSeats(L, me, host, force) {
     const o = L.seats[s], m = o && memberOf(L, o), mineS = o === me;
     let h = '<div class="on-seat' + (mineS ? ' mine' : '') + '"><small>' + (single ? 'Jogador' : SEAT_SIDE[s] === 'dir' ? 'Direita' : 'Esquerda') + '</small>';
     if (m) h += '<span class="who">' + esc(m.name) + (mineS ? ' (você)' : '') + '</span><small>' + esc(charLabel(m.pick)) + '</small>';
-    else if (host) h += '<span class="who cpu">CPU</span><select class="cr-sel" data-cpu="' + s + '"' + (L.playing ? ' disabled' : '') + '>' + byOvr().map(c => '<option value="' + c.id + '"' + (c.id === L.cpu[s] ? ' selected' : '') + (L.members.some(x => x.pick === c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + esc(nameOf(c)) + '</option>').join('') + '</select>';
+    else if (host) h += '<span class="who cpu">CPU</span><select class="cr-sel" data-cpu="' + s + '"' + (L.playing ? ' disabled' : '') + '>' + byOvr().map(c => '<option value="' + c.id + '"' + (c.id === L.cpu[s] ? ' selected' : '') + (L.members.some(x => x.pick === c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + (c.canhoto ? 'L' : 'R') + ' · ' + esc(nameOf(c)) + '</option>').join('') + '</select>';
     else h += '<span class="who cpu">CPU</span><small>' + esc(charLabel(L.cpu[s])) + '</small>';
     if (!L.playing && (!o || mineS)) h += '<button type="button" class="ghost sm" data-seat="' + (mineS ? '' : s) + '">' + (mineS ? 'Levantar' : 'Sentar aqui') + '</button>';
     return h + '</div>';
@@ -957,7 +957,7 @@ function qFill() {
   // personagens das carreiras salvas na nuvem da sua conta (valor 'cr:<id>'), no topo da lista
   const ccs = (CL.sess ? QCC.list : []).filter(o => okCat(o.c)).map(o => ({ v: 'cr:' + o.id, c: o.c }));
   const sel = list.some(c => c.id === QPREF.pick) || ccs.some(o => o.v === QPREF.pick) ? QPREF.pick : (ccs[0] && ccs[0].v) || (list.find(c => c.id === S.settings.pick.me) || list[0] || {}).id || '';
-  $('onQPick').innerHTML = ccs.map(o => '<option value="' + o.v + '">★ ' + overall(o.c.a) + ' · ' + esc(o.c.name) + ' (sua carreira' + (cat === 'misto' ? ' · ' + (o.c.fem ? 'fem' : 'masc') : '') + ')</option>').join('') + list.map(c => '<option value="' + c.id + '">' + overall(c.a) + ' · ' + esc(nameOf(c)) + ' (' + c.pais + (cat === 'misto' ? ' · ' + (c.fem ? 'fem' : 'masc') : '') + ')</option>').join('');
+  $('onQPick').innerHTML = ccs.map(o => '<option value="' + o.v + '">★ ' + overall(o.c.a) + ' · ' + (o.c.canhoto ? 'L' : 'R') + ' · ' + esc(o.c.name) + ' (sua carreira' + (cat === 'misto' ? ' · ' + (o.c.fem ? 'fem' : 'masc') : '') + ')</option>').join('') + list.map(c => '<option value="' + c.id + '">' + overall(c.a) + ' · ' + (c.canhoto ? 'L' : 'R') + ' · ' + esc(nameOf(c)) + ' (' + c.pais + (cat === 'misto' ? ' · ' + (c.fem ? 'fem' : 'masc') : '') + ')</option>').join('');
   $('onQPick').value = sel; // a escolha salva continua valendo (a lista da nuvem pode chegar depois)
   const rs = $('onQRk'); if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + ' (' + rkSummary(k) + ')</option>').join('');
   rs.value = QPREF.rk || '';
