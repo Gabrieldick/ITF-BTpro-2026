@@ -212,7 +212,9 @@ function assignee(team) {
       const split = (a.pos.x + b.pos.x) / 2, zLine = (a.pos.z + b.pos.z) / 2, land = predictLanding();
       let bx = land.x;
       if (Math.abs(ball.vel.z) > .5) { const t = (zLine - ball.pos.z) / ball.vel.z, lt = Math.abs((land.z - ball.pos.z) / ball.vel.z); if (t > 0 && t < lt) bx = ball.pos.x + ball.vel.x * t; }
-      const side = Math.abs(bx - split) < .25 ? (Math.abs(bx - a.pos.x) < Math.abs(bx - b.pos.x) ? a : b) : (Math.sign(bx - split) === Math.sign(a.pos.x - split) ? a : b);
+      // bola no meio: fica com quem pega de forehand (o combinado das duplas de beach tennis; ninguém fica esperando o outro)
+      const fh = o => sideOf(o, { x: bx, z: zLine }) > 0, mid = Math.abs(bx - split) < .6;
+      const side = mid && fh(a) !== fh(b) ? (fh(a) ? a : b) : Math.abs(bx - split) < .25 ? (Math.abs(bx - a.pos.x) < Math.abs(bx - b.pos.x) ? a : b) : (Math.sign(bx - split) === Math.sign(a.pos.x - split) ? a : b);
       const other = side === a ? b : a, ps = side === a ? pa : pb, po = side === a ? pb : pa;
       who = (!ps || !ps.ok) && po && po.ok ? other : side;
     }
@@ -545,15 +547,26 @@ function homeOf(p) {
   // dupla como elástico: os dois deslizam para o lado de onde a próxima bola vai sair e ficam mais juntos;
   // o parceiro também acompanha a posição real do companheiro
   const A = aiP(p), fx = ball.state === 'live' ? clamp(predictLanding().x, -C.halfW, C.halfW) : ball.pos.x;
-  const center = clamp(fx * (A.homeShift ?? .5), -1.7, 1.7), hw = (A.homeHw ?? 1.8) - Math.abs(center) * .18;
+  // fase do ponto (a dupla anda junta, como amarrada por uma corda):
+  // · nosso lob fundo: o adversário vai bater lá do fundo, na defensiva → os dois sobem para fechar a rede
+  // · nossa bola sobrou alta perto da rede deles (vai vir smash) → os dois recuam e abrem para defender
+  // · bola nossa baixa/rápida no pé de quem está na rede → seguram a posição e fecham um pouco
+  let ph = 0, wideK = 0;
+  if (ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally') {
+    const l = predictLanding(), lz = Math.abs(l.z), apex = ball.apex || 0;
+    if (apex > 3.4 && lz > 5.2) ph = -clamp((lz - 5.2) / 1.6, 0, 1) * 1.25; // lob fundo: sobe
+    else if (apex > 2.6 && lz < 4.2) { ph = clamp((apex - 2.6) / 1.2, 0, 1) * 1.05; wideK = .35; } // bola de smash para eles: recua e abre
+    else if (apex < 2.2) ph = -.25; // pancada baixa: aperta
+  }
+  const center = clamp(fx * (A.homeShift ?? .5), -1.7, 1.7), hw = (A.homeHw ?? 1.8) - Math.abs(center) * .18 + wideK;
   let x = center + p.slot * hw;
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
   if (A.rush && ball.state === 'live' && S.lastTeam === p.team) ahead += A.rush; // depois do próprio golpe: sobe para a rede
   // formação escolhida para a sua dupla: o parceiro (CPU) fica colado na rede ou no fundo
   const fm = p.team === 0 && !p.isHuman ? S.settings.formation : '';
-  if (fm === 'rede' || fm === 'fundo') return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (fm === 'rede' ? 2.6 : 6.0)];
-  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (clamp(Math.min(deepMax, clamp((A.homeZ ?? 4.6) + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) + adZ, 3.2, 6.5) - ahead)];
+  if (fm === 'rede' || fm === 'fundo') return [clamp(x, -C.halfW + .3, C.halfW - .3), s * clamp((fm === 'rede' ? 2.6 : 6.0) + ph * .6, 2.3, 6.6)];
+  return [clamp(x, -C.halfW + .3, C.halfW - .3), s * clamp(clamp(Math.min(deepMax, clamp((A.homeZ ?? 4.6) + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) + adZ, 3.2, 6.5) - ahead + ph, 2.4, 6.6)];
 }
 // recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio
 function receiveX(p) {
