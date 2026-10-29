@@ -665,4 +665,11 @@ function updateAI(p, dt) {
   }
 }
 
-export { expectK, localInput, tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
+// lob: quem está do outro lado quase sempre é pego de surpresa e leva um instante para ler a bola subindo (mais no lob
+// chutado); às vezes antecipa e já sai correndo — mais quem lê bem o jogo e quando o adversário vem abusando do lob
+function lobSurprise(o, kick) {
+  const rd = attrK(o, 'leitura'), tl = oppTend(o.team).l;
+  if (Math.random() < clamp(.1 + .15 * rd + .35 * tl, 0, .55)) return 0; // antecipou
+  return (.16 + (kick ? .1 : 0)) * (1 - .3 * rd) * rand(.8, 1.2);
+}
+export { lobSurprise, expectK, localInput, tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
