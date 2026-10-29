@@ -5,7 +5,7 @@
 // contato ideal), refaz cada golpe com o tempo certo até o contato e suaviza os deslocamentos.
 // O replay anda no tempo do jogo (com câmera lenta suave nos lances decisivos) e cada clipe pode virar um vídeo.
 import * as THREE from 'three';
-import { TOSS_T, clamp, hScale } from './00-base';
+import { TOSS_T, clamp, hScale, lerp } from './00-base';
 import { S } from './01-estado';
 import { camera, renderer } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
@@ -163,12 +163,26 @@ function replayTick(dt) {
   applyAt(c, RP.t);
   return dt * RP.speed;
 }
-// câmera de transmissão: lateral, acompanha a bola com suavidade e aproxima um pouco na câmera lenta
+// câmera de transmissão com cortes: rali na câmera alta atrás do fundo (ou na lateral, alternando por clipe); na câmera
+// lenta (smash, golpe decisivo) corta seco para um close baixo em quem bate; volta para a principal depois
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
+let camMode = '', camTgt = null;
 function replayCamera(dt) {
-  const k = 1 - Math.exp(-dt * 2.2), zoom = 1 - (1 - RP.speed) * .35;
-  _v.set(9.2 * zoom, 3.1 * zoom + .4, ball.pos.z * .5 + 1.2); RP.cam.lerp(_v, k);
-  _w.set(ball.pos.x * .35, .9 + Math.min(ball.pos.y, 4) * .25, ball.pos.z * .75); RP.look.lerp(_w, 1 - Math.exp(-dt * 3.5));
+  const c = RP.list && RP.list[RP.i], main = c && c.n % 2 ? 'tv' : 'side';
+  let mode = RP.speed < .72 ? 'close' : main;
+  if (mode === 'close' && (!camTgt || camMode !== 'close')) { let best = null, bd = 9; PL().forEach(p => { const d = Math.hypot(p.pos.x - ball.pos.x, p.pos.z - ball.pos.z); if (d < bd) { bd = d; best = p; } }); camTgt = best; }
+  if (mode === 'close' && !camTgt) mode = main;
+  const cut = mode !== camMode; camMode = mode;
+  if (mode === 'close') {
+    const p = camTgt, f = p.team === 0 ? 1 : -1, sd = p.pos.x >= 0 ? -1 : 1;
+    const dz = Math.min(2.2, Math.max(0, Math.abs(p.pos.z) - .6)); // nunca do outro lado da rede
+    _v.set(p.pos.x + sd * 2.8, 1.3, p.pos.z - f * dz); _w.set(lerp(p.pos.x, ball.pos.x, .25), 1.15 + Math.min(ball.pos.y, 3) * .12, p.pos.z);
+  } else if (mode === 'tv') {
+    const f = c && c.R[0] && c.R[0].p[0] && c.R[0].p[0].z < 0 ? -1 : 1; // atrás do time de baixo da tela
+    _v.set(ball.pos.x * .2, 4.4, f * 13.5); _w.set(ball.pos.x * .35, .8, ball.pos.z * .3 - f * 1.5);
+  } else { const zoom = 1 - (1 - RP.speed) * .35; _v.set(9.2 * zoom, 3.1 * zoom + .4, ball.pos.z * .5 + 1.2); _w.set(ball.pos.x * .35, .9 + Math.min(ball.pos.y, 4) * .25, ball.pos.z * .75); }
+  if (cut) { RP.cam.copy(_v); RP.look.copy(_w); }
+  else { RP.cam.lerp(_v, 1 - Math.exp(-dt * (mode === 'close' ? 3 : 2.2))); RP.look.lerp(_w, 1 - Math.exp(-dt * 3.5)); }
   camera.position.copy(RP.cam); camera.lookAt(RP.look);
 }
 // ---------- vídeo: grava o canvas enquanto o clipe toca ----------
