@@ -10,10 +10,15 @@ import { particles } from './07-glb';
 // ---------- Qualidade gráfica ----------
 // resolução: base pela qualidade x escala dinâmica (cai quando o jogo não segura 60 fps)
 let resScale = 1;
-const basePR = () => { const dpr = window.devicePixelRatio || 1; return S.settings.gfx !== 'leve' ? Math.min(dpr, 1.5) : Math.min(dpr, 1); };
+// resolução escolhida: alta = nítida até em tela de alta densidade (2x); média = 1x; baixa = 75%; automática = pela
+// qualidade (1,5x ou 1x) e cai sozinha quando não segura 60 fps
+const resMode = () => S.settings.res || 'auto';
+const basePR = () => { const dpr = window.devicePixelRatio || 1, m = resMode();
+  if (m === 'alta') return Math.min(dpr, 2); if (m === 'media') return 1; if (m === 'baixa') return .75;
+  return S.settings.gfx !== 'leve' ? Math.min(dpr, 1.5) : Math.min(dpr, 1); };
 // com menu aberto a quadra fica só de fundo (escurecida atrás do painel): 38% da resolução, segue a 60 fps e libera a placa de vídeo
 let menuScale = 1;
-function applyPR() { renderer.setPixelRatio(basePR() * resScale * menuScale); }
+function applyPR() { renderer.setPixelRatio(basePR() * (resMode() === 'auto' ? resScale : 1) * menuScale); }
 function setMenuRes(on) { const v = on ? .38 : 1; if (v === menuScale) return; menuScale = v; applyPR(); }
 function setResScale(v) { if (Math.abs(v - resScale) < .01) return; resScale = v; applyPR(); }
 const getResScale = () => resScale;

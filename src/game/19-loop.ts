@@ -27,7 +27,7 @@ function perfTick(now, gap) {
   if (FPS.t < 1000) return;
   const fps = FPS.n * 1000 / FPS.t; FPS.n = 0; FPS.t = 0;
   const sc = getResScale();
-  if (S.settings.autoRes !== false && inPlay()) {
+  if (S.settings.autoRes !== false && (S.settings.res || 'auto') === 'auto' && inPlay()) {
     if (fps < 54) {
       FPS.good = 0;
       if (++FPS.bad >= 2) {

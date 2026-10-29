@@ -8,7 +8,7 @@ import { camera } from './02-render';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
-import { ac, surf } from './08-audio';
+import { ac, surf, applyGfx } from './08-audio';
 import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback, COURTS } from './09-interface';
 import { startJump, startToss } from './11-mira';
 import { adjustFov, rkInfo, startFromMenu, syncAssistButtons, toggleAssist } from './15-carreira-telas';
@@ -527,6 +527,8 @@ function toggleSound() {
 // online: a partida não para (o outro jogador continua); a pausa só abre o menu por cima
 function setPaused(v) { if (!inPlay() && v) return; { const sr = document.getElementById('btnSimRest'); if (sr) sr.hidden = !(S.careerActive && !NET.role); } if (NET.role) { S.paused = false; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } return; } S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
 function togglePause() { if (!inPlay()) return; setPaused(NET.role ? el.pause.hidden : !S.paused); }
+// gráficos e resolução valem na hora (não só na próxima partida)
+document.querySelectorAll('input[name=res], input[name=gfx]').forEach(i => i.addEventListener('change', () => { readMenu(); applyGfx(); saveSettings(); }));
 function saveSettings() { if (NET.role) return; // online: as escolhas da sala não sobrescrevem as suas
   // só marca como alterado (e sobe para a conta) quando algo mudou de verdade
   let changed = false, real = false;
@@ -539,13 +541,13 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil)
-  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
+  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = v('uniforms') || 'uniforme';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal'; S.settings.formation = ($('formSel') && $('formSel').value) || 'normal';
   S.quietSave = true; saveSettings(); S.quietSave = false;
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
-  set('mode', S.settings.mode); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
+  set('mode', S.settings.mode); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('uniforms', S.settings.uniforms || 'uniforme'); set('gender', S.settings.gender);
   $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'discreto'; fillLooks(); $('tacticSel').value = S.settings.tactic || 'normal'; if ($('formSel')) $('formSel').value = S.settings.formation || 'normal';
   renderRoster();
 }
