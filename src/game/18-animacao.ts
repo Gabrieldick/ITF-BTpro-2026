@@ -203,7 +203,7 @@ function animateAthlete(p, dt) {
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
   const crouch = pose.crouch * (1 - run * .35) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
-  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22, Math.min(.92 - crouch - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
+  m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouch - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
   if (!p.prevVel) p.prevVel = new V3();
   const acx = dt > 0 ? (p.vel.x - p.prevVel.x) / dt : 0, acz = dt > 0 ? (p.vel.z - p.prevVel.z) / dt : 0; p.prevVel.copy(p.vel);
@@ -326,6 +326,8 @@ function animateAthlete(p, dt) {
     if (sw) { const ph = (F0 ? 0 : Math.PI) + Math.PI * Math.min(1, sw.t), d = Math.atan2(Math.sin(ph - p.gait), Math.cos(ph - p.gait)); p.gait += d; }
     const bobT = sw ? (lerp(.014, -.026, clamp((sp - 2.2) / 2, 0, 1)) * Math.sin(Math.PI * Math.min(1, sw.t)) * p.strK) : 0;
     p.bobY = (p.bobY || 0) + (bobT - (p.bobY || 0)) * Math.min(1, dt * 18);
+    // peso sobre o pé de apoio: andando o quadril passa por cima da perna que está no chão (correndo quase não)
+    const wsT = sw ? (F0 ? 1 : -1) * .032 * (1 - run * .7) * p.strK : 0; p.wsx = (p.wsx || 0) + (wsT - (p.wsx || 0)) * Math.min(1, dt * 10);
     p.dip = (p.dip || 0) * Math.exp(-dt * 11); }
   // roupa: mola frouxa puxada pela aceleração (arrancou → a barra fica para trás; freou → vai para a frente), pelo vento
   // da corrida e pelo pisão (espaço do modelo: +z frente, +x esquerda)
