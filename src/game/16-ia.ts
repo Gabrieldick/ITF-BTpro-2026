@@ -101,15 +101,17 @@ function charSkill(p) {
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
   // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
   const stars = S.tutorial ? 1 : S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
-  let adj = stars ? [-.04, -.03, 0, .16, .32, .5][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  let adj = stars ? [-.04, -.03, 0, .18, .38, .62][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   if (aiModeOf(p)) adj = S.simAI && (S.simAI[p.team] || {}).adj != null ? S.simAI[p.team].adj : .5; // IA Treinada/Planejadora: leitura de jogo do Lendário
   else if (S.simAI) adj = 0;
+  // o seu parceiro (CPU) não sobe junto acima de 4 estrelas: a dificuldade alta é dos adversários, não um parceiro lendário
+  if (stars >= 4 && p.team === 0 && !p.isHuman && !S.simAI) adj = Math.min(adj, .18);
   if (S.careerActive && S.careerRival && p.team === 1) adj += .06; // clássico contra rival: a CPU vem mais focada (reação e decisões)
   // nível em curva, de ~35 a ~95: 50 → .10, 60 → .24, 73 → .58, 80 → .75, 90 → .90
   const kb = clamp(1 / (1 + Math.exp(-(overall(a) - 70) / 9)), 0, 1);
   // estrelas: mudam a leitura de jogo (reação, posicionamento, escolha do golpe, não furar a bola);
   // a técnica (qualidade, força, erro do golpe) continua sendo a do atributo: um 60 no Lendário ainda erra smash do fundo
-  const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
+  const k = clamp(kb + adj, 0, 1.4), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * (stars >= 5 && p.team === 1 ? .95 : .8), 0, 1.25);
   const dm = p.team === 1 && !stars && !S.simAI ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
     speed: P_SPEED * velMul(a.vel) * dm * (S.femPace ? .88 : 1), acc: accOf(a.vel) * dm * (S.femPace ? .85 : 1), react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), letGo: Math.min(.97, lerp(.3, .9, k)), // química: o parceiro reage mais rápido (a mira no buraco por nível, smart, fica desligada: o jogo e o treino são sem ela)
