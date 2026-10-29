@@ -997,7 +997,7 @@ function crEnter(opt) {
   $s.CR.money -= cost; if (opt.wild) $s.CR.wildcard = 0;
   const rnd = Math.random;
   const busy = new Set(['crme', $s.CR.partner]);
-  let lo = T.ovr[0] - 2, hi = T.ovr[1] + 2, field = [];
+  let lo = T.ovr[0] - (opt.tier >= 3 && opt.tier <= 6 && !opt.special ? 7 : 2), hi = T.ovr[1] + 2, field = []; // profissionais: faixa larga (duplas bem piores e melhores)
   const need = (T.draw - 1) * 2;
   while (field.length < need && hi < 120) {
     const localOnly = opt.special === 'estadual' || !!opt.uf;
@@ -1021,8 +1021,8 @@ function crEnter(opt) {
     for (let i = 0; i < L.length && pre.length < need - 2; i++) if (rnd() < pIn(i)) { pre.push(L[i][0], L[i][1]); if (i < 10) inTop.add(i); }
     for (let i = 0; i < Math.min(10, L.length) && inTop.size < 8; i++) if (!inTop.has(i)) { inTop.add(i); pre.splice(0, 0, L[i][0], L[i][1]); if (pre.length > need - 2) pre.length = need - 2; }
   }
-  { const inPre = new Set(pre.map(c => c.id)), mid = (T.ovr[0] + T.ovr[1]) / 2 + (opt.tier >= 7 ? 2 : 0); // a chave puxa para o meio da faixa do nível (não sorteia igual de 71 a 88)
-    field = field.filter(c => !inPre.has(c.id)).map(c => [c, Math.abs(crCharOvr(c) - mid) + rnd() * 12]).sort((x, y) => x[1] - y[1]).map(x => x[0]).slice(0, Math.max(0, need - pre.length)); }
+  { const inPre = new Set(pre.map(c => c.id)), mid = (T.ovr[0] + T.ovr[1]) / 2 + (opt.tier >= 3 ? 2 : 0) + (rnd() - .5) * 2; // a chave puxa para o meio da faixa do nível (não sorteia igual de 71 a 88)
+    field = field.filter(c => !inPre.has(c.id)).map(c => [c, Math.abs(crCharOvr(c) - mid) + rnd() * 22] /* faixa larga: vêm duplas bem melhores e piores */).sort((x, y) => x[1] - y[1]).map(x => x[0]).slice(0, Math.max(0, need - pre.length)); }
   field = pre.concat(field).sort((x, y) => crCharOvr(y) - crCharOvr(x));
   // do BT100 para cima as duplas fixas do circuito entram completas: quem veio sem o parceiro traz o parceiro, e saem os
   // avulsos mais fracos para caber (jogar separado só acontece no astro de ocasião abaixo, até o BT200)
