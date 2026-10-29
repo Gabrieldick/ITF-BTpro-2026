@@ -569,7 +569,7 @@ function renderPick(slot) {
   const c = charById(S.settings.pick[slot]);
   box.hidden = !activeSlots().includes(slot);
   const others = new Set(activeSlots().filter(k => k !== slot).map(k => S.settings.pick[k]));
-  const opts = pool().map(o => '<option value="' + o.id + '"' + (o.id === c.id ? ' selected' : '') + (others.has(o.id) ? ' disabled' : '') + '>' + overall(o.a) + ' · ' + nameOf(o).replace(/</g, '') + ' (' + o.pais + ') · ' + (o.canhoto ? 'canhoto' : 'destro') + (others.has(o.id) ? ' · em uso' : '') + '</option>').join('');
+  const opts = pool().map(o => '<option value="' + o.id + '"' + (o.id === c.id ? ' selected' : '') + (others.has(o.id) ? ' disabled' : '') + '>' + overall(o.a) + ' · ' + (o.canhoto ? 'L' : 'R') + ' · ' + nameOf(o).replace(/</g, '') + ' (' + o.pais + ')' + (others.has(o.id) ? ' · em uso' : '') + '</option>').join('');
   const bars = ATTRS.map(([k, lbl]) => { const v = attrOf(c.a, k); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 65 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + '</b>'; }).join('');
   box.innerHTML = '<div class="pick-h"><span class="who">' + SLOT_LABEL[slot] + '</span><button type="button" class="arw" data-d="-1" aria-label="Anterior">‹</button><button type="button" class="arw" data-d="1" aria-label="Próximo">›</button></div>'
     + '<select class="psel" id="sel-' + slot + '" aria-label="Escolher jogador da lista">' + opts + '</select>'
