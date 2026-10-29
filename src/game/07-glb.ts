@@ -336,6 +336,24 @@ function rebuildModel(p, look) {
   if (p.skin) { scene.remove(p.skin.holder); scene.remove(p.skin.racket); p.skin = null; }
   if (GLB.male && GLB.female) { try { attachSkin(p, look.fem ? GLB.female : GLB.male); } catch (e) { p.skin = null; } }
 }
+// visual do personagem em quadra: extras do id, aparência dele, uniforme do time (ou o uniforme próprio da carreira)
+function charLook(c, team, idx) {
+  const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
+  const OF = c.look && c.look.outfit; // blusa, estampa, cores, parte de baixo e logo do patrocinador no lugar do uniforme da equipe
+  if (OF) Object.assign(look, { shirt: OF.c1, shirt2: OF.c2, pattern: OF.pat, top: OF.top, bottom: OF.bot, shorts: OF.bc, logo: OF.logo || '' });
+  return look;
+}
+// prévia do jogador (editor da carreira): o modelo realista vestido como em quadra, parado; sem os modelos, o desenhado
+function makePreview(c) {
+  const look = charLook(c, 0, 0), g = c.fem ? GLB.female : GLB.male;
+  if (!g) { const m = makeAthlete(look); m.group.scale.setScalar(heightOf(c) / 1.8); return m.group; }
+  const root = SkeletonUtils.clone(g.scene);
+  root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; if (o.material) { o.material = o.material.clone(); if (/^(Beard|Goatee|Mustache|HairBuzz)/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -6; } } } });
+  const mh = new THREE.Box3().setFromObject(root).max.y || 1.8; root.userData.mh = mh;
+  dressSkin({ look, char: c }, root);
+  root.scale.setScalar(heightOf(c) / mh);
+  return root;
+}
 function assignCharacters() {
   const pk = S.settings.pick;
   // partida mista (homens e mulheres em quadra): a mulher joga com ~88% dos atributos (95 → 84), pela diferença física
@@ -349,10 +367,7 @@ function assignCharacters() {
     let a = c.rkIn ? Object.assign({}, c.a) : effA(c.a, racketBonus(p.rkKey)); // carreira: você já vem com a raquete (e o equipamento) somados
     if (mixed && c.fem) { const m = {}; for (const k in a) m[k] = Math.max(30, Math.round(a[k] * .885)); a = m; }
     p.char = Object.assign({}, c, { a });
-    const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
-    // uniforme próprio (carreira): blusa, estampa, cores, parte de baixo e logo do patrocinador no lugar do uniforme da equipe
-    const OF = c.look && c.look.outfit;
-    if (OF) Object.assign(look, { shirt: OF.c1, shirt2: OF.c2, pattern: OF.pat, top: OF.top, bottom: OF.bot, shorts: OF.bc, logo: OF.logo || '' });
+    const look = charLook(c, team, idx), OF = c.look && c.look.outfit;
     const lk = c.id + c.build + (S.settings.uniforms || '') + (S.settings.players === 'carol' ? 'C' : '') + (look.shirt || '') + (OF ? JSON.stringify(OF) : '') + (look.skin || '') + [look.hair, look.hairStyle, look.beard, look.headband, look.glasses, look.glassStyle, look.lens, look.cap, look.visor].join('|');
     if (p.lookKey !== lk || (GLB.male && GLB.female && !p.skin)) { rebuildModel(p, look); p.lookKey = lk; } // (os modelos 3D podem ter terminado de carregar depois)
     p.playStyle = playStyleOf(c);
@@ -494,4 +509,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };

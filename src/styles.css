@@ -807,3 +807,16 @@ body[data-tags="off"] .tag { display: none; }
 .tr-a .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 4px; } .tr-a .bar i { display: block; height: 100%; background: var(--ui-acc); }
 .on-queue { display: grid; gap: 6px; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--ui-line); background: rgba(51, 195, 255, .06); }
 .on-qrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* editor do jogador (carreira): prévia 3D + opções */
+.cr-edit { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(4, 10, 24, .72); backdrop-filter: blur(3px); padding: 16px; }
+.cr-edit[hidden] { display: none; }
+.cr-edit-box { width: min(980px, 100%); max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto 1fr; gap: 10px; background: var(--ui-bg2, #0b1a3a); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 14px; overflow: hidden; }
+.cr-edit-head { display: flex; justify-content: space-between; align-items: center; }
+.cr-edit-head b { font: 800 20px var(--f-ui); color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+.cr-edit-body { display: grid; grid-template-columns: 340px 1fr; gap: 16px; min-height: 0; }
+.cr-edit-prev { display: grid; justify-items: center; align-content: start; gap: 4px; background: radial-gradient(ellipse at 50% 70%, rgba(51,195,255,.18), rgba(0,0,0,0) 70%); border-radius: 12px; }
+.cr-edit-prev canvas { width: 340px; height: 460px; max-width: 100%; touch-action: none; cursor: grab; }
+.cr-edit-prev small { color: rgba(255,255,255,.55); font-size: 12px; }
+.cr-edit-opts { overflow: auto; min-height: 0; padding-right: 4px; }
+@media (max-width: 720px) { .cr-edit-body { grid-template-columns: 1fr; } .cr-edit-prev canvas { width: 220px; height: 300px; } }

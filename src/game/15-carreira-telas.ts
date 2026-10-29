@@ -6,7 +6,8 @@ import { ATTRS, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf,
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
-import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters } from './07-glb';
+import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview } from './07-glb';
+import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
 import { crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct } from './14-carreira';
@@ -100,7 +101,7 @@ function crPlayerHTML() {
     + '<p class="section-label">Partidas</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
     + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option></select></label>'
     + ($s.CR.me.pais === 'BRA' ? '<p class="section-label">Estado (estaduais e seleção estadual)</p><label class="cr-field"><select id="crMeUf" class="cr-sel">' + STATES.map(([k, n]) => '<option value="' + k + '"' + (k === ($s.CR.me.uf || 'SP') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' : '')
-    + crLookHTML()
+    + '<p class="section-label">Aparência e uniforme</p><div class="cta-row"><button type="button" class="cta" id="crEditBtn">✏️ Editar jogador</button></div>'
     + '<p class="section-label">Nacionalidade</p><label class="cr-field"><span class="cr-nat">' + flagSVG($s.CR.me.pais) + '<select id="crMeNat">' + COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === $s.CR.me.pais ? ' selected' : '') + '>' + c.nome + '</option>').join('') + '</select></span></label>'
     + '<div class="cta-row" style="margin-top:10px"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div></div>';
 }
@@ -110,7 +111,7 @@ const BUILDS = [['atletico', 'Atlético'], ['esguio', 'Magro'], ['forte', 'Forte
 const BEARDS = [['', 'Sem barba'], ['barba', 'Barba'], ['cavanhaque', 'Cavanhaque'], ['bigode', 'Bigode']];
 const ACCS = [['cap', 'Boné'], ['visor', 'Viseira'], ['band', 'Faixa'], ['none', 'Nada']];
 const lookAcc = L => L.cap ? 'cap' : L.visor ? 'visor' : L.headband ? 'band' : 'none';
-function crLookHTML() {
+function crEditHTML() {
   const me = $s.CR.me, L = me.look;
   const sw = (arr, key) => arr.map(c => '<button type="button" class="cr-sw' + (L[key] === c ? ' sel' : '') + '" data-look-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   const sel = (id, opts, v) => '<select id="' + id + '" class="cr-sel">' + opts.map(([k, n]) => '<option value="' + k + '"' + (k === (v || '') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
@@ -138,8 +139,8 @@ function crOutfitHTML() {
     + ($s.CR.sponsors.length ? '<p class="cr-note">Com o logo de um patrocinador na blusa, ele paga 20% a mais por semana.</p>' : '');
   return h;
 }
-function bindLook() {
-  const L = () => $s.CR.me.look, done = () => { crSyncChars(); saveCareer(); renderCareer(); };
+function bindLook(done) {
+  const L = () => $s.CR.me.look;
   document.querySelectorAll('[data-look-skin]').forEach(b => b.addEventListener('click', () => { L().skin = b.dataset.lookSkin; done(); }));
   document.querySelectorAll('[data-look-hair]').forEach(b => b.addEventListener('click', () => { L().hair = b.dataset.lookHair; done(); }));
   const on = (id, fn) => { const e = $(id); if (e) e.addEventListener('change', () => { fn(e.value); done(); }); };
@@ -152,6 +153,45 @@ function bindLook() {
   const OF = () => L().outfit || {};
   on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = v; });
   ['c1', 'c2', 'bc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k] = b.getAttribute('data-of-' + k); done(); } })));
+}
+// editor do jogador: janela com a prévia 3D (gira sozinha; arraste para girar) e as opções de aparência, biotipo e uniforme
+const ED = { el: null, r: null, scene: null, cam: null, model: null, rot: .5, drag: null, raf: 0 };
+function openEditor() {
+  if (!ED.el) {
+    const m = document.createElement('div'); m.id = 'crEdit'; m.className = 'cr-edit'; m.hidden = true;
+    m.innerHTML = '<div class="cr-edit-box"><div class="cr-edit-head"><b>Editar jogador</b><button type="button" class="cta sm" id="crEditOk">Pronto</button></div>'
+      + '<div class="cr-edit-body"><div class="cr-edit-prev"><canvas id="crEditCv" width="340" height="460"></canvas><small>Arraste para girar</small></div><div class="cr-edit-opts" id="crEditOpts"></div></div></div>';
+    document.body.append(m); ED.el = m;
+    const cv = $('crEditCv');
+    ED.r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); ED.r.outputColorSpace = THREE.SRGBColorSpace; ED.r.toneMapping = THREE.ACESFilmicToneMapping;
+    ED.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    ED.scene = new THREE.Scene(); ED.scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a7458, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(2, 4, 3); ED.scene.add(sun);
+    const rim = new THREE.DirectionalLight(0x9fd0ff, .9); rim.position.set(-3, 2, -3); ED.scene.add(rim);
+    ED.cam = new THREE.PerspectiveCamera(30, 340 / 460, .1, 50);
+    cv.addEventListener('pointerdown', e => { ED.drag = e.clientX; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', e => { if (ED.drag == null) return; ED.rot += (e.clientX - ED.drag) * .012; ED.drag = e.clientX; });
+    cv.addEventListener('pointerup', () => { ED.drag = null; });
+    $('crEditOk').addEventListener('click', closeEditor);
+    m.addEventListener('click', e => { if (e.target === m) closeEditor(); });
+  }
+  ED.el.hidden = false; renderEditor(); refreshPreview();
+  const loop = () => { if (ED.el.hidden) return; if (ED.drag == null) ED.rot += .006; if (ED.model) ED.model.rotation.y = ED.rot; ED.r.render(ED.scene, ED.cam); ED.raf = requestAnimationFrame(loop); };
+  cancelAnimationFrame(ED.raf); loop();
+}
+function closeEditor() { if (!ED.el) return; ED.el.hidden = true; cancelAnimationFrame(ED.raf); renderCareer(); }
+function renderEditor() {
+  const box = $('crEditOpts'); box.innerHTML = crEditHTML();
+  bindLook(() => { crSyncChars(); saveCareer(); renderEditor(); refreshPreview(); });
+}
+function refreshPreview() {
+  if (ED.model) { ED.scene.remove(ED.model); ED.model.traverse(o => { if (o.isMesh && o.material && o.material.dispose) o.material.dispose(); }); }
+  const me = $s.CR.me, c = Object.assign({}, me, { id: 'crme', look: me.look });
+  try { ED.model = makePreview(c); } catch (e) { ED.model = null; }
+  if (!ED.model) return;
+  ED.scene.add(ED.model); ED.model.rotation.y = ED.rot;
+  const h = new THREE.Box3().setFromObject(ED.model).max.y || 1.8;
+  ED.cam.position.set(0, h * .6, h * 2.25); ED.cam.lookAt(0, h * .52, 0);
 }
 function crPersonRow(c, extra, btn) {
   const fw = c.id === 'crme' ? null : crFormWord(c.id);
@@ -394,7 +434,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-gear]').forEach(bt => bt.addEventListener('click', () => { const g = GEAR.find(x => x.id === bt.dataset.gear); if ($s.CR.money >= g.preco) { $s.CR.money -= g.preco; if (g.staff) $s.CR.staff[g.id] = true; else $s.CR.gear.push(g.id); $s.CR.lastMsg = 'Comprou: ' + g.nome + '.'; crSyncChars(); saveCareer(); } renderCareer(); }));
   body.querySelectorAll('input[name=crGames]').forEach(r => r.addEventListener('change', () => { $s.CR.games = +r.value; saveCareer(); }));
   const ms = $('crMeSide'); if (ms) ms.addEventListener('change', () => { $s.CR.side = ms.value; saveCareer(); });
-  if (crTab === 'jogador') bindLook();
+  if (crTab === 'jogador') { const eb = $('crEditBtn'); if (eb) eb.addEventListener('click', openEditor); }
   const mu = $('crMeUf'); if (mu) mu.addEventListener('change', () => { $s.CR.me.uf = mu.value; crSyncChars(); saveCareer(); renderCareer(); });
   const mn = $('crMeNat'); if (mn) mn.addEventListener('change', () => { $s.CR.me.pais = mn.value; crSyncChars(); saveCareer(); renderCareer(); });
   const rst = $('crReset'); if (rst) rst.addEventListener('click', () => { if (rst.dataset.sure) { $s.CR = null; saveCareer(); crSyncChars(); renderCareer(); } else { rst.dataset.sure = '1'; rst.textContent = 'Clique de novo para confirmar'; } });
