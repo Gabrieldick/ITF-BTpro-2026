@@ -1015,8 +1015,10 @@ function crEnter(opt) {
     const PR = $s.CR.pairs || {}, fem = !!$s.CR.me.fem, seen = new Set(), L = [];
     crWorld().forEach(c => { const m = PR[c.id]; if (!m || seen.has(c.id) || busy.has(c.id) || busy.has(m)) return; const mc = crChar(m); if (!mc || !!mc.fem !== fem) return; seen.add(c.id); seen.add(m); L.push([c, mc, npcPts(c.id) + npcPts(m)]); });
     L.sort((x, y) => y[2] - x[2]);
-    const pIn = i => i < 10 ? (opt.tier >= 8 ? .9 : .75) : i < 25 ? (opt.tier >= 8 ? .7 : .55) : .3;
-    for (let i = 0; i < L.length && pre.length < need - 2; i++) if (rnd() < pIn(i)) pre.push(L[i][0], L[i][1]);
+    // top 10: quase sempre 8 ou mais delas no BT400 (e quase todas no Sand Series e no Mundial)
+    const pIn = i => i < 10 ? (opt.tier >= 8 ? .95 : .85) : i < 25 ? (opt.tier >= 8 ? .7 : .55) : .3, inTop = new Set();
+    for (let i = 0; i < L.length && pre.length < need - 2; i++) if (rnd() < pIn(i)) { pre.push(L[i][0], L[i][1]); if (i < 10) inTop.add(i); }
+    for (let i = 0; i < Math.min(10, L.length) && inTop.size < 8; i++) if (!inTop.has(i)) { inTop.add(i); pre.splice(0, 0, L[i][0], L[i][1]); if (pre.length > need - 2) pre.length = need - 2; }
   }
   { const inPre = new Set(pre.map(c => c.id)); field = field.filter(c => !inPre.has(c.id)).sort(() => rnd() - .5).slice(0, Math.max(0, need - pre.length)); }
   field = pre.concat(field).sort((x, y) => crCharOvr(y) - crCharOvr(x));
@@ -1131,9 +1133,9 @@ function crSimOne(m, isMine) {
   { const st = (3 - ($s.CR.stars || 3)) * 1.5; if (A.me) sa += st; if (B.me) sb += st; } // dificuldade em estrelas vale na partida simulada também
   // jogos entre as outras duplas: cada dupla tem a 'semana' dela no torneio (fase boa ou ruim, ±1,7 de nível em média) e o
   // resultado é menos previsível que o seu jogo; assim a favorita chega mais vezes, mas a final nem sempre é a mesma
-  if (!isMine) { const F = t.form = t.form || {}, fk = tm => tm.a + '+' + (tm.b || ''), fm = tm => { const k = fk(tm); if (F[k] == null) F[k] = Math.round(gaussR(Math.random) * 1.7 * 10) / 10; return F[k]; };
+  if (!isMine) { const F = t.form = t.form || {}, fk = tm => tm.a + '+' + (tm.b || ''), fm = tm => { const k = fk(tm); if (F[k] == null) F[k] = Math.round(gaussR(Math.random) * (t.tier >= 8 ? 1.1 : 1.7) * 10) / 10; return F[k]; }; // Sand Series e Mundial: as favoritas quase sempre chegam
     sa += fm(A); sb += fm(B); }
-  const pA = 1 / (1 + Math.exp(-(sa - sb) / (isMine ? 3 : 4)));
+  const pA = 1 / (1 + Math.exp(-(sa - sb) / (isMine || t.tier >= 8 ? 3 : 4)));
   m.w = Math.random() < pA ? m.a : m.b;
   const N = isMine ? $s.CR.games : 6; m.score = crScore(N);
 }
