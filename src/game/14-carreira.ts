@@ -1316,8 +1316,8 @@ function crFinishTour() {
     $s.CR.honors = $s.CR.honors || []; if (place <= 1) $s.CR.honors.unshift({ s: $s.CR.season, name: T.nome || t.name, place: place === 0 ? 'Campeão' : 'Vice' });
   }
   if (place === 0 && !t.special && !t.singles) { $s.CR.titles[t.tier] = ($s.CR.titles[t.tier] || 0) + 1; $s.CR.maxTier = Math.max($s.CR.maxTier, Math.min(8, t.tier + 1));
-    const bon = $s.CR.sponsors.reduce((x, sp) => x + sp.bonus, 0); if (bon) { $s.CR.money += bon; t.sponsorBonus = bon; }
-    crAddFama(1 + t.tier * 1.6 + (crInv('marca') >= 3 ? 2 : 0) + (crInv('midia') >= 3 ? 4 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
+    const bon = $s.CR.sponsors.reduce((x, sp) => x + sp.bonus, 0) + ($s.CR.master ? $s.CR.master.bonus : 0); if (bon) { $s.CR.money += bon; t.sponsorBonus = bon; }
+    crAddFama(1 + t.tier * 1.6 + (crInv('marca') >= 3 ? 2 : 0) + (crInv('midia') >= 3 ? 4 : 0)); if (Math.random() < .35) crMaybeSponsor(true); if (Math.random() < .3) crMaybeMaster(true); }
   else if (place === 1 && !t.special && !t.singles) crAddFama(.3 + t.tier * .5);
   if (!nation && !t.singles) crChemAdd(2); // torneio inteiro juntos
   if (!nation) { const mv = place === 0 ? 15 : place === 1 ? 7 : place === 2 ? 2 : -8 - (crTeamOvr(t.teams[t.me]) >= T.ovr[1] ? 4 : 0); const mm = crMood(mv); if (mm) t.moodMsg = mm; }
@@ -1430,7 +1430,8 @@ function crSignature() {
   if (crInv('marca') < 2) return;
   const b = Object.assign({}, RACKET_STATS.zenite.b);
   Object.entries($s.CR.me.a).sort((x, y) => y[1] - x[1]).slice(0, 3).forEach(([k]) => { b[k] = (b[k] || 0) + 2; });
-  RACKET_STATS.assinatura = { nome: 'Assinatura ' + $s.CR.me.name, preco: 0, desc: 'Sua raquete sob medida, da sua marca.', b };
+  const mb = $s.CR.master ? $s.CR.master.brand + ' ' : '';
+  RACKET_STATS.assinatura = { nome: mb + 'Assinatura ' + $s.CR.me.name, preco: 0, desc: mb ? 'Sua raquete sob medida, feita pela ' + $s.CR.master.brand + ' (patrocínio master).' : 'Sua raquete sob medida, da sua marca.', b };
 }
 // renda semanal dos investimentos
 function crInvWeek() {
@@ -1468,7 +1469,7 @@ function crNextWeek(note) {
   const spm = crSponsorWeek(); if (spm) msg += (msg ? ' ' : '') + spm;
   const ivg = crInvWeek(); if (ivg) msg += (msg ? ' ' : '') + 'Negócios renderam ' + money(ivg) + '.';
   crFamaWeek(); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
-  crMaybeSponsor();
+  crMaybeSponsor(); crMaybeMaster();
   if (Math.random() < .3) { const ev = crRollEvent(); if (ev) msg += (msg ? ' ' : '') + ev; }
   if ($s.CR.week > SEASON_WEEKS) {
     const pos = crRank();
@@ -1692,7 +1693,7 @@ function crMigrate() {
   if (!$s.CR) return;
   $s.CR.wardrobe = $s.CR.wardrobe || { tops: ['tee'], bots: ['short'], pats: ['liso'] }; // roupas compradas
   $s.CR.wardrobe.acc = $s.CR.wardrobe.acc || []; if ($s.CR.me && $s.CR.me.look && !$s.CR.me.look.acc) $s.CR.me.look.acc = {}; // acessórios (o seu jogador não sorteia munhequeira/manguito)
-  $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0; $s.CR.wcFree = $s.CR.wcFree || 0;
+  $s.CR.fama = $s.CR.fama || 0; $s.CR.mOffers = $s.CR.mOffers || []; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0; $s.CR.wcFree = $s.CR.wcFree || 0;
   if ($s.CR.staff.tecnico) { delete $s.CR.staff.tecnico; $s.CR.staff.tec2 = true; }
   if ($s.CR.staff.preparador) { delete $s.CR.staff.preparador; $s.CR.staff.prep = true; }
   $s.CR.inv = $s.CR.inv || {};
@@ -1789,8 +1790,47 @@ function crMaybeSponsor(force) {
   const weeks = Math.random() < .5 ? 13 : 26;
   $s.CR.spOffers.push({ brand: free[Math.floor(Math.random() * free.length)], weekly, bonus: weekly * (3 + Math.floor(Math.random() * 4)), weeks });
 }
+// ---------- patrocínio master: a marca de raquete que veste você ----------
+// a marca dá as raquetes dela (até um teto de preço pela sua fama, e a assinatura passa a ser feita por ela) e paga bem;
+// em troca, enquanto o contrato durar, só raquetes e uniforme (logo na camisa) dessa marca
+const MASTER = [
+  { brand: 'Nux', fama: 55, k: 1.5 }, { brand: "Herue's", fama: 55, k: 1.5 }, { brand: 'Kuna', fama: 35, k: 1.25 }, { brand: 'Ana Sport', fama: 35, k: 1.2 },
+  { brand: 'Zanb', fama: 30, k: 1.15 }, { brand: 'Adibas', fama: 40, k: 1.3 }, { brand: 'Shank', fama: 25, k: 1.1 }, { brand: 'Vizion', fama: 25, k: 1.1 },
+  { brand: 'Drop Shut', fama: 15, k: 1 }, { brand: 'Mormaji', fama: 10, k: .9 },
+];
+const rkBrand = k => { const n = (RACKET_STATS[k] || {}).nome || ''; const m = MASTER.find(x => n.startsWith(x.brand + ' ')); return m ? m.brand : ''; };
+// teto de preço das raquetes que a marca te dá (fama 30 → ~$30 mil; 60 → ~$150 mil; 90 → todas)
+const crMasterCap = () => 6000 + Math.pow($s.CR.fama || 0, 2) * 40;
+const crMasterFree = k => !!$s.CR.master && rkBrand(k) === $s.CR.master.brand && RACKET_STATS[k].preco <= crMasterCap();
+// pode usar esta raquete? com patrocínio master, só as da marca (e a assinatura, que ela fabrica)
+const crRacketOk = k => !$s.CR.master || k === 'assinatura' || rkBrand(k) === $s.CR.master.brand;
+function crMaybeMaster(force) {
+  if ($s.CR.master || ($s.CR.mOffers || []).length >= 2 || crMaxTier() < 4) return;
+  if (!force && Math.random() > .03 + ($s.CR.fama || 0) / 500) return;
+  const used = new Set(($s.CR.mOffers || []).map(o => o.brand)), L = MASTER.filter(m => ($s.CR.fama || 0) >= m.fama && !used.has(m.brand)); if (!L.length) return;
+  const m = L[Math.floor(Math.random() * L.length)];
+  const weekly = Math.round((60 + 40 * Math.pow(crMaxTier() + 1, 1.7) + ($s.CR.fama || 0) * 9) * m.k * rand(.85, 1.15) / 10) * 10;
+  ($s.CR.mOffers = $s.CR.mOffers || []).push({ brand: m.brand, weekly, bonus: weekly * 5, weeks: 52 });
+}
+function crMasterSign(i) {
+  const o = ($s.CR.mOffers || []).splice(i, 1)[0]; if (!o || $s.CR.master) return;
+  $s.CR.master = Object.assign(o, { left: o.weeks }); $s.CR.mOffers = [];
+  // já entrega a melhor raquete da marca que cabe no contrato (se você ainda não usa uma dela)
+  const best = Object.keys(RACKET_STATS).filter(k => crMasterFree(k)).sort((a, b) => RACKET_STATS[b].preco - RACKET_STATS[a].preco)[0];
+  if (best && !$s.CR.rackets.includes(best)) $s.CR.rackets.push(best);
+  crSignature();
+  if (!crRacketOk($s.CR.racket)) { const k = $s.CR.rackets.includes('assinatura') ? 'assinatura' : best; if (k) { $s.CR.racket = k; $s.CR.me.look.racket = k; } }
+  const OF = ($s.CR.me.look || {}).outfit; if (OF) OF.logo = o.brand;
+  $s.CR.lastMsg = 'Patrocínio master assinado com a ' + o.brand + ': raquetes da marca liberadas' + (best ? ' (' + RACKET_STATS[best].nome + ' já é sua)' : '') + '. Agora só raquetes e uniforme da ' + o.brand + '.';
+  crSyncChars(); saveCareer();
+}
+function crMasterTake(k) { if (!crMasterFree(k) || $s.CR.rackets.includes(k)) return; $s.CR.rackets.push(k); $s.CR.racket = k; $s.CR.me.look.racket = k; $s.CR.lastMsg = 'A ' + $s.CR.master.brand + ' te mandou a ' + RACKET_STATS[k].nome + '.'; saveCareer(); }
+// romper o contrato: multa de 8 semanas
+function crMasterEnd() { const m = $s.CR.master; if (!m) return; const fee = m.weekly * 8; if ($s.CR.money < fee) { $s.CR.lastMsg = 'A multa para romper é ' + money(fee) + '.'; return; }
+  $s.CR.money -= fee; $s.CR.master = null; crSignature(); $s.CR.lastMsg = 'Contrato master rompido (multa de ' + money(fee) + '). Pode voltar a usar qualquer marca.'; saveCareer(); }
 function crSponsorWeek() {
   let paid = 0; const ended = [];
+  { const M = $s.CR.master; if (M) { paid += Math.round(M.weekly * crBizSponsorK()); if (--M.left <= 0) { ended.push(M.brand + ' (master)'); $s.CR.master = null; crSignature(); } } }
   const lg = (($s.CR.me.look || {}).outfit || {}).logo; // logo na camisa: a marca paga 20% a mais
   $s.CR.sponsors.forEach(s => { paid += Math.round(s.weekly * (s.brand === lg ? 1.2 : 1) * crBizSponsorK()); s.left--; if (s.left <= 0) ended.push(s.brand); });
   $s.CR.sponsors = $s.CR.sponsors.filter(s => s.left > 0);
@@ -1860,6 +1900,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };

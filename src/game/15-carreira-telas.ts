@@ -10,7 +10,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
+import { crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -207,9 +207,9 @@ function crOutfitHTML() {
   const sw = (key, cur) => OUTFIT_COLORS.map(c => '<button type="button" class="cr-sw' + (cur === c ? ' sel' : '') + '" data-of-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   h += '<div class="cr-look"><label class="cr-field">Blusa ' + sel('crOfTop', own(W.tops, TOP_KINDS), O.top) + '</label><label class="cr-field">Estampa ' + sel('crOfPat', own(W.pats, PATTERNS), O.pat) + '</label>'
     + '<label class="cr-field">Embaixo ' + sel('crOfBot', own(W.bots, BOT_KINDS), O.bot) + '</label>'
-    + '<label class="cr-field">Logo ' + sel('crOfLogo', [['', 'Sem logo']].concat($s.CR.sponsors.map(x => [x.brand, x.brand])), O.logo) + '</label></div>'
+    + '<label class="cr-field">Logo ' + sel('crOfLogo', $s.CR.master ? [[$s.CR.master.brand, $s.CR.master.brand + ' (master)']] : [['', 'Sem logo']].concat($s.CR.sponsors.map(x => [x.brand, x.brand])), $s.CR.master ? $s.CR.master.brand : O.logo) + '</label></div>'
     + '<div class="cr-sws"><div><span class="cr-lbl">Cor da blusa</span>' + sw('c1', O.c1) + '</div><div><span class="cr-lbl">Cor da estampa</span>' + sw('c2', O.c2) + '</div><div><span class="cr-lbl">Cor de baixo</span>' + sw('bc', O.bc) + '</div></div>'
-    + ($s.CR.sponsors.length ? '<p class="cr-note">Com o logo de um patrocinador na blusa, ele paga 20% a mais por semana.</p>' : '');
+    + ($s.CR.master ? '<p class="cr-note">Patrocínio master: o uniforme é da ' + $s.CR.master.brand + ' (só o logo dela na camisa).</p>' : $s.CR.sponsors.length ? '<p class="cr-note">Com o logo de um patrocinador na blusa, ele paga 20% a mais por semana.</p>' : '');
   return h;
 }
 function bindLook(done) {
@@ -222,7 +222,7 @@ function bindLook(done) {
   on('crLkAcc', v => { const l = L(); delete l.cap; delete l.visor; delete l.headband; if (v === 'cap') l.cap = '#fbf6ea'; else if (v === 'visor') l.visor = '#fbf6ea'; else if (v === 'band') l.headband = '#ff5a1f'; else l.headband = ''; }); // '' impede a faixa automática
   on('crLkGlass', v => { L().glasses = !!v; });
   on('crLkBuild', v => { $s.CR.me.build = v; });
-  on('crOfOn', v => { if (v) L().outfit = { top: 'tee', pat: 'liso', bot: 'short', c1: '#1f6fd1', c2: '#fbf6ea', bc: '#17324d', logo: '' }; else delete L().outfit; });
+  on('crOfOn', v => { if (v) L().outfit = { top: 'tee', pat: 'liso', bot: 'short', c1: '#1f6fd1', c2: '#fbf6ea', bc: '#17324d', logo: $s.CR.master ? $s.CR.master.brand : '' }; else delete L().outfit; });
   const A = () => (L().acc = L().acc || {});
   document.querySelectorAll('[data-acc-head]').forEach(b => b.addEventListener('click', () => { const l = L(), c = b.dataset.accHead; if (l.cap) l.cap = c; else if (l.visor) l.visor = c; else if (l.headband) l.headband = c; done(); }));
   ['wrist', 'sleeve', 'calf'].forEach(k => document.querySelectorAll('[data-acc-' + k + ']').forEach(b => b.addEventListener('click', () => { A()[k] = b.getAttribute('data-acc-' + k); done(); })));
@@ -231,7 +231,7 @@ function bindLook(done) {
   on('crAcLens', v => { A().lens = v; if (v) L().glasses = true; });
   on('crAcHead', v => { A().headFab = v; });
   const OF = () => L().outfit || {};
-  on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = v; });
+  on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = $s.CR.master ? $s.CR.master.brand : v; });
   ['c1', 'c2', 'bc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k] = b.getAttribute('data-of-' + k); done(); } })));
 }
 // editor do jogador: janela com a prévia 3D (gira sozinha; arraste para girar) e as opções de aparência, biotipo e uniforme
@@ -302,7 +302,7 @@ function crShopHTML() {
   const rk = Object.entries(RACKET_STATS).sort((x, y) => ($s.CR.rackets.includes(y[0]) - $s.CR.rackets.includes(x[0])) || (y[0] === 'assinatura') - (x[0] === 'assinatura') || x[1].preco - y[1].preco).map(([k, r]) => {
     const own = $s.CR.rackets.includes(k), eq = $s.CR.racket === k, price = Math.round(r.preco * (1 - disc));
     const bonus = bonusChips(r.b), tot = Object.values(r.b).reduce((t, v) => t + v, 0), kd = rkKind(r.b);
-    return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small></div>' + (eq ? '' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + '>' + money(price) + '</button>') + '</div>';
+    return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small></div>' + (eq ? '' : !crRacketOk(k) ? '<button class="ghost sm" disabled title="Patrocínio master: só raquetes da ' + $s.CR.master.brand + '">Só ' + esc($s.CR.master.brand) + '</button>' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : crMasterFree(k) ? '<button class="cta sm" data-mtake="' + k + '" title="A ' + $s.CR.master.brand + ' te dá esta raquete">Pegar grátis</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + (crMasterFree(k) === false && $s.CR.master ? ' title="Acima do teto do contrato (' + money(crMasterCap()) + '): compre ou ganhe mais fama"' : '') + '>' + money(price) + '</button>') + '</div>';
   }).join('');
   // equipamentos por categoria: um em uso de cada (como a raquete); comprar o melhor de uma categoria já põe em uso
   const on = new Set(gearOn($s.CR.gear, $s.CR.gearEq));
@@ -394,7 +394,13 @@ function crBizHTML() {
 function crSponsorHTML() {
   const act = $s.CR.sponsors.map(x => '<div class="cr-row me"><span class="cr-ic">🤝</span><div><b>' + esc(x.brand) + '</b><small>' + money(x.weekly) + ' por semana · bônus de ' + money(x.bonus) + ' por título · faltam ' + x.left + ' semanas</small></div></div>').join('');
   const off = $s.CR.spOffers.map((x, i) => '<div class="cr-row"><span class="cr-ic">✉️</span><div><b>' + esc(x.brand) + '</b><small>' + money(x.weekly) + ' por semana durante ' + x.weeks + ' semanas · bônus de ' + money(x.bonus) + ' por título</small></div><div class="cta-row"><button class="cta sm" data-sp-ok="' + i + '"' + ($s.CR.sponsors.length >= 2 ? ' disabled title="Máximo de 2 patrocinadores"' : '') + '>Assinar</button><button class="ghost sm" data-sp-no="' + i + '">Recusar</button></div></div>').join('');
-  return '<div class="cr-energy"><span>Fama</span><span class="bar"><i class="hi" style="width:' + Math.round($s.CR.fama) + '%"></i></span><b>' + Math.round($s.CR.fama) + '</b></div>'
+  const M = $s.CR.master, mo = $s.CR.mOffers || [];
+  const master = '<p class="section-label">Patrocínio master (marca de raquete)</p>' + (M
+    ? '<div class="cr-row me"><span class="cr-ic">⭐</span><div><b>' + esc(M.brand) + ' · master</b><small>' + money(M.weekly) + ' por semana · bônus de ' + money(M.bonus) + ' por título · faltam ' + M.left + ' semanas · raquetes da marca grátis até ' + money(crMasterCap()) + ' (na Loja)</small></div><button class="ghost sm" id="crMasterEnd" title="Multa de 8 semanas">Romper (' + money(M.weekly * 8) + ')</button></div>'
+    : mo.length ? mo.map((x, i) => '<div class="cr-row"><span class="cr-ic">⭐</span><div><b>' + esc(x.brand) + ' · master</b><small>' + money(x.weekly) + ' por semana durante ' + x.weeks + ' semanas · bônus de ' + money(x.bonus) + ' por título · raquetes da marca grátis (até ' + money(crMasterCap()) + ') e a sua assinatura feita por ela</small></div><div class="cta-row"><button class="cta sm" data-msign="' + i + '">Assinar</button><button class="ghost sm" data-mno="' + i + '">Recusar</button></div></div>').join('')
+    : '<p class="cr-note">Nenhuma marca de raquete ainda. A partir do BT50, com fama, as marcas (Nux, Herue\'s, Kuna…) fazem propostas.</p>')
+    + '<p class="cr-note">Com patrocínio master você só pode usar raquetes e o uniforme (logo) dessa marca enquanto durar o contrato.</p>';
+  return master + '<div class="cr-energy"><span>Fama</span><span class="bar"><i class="hi" style="width:' + Math.round($s.CR.fama) + '%"></i></span><b>' + Math.round($s.CR.fama) + '</b></div>'
     + '<p class="cr-note">A fama acompanha a sua posição no ranking e o peso dos seus títulos: hoje o seu nível sustenta <b>' + Math.round(crFamaTarget()) + '</b> de fama. Títulos e eventos (TV, redes, exibições) dão picos, mas ela volta aos poucos para esse valor. Quanto mais fama e mais alto o seu nível, melhores as propostas. Até 2 patrocinadores ao mesmo tempo (camisa e boné).</p>'
     + '<p class="section-label">Contratos ativos</p>' + (act || '<p class="cr-note">Nenhum ainda.</p>')
     + '<p class="section-label">Propostas</p>' + (off || '<p class="cr-note">Nenhuma proposta no momento. Vença torneios e apareça para atrair marcas.</p>');
@@ -548,7 +554,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-up]').forEach(bt => bt.addEventListener('click', () => { crUpgrade(bt.dataset.up); renderCareer(); }));
   body.querySelectorAll('[data-partner]').forEach(bt => bt.addEventListener('click', () => { crSetPartner(bt.dataset.partner); $s.CR.lastMsg = 'Nova dupla: ' + nameOf(crChar(bt.dataset.partner)) + '.'; renderCareer(); }));
   body.querySelectorAll('[data-drop]').forEach(bt => bt.addEventListener('click', () => { $s.CR.partner = null; saveCareer(); renderCareer(); }));
-  body.querySelectorAll('[data-buy]').forEach(bt => bt.addEventListener('click', () => { const k = bt.dataset.buy, r = RACKET_STATS[k], price = Math.round(r.preco * (1 - ($s.CR.discount || 0))); if ($s.CR.money >= price) { $s.CR.money -= price; $s.CR.discount = 0; $s.CR.rackets.push(k); $s.CR.racket = k; $s.CR.me.look.racket = k; $s.CR.lastMsg = 'Comprou a ' + r.nome + '.'; saveCareer(); } renderCareer(); }));
+  body.querySelectorAll('[data-buy]').forEach(bt => bt.addEventListener('click', () => { const k = bt.dataset.buy, r = RACKET_STATS[k], price = Math.round(r.preco * (1 - ($s.CR.discount || 0))); if ($s.CR.money >= price && crRacketOk(k)) { $s.CR.money -= price; $s.CR.discount = 0; $s.CR.rackets.push(k); $s.CR.racket = k; $s.CR.me.look.racket = k; $s.CR.lastMsg = 'Comprou a ' + r.nome + '.'; saveCareer(); } renderCareer(); }));
   body.querySelectorAll('[data-life]').forEach(bt => bt.addEventListener('click', () => { crLifeBuy(bt.dataset.life); renderCareer(); }));
   body.querySelectorAll('[data-pact]').forEach(bt => bt.addEventListener('click', () => { crPartnerAct(bt.dataset.pact); renderCareer(); }));
   body.querySelectorAll('[data-goal]').forEach(bt => bt.addEventListener('click', () => { crPickGoal(+bt.dataset.goal); renderCareer(); }));
@@ -564,7 +570,11 @@ function bindCareerBody() {
     cd.classList.add('one'); cd.addEventListener('click', e => { if (!e.target.closest('button, a, select, input')) bs[0].click(); }); });
   body.querySelectorAll('[data-t-go]').forEach(bt => bt.addEventListener('click', () => { crTab = bt.dataset.tGo; renderCareer(); }));
   body.querySelectorAll('[data-shop]').forEach(bt => bt.addEventListener('click', () => { shopTab = bt.dataset.shop; renderCareer(); }));
-  body.querySelectorAll('[data-equip]').forEach(bt => bt.addEventListener('click', () => { $s.CR.racket = bt.dataset.equip; $s.CR.me.look.racket = $s.CR.racket; saveCareer(); renderCareer(); }));
+  body.querySelectorAll('[data-mtake]').forEach(bt => bt.addEventListener('click', () => { crMasterTake(bt.dataset.mtake); renderCareer(); }));
+  body.querySelectorAll('[data-msign]').forEach(bt => bt.addEventListener('click', () => { crMasterSign(+bt.dataset.msign); renderCareer(); }));
+  body.querySelectorAll('[data-mno]').forEach(bt => bt.addEventListener('click', () => { $s.CR.mOffers.splice(+bt.dataset.mno, 1); saveCareer(); renderCareer(); }));
+  const mEnd = $('crMasterEnd'); if (mEnd) mEnd.addEventListener('click', () => { crMasterEnd(); renderCareer(); });
+  body.querySelectorAll('[data-equip]').forEach(bt => bt.addEventListener('click', () => { if (!crRacketOk(bt.dataset.equip)) return; $s.CR.racket = bt.dataset.equip; $s.CR.me.look.racket = $s.CR.racket; saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-cloth]').forEach(bt => bt.addEventListener('click', () => {
     const [slot, k] = bt.dataset.cloth.split(':'), c = (CLOTH_CAT[slot] || {})[k], W = $s.CR.wardrobe; W[slot] = W[slot] || [];
     if (!c || $s.CR.money < c.preco || W[slot].includes(k) || exOk(c.ex)) return;
