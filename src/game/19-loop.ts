@@ -49,11 +49,11 @@ addEventListener('keydown', e => { if (e.key && e.key.toLowerCase() === 'f' && !
 let menuMode = false, menuN = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  // com um menu aberto (menu, carreira, campeonato) a quadra vira fundo: metade da resolução e sombras a cada 4 quadros,
+  // com um menu aberto (menu, carreira, campeonato) a quadra vira fundo: resolução baixa e a sombra fica parada (o sol não
+  // anda e os jogadores estão parados; a câmera girando não muda o mapa de sombra),
   // assim o fundo segue fluido e a página responde na hora (o hover dos botões demorava com o 3D pesado atrás)
   const inMenu = !NET.role && document.body.classList.contains('in-menu');
   if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu); renderer.shadowMap.autoUpdate = !inMenu; renderer.shadowMap.needsUpdate = true; }
-  if (inMenu && ++menuN % 4 === 0) renderer.shadowMap.needsUpdate = true;
   perfTick(now, now - last);
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === 'guest') { if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião
