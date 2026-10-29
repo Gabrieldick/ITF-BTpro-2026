@@ -813,7 +813,7 @@ function tutShowHow(i) {
 }
 function tutStart() {
   const i = tutCur, l = TUT[i]; if (!l) return;
-  $('tutHow').hidden = true; ac(); readMenu(); S.careerDrill = false;
+  $('tutHow').hidden = true; ac(); readMenu(); S.careerDrill = false; S.tutPending = true;
   startDrill(l.kind, (ok, pass) => {
     const m = tutMedal(ok, DRILL_LVL[0].goal[l.kind], DRILLS[l.kind].max), best = Math.max(m, tutMed[l.kind] || 0);
     tutMed[l.kind] = best; try { localStorage.setItem('pdo-tutorial', JSON.stringify(tutMed)); } catch (e) {}

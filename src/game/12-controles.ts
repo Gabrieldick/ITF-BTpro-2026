@@ -31,7 +31,7 @@ const ZONE = { facil: .095, medio: .068, dificil: .048 };
 // dificuldade de timing de quem joga (1 a 6 estrelas): janela do perfeito maior com menos estrelas, menor com mais.
 // Carreira: as estrelas da carreira; fora dela: a configuração de cada um (no online, a de cada jogador)
 const TIMING_K = [1.45, 1.2, 1, .87, .75, .66];
-function timingLv(c) { const v = c && c.remote ? c.pd : S.careerActive ? S.careerStars : S.settings.playerDiff; return clamp(Math.round(+v || 3), 1, 6); }
+function timingLv(c) { const v = c && c.remote ? c.pd : S.tutorial ? 1 : S.careerActive ? S.careerStars : S.settings.playerDiff; /* tutorial: sempre 1 estrela */ return clamp(Math.round(+v || 3), 1, 6); }
 const timingK = c => TIMING_K[timingLv(c) - 1];
 const RES_WORD = { perfeito: 'PERFEITO', cedo: 'CEDO', tarde: 'TARDE', voleio: 'VOLEIO' };
 const LOB_MAX = 1.25;

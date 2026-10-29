@@ -100,7 +100,7 @@ function charSkill(p) {
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
   // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
-  const stars = S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
+  const stars = S.tutorial ? 1 : S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
   let adj = stars ? [-.04, -.03, 0, .16, .32, .5][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   if (aiModeOf(p)) adj = S.simAI && (S.simAI[p.team] || {}).adj != null ? S.simAI[p.team].adj : .5; // IA Treinada/Planejadora: leitura de jogo do Lendário
   else if (S.simAI) adj = 0;
@@ -371,7 +371,7 @@ function updateHuman(dt, c = localCtl()) {
       // timing: o miolo do movimento (15%–60%) é perfeito; cedo/tarde demais perde, mas não zera
       // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
       if (sw.meter && !mod.volley) mod.meterSmash = true;
-      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp((p.netHuman ? p.pdRemote : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3, 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
+      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp((p.netHuman ? p.pdRemote : S.tutorial ? 1 : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3, 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
       if (!r.mis) noteTend(p, sw.type);
