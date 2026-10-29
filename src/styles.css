@@ -893,3 +893,8 @@ body[data-tags="off"] .tag { display: none; }
 .cr-calev b { color: #fff; font-size: 13px; } .cr-calev small { display: block; opacity: .7; font-size: 11.5px; }
 .cr-cald { text-align: center; } .cr-cald b { font-size: 20px; display: block; line-height: 1; }
 .cr-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; } .cr-legend span { border-left: 4px solid var(--tc); padding: 1px 6px; background: rgba(255,255,255,.05); border-radius: 4px; }
+
+/* card de uma ação só: clicável inteiro */
+.cr-card.one { cursor: pointer; }
+.cr-card.one:hover { border-color: var(--ui-acc); background-color: var(--ui-tile2, rgba(51,195,255,.08)); }
+.cr-card.one:hover button { background: var(--ui-acc); color: #041232; border-color: var(--ui-acc); }

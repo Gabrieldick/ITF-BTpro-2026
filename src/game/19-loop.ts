@@ -46,8 +46,12 @@ function perfTick(now, gap) {
   }
 }
 addEventListener('keydown', e => { if (e.key && e.key.toLowerCase() === 'f' && !e.repeat && !(e.target && e.target.tagName === 'INPUT')) { FPS.show = !FPS.show; if (FPS.el) FPS.el.hidden = !FPS.show; } });
+let menuDraw = 0;
 function frame(now) {
   requestAnimationFrame(frame);
+  // com um menu cobrindo a tela (menu, carreira, campeonato) a quadra atrás quase não aparece: desenha só 4 vezes por segundo,
+  // assim a página responde na hora (o hover dos botões demorava porque cada quadro 3D ocupava o navegador)
+  if (!NET.role && document.body.classList.contains('in-menu')) { if (now - menuDraw < 250) { last = now; return; } menuDraw = now; last = now - 16; }
   perfTick(now, now - last);
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (NET.role === 'guest') { if (NET.guestTick) NET.guestTick(dt); } // convidado: só aplica o estado que chega do anfitrião

@@ -556,6 +556,9 @@ function bindCareerBody() {
   body.querySelectorAll('[data-ev]').forEach(bt => bt.addEventListener('click', () => { crResolveEvent(+bt.dataset.ev); renderCareer(); }));
   body.querySelectorAll('[data-sp-ok]').forEach(bt => bt.addEventListener('click', () => { const o = $s.CR.spOffers.splice(+bt.dataset.spOk, 1)[0]; if (o && $s.CR.sponsors.length < 2) { $s.CR.sponsors.push(Object.assign(o, { left: o.weeks })); $s.CR.lastMsg = 'Contrato assinado com ' + o.brand + '.'; } saveCareer(); renderCareer(); }));
   body.querySelectorAll('[data-sp-no]').forEach(bt => bt.addEventListener('click', () => { $s.CR.spOffers.splice(+bt.dataset.spNo, 1); saveCareer(); renderCareer(); }));
+  // card com uma ação só (treinar, aulas, desafio, inscrever num torneio…): o card inteiro vale como o botão
+  body.querySelectorAll('.cr-card').forEach(cd => { const bs = cd.querySelectorAll('button, select, input'); if (bs.length !== 1 || bs[0].tagName !== 'BUTTON' || bs[0].disabled) return;
+    cd.classList.add('one'); cd.addEventListener('click', e => { if (!e.target.closest('button, a, select, input')) bs[0].click(); }); });
   body.querySelectorAll('[data-t-go]').forEach(bt => bt.addEventListener('click', () => { crTab = bt.dataset.tGo; renderCareer(); }));
   body.querySelectorAll('[data-shop]').forEach(bt => bt.addEventListener('click', () => { shopTab = bt.dataset.shop; renderCareer(); }));
   body.querySelectorAll('[data-equip]').forEach(bt => bt.addEventListener('click', () => { $s.CR.racket = bt.dataset.equip; $s.CR.me.look.racket = $s.CR.racket; saveCareer(); renderCareer(); }));
