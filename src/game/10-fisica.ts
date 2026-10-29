@@ -237,10 +237,11 @@ function doHit(p, type, q, isServe, mod) {
   }
   // jogo feminino (só mulheres em quadra): bola mais lenta — smash e saque perdem mais, o resto um pouco —, o que dá mais
   // tempo para defender e alonga as trocas (~1,5 a 2× o masculino)
-  const fpK = S.femPace ? 1 - (key === 'smash' ? .2 : isServe ? .14 : .09) : 1;
+  const fpK = S.femPace ? 1 - (key === 'smash' ? .24 : isServe ? .16 : .13) : 1;
   if (spec.speed) spec.speed *= (mod.speedMul || 1) * fpK;
   if (spec.T) spec.T /= (mod.speedMul || 1) * fpK;
-  spec.noise *= mod.noiseMul || 1;
+  spec.noise *= (mod.noiseMul || 1) * (S.femPace ? .72 : 1); // feminino: mais consistente (menos erro não forçado)
+  if (S.femPace && spec.margin !== undefined) spec.margin *= 1.25;
   // saque lob PERFEITO: sobe mais que o lob mais alto do jogo normal, cai devagar e fundo (o recebedor erra mais)
   if (isServe && type === 'lob' && mod.perfect) {
     const lk = Math.min(1, (attrK(p, 'lob') + attrK(p, 'saque')) / 2);

@@ -261,7 +261,7 @@ function animateAthlete(p, dt) {
   // centímetros num passo longo); vale no quadro seguinte, suave
   { const need = Math.min(sp * (2 / cad) * (1 - swF) * dirK, .9) / hs / 2 + .03, hc = Math.max(.7, .07 + Math.sqrt(Math.max(0, .83 * .83 - need * need)));
     p.hipCap = sp > .4 ? (p.hipCap ?? hc) + (hc - (p.hipCap ?? hc)) * Math.min(1, dt * 8) : Math.min(9, (p.hipCap ?? 9) + dt * .6); }
-  const T0 = 2 / cad, capW = Math.min(1.7 * reach, .9) * hs * dirK; // ciclo de cada pé (s) · distância que o pé fica no chão (m)
+  const T0 = 2 / cad, capW = Math.min(1.7 * reach, .9) * Math.sqrt(hs) * dirK; // (gente mais baixa: passada proporcionalmente maior, não passinhos) // ciclo de cada pé (s) · distância que o pé fica no chão (m)
   const thrW = clamp(Math.min(sp * T0 * (1 - swF) * dirK, capW), .14, .8);
   const Te = sp > .3 ? Math.min(T0, thrW / (sp * (1 - swF))) : T0; // perna curta para a velocidade: passos mais rápidos, não mais longos
   const leadD = thrW / 2, thr = thrW / hs, stepDur = clamp(swF * Te, .12, .4), spn = Math.max(sp, .01);

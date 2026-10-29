@@ -112,7 +112,7 @@ function charSkill(p) {
   const k = clamp(kb + adj, 0, 1.35), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * .8, 0, 1.2);
   const dm = p.team === 1 && !stars && !S.simAI ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: P_SPEED * velMul(a.vel) * dm * (S.femPace ? .95 : 1), acc: accOf(a.vel) * dm * (S.femPace ? .95 : 1), react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), letGo: Math.min(.97, lerp(.3, .9, k)), // química: o parceiro reage mais rápido (a mira no buraco por nível, smart, fica desligada: o jogo e o treino são sem ela)
+    speed: P_SPEED * velMul(a.vel) * dm * (S.femPace ? .88 : 1), acc: accOf(a.vel) * dm * (S.femPace ? .85 : 1), react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), letGo: Math.min(.97, lerp(.3, .9, k)), // química: o parceiro reage mais rápido (a mira no buraco por nível, smart, fica desligada: o jogo e o treino são sem ela)
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, kt), .3, .9), clamp(lerp(.72, 1, kt), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)
@@ -171,7 +171,7 @@ function planIntercept(p, speed, react) {
     if (pos.z * sgn < .3 || pos.y < .5 - .12 * shortK(p) || pos.y > 2.6 * hScale(p)) continue;
     const d = runDist(p.team, pos.x - p.pos.x, pos.z - p.pos.z); // para trás conta mais longe
     lastP = { pt: pos.clone(), t, ok: false };
-    const back = (p.team === 0 ? pos.z > p.pos.z + .3 : pos.z < p.pos.z - .3), ac = accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (back ? BACK_ACC : 1);
+    const back = (p.team === 0 ? pos.z > p.pos.z + .3 : pos.z < p.pos.z - .3), ac = (accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .85 : 1)) * (back ? BACK_ACC : 1);
     if (runTime(Math.max(0, d - .9), speed, ac) + react <= t) { // saindo parado: conta a arrancada
       // devolução de saque: entre os pontos que dá para alcançar, fica com o mais perto; no resto do jogo, o primeiro
       if (S.rally !== 1) { lastP.ok = true; return lastP; }
@@ -222,7 +222,7 @@ function moveToward(p, tx, tz, maxSpeed, dt) {
   const dx = tx - p.pos.x, dz = tz - p.pos.z; const d = Math.hypot(dx, dz);
   let vx = 0, vz = 0;
   if (d > .05) { const s = Math.min(maxSpeed, d * 5); vx = dx / d * s; vz = backZ(p.team, dz / d * s); }
-  const acc = (skillOf(p).acc || accOf(p.char ? attrOf(p.char.a, 'vel') : 70)) * (p.burst > 0 ? 1.6 : 1); // logo depois do split step a primeira passada é mais explosiva
+  const acc = (skillOf(p).acc || (accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .85 : 1))) * (p.burst > 0 ? 1.6 : 1); // logo depois do split step a primeira passada é mais explosiva
   [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, vx, vz, dt, backAcc(p.team, vz, acc));
 }
 function receiving(p) {
@@ -273,7 +273,7 @@ function updateHuman(dt, c = localCtl()) {
   p.inputX = ix; p.inputZ = iz;
   const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
   if (p.diveRec > 0) p.diveRec = Math.max(0, p.diveRec - dt);
-  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .95 : 1) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8); // depois do mergulho: começa a 55% e volta ao normal
+  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8); // depois do mergulho: começa a 55% e volta ao normal
   let tvx = ix * spd, tvz = iz * spd;
   if (p.dive) {
     p.dive.t += dt;
@@ -311,7 +311,7 @@ function updateHuman(dt, c = localCtl()) {
   // aceleração: arranca mais lento e vai ganhando velocidade; parar é rápido e trocar de direção custa uma passada
   // (logo depois do split step a primeira passada é mais explosiva)
   if (!p.dive) tvz = backZ(p.team, tvz); // para trás é mais lento
-  [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, tvx, tvz, dt, backAcc(p.team, tvz, accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (p.burst > 0 && len > .1 ? 1.6 : 1)));
+  [p.vel.x, p.vel.z] = accelStep(p.vel.x, p.vel.z, tvx, tvz, dt, backAcc(p.team, tvz, (accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .85 : 1)) * (p.burst > 0 && len > .1 ? 1.6 : 1)));
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);
   if (serving && S.mode === 'serve') { p.pos.z = 8.6 * s; p.pos.x = clamp(p.pos.x, -C.halfW + .1, C.halfW - .1); }
