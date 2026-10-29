@@ -162,7 +162,10 @@ function animateAthlete(p, dt) {
   const spU = p.split > 0 ? 1 - p.split / .26 : -1;
   const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .1 : 0);
   m.group.position.set(p.pos.x, jy, p.pos.z);
-  if (sp > .25) p.gait += dt * Math.PI * 2 * (1.35 + sp * .3);
+  // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
+  p.strK = (p.strK || 0) + ((sp > .25 ? 1 : 0) - (p.strK || 0)) * Math.min(1, dt * (sp > .25 ? 10 : 6));
+  const gF = 1.35 + Math.max(sp, .9) * .3; // passos por segundo (por perna)
+  if (p.strK > .01) p.gait += dt * Math.PI * 2 * gF;
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
   const dv = p.dive ? p.dive.t / p.dive.dur : -1, diveK = (dv < 0 ? 0 : dv < .3 ? dv / .3 : dv > .75 ? (1 - dv) / .25 : 1) * (p.dive ? .45 + .55 * (p.dive.sev ?? 1) : 1); // esticada curta: só abaixa
@@ -198,7 +201,11 @@ function animateAthlete(p, dt) {
   let lvx = cy * p.vel.x - sy * p.vel.z, lvz = sy * p.vel.x + cy * p.vel.z;
   const fwd = -lvz;
   const lv = Math.hypot(lvx, lvz) || 1; lvx /= lv; lvz /= lv;
-  const stride = clamp(sp * .1, 0, .5);
+  // ciclo do pé: no apoio fica preso na areia (recua na velocidade do corpo); no balanço sobe em arco e avança.
+  // apoio mais curto correndo que andando; o tamanho do passo é o que a velocidade pede (sem o pé escorregar)
+  const duty = lerp(.6, .4, run), stride = Math.min(.55, Math.max(sp, .6) * duty / (2 * gF)) * p.strK;
+  const footCyc = ph => { const t = ((ph / (Math.PI * 2)) % 1 + 1) % 1; if (t < duty) return [1 - 2 * t / duty, 0, -1]; const u = (t - duty) / (1 - duty); return [-Math.cos(Math.PI * u), Math.sin(Math.PI * u), u]; };
+  if (!p.footLock) { p.footLock = [null, null]; p.footOff = [[0, 0], [0, 0]]; }
   const air = jy > .05;
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1, L = m.legs[i];
@@ -207,7 +214,21 @@ function animateAthlete(p, dt) {
     const shuffle = sp > .25 && sp < 4.2 ? Math.abs(lvx) : 0; // deslocamento lateral: passo cruzado vira passo lateral
     const ph = p.gait + (i ? Math.PI * (1 - .45 * shuffle) : 0);
     let lift = 0;
-    if (sp > .25) { fx += lvx * stride * (1 - .4 * shuffle) * Math.cos(ph); fz += lvz * stride * Math.cos(ph); lift = Math.max(0, -Math.sin(ph)) * (.06 + sp * .026) * run; }
+    let swU = -1;
+    if (p.strK > .01) { const [fp, fl, u] = footCyc(ph); swU = u; fx += lvx * stride * (1 - .4 * shuffle) * fp; fz += lvz * stride * fp; lift = fl * (.05 + Math.min(sp, 6) * .022) * Math.max(run, .35) * p.strK; }
+    // pé grudado na areia: ao tocar o chão a posição dele fica gravada no mundo até levantar (o corpo passa por cima);
+    // no balanço a diferença para o ciclo some aos poucos (sem estalo). Golpe, mergulho e salto soltam o pé
+    const lockOK = !air && lift < .005 && lungeA < .05 && !p.dive && !(swingU >= 0 && swingU < .9);
+    if (lockOK) {
+      if (!p.footLock[i]) p.footLock[i] = [p.pos.x + cy * fx + sy * fz, p.pos.z - sy * fx + cy * fz];
+      const dx = p.footLock[i][0] - p.pos.x, dz = p.footLock[i][1] - p.pos.z, lx = cy * dx - sy * dz, lz = sy * dx + cy * dz;
+      if (Math.hypot(lx - fx, lz - fz) < .18 + .2 * p.strK) { p.footOff[i][0] = lx - fx; p.footOff[i][1] = lz - fz; fx = lx; fz = lz; }
+      else { p.footLock[i] = null; p.footOff[i][0] = p.footOff[i][1] = 0; } // esticou demais: o pé solta e acompanha
+    } else {
+      p.footLock[i] = null;
+      const k = swU >= 0 ? 1 - swU : Math.max(0, 1 - dt * 10) ; p.footOff[i][0] *= swU >= 0 ? 1 : k; p.footOff[i][1] *= swU >= 0 ? 1 : k;
+      if (swU >= 0) { fx += p.footOff[i][0] * k; fz += p.footOff[i][1] * k; if (swU > .97) p.footOff[i][0] = p.footOff[i][1] = 0; }
+    }
     let fy = .07 + lift;
     if (air) {
       const jp = p.jumpDur ? 1 - p.jump / p.jumpDur : .5, sw = jp < .45 ? 1 : -1;
