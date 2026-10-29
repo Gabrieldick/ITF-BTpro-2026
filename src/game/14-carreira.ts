@@ -641,7 +641,7 @@ function crWeekOptions(wk) {
     opts.push({ tier: t, name: t >= 3 && t < 9 ? city : city + (t < 3 ? ' · ' + T.curto : ''), up: t > top && t < 9 });
   });
   const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 8);
-  if ($s.CR.wildcard > 0 && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
+  if (($s.CR.wildcard > 0 || $s.CR.wcFree > 0) && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
   const open = crOpenWeek($s.CR.season, wk);
   const out = crSpecialOptions(wk).concat(open ? list : list.filter(o => o.tier === 9));
   const st = tiers.find(t => t < 9); // simples: o nível mais alto que tem torneio nesta semana
@@ -801,7 +801,7 @@ function crLifeBuy(id) {
   if (id === 'social') crAddFama(6);
   $s.CR.lastMsg = 'Comprado: ' + it.nome + '.'; saveCareer();
 }
-const crTravel = T => Math.round(T.travel * (crLife('carro') ? .7 : 1));
+const crTravel = T => Math.round(T.travel * (crLife('carro') ? .7 : 1) * crBizTravelK());
 // ---------- estados e seleções ----------
 const STATES = [['SP', 'São Paulo'], ['RJ', 'Rio de Janeiro'], ['SC', 'Santa Catarina'], ['BA', 'Bahia'], ['CE', 'Ceará'], ['PE', 'Pernambuco'], ['RS', 'Rio Grande do Sul'], ['PR', 'Paraná'], ['ES', 'Espírito Santo'], ['RN', 'Rio Grande do Norte'], ['AL', 'Alagoas'], ['PB', 'Paraíba'], ['MG', 'Minas Gerais'], ['DF', 'Distrito Federal']];
 // cidades (praias e quadras) de cada estado para os torneios amadores e estaduais, e as cores da arena (bandeira do estado)
@@ -994,7 +994,7 @@ function crEnter(opt) {
     if (!cand.length) { $s.CR.lastMsg = 'Ninguém aceitou ser seu parceiro neste torneio.'; return false; }
     $s.CR.partner = cand[0].id; $s.CR.mood = 55;
   }
-  $s.CR.money -= cost; if (opt.wild) $s.CR.wildcard = 0;
+  $s.CR.money -= cost; if (opt.wild) { if ($s.CR.wildcard > 0) $s.CR.wildcard = 0; else $s.CR.wcFree = 0; }
   const rnd = Math.random;
   const busy = new Set(['crme', $s.CR.partner]);
   let lo = T.ovr[0] - (opt.tier >= 3 && opt.tier <= 6 && !opt.special ? 7 : 2), hi = T.ovr[1] + 2, field = []; // profissionais: faixa larga (duplas bem piores e melhores)
@@ -1308,7 +1308,7 @@ function crFinishTour() {
   }
   if (place === 0 && !t.special && !t.singles) { $s.CR.titles[t.tier] = ($s.CR.titles[t.tier] || 0) + 1; $s.CR.maxTier = Math.max($s.CR.maxTier, Math.min(8, t.tier + 1));
     const bon = $s.CR.sponsors.reduce((x, sp) => x + sp.bonus, 0); if (bon) { $s.CR.money += bon; t.sponsorBonus = bon; }
-    crAddFama(1 + t.tier * 1.6 + (crInv('marca') >= 3 ? 2 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
+    crAddFama(1 + t.tier * 1.6 + (crInv('marca') >= 3 ? 2 : 0) + (crInv('midia') >= 3 ? 4 : 0)); if (Math.random() < .35) crMaybeSponsor(true); }
   else if (place === 1 && !t.special && !t.singles) crAddFama(.3 + t.tier * .5);
   if (!nation && !t.singles) crChemAdd(2); // torneio inteiro juntos
   if (!nation) { const mv = place === 0 ? 15 : place === 1 ? 7 : place === 2 ? 2 : -8 - (crTeamOvr(t.teams[t.me]) >= T.ovr[1] ? 4 : 0); const mm = crMood(mv); if (mm) t.moodMsg = mm; }
@@ -1355,7 +1355,52 @@ const INVEST = {
     { nome: 'CT de alto rendimento', preco: 200000, desc: 'Mais +35% de evolução e +2 de potencial (o limite dos seus atributos).', req: () => crTitlesAt(6) >= 2 ? '' : 'Precisa de dois títulos de BT200 ou maiores' },
     { nome: 'Academia de base', preco: 420000, desc: 'Mais +20% de evolução, +1 de potencial e mensalidades dos alunos toda semana.', req: () => crTitlesAt(8) >= 1 ? '' : 'Precisa de um título do Mundial' },
   ] },
+  moradia: { nome: 'Moradia', ic: '🏠', niveis: [
+    { nome: 'Apartamento na orla', preco: 18000, desc: '+2 de energia por semana (dorme perto da praia, menos trânsito).', req: () => '' },
+    { nome: 'Casa com piscina', preco: 140000, desc: '+4 de energia por semana e o humor do parceiro cai mais devagar (vocês treinam e descansam lá).', req: () => $s.CR.fama >= 25 ? '' : 'Precisa de 25 de fama' },
+    { nome: 'Mansão com quadra particular', preco: 750000, desc: '+6 de energia por semana, +0,5 ponto de evolução por treino e +1 de fama por semana (todo mundo quer conhecer).', req: () => crTitlesAt(7) >= 1 ? '' : 'Precisa de um título de BT400 ou maior' },
+  ] },
+  esports: { nome: 'Time de eSports', ic: '🎮', niveis: [
+    { nome: 'Time amador de eSports', preco: 40000, desc: 'Renda de $900 por semana e fãs jovens: +0,5 de fama por semana.', req: () => $s.CR.fama >= 20 ? '' : 'Precisa de 20 de fama' },
+    { nome: 'Time profissional', preco: 220000, desc: 'Renda de $4.000 por semana; os patrocinadores pagam 10% a mais (mais visibilidade).', req: () => $s.CR.fama >= 45 ? '' : 'Precisa de 45 de fama' },
+    { nome: 'Franquia na liga mundial', preco: 900000, desc: 'Renda de $11.000 por semana, +1 de fama por semana e os patrocinadores pagam 25% a mais.', req: () => $s.CR.fama >= 70 ? '' : 'Precisa de 70 de fama' },
+  ] },
+  midia: { nome: 'Mídia e conteúdo', ic: '🎙️', niveis: [
+    { nome: 'Canal de vídeos', preco: 8000, desc: 'Renda semanal conforme a sua fama (anúncios).', req: () => '' },
+    { nome: 'Podcast semanal', preco: 55000, desc: 'Renda maior e a fama cai mais devagar (você está sempre em pauta).', req: () => $s.CR.fama >= 30 ? '' : 'Precisa de 30 de fama' },
+    { nome: 'Produtora de documentários', preco: 320000, desc: 'Renda alta conforme a fama e +4 de fama a cada título.', req: () => crTitlesAt(6) >= 1 ? '' : 'Precisa de um título de BT200 ou maior' },
+  ] },
+  gastro: { nome: 'Gastronomia', ic: '🍹', niveis: [
+    { nome: 'Quiosque na praia', preco: 22000, desc: 'Renda de $700 por semana.', req: () => '' },
+    { nome: 'Restaurante temático', preco: 130000, desc: 'Renda de $3.000 por semana e +5 de energia por semana (comida boa e sem preocupação).', req: () => '' },
+    { nome: 'Rede de beach clubs', preco: 650000, desc: 'Renda de $10.000 por semana e +0,5 de fama por semana.', req: () => $s.CR.fama >= 50 ? '' : 'Precisa de 50 de fama' },
+  ] },
+  eventos: { nome: 'Organização de torneios', ic: '🏆', niveis: [
+    { nome: 'Torneio amador próprio', preco: 35000, desc: 'Renda de $1.500 por semana e +3 de fama na hora.', req: () => '' },
+    { nome: 'Etapa ITF com o seu nome', preco: 180000, desc: 'Renda de $5.000 por semana e um convite (wildcard) para torneio acima do nível a cada temporada.', req: () => crMaxTier() >= 4 ? '' : 'Precisa ter liberado o BT50' },
+    { nome: 'BT400 na sua cidade', preco: 1100000, desc: 'Renda de $16.000 por semana, +8 de fama na hora e +1 de fama por semana.', req: () => $s.CR.fama >= 65 ? '' : 'Precisa de 65 de fama' },
+  ] },
+  saude: { nome: 'Saúde e recuperação', ic: '🩺', niveis: [
+    { nome: 'Fisioterapia particular', preco: 30000, desc: 'Lesões 30% mais curtas.', req: () => '' },
+    { nome: 'Clínica de medicina esportiva', preco: 170000, desc: 'Lesões 50% mais curtas e metade da chance de se machucar com a energia baixa.', req: () => '' },
+    { nome: 'Centro de longevidade', preco: 600000, desc: '+4 de energia por semana e você perde atributo bem mais devagar com a idade (depois dos 31).', req: () => $s.CR.age >= 27 ? '' : 'Faz sentido a partir dos 27 anos' },
+  ] },
+  financas: { nome: 'Investimentos', ic: '📈', niveis: [
+    { nome: 'Carteira de renda fixa', preco: 60000, desc: 'Rende $450 por semana, sem risco.', req: () => '' },
+    { nome: 'Imóveis para alugar', preco: 280000, desc: 'Mais $2.300 por semana de aluguel.', req: () => '' },
+    { nome: 'Fundo de investimento em esporte', preco: 1200000, desc: 'Mais $9.500 por semana (e às vezes um bônus de fim de temporada).', req: () => '' },
+  ] },
+  jato: { nome: 'Transporte', ic: '✈️', niveis: [
+    { nome: 'Van própria para a equipe', preco: 25000, desc: 'Viagens 15% mais baratas.', req: () => '' },
+    { nome: 'Jatinho compartilhado', preco: 400000, desc: 'Viagens 45% mais baratas e +3 de energia por semana (chega descansado).', req: () => crMaxTier() >= 6 ? '' : 'Precisa ter liberado o BT200' },
+  ] },
 };
+// efeitos dos negócios novos (uma conta só para cada efeito)
+const crBizEnergy = () => [0, 2, 4, 6][crInv('moradia')] + (crInv('gastro') >= 2 ? 5 : 0) + (crInv('saude') >= 3 ? 4 : 0) + (crInv('jato') >= 2 ? 3 : 0);
+const crBizFamaWeek = () => (crInv('moradia') >= 3 ? 1 : 0) + [0, .5, .5, 1][crInv('esports')] + (crInv('gastro') >= 3 ? .5 : 0) + (crInv('eventos') >= 3 ? 1 : 0);
+const crBizSponsorK = () => [1, 1, 1.1, 1.25][crInv('esports')];
+const crBizTravelK = () => [1, .85, .55][crInv('jato')];
+const crBizInjuryK = () => [1, .7, .5, .5][crInv('saude')];
 const crInv = k => (($s.CR && $s.CR.inv) || {})[k] || 0;
 function crInvXp() { if (!$s.CR) return 0; const c = crInv('ct'); return (c >= 1 ? .35 : 0) + (c >= 2 ? .35 : 0) + (c >= 3 ? .2 : 0); }
 function crInvBuy(k) {
@@ -1365,6 +1410,9 @@ function crInvBuy(k) {
   $s.CR.money -= n.preco; $s.CR.inv = Object.assign({}, $s.CR.inv, { [k]: lv + 1 });
   if (k === 'ct' && lv + 1 === 2) $s.CR.pot = Math.min(99, $s.CR.pot + 2);
   if (k === 'ct' && lv + 1 === 3) $s.CR.pot = Math.min(99, $s.CR.pot + 1);
+  if (k === 'eventos' && lv + 1 === 1) crAddFama(3);
+  if (k === 'eventos' && lv + 1 === 2) $s.CR.wcFree = 1;
+  if (k === 'eventos' && lv + 1 === 3) crAddFama(8);
   if (k === 'marca' && lv + 1 === 2) { crSignature(); if (!$s.CR.rackets.includes('assinatura')) $s.CR.rackets.push('assinatura'); $s.CR.racket = 'assinatura'; $s.CR.me.look.racket = 'assinatura'; }
   $s.CR.lastMsg = 'Investimento feito: ' + n.nome + '.'; crSyncChars(); saveCareer();
 }
@@ -1381,16 +1429,20 @@ function crInvWeek() {
   const m = crInv('marca'); if (m) g += Math.round(($s.CR.fama || 0) * 12 * (m >= 3 ? 3.5 : m >= 2 ? 2 : 1));
   if (crInv('quadra') >= 2) g += 350 * (crMaxTier() + 1);
   if (crInv('ct') >= 3) g += 2500;
+  g += [0, 900, 4000, 11000][crInv('esports')] + [0, 700, 3000, 10000][crInv('gastro')] + [0, 1500, 5000, 16000][crInv('eventos')] + [0, 450, 2750, 12250][crInv('financas')];
+  { const md = crInv('midia'), f = $s.CR.fama || 0; if (md) g += Math.round(f * [0, 8, 22, 55][md]); }
+  if (crInv('financas') >= 3 && $s.CR.week === SEASON_WEEKS && Math.random() < .5) g += 60000; // bônus do fundo
   if (g) $s.CR.money += g;
   return g;
 }
 // ---------- semana ----------
 function crNextWeek(note) {
   $s.CR.tour = null; $s.CR.day = 1; $s.CR.wlog = {};
-  $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0) + (crInv('ct') >= 1 ? 6 : 0) + (crLife('nutri') ? 5 : 0) + (crLife('casa') ? 3 : 0));
+  $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0) + (crInv('ct') >= 1 ? 6 : 0) + (crLife('nutri') ? 5 : 0) + (crLife('casa') ? 3 : 0) + crBizEnergy());
   let msg = note || '';
-  if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') ? .04 : .08);
+  if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') || crInv('moradia') >= 2 ? .04 : .08);
   if (crLife('imprensa')) crAddFama(1);
+  { const bf = crBizFamaWeek(); if (bf) crAddFama(bf); }
   if ($s.CR.boostW > 0) $s.CR.boostW--;
   crFormWeek();
   // arcos dos eventos: contagem semanal
@@ -1440,7 +1492,9 @@ function crNextWeek(note) {
       const vet = ROSTER.filter(c => !!c.fem === !!$s.CR.me.fem && (crAgeOf(c) || 0) >= 35 && crCharOvr(c) >= 84).slice(0, 1);
       vet.forEach(c => crNews('Aos ' + crAgeOf(c) + ' anos, ' + nameOf(c) + ' segue entre os melhores do mundo.', '🧓'));
       crPairsSeason(); }
-    if ($s.CR.age > 31) for (const [k] of [['vel']]) $s.CR.me.a[k] = Math.max(40, $s.CR.me.a[k] - 1);
+    if (crInv('eventos') >= 2) $s.CR.wcFree = 1; // etapa própria: um convite por temporada
+    // centro de longevidade: a velocidade só cai a cada dois anos
+    if ($s.CR.age > 31 && !(crInv('saude') >= 3 && $s.CR.age % 2)) for (const [k] of [['vel']]) $s.CR.me.a[k] = Math.max(40, $s.CR.me.a[k] - 1);
   }
   $s.CR.ovrLog.push({ s: $s.CR.season, w: $s.CR.week, o: overall($s.CR.me.a) }); $s.CR.ovrLog = $s.CR.ovrLog.slice(-80);
   $s.CR.lastMsg = msg; crSyncChars(); saveCareer();
@@ -1450,9 +1504,9 @@ const INJ = ['Distensão na panturrilha', 'Tendinite no ombro', 'Entorse no torn
 const INJ_ATTR = [['vel'], ['smash', 'saque'], ['vel', 'def'], ['forca'], ['backhand', 'curta']];
 function crInjuryRoll(mult) {
   if ($s.CR.injury) return '';
-  const e = $s.CR.energy, ch = e < 30 ? (30 - e) / 30 * .32 * (mult || 1) : 0;
+  const e = $s.CR.energy, ch = e < 30 ? (30 - e) / 30 * .32 * (mult || 1) * (crInv('saude') >= 2 ? .5 : 1) : 0;
   if (Math.random() >= ch) return '';
-  const w = Math.max(1, Math.floor(1 + Math.random() * 4) - ($s.CR.staff.fisio ? 1 : 0));
+  const w = Math.max(1, Math.round((Math.floor(1 + Math.random() * 4) - ($s.CR.staff.fisio ? 1 : 0)) * crBizInjuryK()));
   const ii = Math.floor(Math.random() * INJ.length);
   $s.CR.injury = { nome: INJ[ii], weeks: w };
   // lesão de 2 semanas ou mais custa atributo (o ligado à lesão): −1; de 3 ou mais, −2 no principal e −1 no segundo
@@ -1481,7 +1535,7 @@ function crTrain() {
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
   if ($s.CR.energy < 10) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
   const inj = crInjuryRoll(.2);
-  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0)) * crXpMul(); $s.CR.pe += g;
+  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0) + (crInv('moradia') >= 3 ? .5 : 0)) * crXpMul(); $s.CR.pe += g;
   crWlog($s.CR.day, 'Treino');
   crNextDay('Dia de treino: +' + fmt1(g) + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
@@ -1615,7 +1669,7 @@ function crMigrate() {
   if (!$s.CR) return;
   $s.CR.wardrobe = $s.CR.wardrobe || { tops: ['tee'], bots: ['short'], pats: ['liso'] }; // roupas compradas
   $s.CR.wardrobe.acc = $s.CR.wardrobe.acc || []; if ($s.CR.me && $s.CR.me.look && !$s.CR.me.look.acc) $s.CR.me.look.acc = {}; // acessórios (o seu jogador não sorteia munhequeira/manguito)
-  $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0;
+  $s.CR.fama = $s.CR.fama || 0; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0; $s.CR.wcFree = $s.CR.wcFree || 0;
   if ($s.CR.staff.tecnico) { delete $s.CR.staff.tecnico; $s.CR.staff.tec2 = true; }
   if ($s.CR.staff.preparador) { delete $s.CR.staff.preparador; $s.CR.staff.prep = true; }
   $s.CR.inv = $s.CR.inv || {};
@@ -1695,7 +1749,7 @@ function crAddFama(v) { const cap = Math.min(100, crFamaTarget() + 12); const f 
 function crFamaWeek() {
   const tg = crFamaTarget(), f = $s.CR.fama || 0;
   // acima do alvo cai devagar (mais devagar ainda com marca própria); abaixo sobe aos poucos
-  $s.CR.fama = clamp(f + (tg - f) * (f > tg ? (crInv('marca') ? .05 : .1) : .08), 0, 100);
+  $s.CR.fama = clamp(f + (tg - f) * (f > tg ? (crInv('marca') || crInv('midia') >= 2 ? .05 : .1) : .08), 0, 100);
 }
 function crMaybeSponsor(force) {
   if ($s.CR.sponsors.length + $s.CR.spOffers.length >= 4) return;
@@ -1709,7 +1763,7 @@ function crMaybeSponsor(force) {
 function crSponsorWeek() {
   let paid = 0; const ended = [];
   const lg = (($s.CR.me.look || {}).outfit || {}).logo; // logo na camisa: a marca paga 20% a mais
-  $s.CR.sponsors.forEach(s => { paid += Math.round(s.weekly * (s.brand === lg ? 1.2 : 1)); s.left--; if (s.left <= 0) ended.push(s.brand); });
+  $s.CR.sponsors.forEach(s => { paid += Math.round(s.weekly * (s.brand === lg ? 1.2 : 1) * crBizSponsorK()); s.left--; if (s.left <= 0) ended.push(s.brand); });
   $s.CR.sponsors = $s.CR.sponsors.filter(s => s.left > 0);
   $s.CR.money += paid;
   return (paid ? 'Patrocínios: +' + money(paid) + '.' : '') + (ended.length ? ' Contrato encerrado: ' + ended.join(', ') + '.' : '');
