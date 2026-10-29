@@ -620,14 +620,52 @@ function applyArena(a) {
 // ambiente fechado (points e arenas cobertas): paredes, telhado com fileiras de luz; sem céu, mar, palmeiras nem sol forte
 const LIGHT0 = { sun: null, hemi: null, hemiC: null, hemiG: null };
 // ---------- patrocínios e decoração dos eventos (marcas fictícias) ----------
-const ADS = [['AREIA FINA', '#ffd23f', '#17324d'], ['SOLAR MAX', '#ff5a1f', '#ffffff'], ['MARAZUL SEGUROS', '#1f4fb8', '#ffffff'], ['COCO GELADO', '#2e9e57', '#ffffff'], ['ONDAS TELECOM', '#7b2ff7', '#ffffff'],
-  ['BRISA ENERGÉTICO', '#e2364a', '#ffe14d'], ['DUNA ÓCULOS', '#111111', '#ffd23f'], ['LITORAL BANK', '#0b7a83', '#ffffff'], ['SALINA ISOTÔNICO', '#33c3ff', '#0b1d3f'], ['FAROL VIAGENS', '#ff8a00', '#17324d'], ['MARESIA RELÓGIOS', '#fbf6ea', '#17324d'], ['SOL & SAL', '#ffb3c1', '#7a1630']];
+// marcas das placas (fictícias / quase iguais às do circuito): [nome, fundo, cor da letra, logo, slogan, fundo 2 (degradê)]
+const ADS = [
+  ['NUX', '#f4f1ea', '#1b1b1d', 'x', 'BEACH TENNIS', '#d9d4c8'], ["HERUE'S", '#0e0e10', '#ffc21a', 'sun', 'BE A HERO', '#2a1440'], ['KUNA', '#121214', '#ff7a1a', 'k', 'GLADIATOR SERIES', '#2a1030'],
+  ['ANA SPORT', '#f7f7f7', '#111111', 'bee', 'POISON BEE', '#d9dbde'], ['MORMAJI', '#ffffff', '#c9a24a', 'wave', 'SURF & SAND', '#f3e6ff'], ['DROP SHUT', '#121314', '#b7f000', 'star', 'PRIME ATTACK', '#2c2f33'],
+  ['ZANB', '#faf8f4', '#1a1a1a', 'crown', 'BRUXO EDITION', '#e9dcc4'], ['SOLAR MAX', '#ff5a1f', '#ffffff', 'sunsc', 'PROTETOR FPS 70', '#ffb23f'], ['COCO GELADO', '#2e9e57', '#ffffff', 'coco', 'ÁGUA DE COCO', '#7fd67a'],
+  ['BRISA ENERGÉTICO', '#e2364a', '#ffe14d', 'bolt', 'ENERGIA PRA SAQUE', '#7a1630'], ['SALINA ISOTÔNICO', '#33c3ff', '#0b1d3f', 'drop', 'HIDRATA NA AREIA', '#d6f4ff'], ['DUNA ÓCULOS', '#111111', '#ffd23f', 'shades', 'POLARIZADO', '#3a3a3a'],
+  ['MARAZUL SEGUROS', '#1f4fb8', '#ffffff', 'shield', 'PROTEÇÃO QUE VAI LONGE', '#0b2462'], ['ONDAS TELECOM', '#7b2ff7', '#ffffff', 'signal', '5G NA PRAIA', '#3b1f9c'], ['LITORAL BANK', '#0b7a83', '#ffffff', 'coin', 'SEU DINHEIRO EM BOAS MÃOS', '#064a50'],
+  ['FAROL VIAGENS', '#ff8a00', '#17324d', 'plane', 'DESTINOS DE AREIA', '#ffd23f'], ['CERVEJA PRAIANA', '#ffd23f', '#5a2d0c', 'mug', 'BEBA COM MODERAÇÃO', '#f39c12'], ['AREIA FINA', '#ffd23f', '#17324d', 'palm', 'MODA PRAIA', '#ffe9a0'],
+];
+function adLogo(x, kind, cx, cy, r, fg, bg) {
+  x.save(); x.translate(cx, cy); x.fillStyle = fg; x.strokeStyle = fg; x.lineWidth = r * .14; x.lineCap = 'round'; x.lineJoin = 'round';
+  const circ = (rr, fill) => { x.beginPath(); x.arc(0, 0, rr, 0, Math.PI * 2); fill ? x.fill() : x.stroke(); };
+  if (kind === 'x') { x.lineWidth = r * .32; x.beginPath(); x.moveTo(-r * .7, -r * .7); x.lineTo(r * .7, r * .7); x.moveTo(r * .7, -r * .7); x.lineTo(-r * .7, r * .7); x.stroke(); }
+  else if (kind === 'sun') { const g = x.createRadialGradient(0, 0, 2, 0, 0, r); g.addColorStop(0, '#fff3a0'); g.addColorStop(1, '#ff6a10'); x.fillStyle = g; circ(r * .85, true); x.strokeStyle = bg; x.lineWidth = r * .22; x.beginPath(); x.moveTo(-r * .6, -r * .6); x.lineTo(r * .6, r * .6); x.moveTo(r * .6, -r * .6); x.lineTo(-r * .6, r * .6); x.stroke(); }
+  else if (kind === 'k') { const g = x.createLinearGradient(-r, -r, r, r); g.addColorStop(0, '#ffe23a'); g.addColorStop(.5, '#ff7a1a'); g.addColorStop(1, '#ff2fa0'); x.strokeStyle = g; x.lineWidth = r * .25; x.beginPath(); x.moveTo(-r * .45, -r * .8); x.lineTo(-r * .45, r * .8); x.moveTo(r * .55, -r * .8); x.lineTo(-r * .1, 0); x.lineTo(r * .55, r * .8); x.stroke(); }
+  else if (kind === 'bee') { x.beginPath(); x.ellipse(0, r * .1, r * .45, r * .7, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = bg; for (const yy of [-.15, .2]) x.fillRect(-r * .45, yy * r, r * .9, r * .14); x.strokeStyle = fg; x.lineWidth = r * .1; x.beginPath(); x.ellipse(-r * .55, -r * .35, r * .35, r * .2, -.5, 0, Math.PI * 2); x.ellipse(r * .55, -r * .35, r * .35, r * .2, .5, 0, Math.PI * 2); x.stroke(); }
+  else if (kind === 'wave') { const g = x.createLinearGradient(-r, 0, r, 0); g.addColorStop(0, '#6a2ccf'); g.addColorStop(.5, '#e0309a'); g.addColorStop(1, '#e8283a'); x.strokeStyle = g; x.lineWidth = r * .22; for (let k = 0; k < 2; k++) { x.beginPath(); for (let i = 0; i <= 20; i++) { const t = i / 20; x.lineTo(-r + t * 2 * r, k * r * .4 - r * .1 + Math.sin(t * Math.PI * 2) * r * .3); } x.stroke(); } }
+  else if (kind === 'star') { x.beginPath(); for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? r * .28 : r; x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } x.closePath(); x.fill(); }
+  else if (kind === 'crown') { x.beginPath(); x.moveTo(-r * .8, r * .5); x.lineTo(-r * .8, -r * .4); x.lineTo(-r * .4, 0); x.lineTo(0, -r * .7); x.lineTo(r * .4, 0); x.lineTo(r * .8, -r * .4); x.lineTo(r * .8, r * .5); x.closePath(); x.fill(); }
+  else if (kind === 'sunsc') { circ(r * .5, true); for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; x.beginPath(); x.moveTo(Math.cos(a) * r * .65, Math.sin(a) * r * .65); x.lineTo(Math.cos(a) * r * .95, Math.sin(a) * r * .95); x.stroke(); } }
+  else if (kind === 'coco') { x.fillStyle = '#6b3e1f'; circ(r * .7, true); x.fillStyle = '#fbf6ea'; x.beginPath(); x.arc(0, -r * .05, r * .5, Math.PI * 1.05, Math.PI * 1.95); x.fill(); x.strokeStyle = fg; x.lineWidth = r * .1; x.beginPath(); x.moveTo(r * .15, -r * .4); x.lineTo(r * .55, -r * 1.0); x.stroke(); }
+  else if (kind === 'bolt') { x.beginPath(); x.moveTo(r * .2, -r); x.lineTo(-r * .5, r * .1); x.lineTo(0, r * .1); x.lineTo(-r * .2, r); x.lineTo(r * .5, -r * .15); x.lineTo(0, -r * .15); x.closePath(); x.fill(); }
+  else if (kind === 'drop') { x.beginPath(); x.moveTo(0, -r); x.bezierCurveTo(r * .8, -r * .1, r * .7, r * .8, 0, r * .8); x.bezierCurveTo(-r * .7, r * .8, -r * .8, -r * .1, 0, -r); x.fill(); }
+  else if (kind === 'shades') { x.beginPath(); x.ellipse(-r * .45, 0, r * .4, r * .3, 0, 0, Math.PI * 2); x.ellipse(r * .45, 0, r * .4, r * .3, 0, 0, Math.PI * 2); x.fill(); x.fillRect(-r * .1, -r * .12, r * .2, r * .08); }
+  else if (kind === 'shield') { x.beginPath(); x.moveTo(0, -r * .9); x.lineTo(r * .75, -r * .55); x.quadraticCurveTo(r * .7, r * .5, 0, r * .95); x.quadraticCurveTo(-r * .7, r * .5, -r * .75, -r * .55); x.closePath(); x.fill(); }
+  else if (kind === 'signal') { for (let k = 1; k <= 3; k++) { x.beginPath(); x.arc(0, r * .5, r * .32 * k, -Math.PI * .8, -Math.PI * .2); x.stroke(); } circ(r * .1, true); }
+  else if (kind === 'coin') { circ(r * .75, false); x.font = '900 ' + Math.round(r) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('$', 0, r * .05); }
+  else if (kind === 'plane') { x.rotate(-.5); x.beginPath(); x.moveTo(r, 0); x.lineTo(-r * .8, -r * .15); x.lineTo(-r * .8, r * .15); x.closePath(); x.fill(); x.fillRect(-r * .2, -r * .7, r * .3, r * 1.4); x.fillRect(-r * .8, -r * .35, r * .18, r * .7); }
+  else if (kind === 'mug') { x.fillRect(-r * .5, -r * .5, r * .8, r * 1.1); x.lineWidth = r * .14; x.beginPath(); x.arc(r * .35, r * .05, r * .28, -Math.PI / 2, Math.PI / 2); x.stroke(); x.fillStyle = '#ffffff'; x.beginPath(); x.arc(-r * .3, -r * .55, r * .22, 0, 7); x.arc(0, -r * .62, r * .25, 0, 7); x.arc(r * .2, -r * .55, r * .2, 0, 7); x.fill(); }
+  else if (kind === 'palm') { x.fillRect(-r * .06, -r * .2, r * .12, r); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .55; x.beginPath(); x.ellipse(Math.cos(a) * r * .45, -r * .2 + Math.sin(a) * r * .35, r * .45, r * .12, a, 0, Math.PI * 2); x.fill(); } }
+  x.restore();
+}
 const AD_TEX = new Map();
 function adTex(i, wide) {
   const k = i + (wide ? 'w' : ''); if (AD_TEX.has(k)) return AD_TEX.get(k);
-  const [name, bg, fg] = ADS[i % ADS.length], W = wide ? 512 : 256, H = wide ? 128 : 128;
-  const t = canvasTex(W, H, (x, w, h) => { x.fillStyle = bg; x.fillRect(0, 0, w, h); x.fillStyle = fg; x.fillRect(0, h - 10, w, 4);
-    x.font = 'bold ' + (wide ? 54 : Math.min(44, Math.floor(w / name.length * 1.7))) + 'px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(name, w / 2, h / 2 - 4); });
+  const [name, bg, fg, logo, tag, bg2] = ADS[i % ADS.length], W = wide ? 512 : 256, H = 128;
+  const t = canvasTex(W, H, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, bg); g.addColorStop(1, bg2 || bg); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.globalAlpha = .08; x.fillStyle = fg; for (let i = -h; i < w; i += 22) { x.beginPath(); x.moveTo(i, h); x.lineTo(i + h * .6, 0); x.lineTo(i + h * .6 + 8, 0); x.lineTo(i + 8, h); x.fill(); } x.globalAlpha = 1; // listras finas no fundo
+    const lr = wide ? 40 : 30, lx = wide ? 70 : 42; adLogo(x, logo, lx, h / 2 - (wide ? 0 : 6), lr, fg, bg);
+    x.fillStyle = fg; x.textAlign = 'left'; x.textBaseline = 'middle'; const tx = lx + lr + 14, room = w - tx - 12;
+    let fs = wide ? 50 : 34; x.font = 'italic 900 ' + fs + 'px Arial Black, Arial, sans-serif'; while (x.measureText(name).width > room && fs > 14) { fs -= 2; x.font = 'italic 900 ' + fs + 'px Arial Black, Arial, sans-serif'; }
+    x.fillText(name, tx, h / 2 - 12);
+    x.font = 'bold ' + (wide ? 18 : 13) + 'px Arial, sans-serif'; x.globalAlpha = .85; let tg = tag; while (x.measureText(tg).width > room && tg.length > 4) tg = tg.slice(0, -1); x.fillText(tg, tx + 2, h / 2 + 24); x.globalAlpha = 1;
+    x.fillStyle = fg; x.fillRect(0, h - 8, w, 3);
+  });
   AD_TEX.set(k, t); return t;
 }
 // placa de patrocínio em pé (frente para a quadra)
