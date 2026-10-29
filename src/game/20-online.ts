@@ -11,7 +11,7 @@ import { $s } from '../state';
 import { C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, velMul, accOf, accelStep, backZ, backAcc, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, voleioOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { applyPlayerStyle, applyRackets, assignCharacters, ball, puff, resetTrail, sparkle, greenWave } from './07-glb';
+import { applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, puff, resetTrail, sparkle, greenWave } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON, clCareerChars, CL, SB_URL, SB_KEY } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
@@ -656,7 +656,7 @@ function guestEvent(e) {
   } else if (k === 'hit') {
     sndHit(e[2]);
     if (e[2] === 1) { const me = ON.G[e[1]] === human && !S.spectate; S.shake = me ? .25 : .1; if (me) ON.mySmashes++; }
-  } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); }
+  } else if (k === 'sand') { sndSand(); puff(e[1] * m, e[2] * m, 16, 1); ballMark(e[1] * m, e[2] * m); }
   else if (k === 'spark') sparkle({ x: e[1] * m, y: e[2], z: e[3] * m });
   else if (k === 'wave') greenWave({ x: e[1] * m, z: e[2] * m });
   else if (k === 'rev') showReview({ x: e[1] * m, z: e[2] * m, axis: e[3], inB: !!e[4], mg: e[5] });

@@ -11,7 +11,7 @@ import { decisive, dupla, feedback, momentum, perfShot, shotFeedback } from './0
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, ctlFeedback, keys, localCtl, touch, PAD } from './12-controles';
-import { puff } from './07-glb';
+import { diveMark, puff } from './07-glb';
 import { sideOf } from './18-animacao';
 // estilo de cada personagem: pela descrição real, pelo estilo da carreira ou pelos atributos
 function playStyleOf(c) {
@@ -277,7 +277,7 @@ function updateHuman(dt, c = localCtl()) {
   if (p.dive) {
     p.dive.t += dt;
     if (p.dive.t < .28) { tvx = p.dive.dx * p.dive.spd; tvz = p.dive.dz * p.dive.spd; p.vel.x = tvx; p.vel.z = tvz; }
-    else { tvx = 0; tvz = 0; p.vel.x *= .6; p.vel.z *= .6; if (!p.dive.landed) { p.dive.landed = true; puff(p.pos.x, p.pos.z, 14, .9); } }
+    else { tvx = 0; tvz = 0; p.vel.x *= .6; p.vel.z *= .6; if (!p.dive.landed) { p.dive.landed = true; puff(p.pos.x, p.pos.z, 14, .9); if (p.dive.spd > 3) diveMark(p.pos.x, p.pos.z, p.dive.dx, p.dive.dz); } }
     if (p.dive.t >= p.dive.dur) { p.diveRec = p.dive.rec ?? .8; p.dive = null; } // levantou: ainda volta devagar (até ~0,8 s no peixinho)
   }
   const serving = S.serverPlayer === p && (S.mode === 'serve' || S.mode === 'toss');

@@ -9,7 +9,7 @@ import { camera, renderer, scene } from './02-render';
 import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
 import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
-import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, fpArm, fpWrist, loadModels } from './07-glb';
+import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, diveMark, fpArm, fpWrist, loadModels } from './07-glb';
 import { HITS, applyGfx, getResScale, setResScale } from './08-audio';
 import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
 import { MTR, applyCam, inPlay, setPaused, syncMenu } from './12-controles';
@@ -87,7 +87,7 @@ function start(data) {
     setupPoint(); setPaused(true);
   }
   renderBoard();
-  window.__pdo = { NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, PALM, GLB, makeRacket, RACKET_STATS, applyPlayerStyle, assignCharacters, charById };
+  window.__pdo = { NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, PALM, GLB, makeRacket, RACKET_STATS, applyPlayerStyle, assignCharacters, charById, ballMark, diveMark };
   loadModels().then(ok => {
     assignCharacters(); configureMode();
     if (!ok) { const fs2 = document.getElementById('fsPlayers'); if (fs2) fs2.hidden = true; }

@@ -8,6 +8,7 @@ import { assetBuf } from '../assets';
 import { PATTERNS, G, KITS, V3, charById, clamp, effA, hScale, heightOf, nameOf, racketBonus, rand , lookExtras } from './00-base';
 import { S } from './01-estado';
 import { camera, canvasTex, col, mat, scene } from './02-render';
+import { ENV, sandH } from './03-cenario';
 import { RACKETS, SHADOW_TEX, capsuleGeo, makeRacket, setRacketModels } from './05-atletas';
 import { ALL, cpuA, cpuB, human, makeAthlete, partner } from './06-modelos';
 import { charSkill, playStyleOf } from './16-ia';
@@ -459,19 +460,97 @@ const landRing = new THREE.Mesh(new THREE.RingGeometry(.16, .22, 40), new THREE.
 landRing.rotation.x = -Math.PI / 2; landRing.visible = false; scene.add(landRing);
 const reachRing = new THREE.Mesh(new THREE.RingGeometry(1.32, 1.35, 72), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .18, depthWrite: false }));
 reachRing.rotation.x = -Math.PI / 2; scene.add(reachRing);
-// Pegadas na areia
-const FP_N = 260;
-const footTex = canvasTex(32, 64, (x) => { const gr = x.createRadialGradient(16, 16, 2, 16, 16, 15); gr.addColorStop(0, 'rgba(0,0,0,.9)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.save(); x.scale(1, 2); x.fillStyle = gr; x.beginPath(); x.arc(16, 16, 15, 0, Math.PI * 2); x.fill(); x.restore(); }, false);
-const prints = new THREE.InstancedMesh(new THREE.PlaneGeometry(.1, .24), new THREE.MeshBasicMaterial({ map: footTex, transparent: true, depthWrite: false, color: col('#6b5233'), opacity: .3 }), FP_N);
-prints.frustumCulled = false; scene.add(prints);
-let fpIdx = 0;
-const dummyObj = new THREE.Object3D();
-function clearPrints() { for (let i = 0; i < FP_N; i++) { dummyObj.position.set(0, -10, 0); dummyObj.rotation.set(0, 0, 0); dummyObj.updateMatrix(); prints.setMatrixAt(i, dummyObj.matrix); } prints.instanceMatrix.needsUpdate = true; }
-clearPrints();
-function stamp(x, z, ang) {
-  dummyObj.position.set(x, .011, z); dummyObj.rotation.set(-Math.PI / 2, 0, ang); dummyObj.updateMatrix();
-  prints.setMatrixAt(fpIdx, dummyObj.matrix); prints.instanceMatrix.needsUpdate = true; fpIdx = (fpIdx + 1) % FP_N;
+// Marcas na areia (pegadas, bola quicando, peixinho): cada uma é um mapa de altura desenhado num canvas → mapa de normais
+// (o sol ilumina a parede de um lado e sombreia a outra) + cor: fundo mais escuro e úmido, borda de areia empurrada um
+// pouco mais clara, e transparência parcial para o grão da areia continuar aparecendo. Ficam no cenário (giram junto na
+// troca de lado) e em cima do relevo da areia da quadra
+function bakeDecal(W, H, draw, rimK = .45, grain = .12) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, W, H); draw(x);
+  const src = x.getImageData(0, 0, W, H).data, M = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) M[i] = src[i * 4] / 255;
+  const blur = (A, r) => { let B = A; for (let pass = 0; pass < 2; pass++) { const T = new Float32Array(W * H), U = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const ii = i + k; if (ii >= 0 && ii < W) { s += B[y * W + ii]; n++; } } T[y * W + i] = s / n; }
+    for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const yy = y + k; if (yy >= 0 && yy < H) { s += T[yy * W + i]; n++; } } U[y * W + i] = s / n; }
+    B = U; } return B; };
+  const Ms = blur(M, Math.max(2, Math.round(W / 40))), Mb = blur(M, Math.round(W / 14));
+  const Hh = new Float32Array(W * H), al = new Float32Array(W * H), rimA = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const rim = Math.max(0, Mb[i] - Ms[i]) * 1.6, gn = (Math.random() - .5) * grain;
+    Hh[i] = -Ms[i] + rim * rimK + gn; rimA[i] = rim;
+    al[i] = Math.min(1, Ms[i] * .78 + rim * .5) * (.85 + Math.random() * .3);
+  }
+  // borda da imagem sem nada (as instâncias encostam umas nas outras sem marcar o retângulo)
+  const fade = (i, n) => Math.min(1, Math.min(i, n - 1 - i) / 4);
+  const cc = document.createElement('canvas'); cc.width = W; cc.height = H; const cx = cc.getContext('2d'), ci = cx.createImageData(W, H);
+  const nc = document.createElement('canvas'); nc.width = W; nc.height = H; const nx = nc.getContext('2d'), ni = nx.createImageData(W, H);
+  for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) {
+    const k = y * W + i, hL = Hh[y * W + Math.max(0, i - 1)], hR = Hh[y * W + Math.min(W - 1, i + 1)], hU = Hh[Math.max(0, y - 1) * W + i], hD = Hh[Math.min(H - 1, y + 1) * W + i];
+    let vx = (hL - hR) * 3.6, vy = (hD - hU) * 3.6, vz = 1; const L = Math.hypot(vx, vy, vz); vx /= L; vy /= L; vz /= L;
+    ni.data[k * 4] = (vx * .5 + .5) * 255; ni.data[k * 4 + 1] = (vy * .5 + .5) * 255; ni.data[k * 4 + 2] = (vz * .5 + .5) * 255; ni.data[k * 4 + 3] = 255;
+    // fundo: areia úmida/compactada bem mais escura; borda: areia solta e seca, um tico mais clara
+    const d = Ms[k], sh = (1 - d * .5 + rimA[k] * .14) * (.94 + Math.random() * .12);
+    ci.data[k * 4] = Math.min(255, 208 * sh); ci.data[k * 4 + 1] = Math.min(255, 182 * sh); ci.data[k * 4 + 2] = Math.min(255, 140 * sh);
+    ci.data[k * 4 + 3] = al[k] * fade(i, W) * fade(y, H) * 255;
+  }
+  cx.putImageData(ci, 0, 0); nx.putImageData(ni, 0, 0);
+  const map = new THREE.CanvasTexture(cc), nrm = new THREE.CanvasTexture(nc); map.colorSpace = THREE.SRGBColorSpace;
+  return { map, nrm };
 }
+// pé direito: calcanhar e sola afundam mais (o peso vai neles), a borda de fora do arco e os dedos menos
+const FOOT = bakeDecal(128, 256, x => {
+  const el = (v, cx, cy, rx, ry, a = 0) => { x.fillStyle = `rgb(${v},${v},${v})`; x.beginPath(); x.ellipse(cx, cy, rx, ry, a, 0, Math.PI * 2); x.fill(); };
+  el(215, 74, 150, 22, 46, -.08); el(255, 66, 206, 25, 30); el(255, 60, 92, 33, 29, -.15);
+  el(215, 40, 46, 13, 15, -.2); el(200, 61, 38, 9, 10); el(190, 77, 43, 8, 9); el(180, 91, 52, 7, 8); el(170, 103, 65, 6, 7);
+});
+// cratera redonda (bola quicando) e marca alongada e irregular (corpo deslizando no peixinho)
+const CRATER = bakeDecal(64, 64, x => { const g = x.createRadialGradient(32, 32, 2, 32, 32, 20); g.addColorStop(0, '#fff'); g.addColorStop(.7, '#bbb'); g.addColorStop(1, '#000'); x.fillStyle = g; x.beginPath(); x.arc(32, 32, 20, 0, Math.PI * 2); x.fill(); }, .7, .1);
+const SMEAR = bakeDecal(96, 256, x => {
+  for (let i = 0; i < 26; i++) { const t = i / 25, v = 120 + 135 * Math.sin(Math.PI * Math.min(1, t * 1.25)); x.fillStyle = `rgb(${v | 0},${v | 0},${v | 0})`;
+    x.beginPath(); x.ellipse(48 + (Math.random() - .5) * 10, 52 + t * 170, 26 + 8 * Math.sin(Math.PI * t) + Math.random() * 4, 18, 0, 0, Math.PI * 2); x.fill(); }
+  x.strokeStyle = 'rgb(170,170,170)'; x.lineCap = 'round'; // sulcos rasos das mãos/dedos arrastando à frente do corpo
+  for (let i = 0; i < 4; i++) { x.lineWidth = 2 + Math.random() * 2; x.beginPath(); let px = 30 + i * 11 + (Math.random() - .5) * 4; x.moveTo(px, 44);
+    for (let y = 40; y > 6 + Math.random() * 14; y -= 6) { px += (Math.random() - .5) * 2.5; x.lineTo(px, y); } x.stroke(); }
+}, .6, .14);
+function decalLayer(tex, n, w, h, op = 1) {
+  const m = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex.map, normalMap: tex.nrm, normalScale: new THREE.Vector2(1.5, 1.5), transparent: true, opacity: op, depthWrite: false, roughness: .97, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), n);
+  m.frustumCulled = false; m.receiveShadow = true; ENV.add(m); return { m, n, i: 0 };
+}
+const FP_N = 320;
+const prints = decalLayer(FOOT, FP_N, .14, .3), oldPrints = decalLayer(FOOT, 220, .14, .3, .55), marks = decalLayer(CRATER, 40, .16, .16), smears = decalLayer(SMEAR, 8, .7, 1.5);
+const dummyObj = new THREE.Object3D();
+// x, z no mundo (já com a troca de lado aplicada) → espaço do cenário
+function putDecal(L, x, z, ang, sx = 1, sz = 1, lift = .004) {
+  const r = ENV.rotation.y, c = Math.cos(r), sn = Math.sin(r), lx = c * x - sn * z, lz = sn * x + c * z;
+  dummyObj.position.set(lx, sandH(lx, lz) + lift, lz); dummyObj.rotation.set(-Math.PI / 2, 0, ang - r);
+  dummyObj.scale.set(sx, sz, 1); dummyObj.updateMatrix();
+  L.m.setMatrixAt(L.i, dummyObj.matrix); L.m.instanceMatrix.needsUpdate = true; L.i = (L.i + 1) % L.n;
+}
+function hideLayer(L) { for (let i = 0; i < L.n; i++) { dummyObj.position.set(0, -10, 0); dummyObj.rotation.set(0, 0, 0); dummyObj.scale.set(1, 1, 1); dummyObj.updateMatrix(); L.m.setMatrixAt(i, dummyObj.matrix); } L.m.instanceMatrix.needsUpdate = true; L.i = 0; }
+// Começo de partida: areia limpa, mas com pegadas velhas e apagadas de quem jogou antes (mais perto do fundo e da rede),
+// como numa quadra de verdade que ninguém passou o rodo
+function clearPrints() {
+  [prints, marks, smears, oldPrints].forEach(hideLayer);
+  const r0 = ENV.rotation.y; ENV.rotation.y = 0;
+  for (let k = 0; k < oldPrints.n / 2; k++) {
+    const side = Math.random() < .5 ? 1 : -1, zone = Math.random();
+    let x = (Math.random() - .5) * 8.6, z = zone < .45 ? side * (6.5 + Math.random() * 3) : zone < .75 ? side * (1 + Math.random() * 2.5) : side * Math.random() * 8.5;
+    let a = Math.random() * Math.PI * 2; const steps = 1 + (Math.random() * 3 | 0);
+    for (let s = 0; s < steps * 2 && oldPrints.i < oldPrints.n - 1; s++) {
+      const ft = s % 2 ? -1 : 1, px = x + Math.cos(a) * .09 * ft, pz = z - Math.sin(a) * .09 * ft;
+      putDecal(oldPrints, px, pz, a + (Math.random() - .5) * .2, ft, 1 + Math.random() * .2, .003);
+      x -= Math.sin(a) * .36; z -= Math.cos(a) * .36; a += (Math.random() - .5) * .5;
+    }
+  }
+  ENV.rotation.y = r0;
+}
+clearPrints();
+// side: 1 pé direito, −1 esquerdo · deep: correndo/aterrissando a pegada sai mais comprida (areia arrastada)
+function stamp(x, z, ang, side = 1, deep = 0) { putDecal(prints, x, z, ang + (Math.random() - .5) * .12, side, 1 + deep * .25); }
+// bola tocando a areia: pequena cratera (e um pouco alongada na direção em que vinha)
+function ballMark(x, z, vx = 0, vz = 0) { const v = Math.hypot(vx, vz); putDecal(marks, x, z, v > .1 ? Math.atan2(vx, vz) : Math.random() * 6.3, 1, 1 + Math.min(.8, v * .05), .005); }
+// peixinho: marca do corpo deslizando na direção do mergulho, começando um pouco antes de onde parou
+function diveMark(x, z, dx, dz) { const a = Math.atan2(dx, dz); putDecal(smears, x - dx * .5, z - dz * .5, a + Math.PI, 1, 1, .0035); }
 // Grãos de areia levantados
 const PN = 120;
 const pPos = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3), pLife = new Float32Array(PN);
@@ -526,4 +605,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, trail, trailGeo, trailPos, updateParticles };
+export { makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, trail, trailGeo, trailPos, updateParticles };

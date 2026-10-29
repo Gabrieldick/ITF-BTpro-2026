@@ -190,6 +190,51 @@ const sand = new THREE.Mesh(sandGeo, sandMat);
 sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0, 90);
 sand.receiveShadow = true;
 ENV.add(sand);
+// relevo da areia da quadra: malha fina (8 cm) por cima da quadra e arredores, com montinhos de 1–3 cm; mais revirada e
+// funda onde mais se pisa (fundo da quadra no saque e na frente da rede). Some perto das fitas e na borda (encaixa na areia
+// de fora: mesma textura, mesmas cores). sandH também posiciona as pegadas em cima do relevo
+const CS = { hx: 7, hz: 12.5, step: .08 };
+function sandWear(x, z) {
+  let w = 0;
+  for (const zz of [8.7, -8.7]) w += Math.exp(-(x * x) / 4 - ((Math.abs(z) - Math.abs(zz)) ** 2) / .5) * (Math.sign(z) === Math.sign(zz) ? 1 : 0);
+  w += Math.exp(-(x * x) / 6 - ((Math.abs(z) - 2.2) ** 2) / 1.2) * .7; // frente da rede
+  return Math.min(1, w);
+}
+function sandH(x, z) {
+  if (Math.abs(x) > CS.hx || Math.abs(z) > CS.hz) return 0;
+  const w = sandWear(x, z);
+  let h = (fbm(x * 2.2 + 31, z * 2.2 + 17, 4096, 3, 41) - .5) * .03 * (1 + w * 1.4) + (fbm(x * 7 + 3, z * 7 + 9, 4096, 2, 43) - .5) * .009 * (1 + w) - .012 * w;
+  // perto das fitas (das duas quadras: simples e dupla) a areia fica rente
+  let dl = Math.abs(Math.abs(z) - C.halfL);
+  for (const hw of Object.values(HALF_W)) dl = Math.min(dl, Math.abs(Math.abs(x) - hw) + (Math.abs(z) > C.halfL ? Math.abs(z) - C.halfL : 0));
+  h *= smooth(.04, .22, dl);
+  h *= smooth(0, .8, CS.hx - Math.abs(x)) * smooth(0, .8, CS.hz - Math.abs(z)); // borda: encaixa na areia plana de fora
+  return h;
+}
+// cor da areia de fora no ponto (a mesma conta dos vértices dela, interpolada como na malha grossa)
+function baseSandCol(x, wz) {
+  const node = (nx, nz) => { const macro = fbm(nx * .02 + 10, nz * .02 + 10, 4096, 3, 21); let k = .9 + (macro - .5) * .22; if (Math.abs(nx) < 6.5 && Math.abs(nz) < 10.5) k += .05; const wet = smooth(-44, WATERLINE, nz); return [k * (1 - wet * .45), k * (1 - wet * .42), k * (1 - wet * .35)]; };
+  const gx = (x + 210) / 2.5, gy = (90 - wz + 160) / 2.5, i = Math.floor(gx), j = Math.floor(gy), fx = gx - i, fy = gy - j;
+  const X = k => -210 + k * 2.5, Z = k => 90 - (-160 + k * 2.5);
+  const a = node(X(i), Z(j)), b = node(X(i + 1), Z(j)), c = node(X(i), Z(j + 1)), d = node(X(i + 1), Z(j + 1));
+  return [0, 1, 2].map(n => (a[n] * (1 - fx) + b[n] * fx) * (1 - fy) + (c[n] * (1 - fx) + d[n] * fx) * fy);
+}
+const courtSandMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sandTex.ta, normalMap: sandTex.tn, normalScale: new THREE.Vector2(.9, .9), roughness: .97, metalness: 0, vertexColors: true, envMapIntensity: .6 });
+courtSandMat.onBeforeCompile = sandMat.onBeforeCompile; // mesmo shader da areia de fora
+{
+  const nx = Math.round(CS.hx * 2 / CS.step), nz = Math.round(CS.hz * 2 / CS.step);
+  const g = new THREE.PlaneGeometry(CS.hx * 2, CS.hz * 2, nx, nz); g.rotateX(-Math.PI / 2);
+  const pa = g.attributes.position, uv = g.attributes.uv, colors = new Float32Array(pa.count * 3);
+  for (let i = 0; i < pa.count; i++) {
+    const x = pa.getX(i), z = pa.getZ(i), h = sandH(x, z), w = sandWear(x, z);
+    pa.setY(i, h + .0015);
+    uv.setXY(i, (x + 210) / 420, (90 - z + 160) / 320); // o mesmo UV da areia de fora (textura contínua)
+    const c = baseSandCol(x, z), dk = 1 - .07 * w - clamp(-h / .03, 0, 1) * .06; // revirada e no fundo dos buracos: um pouco mais escura
+    colors[i * 3] = c[0] * dk; colors[i * 3 + 1] = c[1] * dk; colors[i * 3 + 2] = c[2] * dk;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, courtSandMat); m.receiveShadow = true; ENV.add(m);
+}
 // ---------- Quadra ----------
 const tapeMat = mat('#1f4fb8', { roughness: .55 });
 const linesGroup = { simples: new THREE.Group(), dupla: new THREE.Group() };
@@ -525,7 +570,7 @@ function applyArena(a) {
   // linha da quadra nunca amarela (nem amarelada): se vier uma cor assim, usa o azul padrão
   { const lc = col(a.line), hsl = {}; lc.getHSL(hsl); tapeMat.color.copy(hsl.h > .08 && hsl.h < .2 && hsl.s > .3 && hsl.l > .25 ? col('#1f4fb8') : lc); tapeFaint.color.copy(tapeMat.color); } padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
   const bc = bandTex.image.getContext('2d'); drawBand(a.trim)(bc, bandTex.image.width, bandTex.image.height); bandTex.needsUpdate = true;
-  sandMat.color.copy(col(a.sand));
+  sandMat.color.copy(col(a.sand)); courtSandMat.color.copy(sandMat.color);
   // arquibancadas
   ARENA.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
   ARENA.group.clear(); ARENA.crowd = [];
@@ -759,4 +804,4 @@ function setSide(flip) {
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { ENV, setSide, setNetHeight, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
+export { sandH, ENV, setSide, setNetHeight, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };

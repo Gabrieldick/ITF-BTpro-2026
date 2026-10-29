@@ -247,8 +247,8 @@ function animateAthlete(p, dt) {
       const w = [F.st.from[0] + (tg[0] - F.st.from[0]) * k, F.st.from[1] + (tg[1] - F.st.from[1]) * k];
       [fx, fz] = toL(w); fy += (F.st.y0 || 0) * (1 - k) + Math.pow(Math.sin(Math.PI * t), .55) * F.st.h; // sai e chega do chão rápido (o arco fica no alto)
       if (t >= 1) {
-        F.w = tg; F.st = null;
-        if (sp > 1.2 && m.group.visible) { stamp(tg[0], tg[1], yaw); if (sp > 3.5 && particles.visible) puff(tg[0], tg[1], 2, .35); }
+        const land = F.st.y0; F.w = tg; F.st = null;
+        if ((sp > .5 || land) && m.group.visible) { stamp(tg[0], tg[1], yaw, s * mx, clamp((sp - 3) / 3, 0, 1)); if (sp > 3.5 && particles.visible) puff(tg[0], tg[1], 2, .35); }
       }
     } else {
       // plantado: fica onde está; passo quando se afastou do lugar certo (o mais longe vai primeiro; correndo, sobrepõe)
