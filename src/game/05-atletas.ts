@@ -356,8 +356,8 @@ const STRAP_MAT = mat('#1b1e22', { roughness: .8 });
 // raquete modelada no Blender (ferramentas/modelos-mh/raquete.py, medidas de mercado: 50 cm × 22,5 cm × 22 mm): chega
 // depois do carregamento; até lá (ou sem o arquivo) fica a desenhada aqui. Cada modelo tem um padrão de furação.
 const RK_GLB = { geo: null, all: [] };
-// furação de cada modelo (a do modelo real em que a arte se inspira; o contorno é o mesmo para todas)
-const RK_PATTERN = { basica: 'band', tropic: 'side1', brisa: 'side1', fibra: 'side2', areia: 'side1', mare: 'mormaii', coral: 'side2', duna: 'side1', medusa: 'medusa', proteo: 'star', vela: 'side2', tufao: 'dstar', atol: 'nox', kronos: 'kona', ventosul: 'zand', maresia: 'band', recife: 'nox', farol: 'side1', supercarbon: 'bee', corsario: 'side2', tsunami: 'band', abismo: 'side1', eclipse: 'heroes', trovao: 'side2', aurora: 'heroes', zenite: 'nox', assinatura: 'nox' };
+// furação de cada modelo (padrões de antes; o contorno é o mesmo para todas)
+const RK_PATTERN = { basica: 'band', tropic: 'side1', brisa: 'side1', fibra: 'side2', areia: 'side1', mare: 'side1', coral: 'side2', duna: 'side1', medusa: 'ring', proteo: 'arc', vela: 'arc', tufao: 'arc', atol: 'side2', kronos: 'full', ventosul: 'side2', maresia: 'band', recife: 'side2', farol: 'side1', supercarbon: 'arc', corsario: 'side2', tsunami: 'band', abismo: 'side1', eclipse: 'side1', trovao: 'side1', aurora: 'side1', zenite: 'side2', assinatura: 'side1' };
 function setRacketModels(gltf) {
   const geo = {}; gltf.scene.traverse(o => { if (o.isMesh) geo[o.name] = o.geometry; });
   if (!geo.Grip || !geo.F_side1) return;

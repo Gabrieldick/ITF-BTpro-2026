@@ -143,19 +143,13 @@ THROAT = {  # aberturas da garganta (triângulos de cantos arredondados)
     'tri3': [[(-.05, -.112), (-.017, -.116), (-.033, -.15)], [(-.012, -.121), (.012, -.121), (0, -.158)], [(.05, -.112), (.017, -.116), (.033, -.15)]],
 }
 # desenhos de face: silhueta + furação + garganta (inspirados nas linhas de raquete do circuito 2025/2026, sem marca)
-DESIGNS = {
-    'nox': ('oval', .0068, lambda: ring(.019, .024, .02, 1) + ring(.04, .026, .075, 1) + xarms(), 'tri2'),      # furos contornam um X
-    'heroes': ('oval', .0068, lambda: ring(.021, .026, -.07, .14, lambda q: abs(q[0]) > .062) + ring(.044, .028, -.05, .11, lambda q: abs(q[0]) > .075) + ring(.02, .03, .135, 1), 'tri3'),  # só colunas laterais
-    'kona': ('oval', .0052, lambda: grid(.026, .024, .018, -.075), 'tri1'),                                              # rosto todo, furo miúdo
-    'bee': ('oval', .0066, lambda: grid(.032, .029, .02, -.07), 'tri1'),                                                 # grade com o centro
-    'star': ('oval', .0066, lambda: ring(.024, .034, -.035, 1), 'tri2'),                                              # poucos, na volta de cima
-    'medusa': ('oval', .0064, lambda: horseshoe() + ring(.019, .03, .1, 1), 'tri3'),                                   # ferradura
-    'zand': ('oval', .0066, lambda: ring(.02, .025, -.075) + ring(.042, .027, -.05, 1, lambda q: abs(q[0]) > .055 or q[1] > .1), 'tri3'),
-    'mormaii': ('oval', .0062, lambda: ring(.02, .023, -.06, .11, lambda q: abs(q[0]) > .05) + ring(.04, .025, -.04, .1, lambda q: abs(q[0]) > .062), 'tri1'),  # duas colunas de cada lado
-    'dstar': ('oval', .0066, lambda: ring(.02, .025, -.08) + star_gaps(), 'tri3'),                                      # volta + entre as pontas da estrela
+DESIGNS = {  # furações (as mesmas de antes, já aprovadas): o jogo escolhe uma por modelo e pinta a arte por cima
+    'full': ('oval', .0072, lambda: grid(), 'tri1'),                                                               # furos no rosto todo
+    'ring': ('oval', .0062, lambda: ring(.019, .025, -.085) + ring(.042, .027, -.07), 'tri1'),                      # duas voltas inteiras
+    'side1': ('oval', .0068, lambda: ring(.021, .024, -.075, .1, lambda q: abs(q[0]) > .045), 'tri2'),              # uma fileira de cada lado
+    'side2': ('oval', .0064, lambda: ring(.02, .023, -.075, .095, lambda q: abs(q[0]) > .04) + ring(.043, .025, -.05, .08, lambda q: abs(q[0]) > .04), 'tri3'),  # duas fileiras de cada lado
+    'arc': ('oval', .0064, lambda: ring(.02, .024, .0, 1) + ring(.043, .026, .03, 1), 'tri2'),                      # arco no topo
     'band': ('oval', .0066, lambda: [(x, y) for x in (-.027, 0, .027) for y in np.arange(-.04, .12, .028) if inside(x, y)], 'tri3'),  # faixa central
-    'side1': ('oval', .0068, lambda: ring(.021, .024, -.075, .1, lambda q: abs(q[0]) > .045), 'tri2'),
-    'side2': ('oval', .0064, lambda: ring(.02, .023, -.075, .095, lambda q: abs(q[0]) > .04) + ring(.043, .025, -.05, .08, lambda q: abs(q[0]) > .04), 'tri3'),
 }
 for key, (shape, r, holes, thr) in DESIGNS.items():
     set_shape(shape)
@@ -233,7 +227,7 @@ if RENDER:  # prévia: três faces lado a lado
     sc.render.engine = 'CYCLES'; sc.cycles.samples = 32; sc.render.resolution_x, sc.render.resolution_y = 2400, 700
     for o in sc.objects: o.hide_render = True
     w = bpy.data.worlds.new('W'); sc.world = w; w.use_nodes = True; w.node_tree.nodes['Background'].inputs[0].default_value = (.8, .85, .9, 1)
-    keys = ['nox', 'heroes', 'kona', 'bee', 'star', 'medusa', 'zand', 'mormaii', 'dstar']
+    keys = list(DESIGNS)
     for i, key in enumerate(keys):
         for nm in ('F_' + key, 'E_' + key, 'Bumper_' + DESIGNS[key][0], 'Grip', 'Cap', 'Leash'):
             o = sc.objects[nm].copy() if not nm.startswith(('F_', 'E_')) else sc.objects[nm]
