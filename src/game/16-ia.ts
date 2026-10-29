@@ -538,6 +538,9 @@ function homeOf(p) {
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
   if (A.rush && ball.state === 'live' && S.lastTeam === p.team) ahead += A.rush; // depois do próprio golpe: sobe para a rede
+  // formação escolhida para a sua dupla: o parceiro (CPU) fica colado na rede ou no fundo
+  const fm = p.team === 0 && !p.isHuman ? S.settings.formation : '';
+  if (fm === 'rede' || fm === 'fundo') return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (fm === 'rede' ? 2.6 : 6.0)];
   return [clamp(x, -C.halfW + .3, C.halfW - .3), s * (clamp(Math.min(deepMax, clamp((A.homeZ ?? 4.6) + hz * (1 - clamp(up, 0, .4)), 3.3, 6.2)) + adZ, 3.2, 6.5) - ahead)];
 }
 // recepção em dupla: a dupla se ajeita conforme o sacador; quem está na diagonal fecha o meio

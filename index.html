@@ -139,6 +139,7 @@
         <label class="cr-field">Flecha para onde a bola cai (quando fora da tela) <select data-setting="landArrow" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
         <label class="cr-field">Aviso de linha (perto ou fora da quadra) <select data-setting="lineWarn" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
         <label class="cr-field" style="margin:4px 0">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
+        <label class="cr-field" style="margin:4px 0">Formação da dupla <select id="formSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="rede">Parceiro colado na rede</option><option value="fundo">Parceiro no fundo</option></select></label>
         <div class="cr-field" style="margin:4px 0">Quadra <div class="court-pick" data-courtpick></div></div>
         <div class="cr-field" style="margin:4px 0">Bolinha <div class="ball-pick" data-ballpick></div></div>
         <label class="cr-field" style="margin:4px 0">Nome do golpe na tela <select id="shotTextSel" class="cr-sel"><option value="completo">Completo</option><option value="discreto" selected>Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
@@ -444,6 +445,10 @@
       <button class="ghost" id="btnShotTxt">Nome do golpe</button>
       <button class="ghost" id="btnSimRest" hidden>Simular o resto da partida</button>
       <button class="ghost" id="btnQuit">Sair para o menu</button>
+    </div>
+    <div class="cam-adj" id="pTac">
+      <label>Tática <select id="pTacSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></label>
+      <label>Formação <select id="pFormSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="rede">Parceiro colado na rede</option><option value="fundo">Parceiro no fundo</option></select></label>
     </div>
     <div class="cam-adj">
       <label>Distância da câmera <input type="range" id="pCamDist" min="60" max="170" step="5" value="100"> <span id="pCamDistV">100%</span></label>
