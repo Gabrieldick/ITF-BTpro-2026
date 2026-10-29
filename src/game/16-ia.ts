@@ -620,6 +620,8 @@ function updateAI(p, dt) {
           // lob por cima de quem estava colado na rede (chutado perfeito pesa mais): corre para trás e chega mal
           p.ai.kickBeat = !!ball.lobSev && !!ball.kickBeat && ball.kickBeat.includes(p);
           if (p.ai.kickBeat) hardK += lerp(.5, .32, Math.min(1, attrK(p, 'vel'))) * ball.lobSev;
+          // defesa perfeita chegando em quem está perto da rede: bola tensa no corpo, voleio difícil
+          if (ball.defPerf && Math.abs(p.pos.z) < 4) hardK += ball.defPerf * lerp(.42, .24, Math.min(1, (attrK(p, 'voleio') + attrK(p, 'def')) / 2));
           if (S.rally === 1) hardK *= .5; }
         // pressão do ponto decisivo pesa mais em quem tem menos nível; time embalado erra menos
         const expK = clamp((overall(p.char ? p.char.a : { forca: 70, vel: 70, def: 70, backhand: 70, curta: 70, lob: 70, smash: 70, saque: 70 }) - 60) / 35, 0, 1);
@@ -649,7 +651,7 @@ function updateAI(p, dt) {
           // erro: quase sempre a bola vai na rede/fora; furar (raquete passa e a bola segue) só chegando no limite
           // erro quase sempre é bola na rede/fora; furar (raquete passa e a bola segue) só esticando no limite numa bola difícil
           if (p.ai.willMiss && !(p.ai.stretch && Math.random() < .55)) { const st = styleOf(p); const r = doHit(p, shot, rand(D.q[0], D.q[1]) * .8, false, { speedMul: st.speed, noiseMul: st.noise * 1.4, misBoost: 1 }); shotFeedback(whoTag(p) + r.label, 'ERROU', whoKind(p)); }
-          else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
+          else if (p.ai.willMiss) { p.swing.hit = true; p.ai.letGo = true; S.attempt = { p, hitId: S.hitId, hard: (ball.threat || 0) >= .4 || (ball.defPerf || 0) > .5 || Math.hypot(ball.vel.x, ball.vel.z) > 14 || !!ball.finisher || !!(S.lastHit && S.lastHit.cat === 'smash') }; }
           else {
             const st = styleOf(p);
             const sf = D.soft || 1, soft = sf < 1, A = aiP(p);

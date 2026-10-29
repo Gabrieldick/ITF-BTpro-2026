@@ -163,6 +163,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   if (pop) spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 };
   // defesa: quanto melhor o golpe (timing/posição) e o atributo, mais baixa e rápida ela volta; só a ruim flutua
+  let defPerf = 0;
   if (!pop && key === 'defesa') {
     const dq = mod.timing === undefined ? grade : grade * .6 + mod.timing * .4;
     const dk = clamp((dq - .4) / .45, 0, 1);
@@ -173,6 +174,10 @@ function doHit(p, type, q, isServe, mod) {
       // defesa: volta baixa e tensa (não precisa ser curta), para não dar smash/acelerada fácil; só a ruim flutua
       spec.T = lerp(1.08, .7, dk) * lerp(1.06, .94, attrK(p, 'def')) * (1 + weakK(p, 'def') * .18); // defensor fraco devolve mais flutuada
       spec.margin = lerp(.24, .06, dk); // bem batida passa rente à rede (abaixo da altura de finalização do jogador da rede)
+      // defesa perfeita (tempo certo + boa qualidade): volta tensa e rápida, passando por quem está na rede; quem recebe
+      // quase não tem tempo de preparar o voleio
+      defPerf = clamp((dk - .78) / .2, 0, 1) * (pressure > .2 || inSpeed > 13 ? 1 : .6);
+      if (defPerf > 0) { spec.T *= lerp(1, .74, defPerf); spec.margin = lerp(spec.margin, .04, defPerf); spec.depth = [lerp(spec.depth[0], 5.2, defPerf), lerp(spec.depth[1], 6.8, defPerf)]; if (defPerf > .6) spec.label = 'DEFESA PERFEITA'; }
     }
   }
   let lobLong = 0, finisher = false, topK = 0; // topK: quanto efeito para baixo o golpe consegue (0 a 1)
@@ -373,6 +378,7 @@ function doHit(p, type, q, isServe, mod) {
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o
   // peso de ter sido encoberto
+  ball.defPerf = !pop && !wild ? defPerf : 0;
   ball.lobSev = key === 'lob' && !isServe && !pop && !wild ? (spec.kick ? 1 : (spec.T || 0) >= 1.95 ? .4 : (spec.T || 0) >= 1.35 ? .55 : 0) : 0;
   ball.kickBeat = ball.lobSev ? $s.teams[1 - p.team].filter(o => Math.abs(o.pos.z) < 2.4) : null;
   ball.apex = ball.pos.y + Math.max(0, v.y) * Math.max(0, v.y) / (2 * G);
