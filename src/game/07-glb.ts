@@ -322,7 +322,12 @@ function dressSkin(p, root) {
   show('Glasses', !!look.glasses); show('GlassesFrame', !!look.glasses);
   // manguito (braço da raquete), meião e munhequeiras: os outros sorteiam; a sua jogadora/o seu jogador usa o que comprou (look.acc)
   const AC = look.acc;
-  show('ArmSleeve', AC ? !!AC.sleeve && !c.canhoto : r(2) < .22 && !c.canhoto); show('Calf', AC ? !!AC.calf : fem && r(3) < .3); show('Wristband', AC ? !!AC.wrist : r(4) < .3); // (o manguito do arquivo é do braço direito)
+  // lados (L/R/LR): a sua carreira escolhe; os outros usam o manguito no braço da raquete e meião/munhequeira nos dois
+  { const racket = c.canhoto ? 'L' : 'R', side = (k, def) => AC ? (AC[k] ? AC[k + 'Side'] || def : '') : '';
+    const sl = AC ? side('sleeve', racket) : r(2) < .22 ? racket : '', cf = AC ? side('calf', 'LR') : fem && r(3) < .3 ? 'LR' : '', wr = AC ? side('wrist', 'LR') : r(4) < .3 ? (r(5) < .5 ? 'LR' : racket) : '';
+    show('ArmSleeve', sl.includes('R')); show('ArmSleeveL', sl.includes('L'));
+    show('CalfR', cf.includes('R')); show('CalfL', cf.includes('L')); show('Calf', !!cf);
+    show('WristbandR', wr.includes('R')); show('WristbandL', wr.includes('L')); show('Wristband', !!wr); }  // (o manguito do arquivo é do braço direito)
   // pele: os trechos que a blusa escolhida cobre somem (não atravessam a roupa)
   for (const n in parts) if (n.startsWith('BodySk_')) show(n, !n.slice(7).split('_').includes(top));
   // físico: formas do arquivo sobre o atlético
@@ -341,9 +346,9 @@ function dressSkin(p, root) {
   for (const [n, k] of [['Skirt', 1.3], ['SkirtS', 1], ['Shorts', .45], ['ShortS', .35], ['Bermuda', .5], ['Compress', .3], ['Legging', .3]]) (parts[n] || []).forEach(o => { swayCloth(o, p.skinU.uSway, k); o.material.userData.sw.uFab.value = FAB_ID[look.bfab] || 0; });
   for (const n of BOTS_ALL) if (matOf(n)) matOf(n).color.copy(dress && (n === 'Shorts' || n === 'Skirt') ? shirt : shorts);
   const trim = col(look.trim || '#fbf6ea');
-  if (matOf('ArmSleeve')) matOf('ArmSleeve').color.copy(col(AC && AC.sleeve || look.trim || '#fbf6ea')); if (matOf('Calf')) matOf('Calf').color.copy(col(AC && AC.calf || look.trim || '#fbf6ea'));
+  for (const n of ['ArmSleeve', 'ArmSleeveL']) if (matOf(n)) matOf(n).color.copy(col(AC && AC.sleeve || look.trim || '#fbf6ea')); for (const n of ['Calf', 'CalfR', 'CalfL']) if (matOf(n)) matOf(n).color.copy(col(AC && AC.calf || look.trim || '#fbf6ea'));
   // munhequeira: cor escolhida (ou a do detalhe do time); a de fio de ouro brilha como metal
-  { const m = matOf('Wristband'); if (m) { const gold = AC && AC.wristFab === 'gold'; m.color.copy(col(gold ? '#ffc640' : AC && AC.wrist || look.trim || '#fbf6ea')); m.metalness = gold ? .9 : 0; m.roughness = gold ? .3 : .95; } }
+  for (const n of ['Wristband', 'WristbandR', 'WristbandL']) { const m = matOf(n); if (m) { const gold = AC && AC.wristFab === 'gold'; m.color.copy(col(gold ? '#ffc640' : AC && AC.wrist || look.trim || '#fbf6ea')); m.metalness = gold ? .9 : 0; m.roughness = gold ? .3 : .95; } }
   // boné/viseira/faixa black label (preto acetinado) ou fio de ouro (metal)
   for (const n of ['Cap', 'CapBrim', 'Visor', 'VisorBrim', 'Headband']) { const m = matOf(n); if (!m) continue; if (m.userData.r0 == null) { m.userData.r0 = m.roughness; m.userData.m0 = m.metalness; }
     const f = AC && AC.headFab; if (f === 'gold') { m.color.copy(col('#ffc640')); m.metalness = .9; m.roughness = .3; } else if (f === 'black') { m.color.copy(col('#0c0c0f')); m.metalness = .1; m.roughness = .35; } else { m.metalness = m.userData.m0; m.roughness = m.userData.r0; } }

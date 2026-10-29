@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
+import { GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
@@ -98,7 +98,7 @@ function crAgendaHTML() {
       if (o.special && o.special !== 'estadual') return '<div class="cr-card gold"><div class="eyebrow">Seleção · convocação</div><b>' + esc(o.name) + '</b>' + when + (o.notCalled ? '<span>Você não foi convocado. ' + esc(o.info) + '</span>' : '<span>Você foi convocado! Joga ao lado de ' + esc(nameOf(crChar(o.mate))) + '.' + (o.info ? ' ' + esc(o.info) : '') + ' Sem inscrição nem viagem; não conta para o ranking, mas dá fama, evolução e prêmio.</span><button class="cta sm" data-enter="' + i + '">Defender a seleção</button>') + '</div>';
       const T = TIERS[o.tier]; const cost = o.special === 'estadual' || o.singles ? Math.round(T.fee * .5) + (o.singles ? crTravel(T) : 0) : (o.wild ? 0 : T.fee) + crTravel(T);
       if (o.singles) return '<div class="cr-card"><div class="eyebrow">Simples · chave de 8</div><b>' + esc(o.name) + '</b>' + when + '<span>Sem parceiro: só você. Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + '</span><span>Campeão: ' + money(Math.round(T.prize[0] * .5)) + ' · não conta para o ranking de duplas</span><span>Custo: ' + money(cost) + '</span><button class="ghost sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>';
-      return '<div class="cr-card' + (o.tier === 9 ? ' gold' : '') + '"><div class="eyebrow">' + T.nome + ' · chave de ' + T.draw + '</div><b>' + esc(o.name) + '</b>' + when + '<span>Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + '</span><span>Campeão: ' + money(T.prize[0]) + ' · ' + (o.special === 'estadual' ? Math.round(T.pts[0] * .5) : T.pts[0]) + ' pts</span><span>Custo: ' + money(cost) + (T.travel ? ' (inscrição ' + money(T.fee) + ' + viagem ' + money(T.travel) + ')' : '') + '</span><button class="cta sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>';
+      return '<div class="cr-card' + (o.tier === 9 ? ' gold' : '') + (o.up ? ' up' : '') + '"><div class="eyebrow">' + T.nome + ' · chave de ' + T.draw + (o.up ? ' · ⚠️ acima do seu nível' : '') + '</div><b>' + esc(o.name) + '</b>' + when + '<span>Adversários OVR ' + T.ovr[0] + '–' + T.ovr[1] + (o.up ? ' (você: ' + crMeOvr() + ')' : '') + '</span><span>Campeão: ' + money(T.prize[0]) + ' · ' + (o.special === 'estadual' ? Math.round(T.pts[0] * .5) : T.pts[0]) + ' pts</span><span>Custo: ' + money(cost) + (T.travel ? ' (inscrição ' + money(T.fee) + ' + viagem ' + money(T.travel) + ')' : '') + '</span><button class="cta sm" data-enter="' + i + '"' + ($s.CR.money < cost ? ' disabled' : '') + '>Inscrever</button></div>';
     }).join('') + '</div>' : '<p class="cr-note">' + (wlog[6] === 'Torneio' ? 'Torneio do fim de semana encerrado.' : 'Fim de semana sem torneio: aproveite para treinar ou descansar.') + ' Na segunda abrem as inscrições da próxima semana.</p>') : '';
   // próximo torneio do seu nível (o calendário completo fica na aba Calendário)
   const nx = crUpcoming(1)[0];
@@ -184,9 +184,11 @@ function crAccHTML() {
   if (headC) h += '<div class="cr-sws"><div><span class="cr-lbl">Cor do ' + (L.cap ? 'boné' : L.visor ? 'viseira' : 'faixa') + '</span>' + sw('head', headC) + '</div></div>';
   const has = k => own.includes(k), slotOwn = sl => own.filter(k => ACCESS[k] && ACCESS[k].slot === sl);
   const f = [];
-  if (has('munhe')) f.push('<label class="cr-field">Munhequeiras ' + sel('crAcWrist', [['', 'Sem'], ['1', 'Usar']].concat(has('munheGold') ? [['gold', 'Fio de Ouro']] : []), A.wristFab === 'gold' ? 'gold' : A.wrist ? '1' : '') + '</label>');
-  if (has('manguito')) f.push('<label class="cr-field">Manguito ' + sel('crAcSleeve', [['', 'Sem'], ['1', 'Usar']], A.sleeve ? '1' : '') + '</label>');
-  if (has('meiao')) f.push('<label class="cr-field">Meião ' + sel('crAcCalf', [['', 'Sem'], ['1', 'Usar']], A.calf ? '1' : '') + '</label>');
+  // lado: não, esquerdo, direito ou os dois (manguito: padrão no braço da raquete)
+  const SIDES = [['', 'Não'], ['L', 'Esquerda'], ['R', 'Direita'], ['LR', 'Ambos']], cur = (k, def) => A[k] ? A[k + 'Side'] || def : '';
+  if (has('munhe')) f.push('<label class="cr-field">Munhequeiras ' + sel('crAcWrist', SIDES, cur('wrist', 'LR')) + '</label>' + (has('munheGold') ? '<label class="cr-field">Munhequeira ' + sel('crAcWristF', [['', 'Comum'], ['gold', 'Fio de Ouro']], A.wristFab) + '</label>' : ''));
+  if (has('manguito')) f.push('<label class="cr-field">Manguito ' + sel('crAcSleeve', SIDES, cur('sleeve', $s.CR.me.canhoto ? 'L' : 'R')) + '</label>');
+  if (has('meiao')) f.push('<label class="cr-field">Meião ' + sel('crAcCalf', SIDES, cur('calf', 'LR')) + '</label>');
   if (slotOwn('lens').length) f.push('<label class="cr-field">Lente dos óculos ' + sel('crAcLens', [['', 'Escura']].concat(slotOwn('lens').map(k => [k, ACCESS[k].nome.replace('Lente ', '')])), A.lens) + '</label>');
   if (slotOwn('headfab').length) f.push('<label class="cr-field">Boné/viseira ' + sel('crAcHead', [['', 'Comum']].concat(slotOwn('headfab').map(k => [ACCESS[k].fab, ACCESS[k].nome.replace('Boné/viseira ', '')])), A.headFab) + '</label>');
   if (f.length) h += '<div class="cr-look">' + f.join('') + '</div>';
@@ -224,9 +226,8 @@ function bindLook(done) {
   const A = () => (L().acc = L().acc || {});
   document.querySelectorAll('[data-acc-head]').forEach(b => b.addEventListener('click', () => { const l = L(), c = b.dataset.accHead; if (l.cap) l.cap = c; else if (l.visor) l.visor = c; else if (l.headband) l.headband = c; done(); }));
   ['wrist', 'sleeve', 'calf'].forEach(k => document.querySelectorAll('[data-acc-' + k + ']').forEach(b => b.addEventListener('click', () => { A()[k] = b.getAttribute('data-acc-' + k); done(); })));
-  on('crAcWrist', v => { const a = A(); a.wristFab = v === 'gold' ? 'gold' : ''; a.wrist = v ? (a.wrist || '#fbf6ea') : ''; });
-  on('crAcSleeve', v => { A().sleeve = v ? (A().sleeve || '#fbf6ea') : ''; });
-  on('crAcCalf', v => { A().calf = v ? (A().calf || '#fbf6ea') : ''; });
+  ['wrist', 'sleeve', 'calf'].forEach(k => on('crAc' + k[0].toUpperCase() + k.slice(1), v => { const a = A(); a[k + 'Side'] = v; a[k] = v ? (a[k] || '#fbf6ea') : ''; }));
+  on('crAcWristF', v => { A().wristFab = v; });
   on('crAcLens', v => { A().lens = v; if (v) L().glasses = true; });
   on('crAcHead', v => { A().headFab = v; });
   const OF = () => L().outfit || {};
@@ -315,7 +316,7 @@ function crShopHTML() {
   const sub = SHOP_TABS.map(([k, n]) => '<button type="button" class="' + (shopTab === k ? 'sel' : '') + '" data-shop="' + k + '">' + n + '</button>').join('');
   const head = (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '') + '<div class="cr-tabs cr-shop-tabs">' + sub + '</div>';
   if (shopTab === 'raquetes') return head + '<p class="section-label">🎾 Raquetes (' + Object.keys(RACKET_STATS).length + ')</p><div class="cr-list">' + rk + '</div>';
-  if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><div class="cr-list">' + gr + '</div></div></div>';
+  if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Cada um dá +1; somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
   return head + crClothesHTML(shopTab);
 }
 // ---------- loja de roupas: parte de cima, de baixo, estampas, acessórios e a vitrine das exclusivas ----------

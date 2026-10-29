@@ -623,16 +623,19 @@ nt = em.materials[0].node_tree; cn = nt.nodes.new('ShaderNodeVertexColor'); cn.l
 nt.links.new(cn.outputs['Color'], nt.nodes['Principled BSDF'].inputs['Base Color'])
 # manguito de compressão (um braço) e meião (panturrilhas): casca justa sobre a pele
 if P.get('armSleeve') or ALL:  # 'R' (braço da raquete) ou 'L'
-    sg = 1 if P.get('armSleeve') == 'L' else -1
-    arm_sup = [f for f in body_f if all(V0[v][0] * sg > ARMX - .2 for v in f[0]) and any(armfrac(v) > .4 for v in f[0])]
-    finepart('ArmSleeve', arm_sup, mat('ArmSleeve', srgb(P.get('sleeveC', '#ffffff')), .7),
-             lambda p: KW['arm'] > .5 and p[0] * sg > 0 and (sleeve_t(p) > .55 or fore_t(p) > -.2) and fore_t(p) < .93, lambda p: .03)
+    # no modelo do jogo, os dois braços: ArmSleeve (direito, destros) e ArmSleeveL (esquerdo, canhotos)
+    for nm, sg in ((('ArmSleeve', -1), ('ArmSleeveL', 1)) if ALL else (('ArmSleeve', 1 if P.get('armSleeve') == 'L' else -1),)):
+        arm_sup = [f for f in body_f if all(V0[v][0] * sg > ARMX - .2 for v in f[0]) and any(armfrac(v) > .4 for v in f[0])]
+        finepart(nm, arm_sup, mat(nm, srgb(P.get('sleeveC', '#ffffff')), .7),
+                 lambda p, sg=sg: KW['arm'] > .5 and p[0] * sg > 0 and (sleeve_t(p) > .55 or fore_t(p) > -.2) and fore_t(p) < .93, lambda p: .03)
 if ALL:  # munhequeiras (os dois punhos)
     wr_sup = [f for f in body_f if all(abs(V0[v][0]) > ARMX - .2 for v in f[0]) and any(armfrac(v) > .4 for v in f[0])]
-    finepart('Wristband', wr_sup, mat('Wristband', srgb('#ffffff'), .95), lambda p: KW['arm'] > .5 and .72 < fore_t(p) < .9, lambda p: .07)
+    for nm, sg in (('WristbandR', -1), ('WristbandL', 1)):  # um por punho (o jogo escolhe esquerdo, direito ou os dois)
+        finepart(nm, [f for f in wr_sup if V0[f[0][0]][0] * sg > 0], mat(nm, srgb('#ffffff'), .95), lambda p, sg=sg: KW['arm'] > .5 and p[0] * sg > 0 and .72 < fore_t(p) < .9, lambda p: .07)
 if P.get('calf') or ALL:
     leg_sup = [f for f in body_f if V0[f[0][0]][1] < -2.5]
-    finepart('Calf', leg_sup, mat('Calf', srgb(P.get('calfC', '#d7eef0')), .7), lambda p: .12 < calf_t(p) < .86, lambda p: .03)
+    for nm, sg in ((('CalfR', -1), ('CalfL', 1)) if ALL else (('Calf', 0),)):  # no jogo, uma perna de cada vez
+        finepart(nm, [f for f in leg_sup if V0[f[0][0]][0] * sg >= 0], mat(nm, srgb(P.get('calfC', '#d7eef0')), .7), lambda p, sg=sg: p[0] * sg >= 0 and .12 < calf_t(p) < .86, lambda p: .03)
 # óculos esportivos: lentes largas e curvas (envolventes), armação em volta, ponte e hastes até as orelhas
 if P.get('glasses') or ALL:
     hshift = V[S['joints']['head____head']].mean(0) - J0['head____head']

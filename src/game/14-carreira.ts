@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
+import { gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -335,7 +335,7 @@ function crSlots() {
 // personagem de um save (para jogar online): atributos com os equipamentos e a raquete em uso
 function crCharFromSave(c) {
   if (!c || !c.me || !c.me.a) return null;
-  const gb = {}; (c.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) gb[k] = (gb[k] || 0) + g.b[k]; });
+  const gb = gearSum(c.gear);
   const me = c.me, rk = c.racket === 'assinatura' ? 'zenite' : c.racket || 'basica';
   // mesmo limite da carreira: raquete + equipamento somam com retorno decrescente (a raquete entra de novo na partida, então desconta)
   const rb = racketBonus(rk), eq = {}; for (const [k] of ATTRS) { const t = (gb[k] || 0) + (rb[k] || 0); eq[k] = (t > 2 ? Math.min(3, 2 + (t - 2) * .25) : t) - (rb[k] || 0); }
@@ -385,7 +385,7 @@ function crSyncChars() {
   $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER, crLocals()).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
-function crGearBonus() { const b = {}; ($s.CR.gear || []).forEach(id => { const g = GEAR.find(x => x.id === id); if (g && g.b) for (const k in g.b) b[k] = (b[k] || 0) + g.b[k]; }); return b; }
+function crGearBonus() { return gearSum($s.CR.gear); } // no máximo +2 por atributo somando tudo
 // energia no desempenho (todos os atributos): abaixo de 10 → −4, de 20 → −3, de 30 → −2, de 45 → −1; acima de 85 → +1
 const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -4 : e < 20 ? -3 : e < 30 ? -2 : e < 45 ? -1 : e > 85 ? 1 : 0; };
 function crFatigue() { const p = crEnergyMod(); const b = {}; for (const [k] of ATTRS) b[k] = p; return b; }
@@ -617,6 +617,9 @@ function crWeekOptions(wk) {
   const top = crMaxTier(), opts = [], cal = crSeasonCal($s.CR.season)[wk] || [];
   const tiers = [top, top - 1, top - 2, top - 3].filter(t => t >= crMinTier('crme') && (t < 3 || cal.includes(t))).slice(0, 3);
   if (cal.includes(9) && crRank() <= 16) tiers.unshift(9);
+  // profissional (BT10 liberado): pode se inscrever em qualquer torneio do circuito acima do seu nível, até o Sand Series,
+  // sem precisar ter ganho os de baixo (os adversários é que são bem mais fortes); o Mundial segue só para o top 16
+  if (top >= 3) for (let t = top + 1; t <= 8; t++) if (cal.includes(t)) tiers.push(t);
   const seen = new Set();
   tiers.forEach((t, k) => {
     const T = TIERS[t]; let city = T.cities[Math.floor(rnd() * T.cities.length)];
@@ -630,9 +633,9 @@ function crWeekOptions(wk) {
       seen.add(t + city);
       opts.push({ tier: t, name: city + ' · ' + T.curto, uf }); return;
     }
-    opts.push({ tier: t, name: t >= 3 && t < 9 ? city : city + (t < 3 ? ' · ' + T.curto : '') });
+    opts.push({ tier: t, name: t >= 3 && t < 9 ? city : city + (t < 3 ? ' · ' + T.curto : ''), up: t > top && t < 9 });
   });
-  const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 4);
+  const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 8);
   if ($s.CR.wildcard > 0 && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
   const open = crOpenWeek($s.CR.season, wk);
   const out = crSpecialOptions(wk).concat(open ? list : list.filter(o => o.tier === 9));
@@ -647,8 +650,8 @@ function crUpcoming(n) {
   const top = crMaxTier(), out = [];
   for (let w = $s.CR.week + 1; w <= SEASON_WEEKS && out.length < (n || 8); w++) {
     const cal = crSeasonCal($s.CR.season)[w] || [];
-    crWeekOptions(w).filter(o => o.special && o.special !== 'estadual' ? !o.notCalled : o.tier >= Math.max(3, top - 1) && o.tier <= top + 1 && !o.wild && !o.singles).forEach(o => out.push({ w, o, date: crDateTxt($s.CR.season, w, 6) + (o.days > 1 ? '–' + crDate($s.CR.season, w, 7).getDate() : '') }));
-    if (cal.includes(top + 1) && top + 1 < 9 && top + 1 >= 3 && out.filter(x => x.o.locked).length < 3) out.push({ w, o: { tier: top + 1, name: TIERS[top + 1].curto + ' (acima do seu nível)', locked: true }, date: crDateTxt($s.CR.season, w, 6) });
+    crWeekOptions(w).filter(o => o.special && o.special !== 'estadual' ? !o.notCalled : o.tier >= Math.max(3, top - 1) && o.tier <= (top >= 3 ? 8 : top + 1) && !o.wild && !o.singles).forEach(o => out.push({ w, o, date: crDateTxt($s.CR.season, w, 6) + (o.days > 1 ? '–' + crDate($s.CR.season, w, 7).getDate() : '') }));
+    if (top < 3 && cal.includes(top + 1) && top + 1 < 9 && top + 1 >= 3 && out.filter(x => x.o.locked).length < 3) out.push({ w, o: { tier: top + 1, name: TIERS[top + 1].curto + ' (acima do seu nível)', locked: true }, date: crDateTxt($s.CR.season, w, 6) });
   }
   return out.slice(0, n || 8);
 }
