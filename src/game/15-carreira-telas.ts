@@ -10,7 +10,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
+import { crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -25,7 +25,21 @@ function openCareer() {
   const go = () => { if ($s.CR) { crMigrate(); crSyncChars(); } if (CL.msg === 'Sincronizando com a nuvem…') CL.msg = ''; renderCareer(); if (!CL.based) { CL.based = true; crSnapBase(); } CL.crReady = true; };
   if (CL.sess && !CL.synced && CL.syncP) { CL.msg = 'Sincronizando com a nuvem…'; renderCareer(); CL.syncP.then(go, go); } else go();
 }
-let crFeedOpen = false;
+let crFeedOpen = false, crPairsOpen = false;
+// coluna do lado (tela larga) ou dois quadros que abrem e fecham (celular): duplas do circuito e feed com as notícias
+const crWideQ = window.matchMedia('(min-width: 1120px)');
+function crSideLayout() { document.querySelector('.cr-card-main').classList.toggle('wide', !!$s.CR && crWideQ.matches); }
+crWideQ.addEventListener('change', () => { crSideLayout(); if ($s.CR && !$('career').hidden) renderCrSide(); });
+function renderCrSide() {
+  crSideLayout();
+  const wide = crWideQ.matches, side = $('crSide');
+  const B = crPairBoard(10), N = $s.CR.news || [];
+  const pairs = '<details class="cr-feed cr-pairs-box"' + (wide || crPairsOpen ? ' open' : '') + '><summary>🤝 Duplas do circuito</summary><table class="cr-pairs">' + B.map((t, i) => '<tr' + (t.me ? ' class="me"' : '') + '><td class="n">' + (i + 1) + '</td><td><b data-prof="' + (t.me ? t.b : t.a) + '">' + esc(t.name) + '</b><small>' + esc(t.ten) + '</small></td><td class="v">' + t.p + ' pts<small>OVR ' + t.o + '</small></td></tr>').join('') + '</table></details>';
+  const feed = '<details class="cr-feed cr-news-box"' + (wide || crFeedOpen ? ' open' : '') + '><summary>📰 Feed do circuito' + (N.length ? ' (' + N.length + ')' : '') + '</summary><div class="cr-feed-list">' + (N.length ? N.map(n => { const s0 = Math.floor((n.w - 1) / SEASON_WEEKS) + 1, w0 = n.w - (s0 - 1) * SEASON_WEEKS; return '<div class="cr-tweet"><span class="ic">' + n.i + '</span><div><b>' + esc(n.h) + '</b> <small>T' + s0 + ' · sem ' + w0 + '</small><p>' + esc(n.t) + '</p></div></div>'; }).join('') : '<p class="cr-tweet">Sem notícias ainda: jogue uma semana.</p>') + '</div></details>';
+  side.innerHTML = pairs + feed;
+  side.querySelector('.cr-pairs-box').addEventListener('toggle', e => { if (!wide) crPairsOpen = e.target.open; });
+  side.querySelector('.cr-news-box').addEventListener('toggle', e => { if (!wide) crFeedOpen = e.target.open; });
+}
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -34,15 +48,14 @@ function renderCareer() {
   $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
   $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
+  crSideLayout();
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
   const meO = overall($s.CR.me.a), inGame = crMeOvr(), rank = crRank(), pts = crPts();
   $('crHead').innerHTML = '<div class="cr-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><span>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · potencial ' + crCap() + ' (máx. 99 pela nota) · em jogo ' + inGame + ' · fama ' + Math.round($s.CR.fama || 0) + '</span></div></div>'
     + '<div class="cr-kpis"><div><b>' + rank + 'º</b>ranking (' + pts + ' pts)</div><div><b>' + money($s.CR.money) + '</b>dinheiro</div><div><b>' + Math.floor($s.CR.pe) + '</b>pontos de evolução <small>(máx. ' + crPeMax() + ')</small></div><div><b>' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day, true) + '</b>temporada ' + $s.CR.season + ' · semana ' + $s.CR.week + '/' + SEASON_WEEKS + '</div></div>'
     + '<div class="cr-stars"><span>Dificuldade</span>' + [1, 2, 3, 4, 5, 6].map(n => '<button type="button" class="' + (n <= ($s.CR.stars || 3) ? 'on' : '') + '" data-stars="' + n + '" title="' + n + (n === 3 ? ' (padrão)' : '') + '">★</button>').join('') + '<small>' + ['Bem fácil', 'Fácil', 'Padrão', 'Difícil', 'Muito difícil', 'Lendário'][($s.CR.stars || 3) - 1] + '</small></div>'
     + '<div class="cr-energy"><span>Energia</span><span class="bar"><i class="' + ($s.CR.energy < 40 ? 'lo' : $s.CR.energy > 75 ? 'hi' : '') + '" style="width:' + $s.CR.energy + '%"></i></span><b>' + $s.CR.energy + '</b>' + (crEnergyMod() ? '<small class="cr-emod ' + (crEnergyMod() > 0 ? 'hi' : 'lo') + '">' + (crEnergyMod() > 0 ? '+' : '−') + Math.abs(crEnergyMod()) + ' nos atributos</small>' : '') + '</div>';
-  // feed do circuito: campeões da semana, duplas que se separam ou se formam, talentos e veteranos
-  { const N = ($s.CR.news || []).slice(0, 8); if (N.length) $('crHead').insertAdjacentHTML('beforeend', '<details class="cr-feed"' + (crFeedOpen ? ' open' : '') + '><summary>📰 Feed do circuito</summary>' + N.map(n => { const s0 = Math.floor((n.w - 1) / SEASON_WEEKS) + 1, w0 = n.w - (s0 - 1) * SEASON_WEEKS; return '<div class="cr-tweet"><span class="ic">' + n.i + '</span><div><b>' + esc(n.h) + '</b> <small>T' + s0 + ' · sem ' + w0 + '</small><p>' + esc(n.t) + '</p></div></div>'; }).join('') + '</details>');
-    const fd = $('crHead').querySelector('.cr-feed'); if (fd) fd.addEventListener('toggle', () => { crFeedOpen = fd.open; }); }
+  renderCrSide();
   $('crHead').querySelectorAll('[data-stars]').forEach(b => b.addEventListener('click', () => { $s.CR.stars = +b.dataset.stars; saveCareer(); renderCareer(); }));
   document.querySelectorAll('#crTabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === crTab));
   const busy = $s.CR.tour && !$s.CR.tour.done;
@@ -790,4 +803,4 @@ function openProfile(id) {
   const loop = () => { if (PF.el.hidden) return; PF.rot += .006; if (PF.model) PF.model.rotation.y = PF.rot; PF.r.render(PF.scene, PF.cam); PF.raf = requestAnimationFrame(loop); }; loop();
 }
 const crAgeOfC = c => crAgeOf(c);
-document.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-prof]'); if (!el || e.target.closest('button')) return; if (el.closest('#crBody') || el.closest('#crHead')) openProfile(el.dataset.prof); });
+document.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-prof]'); if (!el || e.target.closest('button')) return; if (el.closest('#crBody') || el.closest('#crHead') || el.closest('#crSide')) openProfile(el.dataset.prof); });
