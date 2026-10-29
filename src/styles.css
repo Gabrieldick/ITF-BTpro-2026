@@ -822,3 +822,11 @@ body[data-tags="off"] .tag { display: none; }
 @media (max-width: 720px) { .cr-edit-body { grid-template-columns: 1fr; } .cr-edit-prev canvas { width: 220px; height: 300px; } }
 
 .bracket .tm .seed { font-style: normal; font-size: .8em; opacity: .75; margin-left: 2px; }
+
+.cr-feed { margin-top: 8px; background: rgba(255,255,255,.06); border-radius: 10px; padding: 6px 10px; }
+.cr-feed summary { cursor: pointer; font-weight: 700; }
+.cr-tweet { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.08); }
+.cr-tweet:first-of-type { border-top: 0; }
+.cr-tweet .ic { font-size: 18px; line-height: 1.2; }
+.cr-tweet small { opacity: .6; }
+.cr-tweet p { margin: 2px 0 0; font-size: 13px; }

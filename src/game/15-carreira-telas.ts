@@ -25,6 +25,7 @@ function openCareer() {
   const go = () => { if ($s.CR) { crMigrate(); crSyncChars(); } if (CL.msg === 'Sincronizando com a nuvem…') CL.msg = ''; renderCareer(); if (!CL.based) { CL.based = true; crSnapBase(); } CL.crReady = true; };
   if (CL.sess && !CL.synced && CL.syncP) { CL.msg = 'Sincronizando com a nuvem…'; renderCareer(); CL.syncP.then(go, go); } else go();
 }
+let crFeedOpen = false;
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -39,6 +40,9 @@ function renderCareer() {
     + '<div class="cr-kpis"><div><b>' + rank + 'º</b>ranking (' + pts + ' pts)</div><div><b>' + money($s.CR.money) + '</b>dinheiro</div><div><b>' + Math.floor($s.CR.pe) + '</b>pontos de evolução <small>(máx. ' + crPeMax() + ')</small></div><div><b>' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day, true) + '</b>temporada ' + $s.CR.season + ' · semana ' + $s.CR.week + '/' + SEASON_WEEKS + '</div></div>'
     + '<div class="cr-stars"><span>Dificuldade</span>' + [1, 2, 3, 4, 5, 6].map(n => '<button type="button" class="' + (n <= ($s.CR.stars || 3) ? 'on' : '') + '" data-stars="' + n + '" title="' + n + (n === 3 ? ' (padrão)' : '') + '">★</button>').join('') + '<small>' + ['Bem fácil', 'Fácil', 'Padrão', 'Difícil', 'Muito difícil', 'Lendário'][($s.CR.stars || 3) - 1] + '</small></div>'
     + '<div class="cr-energy"><span>Energia</span><span class="bar"><i class="' + ($s.CR.energy < 40 ? 'lo' : $s.CR.energy > 75 ? 'hi' : '') + '" style="width:' + $s.CR.energy + '%"></i></span><b>' + $s.CR.energy + '</b>' + (crEnergyMod() ? '<small class="cr-emod ' + (crEnergyMod() > 0 ? 'hi' : 'lo') + '">' + (crEnergyMod() > 0 ? '+' : '−') + Math.abs(crEnergyMod()) + ' nos atributos</small>' : '') + '</div>';
+  // feed do circuito: campeões da semana, duplas que se separam ou se formam, talentos e veteranos
+  { const N = ($s.CR.news || []).slice(0, 8); if (N.length) $('crHead').insertAdjacentHTML('beforeend', '<details class="cr-feed"' + (crFeedOpen ? ' open' : '') + '><summary>📰 Feed do circuito</summary>' + N.map(n => { const s0 = Math.floor((n.w - 1) / SEASON_WEEKS) + 1, w0 = n.w - (s0 - 1) * SEASON_WEEKS; return '<div class="cr-tweet"><span class="ic">' + n.i + '</span><div><b>' + esc(n.h) + '</b> <small>T' + s0 + ' · sem ' + w0 + '</small><p>' + esc(n.t) + '</p></div></div>'; }).join('') + '</details>');
+    const fd = $('crHead').querySelector('.cr-feed'); if (fd) fd.addEventListener('toggle', () => { crFeedOpen = fd.open; }); }
   $('crHead').querySelectorAll('[data-stars]').forEach(b => b.addEventListener('click', () => { $s.CR.stars = +b.dataset.stars; saveCareer(); renderCareer(); }));
   document.querySelectorAll('#crTabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === crTab));
   const busy = $s.CR.tour && !$s.CR.tour.done;

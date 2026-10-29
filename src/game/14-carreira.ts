@@ -411,9 +411,47 @@ function crFormWeek() {
   const f = $s.CR.form = $s.CR.form || {}, rnd = Math.random;
   crWorld().forEach(c => { const v = (f[c.id] || 0) * .8 + gaussR(rnd) * .9; if (Math.abs(v) < .05) delete f[c.id]; else f[c.id] = Math.round(clamp(v, -3.4, 3.4) * 100) / 100; });
 }
+// idade dos astros reais (ano de nascimento do ranking ITF): jovens sobem, veteranos caem devagar (há gente de 37/38 no
+// alto nível); a forma de cada temporada ainda oscila um pouco
+const BIRTH = { gianote: 1998, spot: 1999, barao: 1991, capeletti: 1992, mola: 2003, lock: 2006, gigio: 2003, ramires: 1993, gine: 2003, ngaspari: 2004, allan: 1994, branco: 2001, grusso: 2002, barro: 2007, neiss: 1990, testa: 2002, guegano: 1995, balerini: 2006, amorin: 1994, reck: 1990, ponti: 2004, hrusso: 1995, galeazzi: 2000, buemo: 2004, burmak: 1989, bollettinari: 1994, psilva: 2001, boscolo: 2003, bazzi: 2002, jublin: 2003,
+  gaspar: 1991, valentim: 1999, kudina: 2004, semena: 2005, marquezin: 2005, chou: 1997, casadi: 1998, grael: 2003, dias: 1991, miler: 1993, cimadi: 1992, daino: 1993, tripa: 1999, vida: 1989, justi: 2000, nobre: 1995, nogueiro: 1994, damata: 1993, lmelo: 1994, pansani: 1993, peracine: 2002, pereira: 2006, magalhaes: 1999, bray: 2004, preisner: 2004, druteik: 1998, massai: 2005, iotte: 1988, franceschini: 2006, seron: 2005 };
+const crAgeOf = c => c.id in BIRTH ? 2026 - BIRTH[c.id] + ($s.CR.season - 1) : c.age;
+const ageTrend = (age, o) => age <= 20 ? 1.4 : age <= 23 ? .9 : age <= 29 ? 0 : age <= 33 ? -.25 : age <= 36 ? -.55 : -1 + (o > 88 ? .3 : 0);
 function crDriftSeason(rnd) {
   const d = $s.CR.drift = $s.CR.drift || {};
-  ROSTER.forEach(c => { const v = clamp((d[c.id] || 0) + Math.round(gaussR(rnd) * .9), -4, 4); if (v) d[c.id] = v; else delete d[c.id]; });
+  ROSTER.forEach(c => { const age = crAgeOf(c) || 27, o = overall(c.a) + (d[c.id] || 0); let tr = ageTrend(age, o); if (tr > 0 && o >= 95) tr = 0;
+    const v = clamp((d[c.id] || 0) + Math.round(tr + gaussR(rnd) * .7), -14, 8); if (v) d[c.id] = v; else delete d[c.id]; });
+}
+// ---------- duplas do circuito e notícias ----------
+// as duplas (fora a sua) ficam juntas enquanto vão bem; uma ou duas temporadas bem abaixo do esperado e podem se separar
+const CR_PAIRS0 = [['spot', 'gianote'], ['barao', 'capeletti'], ['gigio', 'mola'], ['lock', 'gine'], ['ramires', 'allan'], ['balerini', 'barro'], ['reck', 'amorin'], ['testa', 'branco'], ['guegano', 'galeazzi'], ['ponti', 'bollettinari'], ['jublin', 'bazzi'], ['buemo', 'psilva'],
+  ['kudina', 'semena'], ['chou', 'marquezin'], ['gaspar', 'valentim'], ['casadi', 'grael'], ['cimadi', 'daino'], ['tripa', 'vida'], ['dias', 'miler'], ['justi', 'nobre'], ['seron', 'pereira'], ['magalhaes', 'bray'], ['lmelo', 'pansani'], ['iotte', 'damata'], ['nogueiro', 'preisner']];
+const NEWS_H = ['@BTGlobal', '@AreiaNews', '@RankingBT', '@BeachTennisBR', '@CircuitoBT'];
+function crNews(txt, icon) { const N = $s.CR.news = $s.CR.news || []; N.unshift({ w: absWeek(), t: txt, i: icon || '📰', h: NEWS_H[Math.floor(Math.random() * NEWS_H.length)] }); if (N.length > 40) N.length = 40; }
+const pairName = (a, b) => shortOf(crChar(a)) + '/' + shortOf(crChar(b));
+function crPairs(quiet) {
+  const P = $s.CR.pairs = $s.CR.pairs || {};
+  if (!$s.CR.pairsInit) { $s.CR.pairsInit = 1; quiet = true; CR_PAIRS0.forEach(([a, b]) => { if (crChar(a) && crChar(b)) { P[a] = b; P[b] = a; } }); }
+  const mine = $s.CR.partner; // o seu parceiro sai da dupla dele
+  if (mine && P[mine]) { const ex = P[mine]; delete P[ex]; delete P[mine]; if (!quiet) crNews(shortOf(crChar(mine)) + ' deixa a parceria com ' + shortOf(crChar(ex)) + ' para jogar com ' + shortOf(crMeChar()) + '.', '🔁'); }
+  for (const fem of [false, true]) { // quem está sem dupla forma par com outro sem dupla de nível parecido
+    const free = $s.CR.pool.concat(ROSTER).filter(c => !!c.fem === fem && !P[c.id] && c.id !== mine).sort((x, y) => crCharOvr(y) - crCharOvr(x));
+    for (let i = 0; i + 1 < free.length; i += 2) { const a = free[i], b = free[i + 1]; P[a.id] = b.id; P[b.id] = a.id; if (!quiet && crCharOvr(a) >= 82 && fem === !!$s.CR.me.fem) crNews('Nova dupla no circuito: ' + pairName(a.id, b.id) + ' vão jogar juntos.', '🤝'); }
+  }
+  return P;
+}
+// fim de temporada: compara os pontos de cada dupla com o que o nível dela prometia
+function crPairsSeason() {
+  const P = crPairs(true), B = $s.CR.pairBad = $s.CR.pairBad || {};
+  for (const fem of [false, true]) {
+    const L = []; for (const a in P) { const b = P[a]; if (a < b && crChar(a) && !!crChar(a).fem === fem) L.push({ a, b, o: (crCharOvr(crChar(a)) + crCharOvr(crChar(b))) / 2, p: npcPts(a) + npcPts(b) }); }
+    const byO = L.slice().sort((x, y) => y.o - x.o), byP = L.slice().sort((x, y) => y.p - x.p);
+    byO.forEach((t, i) => { if (i > 60) return; const k = t.a + '|' + t.b, pr = byP.indexOf(t), bad = pr - i > Math.max(3, L.length * .12);
+      B[k] = bad ? (B[k] || 0) + 1 : 0;
+      if (bad && Math.random() < (B[k] >= 2 ? .75 : .3)) { if (fem === !!$s.CR.me.fem) crNews('Fim da parceria: ' + pairName(t.a, t.b) + ' se separam depois de ' + (B[k] >= 2 ? 'duas temporadas abaixo do esperado' : 'uma temporada ruim') + '.', '💔'); delete P[t.a]; delete P[t.b]; delete B[k]; }
+      else if (i < 6 && pr <= 2 && fem === !!$s.CR.me.fem) crNews(pairName(t.a, t.b) + ' fecham a temporada entre as melhores duplas do mundo.', '🔥'); });
+  }
+  crPairs(false);
 }
 const crCharOvr = c => c.id === 'crme' ? crMeOvr() : overall(effA(c.a, racketBonus(c.look && c.look.racket), crFormB(c.id)));
 // mundo do seu gênero (fictícios + astros reais)
@@ -491,23 +529,33 @@ function crSimWorld(rnd, list, aw, ovrs) {
   if (aw === undefined) aw = absWeek();
   const season = Math.floor((aw - 1) / SEASON_WEEKS) + 1, wk = aw - (season - 1) * SEASON_WEEKS;
   const cal = crSeasonCal(season)[wk] || [], lim = aw - SEASON_WEEKS, R = $s.CR.npcR = $s.CR.npcR || {};
-  (list || $s.CR.pool.concat(ROSTER, crLocals())).forEach(c => {
-    const o = ovrs ? ovrs.get(c.id) : crCharOvr(c);
-    const mt = crMinTier(c.id);
+  // duplas jogam juntas: os dois do par recebem o mesmo resultado (nível da dupla = média dos dois)
+  const all = list || $s.CR.pool.concat(ROSTER, crLocals()), P = $s.CR.pairs || {}, byId = new Map(all.map(c => [c.id, c])), done = new Set(), live = !list;
+  const ovOf = c => ovrs ? ovrs.get(c.id) : crCharOvr(c);
+  let best = null; // melhor dupla do maior torneio da semana (notícia)
+  all.forEach(c => {
+    if (done.has(c.id)) return;
+    const mate = P[c.id] && P[c.id] !== $s.CR.partner ? byId.get(P[c.id]) || null : null, team = mate ? [c, mate] : [c];
+    team.forEach(x => done.add(x.id));
+    const o = team.reduce((t, x) => t + ovOf(x), 0) / team.length;
+    const mt = Math.max(...team.map(x => crMinTier(x.id)));
     let t = Math.max(npcTier(o), mt); while (t >= 3 && !cal.includes(t)) t--;
-    let arr = R[c.id];
-    if (t >= mt && rnd() < (t >= 3 ? .55 : .45)) {
-      const T = TIERS[t], perf = (o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6;
-      const idx = perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4, pts = T.pts[Math.min(idx, T.pts.length - 1)];
-      if (pts > 0) { arr = arr || []; arr.push(aw * 10000 + pts); }
-      crCatAdd(c.id, t, pts, aw, c.pais !== 'BRA');
-    }
-    if (arr) {
-      arr = arr.filter(x => Math.floor(x / 10000) > lim);
-      if (arr.length > 12) { arr.sort((x, y) => (y - Math.floor(y / 10000) * 10000) - (x - Math.floor(x / 10000) * 10000)); arr.length = 12; }
-      if (arr.length) R[c.id] = arr; else delete R[c.id];
-    }
+    const play = t >= mt && rnd() < (t >= 3 ? .55 : .45);
+    let pts = 0, perf = 0;
+    if (play) { const T = TIERS[t]; perf = (o - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .6;
+      const idx = perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4; pts = T.pts[Math.min(idx, T.pts.length - 1)];
+      if (live && mate && !!c.fem === !!$s.CR.me.fem && t >= 6 && (!best || t > best.t || (t === best.t && perf > best.perf))) best = { t, perf, a: c.id, b: mate.id }; }
+    team.forEach(x => {
+      let arr = R[x.id];
+      if (play) { if (pts > 0) { arr = arr || []; arr.push(aw * 10000 + pts); } crCatAdd(x.id, t, pts, aw, x.pais !== 'BRA'); }
+      if (arr) {
+        arr = arr.filter(y => Math.floor(y / 10000) > lim);
+        if (arr.length > 12) { arr.sort((y, z) => (z - Math.floor(z / 10000) * 10000) - (y - Math.floor(y / 10000) * 10000)); arr.length = 12; }
+        if (arr.length) R[x.id] = arr; else delete R[x.id];
+      }
+    });
   });
+  if (best && best.perf > 1.25) { const T = TIERS[best.t]; crNews(pairName(best.a, best.b) + ' vencem o ' + T.curto + ' ' + T.cities[Math.floor(rnd() * T.cities.length)].replace(/^(BT\d+|Sand Series) /, '') + '.', '🏆'); }
 }
 // um ano inteiro de resultados do mundo (criação da carreira e migração dos saves antigos)
 function crSimYear(seedK, list) {
@@ -589,6 +637,7 @@ function crCreate(o) {
   $s.CR.v = 2; $s.CR.potCur = Math.min($s.CR.pot, overall(me.a) + 6);
   $s.CR.localV = 1; // os locais entram no ano simulado da criação (crSimYear abaixo)
   crMigrate();
+  crPairs(true);
   crSimYear(11);
   $s.CR.ovrLog.push({ s: 1, w: 1, o: overall($s.CR.me.a) });
   crSyncChars(); saveCareer();
@@ -931,7 +980,9 @@ function crEnter(opt) {
   // duplas com variedade: o mais forte que sobrou escolhe parceiro numa janela dos próximos (geralmente perto do nível dele,
   // às vezes bem mais fraco: um 61 com um 57); antes era sempre o vizinho da lista e todas ficavam iguais
   // diferença grande (mais de 6) é rara: na maioria das vezes volta para um parceiro mais próximo
-  { const left = pairs.slice(); while (left.length >= 2) {
+  { const left = pairs.slice(), PR = $s.CR.pairs || {}; // duplas que já jogam juntas entram juntas
+    for (let i = 0; i < left.length; i++) { const j = left.findIndex(c => c.id === PR[left[i].id]); if (j > i) { teams.push({ a: left[i].id, b: left[j].id }); left.splice(j, 1); left.splice(i, 1); i--; } }
+    while (left.length >= 2) {
     const a = left.shift(), oa = crCharOvr(a);
     let k = Math.min(left.length - 1, Math.floor(Math.pow(rnd(), 2.2) * Math.min(7, left.length)));
     if (oa - crCharOvr(left[k]) > 6 && rnd() > .15) while (k > 0 && oa - crCharOvr(left[k]) > 4) k--;
@@ -1174,6 +1225,7 @@ function crFinishTour() {
   const injMsg = crInjuryRoll(1); if (injMsg) t.moodMsg = (t.moodMsg ? t.moodMsg + ' ' : '') + injMsg;
   const placeName = place === 0 ? 'Campeão' : place === 1 ? 'Vice-campeão' : place === 2 ? 'Semifinal' : place === 3 ? 'Quartas' : 'Oitavas';
   t.summary = { place, placeName, prize, pts, xp, offers };
+  if (place === 0 && !t.singles) crNews(crTeamName(t.teams[t.me]) + ' são campeões do ' + t.name + '!', '🏆');
   $s.CR.history.unshift({ s: $s.CR.season, w: $s.CR.week, name: t.name, tier: T.curto, place: placeName, prize, pts, partner: $s.CR.partner ? nameOf(crChar($s.CR.partner)) : '' });
   crAchCheck().forEach(n => t.log.push('🏅 Conquista: ' + n));
   $s.CR.history = $s.CR.history.slice(0, 60);
@@ -1273,18 +1325,24 @@ function crNextWeek(note) {
     $s.CR.season++; $s.CR.week = 1; $s.CR.age++; $s.CR.staff = {};
     // o mundo envelhece: jovens melhoram, veteranos caem
     // o mundo envelhece: jovens melhoram (mais devagar perto do topo), veteranos caem e quem passa dos 34 se aposenta
-    const rnd = mulberry($s.CR.seed + $s.CR.season * 131);
+    const rnd = mulberry($s.CR.seed + $s.CR.season * 131), ov0 = new Map($s.CR.pool.map(c => [c.id, overall(c.a)]));
     $s.CR.pool.forEach(c => {
       c.age = (c.age || 24) + 1;
-      if (c.age > 34) { // aposentou: entra um novato no lugar
+      if (c.age > 36 + (c.id.charCodeAt(c.id.length - 1) % 4)) { // aposentou (entre 37 e 40): entra um novato no lugar
         const bank = NAME_BANK[c.pais] || NAME_BANK.BRA; let sur = bank.s[Math.floor(rnd() * bank.s.length)]; if (c.fem && c.pais === 'RUS') sur += 'a';
         c.name = bank[c.fem ? 'f' : 'm'][Math.floor(rnd() * bank[c.fem ? 'f' : 'm'].length)] + ' ' + sur; c.age = 18;
         c.a = makeAttrs(Math.round(35 + rnd() * 15), ['atacante', 'defensor', 'tatico', 'completo'][Math.floor(rnd() * 4)], rnd); if ($s.CR.npcR) delete $s.CR.npcR[c.id]; return;
       }
-      const o = overall(c.a), d = (c.age < 23 ? 1.6 : c.age < 28 ? .6 : c.age > 31 ? -1.3 : 0) * (o > 84 && c.age < 31 ? .3 : 1);
+      const o = overall(c.a), d = (c.age < 21 ? 2 : c.age < 24 ? 1.3 : c.age < 28 ? .5 : c.age > 35 ? -1.1 : c.age > 32 ? -.5 : 0) * (o > 84 && c.age < 31 ? .3 : 1);
       const ch = Math.round(d + gaussR(rnd) * 1.1); for (const [k] of ATTRS) c.a[k] = clamp(attrOf(c.a, k) + ch, 30, 93); // attrOf: atributo novo que o jogador ainda não tinha (antes virava NaN)
     });
     crDriftSeason(rnd);
+    // notícias da virada de temporada: talentos que explodiram e veteranos que seguem no alto nível; duplas (separações e novas)
+    { const tal = $s.CR.pool.filter(c => !!c.fem === !!$s.CR.me.fem && c.age <= 22 && ov0.has(c.id) && overall(c.a) - ov0.get(c.id) >= 3 && overall(c.a) >= 66).sort((x, y) => (overall(y.a) - ov0.get(y.id)) - (overall(x.a) - ov0.get(x.id))).slice(0, 2);
+      tal.forEach(c => crNews('Talento em alta: aos ' + c.age + ' anos, ' + nameOf(c) + ' (' + c.pais + ') subiu ' + (overall(c.a) - ov0.get(c.id)) + ' de nível nesta temporada.', '🌟'));
+      const vet = ROSTER.filter(c => !!c.fem === !!$s.CR.me.fem && (crAgeOf(c) || 0) >= 35 && crCharOvr(c) >= 84).slice(0, 1);
+      vet.forEach(c => crNews('Aos ' + crAgeOf(c) + ' anos, ' + nameOf(c) + ' segue entre os melhores do mundo.', '🧓'));
+      crPairsSeason(); }
     if ($s.CR.age > 31) for (const [k] of [['vel']]) $s.CR.me.a[k] = Math.max(40, $s.CR.me.a[k] - 1);
   }
   $s.CR.ovrLog.push({ s: $s.CR.season, w: $s.CR.week, o: overall($s.CR.me.a) }); $s.CR.ovrLog = $s.CR.ovrLog.slice(-80);
@@ -1469,6 +1527,7 @@ function crMigrate() {
   if ($s.CR.me.pais === 'BRA' && !$s.CR.me.uf) $s.CR.me.uf = 'SP';
   $s.CR.life = $s.CR.life || {}; $s.CR.lifeS = $s.CR.lifeS || {}; $s.CR.boostW = $s.CR.boostW || 0;
   if ($s.CR.goal === undefined) $s.CR.goal = null;
+  if (!$s.CR.pairsInit && $s.CR.pool) crPairs(true); // duplas do circuito (saves antigos)
   // estoque de pontos com limite: quem tinha acumulado demais recebe o excedente em dinheiro (uma vez)
   if (!$s.CR.peCapV) { $s.CR.peCapV = 1; const ex = Math.floor(($s.CR.pe || 0) - crPeMax()); if (ex > 0) { const cash = ex * 60; $s.CR.pe = crPeMax(); $s.CR.money += cash; $s.CR.lastMsg = 'Pontos de evolução agora têm estoque máximo (' + crPeMax() + '). Os ' + ex + ' que passavam disso viraram ' + money(cash) + '.'; } }
   // mundo maior: completa os saves antigos até POOL_N por gênero
@@ -1616,6 +1675,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crPairs, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
