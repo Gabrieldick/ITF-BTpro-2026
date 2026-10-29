@@ -631,21 +631,27 @@ function ballMark(x, z, vx = 0, vz = 0) { const v = Math.hypot(vx, vz); putDecal
 function scuffMark(x, z, vx, vz, k = .35) { const v = Math.hypot(vx, vz) || 1; putDecal(smears, x - vx / v * .1 * k, z - vz / v * .1 * k, Math.atan2(vx, vz) + Math.PI, k * (.8 + Math.random() * .4), k * (.7 + Math.random() * .5), .0036); }
 function diveMark(x, z, dx, dz) { const a = Math.atan2(dx, dz); putDecal(smears, x - dx * .5, z - dz * .5, a + Math.PI, 1, 1, .0035); }
 // Grãos de areia levantados
-const PN = 120;
+const PN = 360;
 const pPos = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3), pLife = new Float32Array(PN);
 const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
 const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: col('#d9bf8c'), size: .045, transparent: true, opacity: .9, depthWrite: false }));
 particles.frustumCulled = false; scene.add(particles);
 for (let i = 0; i < PN; i++) pPos[i * 3 + 1] = -10;
 let pIdx = 0;
-function puff(x, z, n, power) {
+// dx, dz: direção do movimento (peixinho, arrancada): a areia espirra mais para lá · dust: nuvem de poeira (0 a 1)
+function puff(x, z, n, power, dx = 0, dz = 0, dust = 0) {
   for (let k = 0; k < n; k++) {
     const i = pIdx; pIdx = (pIdx + 1) % PN;
-    pPos[i * 3] = x + rand(-.05, .05); pPos[i * 3 + 1] = .03; pPos[i * 3 + 2] = z + rand(-.05, .05);
+    pPos[i * 3] = x + rand(-.06, .06); pPos[i * 3 + 1] = .03; pPos[i * 3 + 2] = z + rand(-.06, .06);
     const a = Math.random() * Math.PI * 2, s = rand(.3, 1.4) * power;
-    pVel[i * 3] = Math.cos(a) * s; pVel[i * 3 + 1] = rand(1, 2.6) * power; pVel[i * 3 + 2] = Math.sin(a) * s; pLife[i] = rand(.5, .9);
+    pVel[i * 3] = Math.cos(a) * s + dx * rand(.5, 2.2) * power; pVel[i * 3 + 1] = rand(1, 2.6) * power; pVel[i * 3 + 2] = Math.sin(a) * s + dz * rand(.5, 2.2) * power; pLife[i] = rand(.5, 1);
   }
+  if (dust > 0 && particles.visible) for (let k = 0; k < 2 + dust * 3; k++) { const d = DUST[dIdx]; dIdx = (dIdx + 1) % DUST.length; d.visible = true; d.userData.t = 0; d.userData.T = rand(.7, 1.2) * (.7 + dust * .5); d.userData.s = rand(.35, .6) * (.6 + dust); d.position.set(x + rand(-.2, .2) + dx * .2, .12, z + rand(-.2, .2) + dz * .2); d.userData.v = [dx * rand(.3, .8) + rand(-.25, .25), rand(.15, .4), dz * rand(.3, .8) + rand(-.25, .25)]; }
 }
+// nuvenzinhas de poeira (sprites suaves que crescem e somem)
+const DUST_TEX = canvasTex(64, 64, (x, w) => { const g = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); g.addColorStop(0, 'rgba(226,206,168,.55)'); g.addColorStop(.6, 'rgba(226,206,168,.22)'); g.addColorStop(1, 'rgba(226,206,168,0)'); x.fillStyle = g; x.fillRect(0, 0, w, w); });
+const DUST = Array.from({ length: 18 }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: DUST_TEX, transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; scene.add(s); return s; });
+let dIdx = 0;
 // estrelinhas do saque perfeito: pequenas e rápidas (somem em ~0,85 s)
 const SN = 22, sGeo = new THREE.BufferGeometry(), sPos = new Float32Array(SN * 3), sVel = new Float32Array(SN * 3), sCol = new Float32Array(SN * 3);
 sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3)); sGeo.setAttribute('color', new THREE.BufferAttribute(sCol, 3));
@@ -675,6 +681,7 @@ function updateParticles(dt) {
     for (let i = 0; i < SN; i++) { sVel[i * 3 + 1] -= 1.2 * dt; sPos[i * 3] += sVel[i * 3] * dt; sPos[i * 3 + 1] += sVel[i * 3 + 1] * dt; sPos[i * 3 + 2] += sVel[i * 3 + 2] * dt; }
     sGeo.attributes.position.needsUpdate = true; if (sLife <= 0) sparks.visible = false;
   }
+  for (const d of DUST) if (d.visible) { const u = (d.userData.t += dt) / d.userData.T; if (u >= 1) { d.visible = false; continue; } const sc = d.userData.s * (1 + u * 1.6); d.scale.set(sc, sc * .7, 1); d.material.opacity = Math.sin(Math.PI * Math.min(1, u * 1.4)) * .7 * (1 - u); d.position.x += d.userData.v[0] * dt; d.position.y += d.userData.v[1] * dt; d.position.z += d.userData.v[2] * dt; }
   for (let i = 0; i < PN; i++) {
     if (pLife[i] <= 0) continue;
     pLife[i] -= dt; pVel[i * 3 + 1] -= G * dt;

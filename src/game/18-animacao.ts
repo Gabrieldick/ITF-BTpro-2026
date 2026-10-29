@@ -306,7 +306,7 @@ function animateAthlete(p, dt) {
         if (m.group.visible && (land || Math.abs(p.accF || 0) > 7 || Math.abs(p.accR || 0) > 7 || (sp > 3.2 && Math.random() < .3))) {
           const hard = clamp(Math.max(Math.abs(p.accF || 0), Math.abs(p.accR || 0)) / 14, 0, 1);
           if (land || hard > .5 || Math.random() < .55) scuffMark(tg[0], tg[1], p.vel.x || -Math.sin(yaw) * .1, p.vel.z || -Math.cos(yaw) * .1, .22 + .2 * hard + (land ? .12 : 0) + Math.random() * .08); }
-        if ((sp > .5 || land) && m.group.visible) { stamp(tg[0], tg[1], yaw, s * mx, clamp((sp - 3) / 3, 0, 1)); if (sp > 3.5 && particles.visible) puff(tg[0], tg[1], 2, .35); }
+        if ((sp > .5 || land) && m.group.visible) { stamp(tg[0], tg[1], yaw, s * mx, clamp((sp - 3) / 3, 0, 1)); if (particles.visible && (sp > 3.5 || land)) puff(tg[0], tg[1], land ? 8 : 3, land ? .55 : .38, p.vel.x * .1, p.vel.z * .1, land ? .35 : 0); }
       }
     } else {
       // plantado: fica onde está; passo quando se afastou do lugar certo (o mais longe vai primeiro; correndo, sobrepõe)

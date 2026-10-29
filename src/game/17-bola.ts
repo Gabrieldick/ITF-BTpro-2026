@@ -55,7 +55,7 @@ function updateBall(dt) {
       const axis = (mx < 0) !== (mz < 0) ? (mx < 0 ? 'x' : 'z') : (Math.abs(mx) < Math.abs(mz) ? 'x' : 'z'), mg = axis === 'x' ? mx : mz;
       if (Math.abs(mg) < .06 && !S.drill) { const rv = { x, z, axis, inB, mg }; try { showReview(rv); } catch (e) {} if (NET.ev) NET.ev('review', rv); }
       const owner = z > 0 ? 0 : 1;
-      sndSand(); puff(x, z, 16, 1); ballMark(x, z, ball.vel.x, ball.vel.z); if (NET.ev) NET.ev('sand', x, z);
+      sndSand(); { const bv = Math.hypot(ball.vel.x, ball.vel.y, ball.vel.z); puff(x, z, 12 + Math.round(Math.min(24, bv * 1.2)), .7 + Math.min(.6, bv * .03), 0, 0, bv > 14 ? .5 : 0); } ballMark(x, z, ball.vel.x, ball.vel.z); if (NET.ev) NET.ev('sand', x, z);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;
       if (inB) pointTo(1 - owner, owner === 0 ? 'A bola tocou a areia do seu lado.' : 'A bola tocou a areia do lado da CPU.', 'in');
       else pointTo(1 - S.lastTeam, S.rally <= 1 ? 'Saque fora.' : 'Bola fora.', 'out');
