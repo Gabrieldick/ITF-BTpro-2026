@@ -83,6 +83,8 @@ function armIK(p, arm, sh, target, pole) {
   _iM.addVectors(_iE, target).multiplyScalar(.5); _iP.copy(_iM);
   if (keepOut(_iM, p, .19, .14)) { target.addScaledVector(_iM.sub(_iP), 2); ik2(arm.sh, arm.el, sh, target, pole, .285, .27); }
 }
+// passos por segundo (os dois pés somados) para a velocidade no chão
+const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
 function sideOf(p, pt) { const q = pt || ball.pos; return (q.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1); }
 const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
 function blendPose(dst, src, k) {
@@ -164,7 +166,7 @@ function animateAthlete(p, dt) {
   m.group.position.set(p.pos.x, jy, p.pos.z);
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
   p.strK = (p.strK || 0) + ((sp > .25 ? 1 : 0) - (p.strK || 0)) * Math.min(1, dt * (sp > .25 ? 10 : 6));
-  const gF = 1.35 + Math.max(sp, .9) * .3; // passos por segundo (por perna)
+  const gF = stepCad(sp) / 2; // ciclos por segundo (por perna), igual à cadência dos pés
   if (p.strK > .01) p.gait += dt * Math.PI * 2 * gF;
   const spLand = spU >= .45 ? Math.sin(Math.PI * (spU - .45) / .55) : 0;
   // mergulho: corpo vai baixo e para a frente, uma perna em afundo; depois no chão e levantando
@@ -205,6 +207,7 @@ function animateAthlete(p, dt) {
   const toW = (lx, lz) => [p.pos.x + (cy * lx * mx + sy * lz) * hs, p.pos.z + (-sy * lx * mx + cy * lz) * hs];
   const toL = (w) => { const dx = (w[0] - p.pos.x) / hs, dz = (w[1] - p.pos.z) / hs; return [(cy * dx - sy * dz) * mx, sy * dx + cy * dz]; };
   const air = jy > .05;
+  p.gT = (p.gT || 0) + dt;
   if (!p.feet) p.feet = [{ w: null, st: null }, { w: null, st: null }];
   // salto: parado sai e cai com as duas pernas; correndo/de lado/para trás (smash de trás, saque) sai em uma perna, faz a
   // tesoura no ar e cai na outra (a segunda apoia logo depois)
@@ -215,7 +218,12 @@ function animateAthlete(p, dt) {
   }
   p.wasAir = air;
   const jp = p.jumpDur ? clamp(1 - p.jump / p.jumpDur, 0, 1) : .5;
-  const leadD = Math.min(.24, sp * .065), thr = Math.min(.6, .15 + sp * .09), spn = Math.max(sp, .01); // pé pousa um pouco à frente (até 24 cm)
+  // passada: cadência de gente (≈2 passos/s andando, ≈3,8 correndo) → cada pé fica no chão por uma distância thrW (pousa
+  // metade à frente, sai metade atrás) e voa o resto do ciclo; de lado os passos são mais curtos; gente mais baixa, passada
+  // um pouco menor. Tudo em metros no mundo; thr/limites no espaço do modelo (÷ hs)
+  const cad = stepCad(sp), swF = .4 + .22 * clamp((sp - 1.5) / 3, 0, 1);
+  const thrW = Math.min(clamp(sp * (2 / cad) * (1 - swF), .14, .8) * (.65 + .35 * lvu), .66 * hs); // (até onde a perna alcança)
+  const leadD = thrW / 2, thr = thrW / hs, stepDur = clamp((2 * sp / cad - thrW) / Math.max(sp, .6), .16, .45), spn = Math.max(sp, .01);
   const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1;
@@ -253,10 +261,14 @@ function animateAthlete(p, dt) {
     } else {
       // plantado: fica onde está; passo quando se afastou do lugar certo (o mais longe vai primeiro; correndo, sobrepõe)
       [fx, fz] = toL(F.w);
-      const otherOK = !O.st || (sp > 1.8 && O.st.t > .5);
-      const go = wants[i] > thr * (O.st ? 1 : .999) && otherOK && (wants[i] >= wants[1 - i] || wants[1 - i] <= thr || O.st);
-      if (go || wants[i] > .75) {
-        const st = { from: F.w.slice(), y0: 0, t: 0, dur: clamp(.8 * thr / Math.max(sp, .6), .09, .24), h: .045 + Math.min(sp, 6) * .02 }; // o passo acaba antes do outro pé precisar ir
+      // andando: um pé de cada vez. Correndo: alternado por fase — este pé sai meio ciclo depois do outro ter saído (se
+      // atrasado, sai mesmo assim um pouco depois do limite), senão os dois acabam pousando juntos (galope)
+      let go;
+      if (sp <= 1.8) go = wants[i] > thr * (O.st ? 1 : .999) && !O.st && (wants[i] >= wants[1 - i] || wants[1 - i] <= thr);
+      else { const since = p.gT - (O.lt ?? -9); go = (wants[i] > thr * .8 && since >= .9 / cad) || (wants[i] > thr * 1.25 && since > .08); }
+      if (go || wants[i] > Math.max(.75, thr * 1.6)) {
+        F.lt = p.gT;
+        const st = { from: F.w.slice(), y0: 0, t: 0, dur: stepDur, h: .045 + Math.min(sp, 6) * .02 };
         F.st = st; F.w = null;
       }
     }
