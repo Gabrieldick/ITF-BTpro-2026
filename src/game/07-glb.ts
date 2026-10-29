@@ -129,12 +129,22 @@ const PORE = (() => {
 const SKIN_LIGHT = THREE.ShaderChunk.lights_physical_pars_fragment.replace('reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseColor );',
   `{ float nl = dot( geometryNormal, directLight.direction ), wr = saturate( ( nl + .4 ) / 1.4 );
     vec3 sss = mix( vec3( 1., .42, .3 ), vec3( 1. ), smoothstep( -.05, .5, nl ) );
-    reflectedLight.directDiffuse += wr * sss * directLight.color * BRDF_Lambert( material.diffuseColor ); }`);
+    reflectedLight.directDiffuse += wr * sss * directLight.color * BRDF_Lambert( material.diffuseColor );
+    // orelha (fina) contra o sol: a luz atravessa e ela fica avermelhada
+    reflectedLight.directDiffuse += skEar * pow( saturate( dot( geometryViewDir, - directLight.direction ) ), 3. ) * vec3( 1., .32, .2 ) * directLight.color * material.diffuseColor * 1.6; }`);
 function skinShader(m, U) {
   if (!m || m.userData.skinOn) return; m.userData.skinOn = true;
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, U);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPore; uniform float uPoreK, uSweat;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPore; uniform float uPoreK, uSweat; uniform vec3 uHead; varying vec3 vRest; float skEar = 0.;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+      { vec3 q = vRest - uHead; float ax = abs(q.x); // (relativo ao osso da cabeça, na pose de repouso)
+        float nose = (1. - smoothstep(.012, .03, ax)) * smoothstep(.1, .12, q.z) * smoothstep(-.03, -.01, q.y) * (1. - smoothstep(.035, .05, q.y));
+        float cheek = smoothstep(.022, .035, ax) * (1. - smoothstep(.055, .065, ax)) * smoothstep(.07, .09, q.z) * smoothstep(-.035, -.02, q.y) * (1. - smoothstep(.02, .03, q.y));
+        float shoulder = smoothstep(.08, .12, ax) * (1. - smoothstep(.2, .24, ax)) * smoothstep(-.19, -.16, q.y) * (1. - smoothstep(-.12, -.1, q.y));
+        diffuseColor.rgb *= mix(vec3(1.), vec3(1.05, .84, .8), clamp(nose * .8 + cheek * .45 + shoulder * .4, 0., 1.)); // marca de sol
+        skEar = smoothstep(.055, .065, ax) * (1. - smoothstep(.088, .1, ax)) * smoothstep(-.02, -.005, q.y) * (1. - smoothstep(.06, .075, q.y)) * (1. - smoothstep(.025, .05, abs(q.z))); }`)
       .replace('#include <lights_physical_pars_fragment>', SKIN_LIGHT)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       #if defined( USE_NORMALMAP_TANGENTSPACE ) && defined( USE_MAP )
@@ -147,7 +157,7 @@ function skinShader(m, U) {
   };
   m.customProgramCacheKey = () => 'skinPore'; m.needsUpdate = true;
 }
-const skinUniforms = () => ({ uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 }, uSway: { value: new THREE.Vector3() } });
+const skinUniforms = () => ({ uHead: { value: new THREE.Vector3(0, 1.6, .045) }, uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 }, uSway: { value: new THREE.Vector3() } });
 const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
 const HAIR_PARTS = ['Hair', 'HairCards', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards'];
@@ -269,6 +279,7 @@ function dressSkin(p, root) {
   // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
   for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => tint(o.material, look.skin || '#c68a62', SKIN_BASE));
   const SU = p.skinU || (p.skinU = skinUniforms()); SU.uPoreK.value = S.settings.gfx === 'leve' ? 0 : .8;
+  { const b = (parts.Body || [])[0]; const sk = b && b.skeleton; const hi = sk ? sk.bones.findIndex(x => /Head$/.test(x.name)) : -1; if (hi >= 0) { const M = sk.boneInverses[hi].clone().invert(); SU.uHead.value.setFromMatrixPosition(M); } }
   for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => skinShader(o.material, SU));
   for (const n of HAIR_PARTS.concat(BEARDS, BEARDS.map(x => x + 'Edge'))) (parts[n] || []).forEach(o => tint(o.material, look.hair || '#2a1a0e', HAIR_BASE));
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
