@@ -445,7 +445,7 @@ function crPairs(quiet) {
   if (!$s.CR.pairsInit) { $s.CR.pairsInit = 1; quiet = true; CR_PAIRS0.forEach(([a, b], i) => { if (crChar(a) && crChar(b)) { P[a] = b; P[b] = a; let h = 7; for (const ch of a + b) h = (h * 31 + ch.charCodeAt(0)) >>> 0; pairJoin(a, b, absWeek() - Math.round((.5 + (h % 8) / 2) * SEASON_WEEKS) - (h % 9)); } }); }
   { const S0 = $s.CR.pairSince = $s.CR.pairSince || {}; for (const a in P) if (a < P[a] && S0[pairK(a, P[a])] == null) S0[pairK(a, P[a])] = absWeek() - SEASON_WEEKS; } // saves antigos: duplas já formadas contam um ano
   const mine = $s.CR.partner; // o seu parceiro sai da dupla dele
-  if (mine && P[mine]) { const ex = P[mine]; pairSplit(ex, mine); delete P[ex]; delete P[mine]; if (!quiet) crNews(shortOf(crChar(mine)) + ' deixa a parceria com ' + shortOf(crChar(ex)) + ' para jogar com ' + shortOf(crMeChar()) + '.', '🔁'); }
+  if (mine && P[mine] && !$s.CR.partnerTemp) { const ex = P[mine]; pairSplit(ex, mine); delete P[ex]; delete P[mine]; if (!quiet) crNews(shortOf(crChar(mine)) + ' deixa a parceria com ' + shortOf(crChar(ex)) + ' para jogar com ' + shortOf(crMeChar()) + '.', '🔁'); }
   for (const fem of [false, true]) { // quem está sem dupla forma par com outro sem dupla de nível parecido
     const free = $s.CR.pool.concat(ROSTER).filter(c => !!c.fem === fem && !P[c.id] && c.id !== mine).sort((x, y) => crCharOvr(y) - crCharOvr(x));
     for (let i = 0; i + 1 < free.length; i += 2) { const a = free[i], b = free[i + 1]; P[a.id] = b.id; P[b.id] = a.id; pairJoin(a.id, b.id, absWeek()); if (!quiet && crCharOvr(a) >= 82 && fem === !!$s.CR.me.fem) crNews('Nova dupla no circuito: ' + pairName(a.id, b.id) + ' vão jogar juntos.', '🤝'); }
@@ -474,6 +474,9 @@ function crPairBoard(n) {
   return L.sort((x, y) => y.p - x.p || y.o - x.o).slice(0, n || 10);
 }
 // fim de temporada: compara os pontos de cada dupla com o que o nível dela prometia
+// final de torneio grande nas últimas 52 semanas (BT400 campeão, Sand Series e Mundial: campeão ou vice)
+const BIG_F = new Set([400, 420, 600, 700, 1000]);
+const bigFinal = id => { const a = ($s.CR.npcR || {})[id] || [], lim = absWeek() - SEASON_WEEKS; return a.some(x => { const w = Math.floor(x / 10000); return w > lim && BIG_F.has(x - w * 10000); }); };
 function crPairsSeason() {
   const P = crPairs(true), B = $s.CR.pairBad = $s.CR.pairBad || {}, RK0 = $s.CR.pairRk || {}, RK1 = {};
   for (const fem of [false, true]) {
@@ -482,7 +485,8 @@ function crPairsSeason() {
     byO.forEach((t, i) => { if (i > 60) return; const k = t.a + '|' + t.b, pr = byP.indexOf(t), bad = pr - i > Math.max(3, L.length * .12);
       // dupla boa (top 10 em pontos) que segue bem, ou com menos de um ano junta, não se separa; mas quem despencou no
       // ranking em relação ao ano anterior (ex.: de 3ª para 12ª) pode se separar mesmo sendo forte, e cada um acha outra dupla fixa
-      RK1[k] = pr; const wk = pairWeeks(t.a, t.b), fell = RK0[k] != null && pr - RK0[k] >= 6, keep = wk < SEASON_WEEKS || (pr < 10 && !fell);
+      // quem segue no top 10 ou chegou a uma final grande (BT400, Sand Series, Mundial) no último ano nunca se separa
+      RK1[k] = pr; const wk = pairWeeks(t.a, t.b), fell = RK0[k] != null && pr - RK0[k] >= 6 && pr >= 10, keep = wk < SEASON_WEEKS || pr < 10 || bigFinal(t.a) || bigFinal(t.b);
       B[k] = (bad || fell) && !keep ? (B[k] || 0) + 1 : 0;
       if ((bad || fell) && !keep && Math.random() < (B[k] >= 2 ? .75 : fell ? .45 : .3)) { if (fem === !!$s.CR.me.fem) crNews('Fim da parceria: ' + pairName(t.a, t.b) + ' se separam depois de ' + (fell ? 'cair de ' + (RK0[k] + 1) + 'ª para ' + (pr + 1) + 'ª no ranking de duplas' : B[k] >= 2 ? 'duas temporadas abaixo do esperado' : 'uma temporada ruim') + ' (' + pairTenure(t.a, t.b).replace('juntos ', '') + ' de dupla).', '💔'); pairSplit(t.a, t.b); delete P[t.a]; delete P[t.b]; delete B[k]; }
       else if (i < 6 && pr <= 2 && fem === !!$s.CR.me.fem) crNews(pairName(t.a, t.b) + ' fecham a temporada entre as melhores duplas do mundo (' + (pr + 1) + 'ª em pontos, ' + pairTenure(t.a, t.b) + ').', '🔥'); });
@@ -780,7 +784,7 @@ function crAchCheck() {
   for (const [id, , nome, , f, goal] of ACH) { if (got[id]) continue; let v = 0; try { v = f(); } catch (e) {} if (v >= goal) { got[id] = 'T' + $s.CR.season + ' · S' + $s.CR.week; novas.push(nome); } }
   return novas;
 }
-function crSetPartner(id) { if ($s.CR.partner !== id) { $s.CR.partner = id; $s.CR.mood = 60; } /* a química fica guardada por parceiro */ $s.CR.offers = $s.CR.offers.filter(x => x !== id); saveCareer(); }
+function crSetPartner(id) { $s.CR.partnerTemp = false; if ($s.CR.partner !== id) { $s.CR.partner = id; $s.CR.mood = 60; } /* a química fica guardada por parceiro */ $s.CR.offers = $s.CR.offers.filter(x => x !== id); saveCareer(); }
 // humor do parceiro (0–100): sobe com vitórias e com o que você faz por ele, cai com derrotas; muito baixo, ele desfaz a dupla
 const crMoodWord = () => { const m = $s.CR.mood; return m >= 80 ? 'empolgado' : m >= 60 ? 'contente' : m >= 40 ? 'neutro' : m >= 25 ? 'insatisfeito' : 'quer sair'; };
 const crMoodBonus = () => { const m = $s.CR.mood; return m >= 80 ? 2 : m >= 65 ? 1 : m < 25 ? -3 : m < 40 ? -1 : 0; };
@@ -1027,7 +1031,7 @@ function crEnter(opt) {
   if (!$s.CR.partner) { // parceiro de ocasião: o melhor que aceitar dentro do nível
     const cand = crWorld().filter(c => crCharOvr(c) <= T.ovr[1] && crWillPartner(c).ok).sort((x, y) => crCharOvr(y) - crCharOvr(x));
     if (!cand.length) { $s.CR.lastMsg = 'Ninguém aceitou ser seu parceiro neste torneio.'; return false; }
-    $s.CR.partner = cand[0].id; $s.CR.mood = 55;
+    $s.CR.partner = cand[0].id; $s.CR.partnerTemp = true; $s.CR.mood = 55; // só neste torneio: não desfaz a dupla fixa dele
   }
   $s.CR.money -= cost; if (opt.wild) { if ($s.CR.wildcard > 0) $s.CR.wildcard = 0; else $s.CR.wcFree = 0; }
   const rnd = Math.random;
@@ -1361,6 +1365,7 @@ function crFinishTour() {
   crAchCheck().forEach(n => t.log.push('🏅 Conquista: ' + n));
   $s.CR.history = $s.CR.history.slice(0, 60);
   t.done = true;
+  if ($s.CR.partnerTemp) { $s.CR.partner = null; $s.CR.partnerTemp = false; } // parceria de ocasião acaba com o torneio
   crWlog(6, 'Torneio'); if ($s.CR.day === 7) crWlog(7, 'Torneio');
 }
 // multiplicador de evolução: os bônus (técnico, mentor, idade, CT, embalo) somam com retorno decrescente
@@ -1730,6 +1735,14 @@ function crMigrate() {
   $s.CR.life = $s.CR.life || {}; $s.CR.lifeS = $s.CR.lifeS || {}; $s.CR.boostW = $s.CR.boostW || 0;
   if ($s.CR.goal === undefined) $s.CR.goal = null;
   if (!$s.CR.pairsInit && $s.CR.pool) crPairs(true); // duplas do circuito (saves antigos)
+  // o parceiro de ocasião desfazia de vez a dupla fixa dele (ex.: Spotto/Gianotty): as duplas de elite separadas assim voltam
+  if ($s.CR.pairsInit && !$s.CR.pairsFix) { const P = $s.CR.pairs || {};
+    [['spot', 'gianote'], ['barao', 'capeletti'], ['gigio', 'mola'], ['lock', 'gine'], ['kudina', 'semena'], ['chou', 'marquezin'], ['gaspar', 'valentim']].forEach(([a, b]) => {
+      if (P[a] === b || a === $s.CR.partner || b === $s.CR.partner || !crChar(a) || !crChar(b)) return;
+      [a, b].forEach(x => { const m = P[x]; if (m) { pairSplit(x, m); delete P[m]; } delete P[x]; });
+      P[a] = b; P[b] = a; pairJoin(a, b, absWeek() - SEASON_WEEKS); });
+    if ($s.CR.partner && !$s.CR.tour) $s.CR.partnerTemp = false;
+    $s.CR.pairsFix = 1; crPairs(true); }
   // saves de antes do 'juntos há…': as duplas do início do circuito ganham a história de antes; as outras, um ano
   if ($s.CR.pairsInit && !$s.CR.pairSinceV) { $s.CR.pairSinceV = 1; const P = $s.CR.pairs || {}, S0 = $s.CR.pairSince = $s.CR.pairSince || {}, base = new Set(CR_PAIRS0.map(([a, b]) => pairK(a, b)));
     for (const a in P) { const k = pairK(a, P[a]); if (S0[k] != null && absWeek() - S0[k] > 1) continue; let h = 7; for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) >>> 0; S0[k] = absWeek() - (base.has(k) ? Math.round((1 + (h % 7) / 2) * SEASON_WEEKS) : SEASON_WEEKS + (h % 30)); } }
