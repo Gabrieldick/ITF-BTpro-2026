@@ -21,7 +21,7 @@ function staminaStep(dt) {
     if (p.sta === undefined) p.sta = 1;
     if (S.mode === 'rally') {
       // andar e trotar quase não gasta: o custo vem da arrancada (acima de ~2,5 m/s), dos golpes, dos saltos e dos mergulhos
-      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.05 - .15 * Math.min(1, attrK(p, 'vel'));
+      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.2 - .45 * Math.min(1, attrK(p, 'folego')); // fôlego alto cansa bem menos
       // (quem joga no teclado corre sempre no máximo, sem meio-termo como a CPU: a corrida dele pesa 30% menos)
       let d = dt * (.005 + .05 * Math.pow(clamp((sp - 2.5) / 2.8, 0, 1.2), 1.5) * (p.isHuman ? .7 : 1));
       if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;

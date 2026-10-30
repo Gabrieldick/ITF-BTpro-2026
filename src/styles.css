@@ -948,3 +948,8 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .tag { flex-wrap: wrap; }
 .tag .sta { flex-basis: 100%; height: 3px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; margin-top: 2px; }
 .tag .sta i { display: block; height: 100%; width: 100%; transition: width .3s; }
+
+/* perfil: resultados que contam no ranking */
+.cr-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 10px; font-size: 13px; margin: 4px 0 8px; }
+.cr-res b { font-family: var(--f-num); color: var(--gold); }
+.cr-res small { opacity: .65; }

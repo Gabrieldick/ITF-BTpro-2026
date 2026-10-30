@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, attrOf, NAMES, HEIGHTS } from './00-base';
+import { gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, folegoOf, attrOf, NAMES, HEIGHTS } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -78,8 +78,15 @@ function crSeasonEv(season) {
   EVC.key = key; EVC.ev = ev;
   return ev;
 }
+// o que foi um resultado (pelos pontos): "Campeão BT400", "Vice Sand Series"… (procura o nível e a fase que dão esses pontos)
+const PLACE_NM = ['Campeão', 'Vice', 'Semifinal', 'Quartas', 'Oitavas'];
+function crResLabel(v) {
+  for (let t = 9; t >= 3; t--) { const T = TIERS[t], ms = t === 7 ? [1, 1.1, 1.175] : t === 8 ? [1, 1.06, 1.11] : [1];
+    for (const m of ms) for (let i = 0; i < T.pts.length; i++) if (Math.round(T.pts[i] * m) === v && v > 0) return PLACE_NM[i] + ' ' + T.curto; }
+  return '';
+}
 const evPts = (t, place, m) => Math.round((TIERS[t].pts[place] || 0) * (m || 1)); // pontos do torneio (com o valor dele)
-// semanas com torneio para você: em média uma a cada 2 semanas (às vezes seguidas, às vezes 3 de intervalo);
+// semanas com torneio amador local para você: em média uma a cada 2 semanas (os profissionais aparecem sempre);
 // as outras são de treino. Especiais (estaduais, seleções, Mundial) têm data própria e não dependem disso
 const OPENC = { key: '', set: null };
 function crOpenWeek(season, w) {
@@ -714,7 +721,9 @@ function crWeekOptions(wk) {
   const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 8);
   if (($s.CR.wildcard > 0 || $s.CR.wcFree > 0) && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1], e = evs.find(x => x.t === top + 1); list.unshift(e ? { tier: top + 1, name: e.city + ' (wildcard)', ev: e.id, mult: e.m, wild: true } : { tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
   const open = crOpenWeek($s.CR.season, wk);
-  const out = crSpecialOptions(wk).concat(open ? list : list.filter(o => o.tier === 9));
+  // os torneios profissionais do calendário aparecem sempre (são os mesmos que dão pontos aos outros); os amadores locais
+  // seguem em semanas alternadas
+  const out = crSpecialOptions(wk).concat(open ? list : list.filter(o => o.tier >= 3));
   const st = tiers.find(t => t < 9); // simples: o nível mais alto que tem torneio nesta semana
   if (open && aw % 3 === 0 && st !== undefined) { const T = TIERS[st]; out.push({ singles: true, tier: st, name: 'Simples · ' + T.cities[Math.floor(rnd() * T.cities.length)] + (st < 3 ? ' · ' + T.curto : '') }); }
   out.forEach(o => { o.days = crOptPro(o) ? 2 : 1; });
@@ -1529,7 +1538,7 @@ function crInvBuy(k) {
 // 2 nos seus três melhores atributos. Você escolhe as cores e o desenho; o logo é o do patrocinador master do momento
 // atributos da raquete própria: você distribui SIG_PTS pontos (até +SIG_MAX em cada um; dá para tirar até −2 de um para
 // pôr em outro). Sem escolha ainda: a Zênite com +2 nos seus três melhores atributos
-const SIG_PTS = 25, SIG_MAX = 7, SIG_ATTRS = ['forca', 'smash', 'saque', 'def', 'curta', 'lob', 'backhand', 'vel', 'voleio', 'leitura'];
+const SIG_PTS = 25, SIG_MAX = 7, SIG_ATTRS = ['forca', 'smash', 'saque', 'def', 'curta', 'lob', 'backhand', 'vel', 'voleio', 'leitura', 'folego'];
 function crSigB() {
   const S0 = $s.CR.sigB;
   if (S0 && Object.values(S0).reduce((t, v) => t + v, 0) <= SIG_PTS) return Object.assign({}, S0);
@@ -1724,7 +1733,7 @@ function crNextDay(note) {
 // custo de +1 num atributo: começa barato (amador) e fica bem caro perto do topo; um pouco mais lento que antes
 const crUpCostBase = v => v < 45 ? 1 : v < 55 ? 2 : v < 62 ? 3 : v < 68 ? 4 : v < 72 ? 5 : v < 76 ? 7 : v < 80 ? 10 : v < 84 ? 14 : v < 88 ? 24 : v < 90 ? 34 : v < 92 ? 46 : v < 94 ? 62 : v < 96 ? 84 : 110;
 // atributos naturais de cada estilo vão até 99 no custo normal; os outros custam o dobro a partir de 90 (o Completo, 1,4×)
-const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque', 'voleio'], Defensor: ['def', 'vel', 'backhand'], 'Tático': ['curta', 'lob', 'backhand'] };
+const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque', 'voleio'], Defensor: ['def', 'vel', 'backhand', 'folego'], 'Tático': ['curta', 'lob', 'backhand'] };
 const crNatural = k => { const n = STYLE_NAT[$s.CR.me.estilo]; return n ? n.includes(k) || k === 'leitura' : null; }; // null: Completo; noção de jogo vale para todos os estilos
 const crStyleK = (v, k) => v < 90 ? 1 : crNatural(k) === null ? 1.4 : crNatural(k) ? 1 : 2;
 const crUpCost = (v, k) => Math.max(1, Math.round(crUpCostBase(v) * crStyleK(v, k) * (crStaffList().some(x => x.cheap && x.cheap.includes(k)) ? .75 : 1)));
@@ -1879,6 +1888,8 @@ function crMigrate() {
   } else if (extra) crSimYear(31, extra);
   if ($s.CR.me.a.leitura === undefined) $s.CR.me.a.leitura = leituraOf($s.CR.me.a); // atributo novo: noção de jogo
   if ($s.CR.me.a.voleio === undefined) $s.CR.me.a.voleio = voleioOf($s.CR.me.a); // atributo novo: voleio
+  if ($s.CR.me.a.folego === undefined) $s.CR.me.a.folego = folegoOf($s.CR.me.a); // atributo novo: fôlego
+  ($s.CR.pool || []).forEach(c => { if (c && c.a && c.a.folego === undefined) { let h = 7; for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; c.a.folego = Math.max(30, Math.min(99, folegoOf(c.a) + (h % 11) - 5)); } });
   if (!$s.CR.chemBy) { $s.CR.chemBy = {}; if ($s.CR.partner && $s.CR.chem) $s.CR.chemBy[$s.CR.partner] = Math.min(100, $s.CR.chem * 16); delete $s.CR.chem; } // entrosamento antigo (0–5) vira química
   // conserta saves em que a virada de temporada deixou atributo NaN (noção de jogo/voleio de quem não tinha)
   [$s.CR.me, ...($s.CR.pool || [])].forEach(c => { if (!c || !c.a) return; for (const [k] of ATTRS) if (typeof c.a[k] === 'number' && !isFinite(c.a[k])) { delete c.a[k]; c.a[k] = Math.round(attrOf(c.a, k)); } });
@@ -2054,6 +2065,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
