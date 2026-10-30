@@ -175,7 +175,12 @@ function animateAthlete(p, dt) {
   let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep) * (1 - p.rlx) + p.rlxTurn * (1 - p.prep);
   const cel = S.mode === 'dead' && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
-  if (mateC && cel.t > .7) { const fy = Math.atan2(-(mateC.pos.x - p.pos.x), -(mateC.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
+  // comemoração entre pontos (tapa de mão / toque baixo / raquete com raquete): vira para o parceiro quando ele chega perto
+  const pc = !cel && S.mode === 'dead' && !S.sideWalk && S.ptCel && S.ptCel[p.team], pMate = pc && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
+  const pDist = pMate ? Math.hypot(pMate.pos.x - p.pos.x, pMate.pos.z - p.pos.z) : 9;
+  const pgW = pc && pc.met != null ? clamp((pc.t - pc.met) / .18, 0, 1) * clamp((pc.met + .75 - pc.t) / .22, 0, 1) : 0;
+  const faceMate = (mateC && cel.t > .7) || (pMate && pc.t > .3 && pc.t < 1.6 && pDist < 2.2);
+  if (faceMate) { const mt = mateC || pMate, fy = Math.atan2(-(mt.pos.x - p.pos.x), -(mt.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
   else p.celYaw = undefined;
   m.group.rotation.set(0, yaw, 0); // (inteira: o tombo do peixinho não pode acumular de um quadro para o outro)
   // peixinho de verdade: o corpo inteiro se lança na direção da bola, fica quase deitado na areia (de lado ou de peito) e
@@ -400,11 +405,12 @@ function animateAthlete(p, dt) {
   // ou balança a cabeça; entra e sai suave
   // quem ganhou às vezes vibra (punho cerrado / raquete para cima); quem perdeu quase sempre reage
   const rk = ((S.ptN || 0) * 7 + p.team * 3 + (p.slot > 0 ? 5 : 0)) % 8, won = S.ptWin === p.team;
-  const lose = !cel && !S.sideWalk && S.mode === 'dead' && S.ptWin !== undefined && (!won || rk < 3) ? { t: S.ptT || 0 } : null;
+  const lose = !cel && !pc && !S.sideWalk && S.mode === 'dead' && S.ptWin !== undefined && (!won || rk < 3) ? { t: S.ptT || 0 } : null;
   const lsW = lose ? clamp((lose.t - .35) / .25, 0, 1) * clamp((1.9 - lose.t) / .35, 0, 1) : 0;
   const lsK = lose ? (won ? ['fist', 'rkup', 'fist'][rk % 3] : ['head', 'tap', 'hips', 'shake', 'tap', 'head', 'shake', 'hips'][rk]) : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(.18, 1.05, -.05); _b.set(.8, 0, .3); }
+  if (pgW > 0 && pc.kind === 'rk') { _e.set(.04, .74, -.52); _c.lerp(_e, pgW); } // raquete com raquete: estica a raquete à frente, na altura do peito
   if (lsW > 0) { if (lsK === 'rkup') _e.set(.2, .95, -.15); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
   // peixinho: o braço da raquete vai esticado para a frente do mergulho (para onde a bola está)
   if (tiltK > .05 && p.dive) { _g.set(p.dive.dx, 0, p.dive.dz).applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); _e.copy(shR).addScaledVector(_g, .62); _c.lerp(_e, tiltK * (swingU >= 0 && !p.swing.hit ? .45 : .85)); }
@@ -414,6 +420,7 @@ function animateAthlete(p, dt) {
   if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(-.18, 1.05, -.05); _b.set(-.8, 0, .3); }
+  if (pgW > 0 && pc.kind !== 'rk') { if (pc.kind === 'five') _e.set(-.1, 1.0, -.42); else _e.set(-.1, .34, -.46); _c.lerp(_e, pgW); } // tapa de mão no alto ou toque baixo
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
   if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z -= Math.cos(p.gait) * .17 * run * lvu; }
   // mão livre: na frente do corpo, apoiando a raquete pelo pescoço (pronta para o backhand); correndo solta um pouco e balança

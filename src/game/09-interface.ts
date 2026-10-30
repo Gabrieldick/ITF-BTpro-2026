@@ -561,6 +561,11 @@ function pointTo(w, reason, kind) {
     isTitle = w === 0 && ((S.careerActive && crIsFinal()) || (S.champActive && champIsFinal()));
     S.celebrate = { team: w, t: 0, title: isTitle };
     S.deadT = isTitle ? 5 : dupla() ? 2.8 : 2.4;
+  } else if (dupla()) {
+    // entre os pontos a dupla se encontra: quem ganhou quase sempre (tapa de mão no alto, toque baixo ou raquete com
+    // raquete); quem perdeu às vezes, para se animar
+    const pk = a => a[Math.floor(Math.random() * a.length)];
+    S.ptCel = {}; if (Math.random() < .75) S.ptCel[w] = { t: 0, kind: pk(['five', 'five', 'low', 'rk']) }; if (Math.random() < .35) S.ptCel[1 - w] = { t: 0, kind: pk(['low', 'rk']) };
   }
   pointShow(w, ev, reason, isTitle);
   if (NET.onPoint) NET.onPoint(w, ev, reason);
@@ -588,7 +593,7 @@ function pointShow(w, ev, reason, isTitle) {
 }
 function setupPoint() {
   S.defPend = null;
-  S.celebrate = null; S.pressure = decisive(); S.hadDive = false;
+  S.celebrate = null; S.ptCel = null; S.pressure = decisive(); S.hadDive = false;
   S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; ball.state = 'held'; ball.vel.set(0, 0, 0);
   S.assign = [null, null]; S.assignId = [-1, -1];
   $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.var = ''; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.ai.planId = -1; p.ai.reactT = 0; p.ai.letGo = false; p.ai.swung = false; p.dive = null; });

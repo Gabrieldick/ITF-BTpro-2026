@@ -84,12 +84,32 @@ function step(dt) {
   // mapa de calor: onde o seu jogador ficou durante os ralis (meia quadra 8 × 8 m, rede em cima)
   if (S.mode === 'rally' && S.posHeat && !S.spectate) { S.heatT = (S.heatT || 0) + dt; if (S.heatT > .2) { S.heatT = 0; const p = human, f = p.team === 0 ? 1 : -1, cx = Math.floor(clamp((p.pos.x * f + 4) / 8, 0, .999) * 8), cz = Math.floor(clamp(p.pos.z * f / 8, 0, .999) * 8); S.posHeat[cz * 8 + cx]++; } }
   if (S.mode === 'dead' && !sideWalkStep(dt) && S.celebrate) celebrateStep(dt); // troca de lado: caminhada até o poste
+  else if (S.mode === 'dead' && S.ptCel && !S.sideWalk) ptCelStep(dt);
   if (S.mode === 'dead') {
     S.deadT -= dt;
     if (S.deadT <= 0) { if (S.drill) drillNext(); else if (S.matchWinner !== null) showOver(); else setupPoint(); }
   }
 }
 
+// entre pontos: a dupla se aproxima e faz o gesto (S.ptCel[time]); só quem é da CPU anda até o outro (você não é puxado).
+// c.met: momento em que ficaram perto (o braço faz o gesto por ~0,55 s a partir daí)
+function ptCelStep(dt) {
+  for (const k in S.ptCel) {
+    const c = S.ptCel[k], tm = $s.teams[k]; c.t += dt; if (!tm || tm.length < 2 || c.t > 1.9) continue;
+    const [a, b] = tm, d0 = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+    if (c.met == null && d0 < 1.05 && c.t > .3) { c.met = c.t; c.hold = [a, b].map(p => [p.pos.x, p.pos.z]); }
+    // durante o gesto ficam parados juntos (a IA não puxa de volta para a posição antes da hora)
+    if (c.met != null && c.t - c.met < .8) { [a, b].forEach((p, i) => { if (!p.isHuman) { p.pos.x = c.hold[i][0]; p.pos.z = c.hold[i][1]; p.vel.set(0, 0, 0); } }); continue; }
+    if (c.t < .3 || c.met != null || d0 > 5) continue;
+    const movers = [a, b].filter(p => !p.isHuman), mx = (a.pos.x + b.pos.x) / 2, mz = (a.pos.z + b.pos.z) / 2;
+    movers.forEach(p => { const o = p === a ? b : a, both = movers.length === 2;
+      const tx = both ? mx + (p.pos.x - mx) / Math.max(.01, d0 / 2) * .42 : o.pos.x + (p.pos.x - o.pos.x) / Math.max(.01, d0) * .85;
+      const tz = both ? mz + (p.pos.z - mz) / Math.max(.01, d0 / 2) * .42 : o.pos.z + (p.pos.z - o.pos.z) / Math.max(.01, d0) * .85;
+      const dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz), sp = Math.min(3.2, d * 4);
+      p.vel.set(d > .02 ? dx / d * sp : 0, 0, d > .02 ? dz / d * sp : 0); p.pos.x += p.vel.x * dt; p.pos.z += p.vel.z * dt; p.swing.t = -1; p.charging = false; });
+  }
+  if (!S.ptCelSnd) for (const k in S.ptCel) { const c = S.ptCel[k]; if (c.met != null && c.t - c.met > .22 && !c.snd) { c.snd = true; sndHit(c.kind === 'rk' ? .1 : .08); } }
+}
 // comemoração: a dupla vencedora se junta, bate a mão e (no título) se abraça e pula
 function celebrateStep(dt) {
   const c = S.celebrate; c.t += dt;
