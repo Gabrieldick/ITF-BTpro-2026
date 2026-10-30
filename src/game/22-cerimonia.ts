@@ -61,8 +61,8 @@ function startCeremony() {
   CER.info = { name, prize, team: team.map(p => shortOf(p.char || {})), partner: team[1] && team[1].char ? nameOf(team[1].char) : '' };
   CER.g = podium(); scene.add(CER.g); CER.cup = cupMesh(); CER.cup.visible = false; scene.add(CER.cup);
   // vencedores no 1º lugar, vice no 2º; todos virados para a câmera
-  team.forEach((p, i) => { p.pos.set(POD.x + (team.length > 1 ? (i ? .35 : -.35) : 0), 0, POD.z); p.liftY = POD.h1; p.forceYaw = 0; p.vel.set(0, 0, 0); });
-  opp.forEach((p, i) => { p.pos.set(POD.x + 1.6 + (opp.length > 1 ? (i ? .33 : -.33) : 0), 0, POD.z); p.liftY = POD.h2; p.forceYaw = 0; p.vel.set(0, 0, 0); });
+  team.forEach((p, i) => { p.pos.set(POD.x + (team.length > 1 ? (i ? .35 : -.35) : 0), 0, POD.z); p.liftY = POD.h1; p.forceYaw = Math.PI; p.vel.set(0, 0, 0); });
+  opp.forEach((p, i) => { p.pos.set(POD.x + 1.6 + (opp.length > 1 ? (i ? .33 : -.33) : 0), 0, POD.z); p.liftY = POD.h2; p.forceYaw = Math.PI; p.vel.set(0, 0, 0); });
   S.celebrate = { team: 0, t: .2, title: true, hold: true };
   ball.state = 'dead'; ball.pos.set(0, -5, 0); ball.vel.set(0, 0, 0);
   S.mode = 'ceremony';
