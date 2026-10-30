@@ -45,19 +45,37 @@ function showReview(r) {
   let box = document.getElementById('review');
   if (!box) { box = document.createElement('div'); box.id = 'review'; box.innerHTML = '<canvas width="260" height="150"></canvas><b></b>'; document.body.appendChild(box); }
   const cv = box.querySelector('canvas'), x = cv.getContext('2d'), W = cv.width, H = cv.height, PX = 900; // 1 m = 900 px (zoom grande)
-  const lineC = r.axis === 'x' ? C.halfW : C.halfL, pos = Math.abs(r.axis === 'x' ? r.x : r.z), along = r.axis === 'x' ? r.z : r.x;
-  x.fillStyle = '#ead8b4'; x.fillRect(0, 0, W, H);
-  for (let i = 0; i < 260; i++) { x.fillStyle = 'rgba(120,90,50,' + (Math.random() * .12) + ')'; x.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
-  // a fita fica no meio da tela (vertical); dentro da quadra à esquerda, fora à direita
-  const cx = W / 2, tapeW = .05 * PX;
-  x.fillStyle = '#1f4fb8'; x.fillRect(cx - tapeW / 2, 0, tapeW, H);
-  const bx = cx + (pos - lineC) * PX, by = H / 2, br = .055 * PX;
-  x.beginPath(); x.ellipse(bx, by, br, br * .9, 0, 0, Math.PI * 2); x.fillStyle = 'rgba(90,60,30,.45)'; x.fill();
-  x.strokeStyle = r.inB ? '#4fd18b' : '#e5484d'; x.lineWidth = 3; x.stroke();
-  x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 11px sans-serif'; x.fillText('QUADRA', 8, 16); x.fillText('FORA', W - 40, 16);
+  const ax = r.axis === 'x', lineC = ax ? C.halfW : C.halfL, sg = Math.sign(ax ? r.x : r.z) || 1, pos = Math.abs(ax ? r.x : r.z);
+  // velocidade no plano da telinha: "pe" para fora da quadra, "al" ao longo da linha; vy para baixo
+  const pe = ((ax ? r.vx : r.vz) || 0) * sg, al = (ax ? r.vz : r.vx) || 0, vy = Math.min(-2, r.vy || -6), MARK = .032, RB = .055;
+  const grains = Array.from({ length: 260 }, () => [Math.random() * W, Math.random() * H, Math.random() * .12]);
+  const cx = W / 2, tapeW = .05 * PX, bx0 = cx + (pos - lineC) * PX, by0 = H / 2;
+  // mini replay em câmera lenta (como o olho eletrônico): a bola chega por cima, a sombra encosta, marca a areia e sai;
+  // os 6 cm de tela correspondem a ~0,05 s de jogo esticados em 1,5 s; depois para na marca com o veredito
+  const T0 = -.032, T1 = .02, DUR = 1500;
+  let st = performance.now();
+  const draw = now => {
+    const u = Math.min(1, (now - st) / DUR), tau = T0 + (T1 - T0) * u;
+    x.fillStyle = '#ead8b4'; x.fillRect(0, 0, W, H);
+    grains.forEach(([gx, gy, a]) => { x.fillStyle = 'rgba(120,90,50,' + a + ')'; x.fillRect(gx, gy, 2, 2); });
+    x.fillStyle = '#1f4fb8'; x.fillRect(cx - tapeW / 2, 0, tapeW, H);
+    // marca na areia (aparece no toque e cresce um pouco no arrasto)
+    if (tau >= 0) { const sk = 1 + Math.min(.6, Math.hypot(pe, al) * .02) * Math.min(1, tau / .01);
+      x.save(); x.translate(bx0, by0); x.rotate(Math.atan2(al, pe)); x.beginPath(); x.ellipse(MARK * PX * (sk - 1) * .5, 0, MARK * PX * sk, MARK * PX * .9, 0, 0, Math.PI * 2);
+      x.fillStyle = 'rgba(90,60,30,.5)'; x.fill(); x.strokeStyle = u >= 1 ? (r.inB ? '#4fd18b' : '#e5484d') : 'rgba(60,40,20,.6)'; x.lineWidth = u >= 1 ? 3 : 1.5; x.stroke(); x.restore(); }
+    // bola: posição no plano e altura (antes do toque descendo, depois subindo mais devagar)
+    const h = tau < 0 ? -vy * -tau : Math.abs(vy) * .3 * tau, bx = bx0 + pe * tau * PX * (tau < 0 ? 1 : .25), by = by0 + al * tau * PX * (tau < 0 ? 1 : .25);
+    if (u < 1) x.beginPath(), x.ellipse(bx + h * PX * .35, by + h * PX * .2, RB * PX * .95, RB * PX * .8, 0, 0, Math.PI * 2), x.fillStyle = 'rgba(40,30,15,' + (.35 - Math.min(.25, h * 2)) + ')', x.fill(); // sombra (some no quadro final)
+    if (u < 1) { const rs = RB * PX * (1 + h * 2.2); const g = x.createRadialGradient(bx - rs * .35, by - rs * .35, rs * .1, bx, by, rs); g.addColorStop(0, '#fff3c4'); g.addColorStop(.6, '#ffb11f'); g.addColorStop(1, '#d9780a');
+      x.globalAlpha = .92; x.beginPath(); x.arc(bx, by, rs, 0, Math.PI * 2); x.fillStyle = g; x.fill(); x.globalAlpha = 1; }
+    x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 11px sans-serif'; x.fillText('QUADRA', 8, 16); x.fillText('FORA', W - 40, 16);
+    if (u < 1) { x.fillText('REPLAY', 8, H - 8); requestAnimationFrame(draw); }
+  };
   const cm = Math.abs(r.mg * 100).toFixed(1).replace('.', ',');
-  const t = box.querySelector('b'); t.textContent = 'REVISÃO · ' + (r.inB ? 'DENTRO (tocou a linha · ' + cm + ' cm)' : 'FORA por ' + cm + ' cm'); t.className = r.inB ? 'in' : 'out';
-  box.classList.add('show'); clearTimeout(reviewT); reviewT = setTimeout(() => box.classList.remove('show'), 5500);
+  const t = box.querySelector('b'); t.textContent = 'REVISÃO · ' + (r.inB ? 'DENTRO (a marca tocou a linha · ' + cm + ' cm)' : 'FORA por ' + cm + ' cm'); t.className = r.inB ? 'in' : 'out';
+  t.style.visibility = 'hidden'; setTimeout(() => { t.style.visibility = ''; }, DUR); // o veredito aparece depois do replay
+  requestAnimationFrame(draw);
+  box.classList.add('show'); clearTimeout(reviewT); reviewT = setTimeout(() => box.classList.remove('show'), 5500 + DUR);
 }
 // texto dos golpes (o seu e os da CPU): pode ser completo, discreto ou desligado nas configurações
 function shotFeedback(main, small, kind) {

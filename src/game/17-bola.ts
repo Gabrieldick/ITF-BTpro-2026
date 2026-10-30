@@ -4,6 +4,7 @@ import './16-ia';
 import { $s } from '../state';
 import { C, bG, clamp, rand } from './00-base';
 const BALL_VIS = .055; // raio da bola como ela aparece (07-glb)
+const BALL_MARK = .032; // raio da marca que ela deixa na areia (afunda ~1 cm)
 import { S, NET } from './01-estado';
 import { human } from './06-modelos';
 import { ball, ballMark, puff } from './07-glb';
@@ -47,13 +48,15 @@ function updateBall(dt) {
       const back = ball.vel.y < -.01 ? clamp((C.ballR - ball.pos.y) / -ball.vel.y, 0, .05) : 0;
       ball.pos.x -= ball.vel.x * back; ball.pos.z -= ball.vel.z * back; ball.pos.y = C.ballR;
       const x = ball.pos.x, z = ball.pos.z;
-      // qualquer toque na fita é dentro: a fita tem 5 cm (metade para fora da linha) + o raio da bola desenhada (5,5 cm)
-      const LINE = .025 + BALL_VIS;
+      // dentro se a MARCA da bola na areia encosta na fita (como no circuito): a fita tem 5 cm (metade para fora da linha) e a
+      // marca ~3,2 cm de raio (a bola de 5,5 cm afunda ~1 cm). Antes contava o círculo inteiro da bola visto de cima, e uma
+      // bola que só passava por cima da fita sem marcar nela era dada dentro
+      const LINE = .025 + BALL_MARK;
       const mx = C.halfW + LINE - Math.abs(x), mz = C.halfL + LINE - Math.abs(z); // folga até deixar de tocar (negativa = fora)
       const inB = mx >= 0 && mz >= 0;
       // lance muito ajustado (até 6 cm de um lado ou do outro): telinha de revisão vista de cima
       const axis = (mx < 0) !== (mz < 0) ? (mx < 0 ? 'x' : 'z') : (Math.abs(mx) < Math.abs(mz) ? 'x' : 'z'), mg = axis === 'x' ? mx : mz;
-      if (Math.abs(mg) < .06 && !S.drill) { const rv = { x, z, axis, inB, mg }; try { showReview(rv); } catch (e) {} if (NET.ev) NET.ev('review', rv); }
+      if (Math.abs(mg) < .06 && !S.drill) { const rv = { x, z, axis, inB, mg, vx: ball.vel.x, vy: ball.vel.y, vz: ball.vel.z }; try { showReview(rv); } catch (e) {} if (NET.ev) NET.ev('review', rv); }
       const owner = z > 0 ? 0 : 1;
       sndSand(); { const bv = Math.hypot(ball.vel.x, ball.vel.y, ball.vel.z); puff(x, z, 12 + Math.round(Math.min(24, bv * 1.2)), .7 + Math.min(.6, bv * .03), 0, 0, bv > 14 ? .5 : 0); } ballMark(x, z, ball.vel.x, ball.vel.z); if (NET.ev) NET.ev('sand', x, z);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;
