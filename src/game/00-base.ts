@@ -26,7 +26,8 @@ const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'to
 // stamina na partida (0 a 1): abaixo de 35% o jogador fica mais lento (até −16%) e erra mais (ruído do golpe até +75%)
 const staMul = p => { const s = p.sta ?? 1; return s >= .35 ? 1 : .84 + .16 * s / .35; };
 const staErr = p => { const s = p.sta ?? 1; return s >= .35 ? 1 : 1 + (.35 - s) * 2.15; };
-const bCurve = (vel, dt) => { if (ball.state === 'live' && (ball.cx || ball.cz)) { vel.x += (ball.cx || 0) * dt; vel.z += (ball.cz || 0) * dt; } };
+// (inclui o vento do momento, ball.wx/wz, que a bola atualiza a cada quadro: a CPU prevê o desvio do vento também)
+const bCurve = (vel, dt) => { if (ball.state === 'live') { vel.x += ((ball.cx || 0) + (ball.wx || 0)) * dt; vel.z += ((ball.cz || 0) + (ball.wz || 0)) * dt; } };
 const C = { halfL: 8, halfW: 2.25, netH: 1.7, ballR: .035, netHalf: 4.6 };
 const HALF_W = { simples: 2.25, dupla: 4 };
 const STEP = 1 / 120;

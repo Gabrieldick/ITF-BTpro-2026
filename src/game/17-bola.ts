@@ -38,8 +38,10 @@ function updateBall(dt) {
   // lançamento do saque: a bola acompanha a mão até a soltura
   if (ball.state === 'toss' && ball.inHand && S.serverPlayer) { const sp = S.serverPlayer; handPos(sp, ball.pos); ball.vel.set(0, 0, 0); if (sp.tossT >= (sp.tossRel || 0)) releaseToss(sp); else return; }
   const prev = ball.pos.clone();
+  // vento: bolas lentas e altas desviam mais (na troca de lado ele passa a soprar ao contrário para cada time); entra junto
+  // com a curva do efeito em bCurve (as previsões de trajetória usam a mesma conta)
+  { const ws = S.sideFlip ? -.07 : .07; ball.wx = S.wind ? S.wind.x * ws : 0; ball.wz = S.wind ? S.wind.z * ws : 0; }
   ball.vel.y -= bG() * dt; bCurve(ball.vel, dt);
-  if (ball.state === 'live' && S.wind) { const ws = S.sideFlip ? -.07 : .07; ball.vel.x += S.wind.x * ws * dt; ball.vel.z += S.wind.z * ws * dt; } // vento: bolas lentas e altas desviam mais (na troca de lado ele passa a soprar ao contrário para cada time)
   ball.pos.addScaledVector(ball.vel, dt);
   if (ball.state === 'toss') {
     const sp = S.serverPlayer;

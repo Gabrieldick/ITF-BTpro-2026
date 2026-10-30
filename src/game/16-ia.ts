@@ -662,6 +662,8 @@ function updateAI(p, dt) {
         const out = ex > C.halfW + marg || ez > C.halfL + marg;
         p.ai.letGo = out && Math.random() > lerp(.2, 0, lv); // nível baixo às vezes vai na bola fora por instinto
       }
+      // a bola pode mudar no caminho (vento, efeito): de tempos em tempos refaz o ponto de interceptação e corrige a corrida
+      else if (!p.swing.hit && (p.ai.replanT = (p.ai.replanT ?? .2) - dt) <= 0) { p.ai.replanT = .2; const np = planIntercept(p, D.speed, 0); if (np) p.ai.plan = np; }
       if (p.ai.letGo) { tx = p.pos.x; tz = p.pos.z; }
       else {
         if (p.ai.plan) { tx = p.ai.plan.pt.x + (aiP(p).sideOff ?? .35) * (p.team === 1 ? 1 : -1); tz = p.ai.plan.pt.z; }

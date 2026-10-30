@@ -28,7 +28,7 @@ function solveShot(p0, tgt, spec) {
 function predictLanding() {
   const y = ball.pos.y - C.ballR, vy = ball.vel.y, g = bG();
   const t = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * y))) / g, k = ball.state === 'live' ? .5 * t * t : 0;
-  return new V3(ball.pos.x + ball.vel.x * t + (ball.cx || 0) * k, 0, ball.pos.z + ball.vel.z * t + (ball.cz || 0) * k);
+  return new V3(ball.pos.x + ball.vel.x * t + ((ball.cx || 0) + (ball.wx || 0)) * k, 0, ball.pos.z + ball.vel.z * t + ((ball.cz || 0) + (ball.wz || 0)) * k);
 }
 function reachOf(type, p) { return type === 'defesa' ? 1.24 + (p ? attrK(p, 'def') : .65) * .28 : 1.28; }
 const _rf = new V3();
