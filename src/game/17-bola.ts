@@ -14,16 +14,17 @@ import { skillOf, startJump, startToss, handPos, releaseToss } from './11-mira';
 import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 import { startCeremony } from './22-cerimonia';
-// stamina: gasta correndo no ponto (bem mais em arrancada), em cada salto e em cada mergulho (quem tem mais velocidade/físico
+// stamina: gasta correndo no ponto (bem mais em arrancada), em cada golpe, salto e mergulho (quem tem mais velocidade/físico
 // cansa menos). A recuperação é por ponto (não pelo tempo parado): +7% a cada ponto e +30% na troca de lado
 function staminaStep(dt) {
   for (const p of $s.players) {
     if (p.sta === undefined) p.sta = 1;
     if (S.mode === 'rally') {
-      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.25 - .5 * Math.min(1, attrK(p, 'vel'));
+      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.15 - .3 * Math.min(1, attrK(p, 'vel'));
       let d = dt * (.009 + .045 * Math.pow(Math.min(1.2, sp / 5), 1.5));
       if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
       if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
+      if (p.swing.t >= 0 && !p.staS) { p.staS = true; d += p.swing.type === 'smash' ? .022 : .012; } else if (p.swing.t < 0) p.staS = false; // cada golpe também cansa (o smash mais)
       p.sta = Math.max(0, p.sta - d * k);
     }
   }

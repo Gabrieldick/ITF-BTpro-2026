@@ -160,6 +160,9 @@ function aiDepthK(p, shot) { const v = aiP(p)['d_' + shot]; return v == null ? n
 function aiAim(p) {
   const st = styleOf(p), lim = C.halfW - .6;
   if (p.ai && p.ai.planAim != null) { const a = p.ai.planAim; p.ai.planAim = null; return clamp(a + rand(-.12, .12), -lim, lim); } // IA Planejadora: a mira escolhida na busca
+  // curta cruzada: na diagonal de quem bate, bem aberta perto da lateral (a dupla do fundo corre na diagonal e chega tarde);
+  // quanto mais estrelas, mais vezes
+  { const up = skillOf(p).up || 0; if (p.ai && p.ai.shot === 'curta' && Math.random() < .25 + .45 * clamp(up * 2.5, 0, 1)) return clamp(-(Math.sign(p.pos.x) || (Math.random() < .5 ? 1 : -1)) * rand(.55, .95) * lim, -lim, lim); }
   { const up = skillOf(p).up || 0; if (up > 0 && Math.random() < Math.min(aiP(p).aimMax ?? .85, up * aiP(p).smartAim)) return smartAim(p); }
   { const ta = tacticAim(p.team); if (ta !== null && Math.random() < .7) return ta; }
   if (st.aimBody && Math.random() < st.aimBody) { const opp = $s.teams[1 - p.team].slice().sort((a, b) => Math.abs(a.pos.z) - Math.abs(b.pos.z))[0]; if (opp) return clamp(opp.pos.x + rand(-.35, .35), -lim, lim); }
@@ -462,7 +465,7 @@ function bestPlay(p, y) {
   const A = aiP(p);
   const sc = {
     // chegando inteiro (sem apuro) e com só um adversário na rede, o lob perde para a bola neutra/acelerada
-    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (A.lobNet + lobK * A.lobAttr) * (1.15 - weakOH * .3) * (tr < .3 && allNet < .6 ? .65 : 1) - (y >= 2.1 && netD < 3.2 ? .5 : 0) + tr * .45, // (+ recuperação em apuros)
+    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (A.lobNet + lobK * A.lobAttr) * (1.15 - weakOH * .3) * (tr < .3 && allNet < .6 ? .5 : tr < .3 ? .8 : 1) - (y >= 2.1 && netD < 3.2 ? .5 : 0) + tr * .45, // (+ recuperação em apuros)
     // curta: boa contra quem está no fundo e ainda viável contra quem parou no meio (~3–4,5 m)
     curta: (clamp((dMin - 2.4) / 2.6, 0, 1) + A.curtaMid * clamp(1 - Math.abs(dMin - 3.6) / 1.2, 0, 1)) * (A.curtaBase + curK * A.curtaAttr) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
     smash: A.smashW * (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
@@ -470,6 +473,7 @@ function bestPlay(p, y) {
   };
   // adversário nos 3 m, bola na meia altura e você bem posicionado: acelerada no pé (o drive) vale mais que o lob
   if (y >= .85 && y < 1.45 && tr < .4) sc.smash += .38 * dMid * (1 - tr);
+  if (tr < .3 && y < 1.8) sc.curta *= 1.2; // confortável e bola baixa/média: curta (cruzada) é opção forte
   // bola confortável na meia altura: acelera ou joga neutro (defesa firme) em vez de levantar
   if (y >= .7 && y < 1.45 && tr < .3) { sc.smash += .2 * (1 - tr); sc.defesa += .12; }
   if (y >= 1.45 && netD > 4.6 && smK < .62) sc.smash *= .6;
@@ -696,8 +700,10 @@ function updateAI(p, dt) {
             }
             // altura do lob pela situação: em apuros, o alto (recuperação); contra quem colou na rede, chutado ou médio por cima;
             // no resto, médio
-            const trb = aiTrouble(p, ball.pos.y), lobSit = soft ? { lobPower: rand(.35, .6) } : trb > .5 ? { lobPower: rand(.8, 1) } : trb < .25 ? { lobPower: rand(.3, .55), lobKick: Math.random() < .3 + attrK(p, 'lob') * .3 }
-              : oppGlued(p.team) ? (Math.random() < .25 + attrK(p, 'lob') * .45 ? { lobPower: .25, lobKick: true } : { lobPower: rand(.4, .62) }) : { lobPower: rand(.45, .75) };
+            // estrelas altas: o lob alto fica só para o apuro de verdade; confortável, lob baixo e rápido (chutado) ou médio-baixo
+            const upL = clamp(((p.skill && p.skill.up) || 0) * 2.5, 0, 1);
+            const trb = aiTrouble(p, ball.pos.y), lobSit = soft ? { lobPower: rand(.35, .6) } : trb > lerp(.5, .82, upL) ? { lobPower: rand(.8, 1) } : trb > .5 ? { lobPower: rand(.5, .72) } : trb < .3 ? { lobPower: rand(.22, .5) - .08 * upL, lobKick: Math.random() < .3 + attrK(p, 'lob') * .3 + .2 * upL }
+              : oppGlued(p.team) ? (Math.random() < .25 + attrK(p, 'lob') * .45 + .15 * upL ? { lobPower: .25, lobKick: true } : { lobPower: rand(.3, .55) }) : { lobPower: rand(lerp(.45, .26, upL), lerp(.75, .55, upL)) };
             const r = doHit(p, shot, q, false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, pm, shot === 'lob' ? (p.ai.planLob != null ? { lobPower: p.ai.planLob, lobKick: !!p.ai.planKick && Math.random() < .35 + attrK(p, 'lob') * .4 } : lobSit) : {}));
             p.ai.planLob = null; p.ai.planKick = false;
             shotFeedback(whoTag(p) + r.label, r.pop ? 'LEVANTOU' : r.wild ? 'DESCONTROLOU' : null, whoKind(p));
