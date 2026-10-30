@@ -386,7 +386,7 @@ function doHit(p, type, q, isServe, mod) {
   const power = key === 'smash' ? 1 : key === 'drive' ? .7 : key === 'curta' ? .1 : .4;
   sndHit(power); if (NET.ev) NET.ev('hit', p, power);
   if (key === 'smash') { const mine = p.isHuman && !p.netHuman; S.shake = mine ? .25 : .1; if (mine) S.stats.smashes++; }
-  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react * expectK(o, key) + (key === 'lob' && !isServe && !pop && !o.isHuman ? lobSurprise(o, !!spec.kick) : 0); if (o.splitFor !== S.hitId - 1) o.split = .26; }); // quem já deu o split no smash não repete
+  $s.teams[1 - p.team].forEach(o => { o.ai.reactT = skillOf(o).react * expectK(o, key) + ((key === 'lob' || key === 'curta') && !isServe && !pop && !o.isHuman ? lobSurprise(o, !!spec.kick, key) : 0); if (o.splitFor !== S.hitId - 1) o.split = .26; }); // quem já deu o split no smash não repete
   p.swing.type = isServe ? 'smash' : type; p.swing.hit = true;
   const hitAt = isServe ? .3 : .45;
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;

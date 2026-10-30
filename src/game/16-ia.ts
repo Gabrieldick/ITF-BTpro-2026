@@ -122,6 +122,8 @@ function charSkill(p) {
     k, up: Math.max(0, adj), // up: quanto as estrelas sobem acima do padrão (0 no padrão: nada muda)
     // tk: acerto do tempo (saque e smash no verde) pelas estrelas — 1 estrela erra muito, o Lendário quase não erra (o seu
     // parceiro da CPU acompanha)
+    // sur: o susto com curta e lob (tempo a mais para reagir) pelas estrelas — até o Lendário leva um instante
+    sur: stars ? [1.35, 1.2, 1.1, 1, .95, .9][stars - 1] : 1,
     tk: (() => { let t = stars ? [.35, .6, 1, 1.6, 2.3, 3.3][stars - 1] : p.team === 1 && !S.simAI ? { facil: .6, medio: 1, dificil: 1.4 }[S.settings.diff] || 1 : 1; return t; })(),
     soft: stars ? [.7, .84, 1, 1, 1, 1][stars - 1] : 1,
   };
@@ -459,7 +461,8 @@ function bestPlay(p, y) {
   const weakOH = Math.min(...opp.map(o => (attrK(o, 'smash') + attrK(o, 'vel')) / 2)); // lob contra quem não volta bem
   const A = aiP(p);
   const sc = {
-    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (A.lobNet + lobK * A.lobAttr) * (1.15 - weakOH * .3) - (y >= 2.1 && netD < 3.2 ? .5 : 0) + tr * .45, // (+ recuperação em apuros)
+    // chegando inteiro (sem apuro) e com só um adversário na rede, o lob perde para a bola neutra/acelerada
+    lob: (opp.length > 1 ? Math.max(allNet, anyNet * (1 - cover * .8)) : anyNet) * (A.lobNet + lobK * A.lobAttr) * (1.15 - weakOH * .3) * (tr < .3 && allNet < .6 ? .65 : 1) - (y >= 2.1 && netD < 3.2 ? .5 : 0) + tr * .45, // (+ recuperação em apuros)
     // curta: boa contra quem está no fundo e ainda viável contra quem parou no meio (~3–4,5 m)
     curta: (clamp((dMin - 2.4) / 2.6, 0, 1) + A.curtaMid * clamp(1 - Math.abs(dMin - 3.6) / 1.2, 0, 1)) * (A.curtaBase + curK * A.curtaAttr) * clamp((7.2 - netD) / 3, .25, 1) * (y < 1.8 ? 1 : .6),
     smash: A.smashW * (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
@@ -467,6 +470,8 @@ function bestPlay(p, y) {
   };
   // adversário nos 3 m, bola na meia altura e você bem posicionado: acelerada no pé (o drive) vale mais que o lob
   if (y >= .85 && y < 1.45 && tr < .4) sc.smash += .38 * dMid * (1 - tr);
+  // bola confortável na meia altura: acelera ou joga neutro (defesa firme) em vez de levantar
+  if (y >= .7 && y < 1.45 && tr < .3) { sc.smash += .2 * (1 - tr); sc.defesa += .12; }
   if (y >= 1.45 && netD > 4.6 && smK < .62) sc.smash *= .6;
   if (netD > 4.6 && allNet > .6 && lobK > .45) sc.smash *= .55; // do fundo contra quem está grudado na rede o smash volta no voleio: lob por cima // smash do fundo sem smash para isso: melhor devolver
   // duas (ou mais) jogadas quase igualmente boas (ex.: você nos 3 m — curta, lob ou bola no pé): decide o estilo de quem bate
@@ -680,7 +685,7 @@ function updateAI(p, dt) {
             }
             // altura do lob pela situação: em apuros, o alto (recuperação); contra quem colou na rede, chutado ou médio por cima;
             // no resto, médio
-            const trb = aiTrouble(p, ball.pos.y), lobSit = soft ? { lobPower: rand(.35, .6) } : trb > .5 ? { lobPower: rand(.8, 1) }
+            const trb = aiTrouble(p, ball.pos.y), lobSit = soft ? { lobPower: rand(.35, .6) } : trb > .5 ? { lobPower: rand(.8, 1) } : trb < .25 ? { lobPower: rand(.3, .55), lobKick: Math.random() < .3 + attrK(p, 'lob') * .3 }
               : oppGlued(p.team) ? (Math.random() < .25 + attrK(p, 'lob') * .45 ? { lobPower: .25, lobKick: true } : { lobPower: rand(.4, .62) }) : { lobPower: rand(.45, .75) };
             const r = doHit(p, shot, q, false, Object.assign({ speedMul: st.speed * (D.pw || 1) * sf, noiseMul: st.noise }, pm, shot === 'lob' ? (p.ai.planLob != null ? { lobPower: p.ai.planLob, lobKick: !!p.ai.planKick && Math.random() < .35 + attrK(p, 'lob') * .4 } : lobSit) : {}));
             p.ai.planLob = null; p.ai.planKick = false;
@@ -717,9 +722,11 @@ function updateAI(p, dt) {
 
 // lob: quem está do outro lado quase sempre é pego de surpresa e leva um instante para ler a bola subindo (mais no lob
 // chutado); às vezes antecipa e já sai correndo — mais quem lê bem o jogo e quando o adversário vem abusando do lob
-function lobSurprise(o, kick) {
-  const rd = attrK(o, 'leitura'), tl = oppTend(o.team).l;
-  if (Math.random() < clamp(.1 + .15 * rd + .35 * tl, 0, .55)) return 0; // antecipou
-  return (.16 + (kick ? .1 : 0)) * (1 - .3 * rd) * rand(.8, 1.2);
+// a curta também: quem está no fundo leva um instante para perceber a bola morrendo (menos se você abusa dela); tudo
+// escalado pelas estrelas (skill.sur), sem zerar no Lendário
+function lobSurprise(o, kick, key) {
+  const rd = attrK(o, 'leitura'), cu = key === 'curta', tl = cu ? oppTend(o.team).c : oppTend(o.team).l;
+  if (Math.random() < clamp(.08 + .15 * rd + .35 * tl, 0, .5)) return 0; // antecipou
+  return (cu ? .15 : .21 + (kick ? .11 : 0)) * (1 - .3 * rd) * ((o.skill && o.skill.sur) || 1) * rand(.8, 1.2);
 }
 export { lobSurprise, expectK, localInput, tacticAim, receiveX, aiAim, assignee, charSkill, chooseAIServe, gapX, humanPlan, playStyleOf, updateAI, updateHuman };
