@@ -120,6 +120,7 @@ let wipeT = 0;
 function sideWipe(f) {
   S.deadT = Math.max(S.deadT || 0, 0) + 4.2; // a pausa antes do próximo saque cresce para caber a caminhada
   S.sideWalk = { t: 0, f, flipped: false, banner: false, plan: null };
+  $s.players.forEach(q => { q.sta = Math.min(1, (q.sta ?? 1) + .3); }); // troca de lado: recupera bem mais
   clearTimeout(wipeT);
 }
 const SW_START = 1.0, SW_FLIP = 3.3, SW_END = 5.3;
@@ -578,6 +579,7 @@ function pointTo(w, reason, kind) {
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   S.ptWin = w; S.ptT = 0; S.ptN = (S.ptN || 0) + 1; // reações entre pontos (18-animacao)
+  $s.players.forEach(q => { q.sta = Math.min(1, (q.sta ?? 1) + .07); }); // fôlego: recupera um tanto fixo por ponto
   if (S.rallyLog) S.rallyLog.push(S.rally);
   const ev = awardPoint(w);
   updateLiveRating();

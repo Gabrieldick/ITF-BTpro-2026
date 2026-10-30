@@ -15,7 +15,7 @@ import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 import { startCeremony } from './22-cerimonia';
 // stamina: gasta correndo no ponto (bem mais em arrancada), em cada salto e em cada mergulho (quem tem mais velocidade/físico
-// cansa menos); recupera entre os pontos e bem mais na troca de lado
+// cansa menos). A recuperação é por ponto (não pelo tempo parado): +7% a cada ponto e +30% na troca de lado
 function staminaStep(dt) {
   for (const p of $s.players) {
     if (p.sta === undefined) p.sta = 1;
@@ -25,8 +25,7 @@ function staminaStep(dt) {
       if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
       if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
       p.sta = Math.max(0, p.sta - d * k);
-    } else if (S.mode === 'dead') p.sta = Math.min(1, p.sta + dt * (S.sideWalk ? .08 : .028));
-    else if (S.mode === 'serve') p.sta = Math.min(1, p.sta + dt * .02);
+    }
   }
 }
 // ---------- Bola ----------

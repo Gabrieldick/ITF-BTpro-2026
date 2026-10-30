@@ -21,7 +21,7 @@ const TIERS = [
   { id: 'BT100', nome: 'ITF BT100', curto: 'BT100', ovr: [68, 81], draw: 16, fee: 500, travel: 800, prize: [14000, 7000, 3200, 1300, 400], pts: [100, 70, 45, 25, 10], xp: [9, 7, 5, 3, 2], diff: 'medio', req: 250, cities: ['BT100 Copacabana', 'BT100 Riccione', 'BT100 Aruba', 'BT100 Gran Canaria'] },
   { id: 'BT200', nome: 'ITF BT200', curto: 'BT200', ovr: [73, 86], draw: 16, fee: 800, travel: 1200, prize: [28000, 14000, 6500, 2600, 800], pts: [200, 140, 90, 50, 20], xp: [11, 8, 6, 4, 2], diff: 'dificil', req: 600, cities: ['BT200 Rio de Janeiro', 'BT200 Ravenna', 'BT200 Terracina', 'BT200 Fortaleza'] },
   { id: 'BT400', nome: 'ITF BT400', curto: 'BT400', ovr: [78, 90], draw: 16, fee: 1200, travel: 1800, prize: [50000, 25000, 12000, 5000, 1500], pts: [400, 280, 180, 100, 40], xp: [13, 10, 7, 4, 2], diff: 'dificil', req: 1300, cities: ['BT400 Sul Special Cup', 'BT400 Matinhos', 'BT400 Cuiabá', 'BT400 Feira de Santana', 'BT400 Maceió', 'BT400 Marechal Deodoro', 'BT400 Petrolina', 'BT400 Amazônia Open Sunset', 'BT400 Cervia', 'BT400 Saint-Georges-de-Didonne'] }, // etapas reais (2025): quase todas no Brasil
-  { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [600, 420, 270, 145, 60], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba'] },
+  { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [600, 420, 270, 145, 60], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba', 'Sand Series Copacabana', 'Sand Series Cascais', 'Sand Series Gran Canaria'] },
   { id: 'WC', nome: 'Campeonato Mundial ITF', curto: 'MUNDIAL', ovr: [84, 99], draw: 16, fee: 0, travel: 3000, prize: [150000, 75000, 36000, 15000, 5000], pts: [1000, 700, 450, 250, 100], xp: [20, 14, 10, 6, 3], diff: 'dificil', req: 1e9, cities: ['Mundial de Matosinhos'] },
 ];
 // torneios a cada ~2 semanas: cada um paga mais (prêmio ×1,6) e rende o dobro da evolução de fim de torneio
@@ -44,17 +44,41 @@ const CALC = { key: '', cal: null };
 function crSeasonCal(season) {
   const key = $s.CR.seed + ':' + season;
   if (CALC.key === key) return CALC.cal;
-  const rnd = mulberry($s.CR.seed + season * 7919), cal = {};
-  for (let w = 1; w <= SEASON_WEEKS; w++) cal[w] = [];
-  for (const [t, n] of Object.entries(CAL_N)) {
-    const ws = []; for (let w = 1; w <= 49; w++) ws.push(w); // semanas 50–52: Mundial e fim de ano
-    for (let i = ws.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ws[i], ws[j]] = [ws[j], ws[i]]; }
-    ws.slice(0, n).forEach(w => cal[w].push(+t));
-  }
-  cal[51].push(9); // Mundial (top 16 do ranking)
+  const ev = crSeasonEv(season), cal = {};
+  for (let w = 1; w <= SEASON_WEEKS; w++) cal[w] = [...new Set((ev[w] || []).map(e => e.t))];
   CALC.key = key; CALC.cal = cal;
   return cal;
 }
+// torneios de verdade de cada semana (os mesmos que aparecem para você e os únicos que dão pontos para os outros):
+// cidade, nível e valor. BT400 nunca na mesma semana de outro BT400, de Sand Series ou do Mundial; BT400 e Sand Series
+// valem 400/600 ou um pouco mais (até ~470/705, os de maior premiação). Abaixo do BT400 pode haver mais de um na semana
+const EVC = { key: '', ev: null };
+const EV_PER = { 3: [1, .5, .25], 4: [1, .4], 5: [1, .3], 6: [1, .12] }; // chance do 1º, 2º, 3º torneio do nível na semana
+function crSeasonEv(season) {
+  const key = $s.CR.seed + ':' + season;
+  if (EVC.key === key) return EVC.ev;
+  const rnd = mulberry($s.CR.seed + season * 7919), weeks = {};
+  for (const [t, n] of Object.entries(CAL_N)) {
+    const ws = []; for (let w = 1; w <= 49; w++) ws.push(w); // semanas 50–52: Mundial e fim de ano
+    for (let i = ws.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ws[i], ws[j]] = [ws[j], ws[i]]; }
+    weeks[t] = ws.slice(0, n);
+  }
+  // BT400 que caiu na semana de um Sand Series vai para a semana livre mais próxima
+  const ss = new Set(weeks[8]), b4 = new Set();
+  weeks[7] = weeks[7].map(w => { if (!ss.has(w) && !b4.has(w)) { b4.add(w); return w; } for (let d = 1; d < 49; d++) for (const v of [w - d, w + d]) if (v >= 1 && v <= 49 && !ss.has(v) && !b4.has(v)) { b4.add(v); return v; } return w; });
+  const r2 = mulberry($s.CR.seed + season * 104729 + 11), ev = {};
+  for (let w = 1; w <= SEASON_WEEKS; w++) ev[w] = [];
+  const used = {};
+  const add = (t, w) => { const T = TIERS[t], cs = T.cities, u = used[t + ':' + w] || (used[t + ':' + w] = new Set());
+    let i = Math.floor(r2() * cs.length); for (let k = 0; k < cs.length && u.has(i); k++) i = (i + 1) % cs.length; u.add(i);
+    const r = r2(), m = t >= 7 && t <= 8 ? (r < .55 ? 1 : r < .85 ? 1.1 : 1.175) : 1;
+    ev[w].push({ t, city: cs[i], m, id: season + ':' + w + ':' + t + ':' + ev[w].filter(e => e.t === t).length }); };
+  for (const [t, ws] of Object.entries(weeks)) for (const w of ws) { const n = +t; if (EV_PER[n]) EV_PER[n].forEach((pc, k) => { if (k === 0 || r2() < pc) add(n, w); }); else add(n, w); }
+  add(9, 51); // Mundial (top 16 do ranking)
+  EVC.key = key; EVC.ev = ev;
+  return ev;
+}
+const evPts = (t, place, m) => Math.round((TIERS[t].pts[place] || 0) * (m || 1)); // pontos do torneio (com o valor dele)
 // semanas com torneio para você: em média uma a cada 2 semanas (às vezes seguidas, às vezes 3 de intervalo);
 // as outras são de treino. Especiais (estaduais, seleções, Mundial) têm data própria e não dependem disso
 const OPENC = { key: '', set: null };
@@ -476,7 +500,7 @@ function crPairBoard(n) {
 }
 // fim de temporada: compara os pontos de cada dupla com o que o nível dela prometia
 // final de torneio grande nas últimas 52 semanas (BT400 campeão, Sand Series e Mundial: campeão ou vice)
-const BIG_F = new Set([400, 420, 600, 700, 1000]);
+const BIG_F = new Set([400, 440, 470, 420, 462, 494, 600, 660, 705, 700, 1000]); // (BT400/Sand Series valem até ~17% a mais)
 const bigFinal = id => { const a = ($s.CR.npcR || {})[id] || [], lim = absWeek() - SEASON_WEEKS; return a.some(x => { const w = Math.floor(x / 10000); return w > lim && BIG_F.has(x - w * 10000); }); };
 function crPairsSeason() {
   const P = crPairs(true), B = $s.CR.pairBad = $s.CR.pairBad || {}, RK0 = $s.CR.pairRk || {}, RK1 = {};
@@ -570,10 +594,12 @@ function crSimWorld(rnd, list, aw, ovrs) {
   rnd = rnd || Math.random; RK.gen = (RK.gen || 0) + 1;
   if (aw === undefined) aw = absWeek();
   const season = Math.floor((aw - 1) / SEASON_WEEKS) + 1, wk = aw - (season - 1) * SEASON_WEEKS;
-  const cal = crSeasonCal(season)[wk] || [], lim = aw - SEASON_WEEKS, R = $s.CR.npcR = $s.CR.npcR || {};
+  const cal = crSeasonCal(season)[wk] || [], lim = aw - SEASON_WEEKS, R = $s.CR.npcR = $s.CR.npcR || {}, evs = crSeasonEv(season)[wk] || [];
   // duplas jogam juntas: os dois do par recebem o mesmo resultado (nível da dupla = média dos dois)
   const all = list || $s.CR.pool.concat(ROSTER, crLocals()), P = $s.CR.pairs || {}, byId = new Map(all.map(c => [c.id, c])), done = new Set(), live = !list;
   const ovOf = c => ovrs ? ovrs.get(c.id) : crCharOvr(c);
+  // quem jogou o torneio que você disputou nesta semana já tem o resultado de verdade (gravado no fim dele)
+  const wp = live && $s.CR.wkPlayed && $s.CR.wkPlayed.aw === aw ? $s.CR.wkPlayed : null, played = new Set(wp ? wp.ids : []);
   let best = null; // melhor dupla do maior torneio da semana (notícia)
   // semana do Mundial: as 16 melhores duplas do ranking jogam (e pontuam)
   const wc = new Set();
@@ -590,33 +616,33 @@ function crSimWorld(rnd, list, aw, ovrs) {
     const mt = Math.max(...team.map(x => crMinTier(x.id)));
     const nt = Math.max(npcTier(o), mt); let t = nt; while (t >= 3 && !cal.includes(t)) t--;
     if (wc.has(c.id)) t = 9;
+    if (team.some(x => played.has(x.id))) { teams.push({ c, mate, team, o, mt, t, play: false, real: true, pts: 0 }); return; }
     // a elite joga quase todos os Sand Series e o Mundial; escolhe só alguns BT400 (descansa entre as etapas grandes)
     const pp = t === 9 ? 1 : t === 8 ? .9 : t === 7 && nt === 8 ? .45 : t >= 3 ? .55 : .45;
     const play = t >= mt && (t < 9 || wc.has(c.id)) && rnd() < pp;
     teams.push({ c, mate, team, o, mt, t, play, pts: 0 });
   });
   // 2) profissionais: chaves de verdade (16 duplas por torneio, um campeão, um vice, duas semis…); quem não entra na chave
-  // (as vagas vão pelo nível) cai para o torneio de baixo que tiver na semana. Antes cada dupla sorteava o próprio
-  // resultado sozinha e, com dezenas de inscritos, "semifinalistas" sobravam: o ranking ficava achatado e inflado
-  const EVN = { 3: 8, 4: 6, 5: 4, 6: 2, 7: 1, 8: 1, 9: 1 }, PLACE = [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+  // (as vagas vão pelo nível) cai para o torneio de baixo que tiver na semana. Só existem os torneios do calendário
+  // (os mesmos que você vê): nada de chaves "fantasmas" dando pontos
+  const PLACE = [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
   [false, true].forEach(fm => {
     let carry = [];
     for (let t = 9; t >= 3; t--) {
       const here = teams.filter(x => x.play && x.t === t && !!x.c.fem === fm).concat(carry.filter(x => x.mt <= t)); carry = [];
       if (!here.length) continue;
-      if (!cal.includes(t)) { if (t > 3) carry = here; continue; }
+      // só os torneios do calendário da semana (o seu, na sua chave, já tem resultado de verdade): sem vaga, desce de nível
+      const tev = evs.filter(e => e.t === t && !(wp && wp.ev === e.id && !!wp.fem === fm));
+      if (!tev.length) { if (t > 3) carry = here; continue; }
       here.forEach(x => { x.seed = x.o + gaussR(rnd) * 1.2; });
       here.sort((a, b) => b.seed - a.seed);
-      const k = Math.min(EVN[t], Math.ceil(here.length / 16)), inn = here.slice(0, k * 16); carry = here.slice(k * 16);
+      const k = Math.min(tev.length, Math.ceil(here.length / 16)), inn = here.slice(0, k * 16); carry = here.slice(k * 16);
       const ev = Array.from({ length: k }, () => []); inn.forEach((x, i) => { const r = Math.floor(i / k) % 2 ? k - 1 - i % k : i % k; ev[r].push(x); }); // cabeças espalhadas
       const T = TIERS[t];
-      // o torneio que você jogou nesta semana é um destes (o primeiro da sua chave/gênero): ninguém mais é campeão dele
-      // (todos descem uma colocação, você ocupou uma vaga) e não sai notícia de outro campeão do mesmo torneio
-      const wt = $s.CR.wkTour, mineT = live && wt && wt.w === aw && wt.tier === t && fm === !!$s.CR.me.fem;
       ev.forEach((E, ei) => { E.forEach(x => { x.perf = x.o + gaussR(rnd) * 2.2; }); E.sort((a, b) => b.perf - a.perf);
-        const sh = mineT && ei === 0 ? 1 : 0;
-        E.forEach((x, i) => { x.t = t; x.done = true; x.pts = T.pts[PLACE[Math.min(i + sh, 15)]] || 0; });
-        const w = E[0]; if (live && !sh && w && w.mate && !!w.c.fem === !!$s.CR.me.fem && t >= 7 && (!best || t > best.t)) best = { t, perf: 1, a: w.c.id, b: w.mate.id }; });
+        const e = tev[ei];
+        E.forEach((x, i) => { x.t = t; x.done = true; x.pts = evPts(t, PLACE[Math.min(i, 15)], e.m); });
+        const w = E[0]; if (live && w && w.mate && !!w.c.fem === !!$s.CR.me.fem && t >= 7 && (!best || t > best.t)) best = { t, perf: 1, a: w.c.id, b: w.mate.id, city: e.city }; });
     }
   });
   teams.forEach(x => {
@@ -627,7 +653,7 @@ function crSimWorld(rnd, list, aw, ovrs) {
       pts = T.pts[Math.min(perf > 1.25 ? 0 : perf > .75 ? 1 : perf > .25 ? 2 : perf > -.35 ? 3 : 4, T.pts.length - 1)]; }
     // semana sem torneio da dupla: às vezes um dos dois joga sozinho um torneio menor (BT200 ou abaixo) com parceiro de ocasião
     let solo = null;
-    if (!play && mate && t >= 5 && rnd() < .07) { const s1 = team[rnd() < .5 ? 0 : 1], ts = Math.max(3, Math.min(6, t - 2)), T = TIERS[ts];
+    if (!play && !x.real && mate && t >= 5 && rnd() < .07 && evs.some(e => e.t === Math.max(3, Math.min(6, t - 2)))) { const s1 = team[rnd() < .5 ? 0 : 1], ts = Math.max(3, Math.min(6, t - 2)), T = TIERS[ts];
       const pf = (ovOf(s1) - 3 - (T.ovr[0] + T.ovr[1]) / 2) / ((T.ovr[1] - T.ovr[0]) / 2) + gaussR(rnd) * .7, ix = pf > 1.25 ? 0 : pf > .75 ? 1 : pf > .25 ? 2 : pf > -.35 ? 3 : 4;
       solo = { id: s1.id, t: ts, pts: T.pts[Math.min(ix, T.pts.length - 1)] }; }
     team.forEach(x => {
@@ -641,8 +667,7 @@ function crSimWorld(rnd, list, aw, ovrs) {
       }
     });
   });
-  if (best) { const T = TIERS[best.t], wt = $s.CR.wkTour, mine = c => wt && wt.w === aw && wt.name.includes(c.replace(/^(BT\d+|Sand Series) /, '')); // nunca o torneio que você jogou na semana
-    const cs = T.cities.filter(c => !mine(c)); if (cs.length) crNews(pairName(best.a, best.b) + ' vencem o ' + T.curto + ' ' + cs[Math.floor(rnd() * cs.length)].replace(/^(BT\d+|Sand Series) /, '') + ' (' + pairTenure(best.a, best.b) + ').', '🏆'); }
+  if (best) { const T = TIERS[best.t]; crNews(pairName(best.a, best.b) + ' vencem o ' + T.curto + ' ' + best.city.replace(/^(BT\d+|Sand Series) /, '') + ' (' + pairTenure(best.a, best.b) + ').', '🏆'); }
 }
 // um ano inteiro de resultados do mundo (criação da carreira e migração dos saves antigos)
 function crSimYear(seedK, list) {
@@ -668,9 +693,12 @@ function crWeekOptions(wk) {
   // profissional (BT10 liberado): pode se inscrever em qualquer torneio do circuito acima do seu nível, até o Sand Series,
   // sem precisar ter ganho os de baixo (os adversários é que são bem mais fortes); o Mundial segue só para o top 16
   if (top >= 3) for (let t = top + 1; t <= 8; t++) if (cal.includes(t)) tiers.push(t);
-  const seen = new Set();
+  const seen = new Set(), evs = crSeasonEv($s.CR.season)[wk] || [];
   tiers.forEach((t, k) => {
-    const T = TIERS[t]; let city = T.cities[Math.floor(rnd() * T.cities.length)];
+    const T = TIERS[t];
+    // profissionais: os torneios do calendário desta semana (cidade e valor de cada um)
+    if (t >= 3) { evs.filter(e => e.t === t).forEach(e => { if (seen.has(e.id)) return; seen.add(e.id); opts.push({ tier: t, name: e.city, ev: e.id, mult: e.m, up: t > top && t < 9 }); }); return; }
+    let city = T.cities[Math.floor(rnd() * T.cities.length)];
     if (seen.has(t + city)) city = T.cities[(T.cities.indexOf(city) + 1) % T.cities.length];
     seen.add(t + city);
     const uf = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null;
@@ -681,10 +709,10 @@ function crWeekOptions(wk) {
       seen.add(t + city);
       opts.push({ tier: t, name: city + ' · ' + T.curto, uf }); return;
     }
-    opts.push({ tier: t, name: t >= 3 && t < 9 ? city : city + (t < 3 ? ' · ' + T.curto : ''), up: t > top && t < 9 });
+    opts.push({ tier: t, name: city + ' · ' + T.curto, up: false });
   });
   const list = opts.filter((o, i, arr) => arr.findIndex(x => x.name === o.name) === i).slice(0, 8);
-  if (($s.CR.wildcard > 0 || $s.CR.wcFree > 0) && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1]; list.unshift({ tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
+  if (($s.CR.wildcard > 0 || $s.CR.wcFree > 0) && top < 8 && (top + 1 < 3 || cal.includes(top + 1)) && wk === $s.CR.week) { const T = TIERS[top + 1], e = evs.find(x => x.t === top + 1); list.unshift(e ? { tier: top + 1, name: e.city + ' (wildcard)', ev: e.id, mult: e.m, wild: true } : { tier: top + 1, name: T.cities[Math.floor(rnd() * T.cities.length)] + ' (wildcard)', wild: true }); }
   const open = crOpenWeek($s.CR.season, wk);
   const out = crSpecialOptions(wk).concat(open ? list : list.filter(o => o.tier === 9));
   const st = tiers.find(t => t < 9); // simples: o nível mais alto que tem torneio nesta semana
@@ -718,7 +746,7 @@ function crCreate(o) {
   const me = { id: 'crme', uf: (o.pais || 'BRA') === 'BRA' ? o.uf || 'SP' : undefined, name: o.name || 'Você', alt: o.alt, pais: o.pais || 'BRA', estilo: STYLES[o.style].nome, build: o.build || 'atletico', fem: o.fem, canhoto: o.canhoto || undefined,
     a: attrs || makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : o.acc === 'band' ? { headband: '#ff5a1f' } : {}, o.hairStyle ? { hairStyle: o.hairStyle } : {}, !o.fem && o.beard ? { beard: o.beard } : { beard: '' }, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
   $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: (promessa ? 17 : 22) + Math.round(st * .8),
-    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, ptsV: 3, titles: {}, maxTier: st, startTier: st,
+    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, ptsV: 4, titles: {}, maxTier: st, startTier: st,
     partner: null, chemBy: {}, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
@@ -1145,8 +1173,8 @@ function crEnter(opt) {
   { const rest = teams.splice(Object.keys(seeds).length); rest.sort((x, y) => crTeamOvr(y) - crTeamOvr(x)); teams.push(...rest); }
   const me = teams.findIndex(t => t.me);
   const seedOrder = T.draw === 16 ? SEED16 : SEED8;
-  $s.CR.wkTour = { w: absWeek(), name: opt.name || '', tier: opt.special || opt.singles ? -1 : opt.tier };
-  $s.CR.tour = { seeds, tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
+  $s.CR.wkTour = { w: absWeek(), name: opt.name || '', tier: opt.special || opt.singles ? -1 : opt.tier, ev: opt.ev || null };
+  $s.CR.tour = { seeds, ev: opt.ev || null, mult: opt.mult || 1, tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
   $s.CR.lastMsg = star ? 'Surpresa na chave: ' + nameOf(star) + ' (OVR ' + crCharOvr(star) + ') veio jogar este torneio. Se vencer a dupla dele, ele pode querer jogar com você.' : ''; crTourDays(); saveCareer();
@@ -1340,6 +1368,27 @@ function crSelStandings(t, place) {
   const tit = uf => cats[uf].filter(x => x === 1).length;
   return Object.keys(pts).map(uf => ({ uf, pts: pts[uf], cats: cats[uf] })).sort((x, y) => y.pts - x.pts || tit(y.uf) - tit(x.uf) || (y.cats[3] ? 4 - y.cats[3] : 0) - (x.cats[3] ? 4 - x.cats[3] : 0));
 }
+// resultado de verdade de cada dupla da sua chave (pontos pela fase em que caiu, com o valor do torneio); seu parceiro
+// leva os mesmos pontos que você. Na simulação da semana essas duplas não jogam outro torneio
+function npcPush(id, pts, aw) {
+  const R = $s.CR.npcR = $s.CR.npcR || {}, lim = aw - SEASON_WEEKS; let arr = R[id] || [];
+  if (pts > 0) arr.push(aw * 10000 + pts);
+  arr = arr.filter(y => Math.floor(y / 10000) > lim);
+  if (arr.length > 12) { arr.sort((y, z) => (z - Math.floor(z / 10000) * 10000) - (y - Math.floor(y / 10000) * 10000)); arr.length = 12; }
+  if (arr.length) R[id] = arr; else delete R[id];
+}
+function crTourNpcResults(t, T, nR, myPts) {
+  const aw = absWeek(), ids = [];
+  t.teams.forEach((tm, i) => {
+    if (i === t.me) { if (tm.b) { npcPush(tm.b, myPts, aw); crCatAdd(tm.b, t.tier, myPts, aw, (crChar(tm.b) || {}).pais !== 'BRA'); ids.push(tm.b); } return; }
+    if (!tm.a) return;
+    let place = 0;
+    if (t.champion !== i) { const lostAt = t.rounds.findIndex(rd => rd.some(m => (m.a === i || m.b === i) && m.w !== null && m.w !== i)); if (lostAt < 0) return; place = nR - lostAt; }
+    const p = Math.round((T.pts[place] || 0) * (t.mult || 1));
+    [tm.a, tm.b].filter(Boolean).forEach(id => { npcPush(id, p, aw); crCatAdd(id, t.tier, p, aw, (crChar(id) || {}).pais !== 'BRA'); ids.push(id); });
+  });
+  $s.CR.wkPlayed = { aw, ids, ev: t.ev, fem: !!$s.CR.me.fem };
+}
 function crFinishTour() {
   const t = $s.CR.tour, T = crTourT(t), nR = crNRounds(), nation = (t.special && t.special !== 'estadual') || t.singles;
   // fase em que caiu: 0 campeão, 1 vice, 2 semi, 3 quartas, 4 oitavas
@@ -1349,11 +1398,12 @@ function crFinishTour() {
   const xpBonus = place === 0 ? 2 + t.tier * 1.8 : place === 1 ? .8 + t.tier * .7 : 0;
   // amadores rendem menos evolução no fim do torneio (atributo ainda é barato nesse nível)
   const xpLow = t.tier <= 2 ? .45 + t.tier * .2 : 1;
-  const prize = T.prize[place] || 0, pts = T.pts[place] || 0, xp = Math.round(((T.xp[place] || 0) * xpLow + xpBonus) * crXpMul());
+  const prize = T.prize[place] || 0, pts = Math.round((T.pts[place] || 0) * (t.mult || 1)), xp = Math.round(((T.xp[place] || 0) * xpLow + xpBonus) * crXpMul());
   const fee = $s.CR.coach > 0 ? Math.round(prize * .2) : 0; $s.CR.money += prize - fee; $s.CR.pe += xp; if (fee) t.log.push('Comissão do técnico: −' + money(fee));
   // desafio do patrocinador: título dentro do prazo paga o bônus
   if (place === 0 && !t.special && $s.CR.spBet) { $s.CR.money += $s.CR.spBet.reward; crAddFama(5); t.log.push('Desafio da ' + $s.CR.spBet.brand + ' cumprido: +' + money($s.CR.spBet.reward) + ' e +5 de fama'); $s.CR.spBet = null; }
   $s.CR.results.push({ w: absWeek(), pts });
+  if (!nation && !t.mixed && t.tier >= 3 && !t.special) crTourNpcResults(t, T, nR, pts);
   if (!nation) crCatAdd('crme', t.tier, pts, absWeek()); // conta para as categorias das seleções estaduais
   if (t.mixed && t.states) {
     t.stand = crSelStandings(t, place);
@@ -1377,7 +1427,7 @@ function crFinishTour() {
   const myPartnerO = $s.CR.partner ? crCharOvr(crChar($s.CR.partner)) : 0;
   if (!nation) [...new Set(t.beaten)].forEach(id => { const c = crChar(id); if (!c || $s.CR.offers.includes(id) || id === $s.CR.partner) return; const o = crCharOvr(c), star = id === t.star; if (o > myPartnerO && (star ? Math.random() < .5 : o <= crMeOvr() + 14 && Math.random() < .4)) offers.push(id); });
   $s.CR.offers = $s.CR.offers.concat(offers).slice(-4);
-  const injMsg = crInjuryRoll(1); if (injMsg) t.moodMsg = (t.moodMsg ? t.moodMsg + ' ' : '') + injMsg;
+  crLoad(1.5); const injMsg = crInjuryRoll(1); if (injMsg) t.moodMsg = (t.moodMsg ? t.moodMsg + ' ' : '') + injMsg;
   const placeName = place === 0 ? 'Campeão' : place === 1 ? 'Vice-campeão' : place === 2 ? 'Semifinal' : place === 3 ? 'Quartas' : 'Oitavas';
   t.summary = { place, placeName, prize, pts, xp, offers };
   if (place === 0 && !t.singles) crNews(crTeamName(t.teams[t.me]) + ' são campeões do ' + t.name + '!', '🏆');
@@ -1522,7 +1572,7 @@ function crInvWeek() {
 }
 // ---------- semana ----------
 function crNextWeek(note) {
-  $s.CR.tour = null; $s.CR.day = 1; $s.CR.wlog = {};
+  $s.CR.tour = null; $s.CR.day = 1; $s.CR.wlog = {}; $s.CR.load = ($s.CR.load || 0) * .55; // a carga acumulada vai baixando semana a semana
   $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0) + (crInv('ct') >= 1 ? 6 : 0) + (crLife('nutri') ? 5 : 0) + (crLife('casa') ? 3 : 0) + crBizEnergy());
   let msg = note || '';
   if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') || crInv('moradia') >= 2 ? .04 : .08);
@@ -1587,11 +1637,18 @@ function crNextWeek(note) {
 // lesões: competir ou treinar muito cansado pode machucar; o fisioterapeuta encurta a recuperação
 const INJ = ['Distensão na panturrilha', 'Tendinite no ombro', 'Entorse no tornozelo', 'Dor lombar', 'Lesão no punho'];
 const INJ_ATTR = [['vel'], ['smash', 'saque'], ['vel', 'def'], ['forca'], ['backhand', 'curta']];
+// carga de trabalho: torneio pesa mais, treino e aula um pouco, descanso tira; cai ~45% por semana. Torneios seguidos
+// com muitas aulas e treinos acumulam carga e aumentam a chance de uma lesão curta (1 a 2 semanas parado)
+function crLoad(v) { $s.CR.load = Math.max(0, ($s.CR.load || 0) + v); }
+const crOverload = () => Math.max(0, ($s.CR.load || 0) - 4.5) * .06 * (crInv('saude') >= 2 ? .6 : 1) * ($s.CR.staff.fisio ? .7 : 1);
 function crInjuryRoll(mult) {
   if ($s.CR.injury) return '';
-  const e = $s.CR.energy, ch = e < 30 ? (30 - e) / 30 * .32 * (mult || 1) * (crInv('saude') >= 2 ? .5 : 1) : 0;
-  if (Math.random() >= ch) return '';
-  const w = Math.max(1, Math.round((Math.floor(1 + Math.random() * 4) - ($s.CR.staff.fisio ? 1 : 0)) * crBizInjuryK()));
+  const e = $s.CR.energy, chE = e < 30 ? (30 - e) / 30 * .32 * (mult || 1) * (crInv('saude') >= 2 ? .5 : 1) : 0, chL = crOverload() * (mult || 1);
+  const r = Math.random();
+  if (r >= chE + chL) return '';
+  const over = r >= chE; // lesão por excesso de carga: curta (1 ou 2 semanas)
+  const w = over ? 1 + (Math.random() < .4 ? 1 : 0) : Math.max(1, Math.round((Math.floor(1 + Math.random() * 4) - ($s.CR.staff.fisio ? 1 : 0)) * crBizInjuryK()));
+  if (over) $s.CR.load = ($s.CR.load || 0) * .4;
   const ii = Math.floor(Math.random() * INJ.length);
   $s.CR.injury = { nome: INJ[ii], weeks: w };
   // lesão de 2 semanas ou mais custa atributo (o ligado à lesão): −1; de 3 ou mais, −2 no principal e −1 no segundo
@@ -1599,7 +1656,7 @@ function crInjuryRoll(mult) {
   if (w >= 2) { const d0 = w >= 3 ? 2 : 1; a[at[0]] = Math.max(30, a[at[0]] - d0); lost.push(ATTRS.find(x => x[0] === at[0])[1] + ' −' + d0); }
   if (w >= 3 && at[1]) { a[at[1]] = Math.max(30, a[at[1]] - 1); lost.push(ATTRS.find(x => x[0] === at[1])[1] + ' −1'); }
   if (lost.length) crSyncChars();
-  return 'Lesão: ' + $s.CR.injury.nome + ' (' + w + (w > 1 ? ' semanas' : ' semana') + ' parado). Jogar cansado cobrou o preço.' + (lost.length ? ' Perdeu ' + lost.join(', ') + '.' : '');
+  return 'Lesão: ' + $s.CR.injury.nome + ' (' + w + (w > 1 ? ' semanas' : ' semana') + ' parado). ' + (over ? 'Excesso de carga: torneios, treinos e aulas sem descanso cobraram o preço.' : 'Jogar cansado cobrou o preço.') + (lost.length ? ' Perdeu ' + lost.join(', ') + '.' : '');
 }
 // cada dia tem uma atividade: treinar, treinar na quadra (desafio), dar aulas ou descansar
 const fmt1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
@@ -1610,7 +1667,7 @@ function crDrillReward(ok, pass, rew) {
   const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew;
   $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
   const pg = pass && $s.CR.potCur < 90 ? Math.min(.03 * rew * clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1) * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), Math.min(crPotMax(), crGate().cap) - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
-  crWlog($s.CR.day, 'Quadra');
+  crWlog($s.CR.day, 'Quadra'); crLoad(.3);
   crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
   return fmt1(g);
 }
@@ -1619,13 +1676,13 @@ function crTrain() {
   const cost = crInv('quadra') ? 0 : 20 * (crMaxTier() + 1);
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
   if ($s.CR.energy < 10) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
-  const inj = crInjuryRoll(.2);
+  crLoad(.3); const inj = crInjuryRoll(.2);
   $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0) + (crInv('moradia') >= 3 ? .5 : 0)) * crXpMul(); $s.CR.pe += g;
   crWlog($s.CR.day, 'Treino');
   crNextDay('Dia de treino: +' + fmt1(g) + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
-function crCoach() { const g = Math.round(crLessonIncome() * .3 / 10) * 10; $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 2); crWlog($s.CR.day, 'Aulas'); crNextDay('Dia de aulas: +' + money(g) + '.'); }
-function crRest() { $s.CR.restDays = ($s.CR.restDays || 0) + 1; const g = 14 + (crLife('crio') ? 6 : 0); $s.CR.energy = Math.min(100, $s.CR.energy + g); crWlog($s.CR.day, 'Descanso'); crNextDay('Dia de descanso: +' + g + ' de energia.'); }
+function crCoach() { const g = Math.round(crLessonIncome() * .3 / 10) * 10; $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 2); crWlog($s.CR.day, 'Aulas'); crLoad(.25); const inj = crInjuryRoll(.2); crNextDay('Dia de aulas: +' + money(g) + '.' + (inj ? ' ' + inj : '')); }
+function crRest() { $s.CR.restDays = ($s.CR.restDays || 0) + 1; const g = 14 + (crLife('crio') ? 6 : 0); $s.CR.energy = Math.min(100, $s.CR.energy + g); crWlog($s.CR.day, 'Descanso'); crLoad(-.6); crNextDay('Dia de descanso: +' + g + ' de energia.'); }
 // descansa até o torneio começar (sábado) ou, sem torneio, até o fim da semana
 function crRestUntil() {
   const wk = $s.CR.week; let n = 0;
@@ -1840,6 +1897,8 @@ function crMigrate() {
     $s.CR.ptsV = 2; RK.key = ''; saveCareer(); }
   // os resultados dos outros passam a sair de chaves de verdade (o ranking antigo era achatado): refaz o último ano deles
   if ($s.CR.ptsV === 2 && $s.CR.npcR) { $s.CR.npcR = {}; crSimYear(53); $s.CR.ptsV = 3; RK.key = ''; saveCareer(); }
+  // calendário real (só torneios que existem dão pontos, BT400 sem coincidir com Sand Series): refaz um ano de resultados
+  if ($s.CR.ptsV === 3 && $s.CR.npcR) { $s.CR.npcR = {}; crSimYear(61); $s.CR.ptsV = 4; RK.key = ''; saveCareer(); }
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);
@@ -1995,6 +2054,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
