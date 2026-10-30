@@ -346,9 +346,9 @@ function animateAthlete(p, dt) {
       if (t >= 1) {
         const land = F.st.y0; F.w = tg; F.st = null; p.dip = Math.max(p.dip || 0, .008 + .022 * run + (land ? .03 : 0)); // o peso cai no pé: joelho cede um pouco
         // pisada que tumultua a areia: pouso de salto, arrancada/freada forte ou corrida rápida (de vez em quando) arrasta areia
-        if (m.group.visible && (land || Math.abs(p.accF || 0) > 7 || Math.abs(p.accR || 0) > 7 || (sp > 3.2 && Math.random() < .3))) {
+        if (m.group.visible && (land || Math.abs(p.accF || 0) > 7 || Math.abs(p.accR || 0) > 7 || (sp > 3.2 && Math.random() < .5))) {
           const hard = clamp(Math.max(Math.abs(p.accF || 0), Math.abs(p.accR || 0)) / 14, 0, 1);
-          if (land || hard > .5 || Math.random() < .55) scuffMark(tg[0], tg[1], p.vel.x || -Math.sin(yaw) * .1, p.vel.z || -Math.cos(yaw) * .1, .22 + .2 * hard + (land ? .12 : 0) + Math.random() * .08); }
+          if (land || hard > .4 || Math.random() < .8) scuffMark(tg[0], tg[1], p.vel.x || -Math.sin(yaw) * .1, p.vel.z || -Math.cos(yaw) * .1, .22 + .2 * hard + (land ? .12 : 0) + Math.random() * .08); }
         if ((sp > .5 || land) && m.group.visible) { stamp(tg[0], tg[1], yaw, s * mx, clamp((sp - 3) / 3, 0, 1)); if (particles.visible && (sp > 3.5 || land)) puff(tg[0], tg[1], land ? 8 : 3, land ? .55 : .38, p.vel.x * .1, p.vel.z * .1, land ? .35 : 0); }
       }
     } else {

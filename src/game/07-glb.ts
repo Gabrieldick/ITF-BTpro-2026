@@ -715,8 +715,9 @@ function decalLayer(tex, n, w, h, op = 1) {
   const m = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex.map, normalMap: tex.nrm, normalScale: new THREE.Vector2(1.5, 1.5), transparent: true, opacity: op, depthWrite: false, roughness: .97, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), n);
   m.frustumCulled = false; m.receiveShadow = true; ENV.add(m); return { m, n, i: 0 };
 }
-const FP_N = 320;
-const prints = decalLayer(FOOT, FP_N, .14, .3), oldPrints = decalLayer(FOOT, 220, .14, .3, .55), marks = decalLayer(CRATER, 40, .16, .16), smears = decalLayer(SMEAR, 48, .7, 1.5);
+// quantas marcas cabem antes de a mais velha sumir (cada camada é uma fila circular): a areia vai ficando mexida ao longo da partida
+const FP_N = 1400;
+const prints = decalLayer(FOOT, FP_N, .14, .3), oldPrints = decalLayer(FOOT, 420, .14, .3, .55), marks = decalLayer(CRATER, 220, .16, .16), smears = decalLayer(SMEAR, 320, .7, 1.5);
 const dummyObj = new THREE.Object3D();
 // x, z no mundo (já com a troca de lado aplicada) → espaço do cenário
 function putDecal(L, x, z, ang, sx = 1, sz = 1, lift = .004) {
