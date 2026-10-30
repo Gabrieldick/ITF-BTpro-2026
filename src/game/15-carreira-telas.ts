@@ -510,7 +510,7 @@ function crMyPtsHTML() {
   const now = ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
   const hist = $s.CR.history || [];
   const list = $s.CR.results.filter(r => r.w > now - SEASON_WEEKS && r.pts > 0).map(r => {
-    const h = hist.find(x => (x.s - 1) * SEASON_WEEKS + x.w === r.w && x.pts === r.pts);
+    const wk = x => (x.s - 1) * SEASON_WEEKS + x.w === r.w, h = hist.find(x => wk(x) && x.pts === r.pts) || hist.find(wk); // (migrações antigas mudaram o valor de alguns resultados)
     return { pts: r.pts, left: r.w + SEASON_WEEKS - now, name: h ? h.name : 'Torneio', sub: h ? h.tier + ' · ' + h.place : '', when: h ? 'T' + h.s + ' S' + h.w : '' };
   }).sort((x, y) => y.pts - x.pts || x.left - y.left);
   if (!list.length) return '<p class="section-label">Seus pontos</p><p class="cr-note">Nenhum resultado com pontos nas últimas ' + SEASON_WEEKS + ' semanas.</p>';
@@ -999,7 +999,7 @@ function openProfile(id) {
     + '<p class="cr-note">' + esc(c.estilo || '') + ' · joga ' + esc(PLAY_STYLES[playStyleOf(c)].nome.toLowerCase()) + (c.canhoto ? ' · canhoto' : ' · destro') + '</p>'
     + '<p class="section-label">Dupla</p><p>' + (mate ? flagSVG(mate.pais) + ' ' + esc(nameOf(mate)) + ' (' + crCharOvr(mate) + ')' : id === $s.CR.partner ? 'Joga com você' : 'Sem dupla fixa') + '</p>'
     + '<p class="section-label">Atributos</p><div class="bars">' + A + '</div>'
-    + (res.length ? '<p class="section-label">Resultados que contam no ranking (últimas 52 semanas)</p><div class="cr-res">' + res.map(r => '<span><b>' + r.p + '</b> ' + esc(crResLabel(r.p) || 'pts') + ' <small>' + (r.w > 0 ? wkTxt(r.w) : 'temporada anterior') + '</small></span>').join('') + '</div>' : '')
+    + (res.length ? '<p class="section-label">Resultados que contam no ranking (últimas 52 semanas)</p><div class="cr-res">' + res.map(r => '<span><b>' + r.p + '</b> ' + esc(crResLabel(r.p, r.w) || 'pts') + ' <small>' + (r.w > 0 ? wkTxt(r.w) : 'temporada anterior') + '</small></span>').join('') + '</div>' : '')
     + (news.length ? '<p class="section-label">Nas notícias</p>' + news.map(n => '<p class="cr-note">' + n.i + ' ' + esc(n.t) + '</p>').join('') : '');
   PF.el.hidden = false; cancelAnimationFrame(PF.raf);
   const loop = () => { if (PF.el.hidden) return; PF.rot += .006; if (PF.model) PF.model.rotation.y = PF.rot; PF.r.render(PF.scene, PF.cam); PF.raf = requestAnimationFrame(loop); }; loop();

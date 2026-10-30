@@ -83,9 +83,13 @@ function crSeasonEv(season) {
 }
 // o que foi um resultado (pelos pontos): "Campeão BT400", "Vice Sand Series"… (procura o nível e a fase que dão esses pontos)
 const PLACE_NM = ['Campeão', 'Vice', 'Semifinal', 'Quartas', 'Oitavas'];
-function crResLabel(v) {
-  for (let t = 9; t >= 3; t--) { const T = TIERS[t], ms = t === 7 ? [1, 1.1, 1.175] : t === 8 ? [1, 1.06, 1.11] : [1];
-    for (const m of ms) for (let i = 0; i < T.pts.length; i++) if (Math.round(T.pts[i] * m) === v && v > 0) return PLACE_NM[i] + ' ' + T.curto; }
+// (com a semana: procura entre os torneios que existiram nela — 100 pontos pode ser título de BT100 ou oitavas do Mundial)
+function crResLabel(v, aw) {
+  if (!(v > 0)) return '';
+  if (aw > 0) { const s0 = Math.floor((aw - 1) / SEASON_WEEKS) + 1, evs = crSeasonEv(s0)[aw - (s0 - 1) * SEASON_WEEKS] || [];
+    for (const e of evs.slice().sort((x, y) => y.t - x.t)) { const T = TIERS[e.t]; for (let i = 0; i < T.pts.length; i++) if (Math.round(T.pts[i] * (e.m || 1)) === v) return PLACE_NM[i] + ' ' + T.curto; } }
+  for (let t = 3; t <= 9; t++) { const T = TIERS[t], ms = t === 7 ? [1, 1.1, 1.175] : t === 8 ? [1, 1.06, 1.11] : [1];
+    for (const m of ms) for (let i = 0; i < T.pts.length; i++) if (Math.round(T.pts[i] * m) === v) return PLACE_NM[i] + ' ' + T.curto; }
   return '';
 }
 const evPts = (t, place, m) => Math.round((TIERS[t].pts[place] || 0) * (m || 1)); // pontos do torneio (com o valor dele)
