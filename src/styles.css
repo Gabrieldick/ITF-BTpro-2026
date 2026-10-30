@@ -972,3 +972,31 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .sig-prev3d canvas { display: block; }
 .sig-lv { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .sig-card .cr-sws > div { display: block; } .sig-card .cr-lbl { display: block; width: auto; margin-bottom: 4px; } .sig-card .cr-sw { width: 22px; height: 22px; border-width: 2px; margin: 0 4px 4px 0; display: inline-block; }
+
+/* carreira: cabeçalho numa faixa só, abas em grupos com sub-abas */
+.cr-card-main.in-hub { gap: 12px; padding-top: 18px; }
+.cr-card-main.in-hub .cr-top .eyebrow { display: none; }
+.cr-card-main.in-hub .cr-top .title { font-size: 28px !important; }
+.cr-card-main.in-hub .cr-top { align-items: center; }
+.cr-strip { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+.cr-strip > div { background: var(--ui-tile); border: 1px solid var(--ui-line); border-radius: 4px; padding: 6px 10px; display: grid; align-content: center; gap: 1px; min-width: 0; }
+.cr-strip b { font: 800 17px var(--f-ui); color: #fff; letter-spacing: .02em; white-space: nowrap; }
+.cr-strip small { font-size: 11.5px; color: var(--ui-sub); white-space: nowrap; }
+.cr-strip .cs-id { display: flex; gap: 10px; align-items: center; flex: 1 1 260px; }
+.cr-strip .cs-id > div:last-child { min-width: 0; display: grid; }
+.cr-strip .cs-id small { overflow: hidden; text-overflow: ellipsis; }
+.cr-strip .cs-id .ovr { width: 46px; height: 46px; font-size: 20px; flex: none; }
+.cr-strip .cs-k { flex: 0 1 auto; }
+.cr-strip .cs-en { min-width: 120px; gap: 4px; }
+.cr-strip .cs-en .bar { height: 7px; }
+.cr-strip .cs-en em { font-style: normal; font-weight: 700; } .cr-strip .cs-en em.hi { color: #4FD18B; } .cr-strip .cs-en em.lo { color: #ff7b6b; }
+.cr-strip .cr-stars { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0; max-width: 150px; }
+.cr-strip .cr-stars button { font-size: 16px; }
+.cr-strip .cr-stars small { margin-left: 4px; flex-basis: 100%; }
+.cr-sub { display: flex; gap: 0; border-bottom: 1px solid var(--ui-line); margin-top: -6px; flex-wrap: wrap; }
+.cr-sub button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ui-sub); padding: 7px 14px 6px; font: 700 14px var(--f-ui); text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+.cr-sub button:hover { color: #fff; }
+.cr-sub button.sel { color: #fff; border-bottom-color: var(--ui-acc); }
+.cr-set { display: grid; gap: 8px; max-width: 520px; }
+.cr-set .section-label { margin: 8px 0 0; }
+@media (max-width: 640px) { .cr-strip .cs-k { flex: 1 1 calc(33% - 6px); } .cr-strip b { font-size: 15px; } .cr-tabs button { padding: 6px 10px; } }

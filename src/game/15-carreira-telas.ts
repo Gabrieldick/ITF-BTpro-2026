@@ -15,6 +15,9 @@ import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
 let crTab = 'agenda';
+// abas agrupadas: cada grupo tem as suas sub-abas (a primeira é a que abre)
+const CR_GROUPS = { agenda: [['agenda', 'Semana'], ['calendario', 'Calendário']], jogador: [['jogador', 'Atributos'], ['parceiros', 'Parceiros'], ['ajustes', 'Ajustes']], loja: [['loja', 'Loja']], ranking: [['ranking', 'Ranking']], negocios: [['patrocinio', 'Patrocínios'], ['negocios', 'Negócios']], historico: [['historico', 'Histórico'], ['trofeus', 'Troféus']] };
+const crGroupOf = t => Object.keys(CR_GROUPS).find(g => CR_GROUPS[g].some(x => x[0] === t)) || 'agenda';
 const money = v => '$' + Math.round(v).toLocaleString('pt-BR');
 let crEntry = '';
 document.querySelectorAll('[data-entry]').forEach(b => b.addEventListener('click', () => { crEntry = b.dataset.entry; renderCareer(); }));
@@ -48,22 +51,32 @@ function renderCareer() {
   $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
   $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
-  crSideLayout();
+  crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
   const meO = overall($s.CR.me.a), inGame = crMeOvr(), rank = crRank(), pts = crPts();
-  $('crHead').innerHTML = '<div class="cr-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><span>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · potencial ' + crCap() + ' (máx. 99 pela nota) · em jogo ' + inGame + ' · fama ' + Math.round($s.CR.fama || 0) + '</span>' + crPotBarHTML(0) + '</div></div>'
-    + '<div class="cr-kpis"><div><b>' + rank + 'º</b>ranking (' + pts + ' pts)</div><div><b>' + money($s.CR.money) + '</b>dinheiro</div><div><b>' + Math.floor($s.CR.pe) + '</b>pontos de evolução <small>(máx. ' + crPeMax() + ')</small></div><div><b>' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day, true) + '</b>temporada ' + $s.CR.season + ' · semana ' + $s.CR.week + '/' + SEASON_WEEKS + '</div></div>'
-    + '<div class="cr-stars"><span>Dificuldade</span>' + [1, 2, 3, 4, 5, 6].map(n => '<button type="button" class="' + (n <= ($s.CR.stars || 3) ? 'on' : '') + '" data-stars="' + n + '" title="' + n + (n === 3 ? ' (padrão)' : '') + '">★</button>').join('') + '<small>' + ['Bem fácil', 'Fácil', 'Padrão', 'Difícil', 'Muito difícil', 'Lendário'][($s.CR.stars || 3) - 1] + '</small></div>'
-    + '<div class="cr-energy"><span>Energia</span><span class="bar"><i class="' + ($s.CR.energy < 40 ? 'lo' : $s.CR.energy > 75 ? 'hi' : '') + '" style="width:' + $s.CR.energy + '%"></i></span><b>' + $s.CR.energy + '</b>' + (crEnergyMod() ? '<small class="cr-emod ' + (crEnergyMod() > 0 ? 'hi' : 'lo') + '">' + (crEnergyMod() > 0 ? '+' : '−') + Math.abs(crEnergyMod()) + ' nos atributos</small>' : '') + '</div>';
+  const st = $s.CR.stars || 3, em = crEnergyMod(), en = $s.CR.energy;
+  $('crHead').innerHTML = '<div class="cr-strip">'
+    + '<div class="cs-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><small>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · pot. ' + crCap() + (inGame !== meO ? ' · em jogo ' + inGame : '') + ' · fama ' + Math.round($s.CR.fama || 0) + '</small></div></div>'
+    + '<div class="cs-k"><b>' + rank + 'º</b><small>' + pts + ' pts</small></div>'
+    + '<div class="cs-k"><b>' + money($s.CR.money) + '</b><small>dinheiro</small></div>'
+    + '<div class="cs-k" title="Pontos de evolução (máx. ' + crPeMax() + ')"><b>' + Math.floor($s.CR.pe) + '</b><small>evolução</small></div>'
+    + '<div class="cs-k"><b>' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day, true) + '</b><small>T' + $s.CR.season + ' · sem ' + $s.CR.week + '/' + SEASON_WEEKS + '</small></div>'
+    + '<div class="cs-k cs-en" title="Energia' + (em ? ': ' + (em > 0 ? '+' : '−') + Math.abs(em) + ' nos atributos' : '') + '"><span class="bar"><i class="' + (en < 40 ? 'lo' : en > 75 ? 'hi' : '') + '" style="width:' + en + '%"></i></span><small>energia ' + en + (em ? ' <em class="' + (em > 0 ? 'hi' : 'lo') + '">' + (em > 0 ? '+' : '−') + Math.abs(em) + '</em>' : '') + '</small></div>'
+    + '<div class="cs-k cr-stars" title="Dificuldade da carreira">' + [1, 2, 3, 4, 5, 6].map(n => '<button type="button" class="' + (n <= st ? 'on' : '') + '" data-stars="' + n + '" title="' + ['Bem fácil', 'Fácil', 'Padrão', 'Difícil', 'Muito difícil', 'Lendário'][n - 1] + '">★</button>').join('') + '<small>' + ['Bem fácil', 'Fácil', 'Padrão', 'Difícil', 'Muito difícil', 'Lendário'][st - 1] + '</small></div>'
+    + '</div>';
   renderCrSide();
   $('crHead').querySelectorAll('[data-stars]').forEach(b => b.addEventListener('click', () => { $s.CR.stars = +b.dataset.stars; saveCareer(); renderCareer(); }));
-  document.querySelectorAll('#crTabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === crTab));
+  const grp = crGroupOf(crTab), subs = CR_GROUPS[grp];
+  document.querySelectorAll('#crTabs button').forEach(b => b.classList.toggle('sel', b.dataset.g === grp));
+  const sub = $('crSub'); sub.hidden = subs.length < 2 || !!($s.CR.tour && !$s.CR.tour.pending);
+  sub.innerHTML = subs.length < 2 ? '' : subs.map(([t, n]) => '<button type="button" data-t="' + t + '"' + (t === crTab ? ' class="sel"' : '') + '>' + n + '</button>').join('');
+  sub.querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', () => { crTab = b.dataset.t; $s.CR.lastMsg = ''; renderCareer(); }));
   const busy = $s.CR.tour && !$s.CR.tour.done;
   $('crTabs').hidden = !!($s.CR.tour && !$s.CR.tour.pending);
   const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
   if ($s.CR.tour && !$s.CR.tour.pending) { body.innerHTML = crTourHTML(); bindTour(); return; }
-  body.innerHTML = ({ agenda: crAgendaHTML, calendario: crCalendarHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML, trofeus: crTrophyHTML }[crTab])();
+  body.innerHTML = ({ agenda: crAgendaHTML, calendario: crCalendarHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML, trofeus: crTrophyHTML, ajustes: crSettingsHTML }[crTab])();
   bindCareerBody();
 }
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -103,10 +116,11 @@ function crAgendaHTML() {
   // próximo torneio do seu nível (o calendário completo fica na aba Calendário)
   const nx = crUpcoming(1)[0];
   const cal = '<p class="cr-note cr-nextcal">' + (nx ? '🗓️ Próximo: <b>' + esc(nx.o.name) + '</b> · ' + nx.date + ' · ' : '') + '<button type="button" class="ghost sm" data-t-go="calendario">Ver calendário</button></p>';
-  return '<div class="cr-ladder">' + ladder + '</div>'
+  // a ação principal (torneios da semana) vem primeiro; a escada de categorias e o calendário ficam no fim
+  return regC + tours
     + '<div class="cr-week">' + week + '</div>'
     + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · química ' + crChem() + ' (' + CHEM_NOME[crChemLv()] + ') · humor: ' + crMoodWord() : '') + '</p>'
-    + goal + injC + arcC + regC + acts + tours + cal;
+    + injC + arcC + goal + acts + '<p class="section-label">Categorias</p><div class="cr-ladder">' + ladder + '</div>' + cal;
 }
 // ilustrações dos cards do dia (SVG, no canto do card): academia, quadra com cones, prancheta de aula e rede na praia
 const ACT_ART = {
@@ -148,12 +162,17 @@ function crPlayerHTML() {
   return '<div class="cr-two"><div><p class="section-label">Atributos (gaste pontos de evolução)</p><div class="bars cr-bars">' + rows + '</div>' + crPotBarHTML(0) + '<p class="cr-note">Potencial atual: <b>' + crCap() + '</b> (máximo 99: até o 90 ele sobe com as partidas e os treinos; do 90 ao 99 segue a média das suas últimas 15 notas). Seu overall não passa do potencial atual, mesmo com pontos de evolução sobrando (cada atributo pode ir até 99, desde que o overall caiba). Ele sobe com a sua <b>nota</b> em cada partida (defesas boas, smashes e curtas certos sobem; erros descem) e um pouco ao cumprir desafios na quadra.' + (() => { const g = crGate(); return g.next ? ' <b>Marco:</b> para passar de ' + g.cap + ' precisa de ' + g.next.txt + ' (você tem ' + g.have + ').' : ($s.CR.potCur >= 90 ? ' <b>Faixa 90–99:</b> o potencial segue a média das últimas 15 notas (média 10 → 99, média 5 → 90; abaixo do teto, o overall desce). Alvo hoje: ' + crBandTarget($s.CR.ratings || []).toFixed(1).replace('.', ',') + '.' : ' Todos os marcos cumpridos: a partir do 90 o potencial segue a sua nota média.'); })()
     + (crNatural('forca') === null ? ' Completo: acima de 90, todo atributo custa 1,4×.' : ' Acima de 90, atributos fora do seu estilo custam o dobro (os do estilo estão marcados com ★).') + (crAvgRating() !== null ? ' Média das últimas notas: <b>' + crAvgRating().toFixed(1).replace('.', ',') + '</b>.' : '') + ' Em verde/vermelho: efeito da raquete e dos equipamentos.</p></div>'
     + '<div><p class="section-label">Evolução do overall</p><p class="cr-note">' + log + '</p><p class="section-label">Títulos</p><p class="cr-note">' + (Object.keys($s.CR.titles).length ? Object.entries($s.CR.titles).map(([t, n]) => TIERS[t].curto + ' ×' + n).join(' · ') : 'Nenhum ainda.') + '</p>'
-    + '<p class="section-label">Partidas</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
+    + '<p class="section-label">Aparência e uniforme</p><div class="cta-row"><button type="button" class="cta" id="crEditBtn">✏️ Editar jogador</button></div>'
+    + '</div></div>';
+}
+// ajustes da carreira (antes ficavam misturados com os atributos)
+function crSettingsHTML() {
+  return '<div class="cr-set">'
+    + '<p class="section-label">Partidas da carreira</p><fieldset class="seg"><div class="pills"><input type="radio" name="crGames" id="crG4" value="4"' + ($s.CR.games === 4 ? ' checked' : '') + '><label for="crG4">Set curto · 4 games</label><input type="radio" name="crGames" id="crG6" value="6"' + ($s.CR.games === 6 ? ' checked' : '') + '><label for="crG6">Set · 6 games</label></div></fieldset>'
     + '<p class="section-label">Seu lado na dupla</p><label class="cr-field"><select id="crMeSide" class="cr-sel"><option value="esquerda"' + ($s.CR.side === 'esquerda' ? ' selected' : '') + '>Esquerda</option><option value="direita"' + (($s.CR.side || 'direita') === 'direita' ? ' selected' : '') + '>Direita</option></select></label>'
     + ($s.CR.me.pais === 'BRA' ? '<p class="section-label">Estado (estaduais e seleção estadual)</p><label class="cr-field"><select id="crMeUf" class="cr-sel">' + STATES.map(([k, n]) => '<option value="' + k + '"' + (k === ($s.CR.me.uf || 'SP') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' : '')
-    + '<p class="section-label">Aparência e uniforme</p><div class="cta-row"><button type="button" class="cta" id="crEditBtn">✏️ Editar jogador</button></div>'
     + '<p class="section-label">Nacionalidade</p><label class="cr-field"><span class="cr-nat">' + flagSVG($s.CR.me.pais) + '<select id="crMeNat">' + COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === $s.CR.me.pais ? ' selected' : '') + '>' + c.nome + '</option>').join('') + '</select></span></label>'
-    + '<div class="cta-row" style="margin-top:10px"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div></div>';
+    + '<p class="section-label">Save</p><p class="cr-note">Apagar a carreira não tem volta (exporte o save antes, no botão do topo).</p><div class="cta-row"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div>';
 }
 // aparência do seu jogador: dá para mudar a qualquer momento da carreira (vale a partir da próxima partida)
 const HAIR_ST = [['', 'Automático'], ['curto', 'Curto'], ['raspado', 'Raspado'], ['careca', 'Careca'], ['cacheado', 'Cacheado'], ['topete', 'Topete'], ['moicano', 'Moicano'], ['longo', 'Longo'], ['rabo', 'Rabo de cavalo'], ['coque', 'Coque (samurai nos homens)'], ['tranca', 'Trança']];
@@ -844,7 +863,7 @@ $('crUf').innerHTML = STATES.map(([k, n]) => '<option value="' + k + '">' + n + 
 $('crNat').addEventListener('change', natFlag); natFlag();
 $('crAlt').addEventListener('input', e => { crForm.alt = +e.target.value; $('crAltV').textContent = crForm.alt + ' cm'; });
 document.querySelectorAll('input[name=crGen]').forEach(r => r.addEventListener('change', () => { const f = r.value === 'f'; crForm.alt = f ? 168 : 182; $('crAlt').value = crForm.alt; $('crAltV').textContent = crForm.alt + ' cm'; }));
-document.querySelectorAll('#crTabs button').forEach(b => b.addEventListener('click', () => { crTab = b.dataset.t; $s.CR.lastMsg = ''; renderCareer(); }));
+document.querySelectorAll('#crTabs button').forEach(b => b.addEventListener('click', () => { if (crGroupOf(crTab) !== b.dataset.g) crTab = CR_GROUPS[b.dataset.g][0][0]; $s.CR.lastMsg = ''; renderCareer(); }));
 $('btnOverCareer').addEventListener('click', () => { el.over.hidden = true; openCareer(); });
 if ($s.CR) { crMigrate(); crSyncChars(); }
 // lista de raquetes do menu principal
