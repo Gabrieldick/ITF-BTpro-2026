@@ -39,8 +39,8 @@ function crDate(season, week, day) {
 }
 const crDateTxt = (season, week, day, withYear) => { const d = crDate(season, week, day); return DAY_NAMES[day - 1] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + (withYear ? ' ' + d.getFullYear() : ''); };
 // quantas semanas do ano têm torneio de cada nível profissional (os amadores têm toda semana)
-// torneios por ano: grandes no máximo 12 BT400 + 5 Sand Series + o Mundial (nunca dois grandes em semanas seguidas)
-const CAL_N = { 3: 44, 4: 36, 5: 28, 6: 22, 7: 12, 8: 5 };
+// torneios por ano: 21 grandes (13 BT400 + 7 Sand Series + o Mundial), evitando dois grandes em semanas seguidas
+const CAL_N = { 3: 44, 4: 36, 5: 28, 6: 22, 7: 13, 8: 7 };
 const CALC = { key: '', cal: null };
 function crSeasonCal(season) {
   const key = $s.CR.seed + ':' + season;
@@ -65,7 +65,10 @@ function crSeasonEv(season) {
     weeks[t] = t >= 7 ? ws : ws.slice(0, n);
   }
   // grandes (Sand Series primeiro, depois BT400): nunca na mesma semana nem em semanas seguidas de outro grande
-  const big = new Set(); [8, 7].forEach(t => { const pick = []; for (const w of weeks[t]) { if (pick.length >= CAL_N[t]) break; if (![...big].some(b => Math.abs(b - w) < 2)) { pick.push(w); big.add(w); } } weeks[t] = pick; });
+  // (se o sorteio não couber com folga, o que faltar só não repete semana)
+  const big = new Set(); [8, 7].forEach(t => { const pick = [];
+    for (const gap of [2, 1]) for (const w of weeks[t]) { if (pick.length >= CAL_N[t]) break; if (!big.has(w) && ![...big].some(b => Math.abs(b - w) < gap)) { pick.push(w); big.add(w); } }
+    weeks[t] = pick; });
   const r2 = mulberry($s.CR.seed + season * 104729 + 11), ev = {};
   for (let w = 1; w <= SEASON_WEEKS; w++) ev[w] = [];
   const used = {};
