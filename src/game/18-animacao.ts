@@ -421,7 +421,9 @@ function animateAthlete(p, dt) {
   // gesto com o parceiro: o braço estica na direção dele (de frente ou de lado, conforme o quanto viraram). Raquete com
   // raquete usa o braço da raquete; tapa/toque usa a mão do lado em que o parceiro está
   let pgDir = null, pgR = false;
-  if (pgW > 0 && pMate) { pgDir = _v2.set(pMate.pos.x - p.pos.x, 0, pMate.pos.z - p.pos.z).normalize().applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); pgR = pc.kind === 'rk' || pgDir.x > .15; }
+  // (direção pelo worldToLocal: inclui o espelho do canhoto; o quaternion do mundo não inclui e mandava a mão para o lado errado)
+  if (pgW > 0 && pMate) { m.spine.getWorldPosition(_v2); _v2.x += pMate.pos.x - p.pos.x; _v2.z += pMate.pos.z - p.pos.z; m.spine.worldToLocal(_v2); _v2.y = 0;
+    pgDir = _v2.lengthSq() > 1e-6 ? _v2.normalize() : null; pgR = !!pgDir && (pc.kind === 'rk' || pgDir.x > .15); }
   if (pgDir && pgR) { _e.copy(shR).addScaledVector(pgDir, .6); _e.y += pc.kind === 'five' ? .45 : pc.kind === 'rk' ? .12 : -.25; _e.z -= .12; _c.lerp(_e, pgW); }
   if (lsW > 0) { if (lsK === 'rkup') _e.set(.2, .95, -.15); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
   // peixinho: o braço da raquete vai esticado para a frente do mergulho (para onde a bola está)

@@ -102,10 +102,14 @@ function ptCelStep(dt) {
   for (const k in S.ptCel) {
     const c = S.ptCel[k], tm = $s.teams[k]; c.t += dt; if (!tm || tm.length < 2 || c.t > 1.9) continue;
     const [a, b] = tm, d0 = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
-    if (c.met == null && d0 < 1.45 && c.t > .3) { c.met = c.t; c.hold = [a, b].map(p => [p.pos.x, p.pos.z]); }
+    // com você na dupla: só acontece se você estiver parado quando o parceiro chega; se sair andando, o gesto acaba
+    const humMove = [a, b].some(p => p.isHuman && Math.hypot(p.vel.x, p.vel.z) > .5);
+    if (c.met == null && d0 < 1.45 && c.t > .3 && !humMove) { c.met = c.t; c.hold = [a, b].map(p => [p.pos.x, p.pos.z]); }
+    if (c.met != null && (d0 > 1.75 || (humMove && c.t - c.met < .6))) { c.t = 9; continue; }
     // durante o gesto ficam parados juntos (a IA não puxa de volta para a posição antes da hora)
     if (c.met != null && c.t - c.met < .8) { [a, b].forEach((p, i) => { if (!p.isHuman) { p.pos.x = c.hold[i][0]; p.pos.z = c.hold[i][1]; p.vel.set(0, 0, 0); } }); continue; }
     if (c.t < .3 || c.met != null || d0 > 5) continue;
+    if (humMove) { if (c.t > .8) c.t = 9; continue; } // você saiu andando: o parceiro não fica correndo atrás
     const movers = [a, b].filter(p => !p.isHuman), mx = (a.pos.x + b.pos.x) / 2, mz = (a.pos.z + b.pos.z) / 2;
     movers.forEach(p => { const o = p === a ? b : a, both = movers.length === 2;
       const tx = both ? mx + (p.pos.x - mx) / Math.max(.01, d0 / 2) * .62 : o.pos.x + (p.pos.x - o.pos.x) / Math.max(.01, d0) * 1.25;

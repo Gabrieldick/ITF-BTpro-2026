@@ -588,12 +588,15 @@ function pointTo(w, reason, kind) {
     S.celebrate = { team: w, t: 0, title: isTitle };
     S.deadT = isTitle ? 5 : dupla() ? 2.8 : 2.4;
   } else if (dupla()) {
-    // entre os pontos a dupla se encontra: quem ganhou quase sempre (tapa de mão no alto, toque baixo ou raquete com
-    // raquete); quem perdeu às vezes, para se animar
+    // entre os pontos a dupla às vezes se encontra (tapa de mão no alto, toque baixo ou raquete com raquete): mais depois
+    // de um rali longo ou de um ponto vencedor, quase nunca dois pontos seguidos; quem perdeu raramente, para se animar
     const pk = a => a[Math.floor(Math.random() * a.length)];
     // cada dupla no seu tempo (t negativo = começa depois) e do seu jeito; quem perdeu bem menos e só um toque discreto
     // turn: quanto viram um para o outro (0 = seguem de frente para a rede e esticam o braço de lado)
-    S.ptCel = {}; if (Math.random() < .65) S.ptCel[w] = { t: -rand(0, .45), kind: pk(['five', 'five', 'low', 'rk', 'low']), turn: pk([0, .2, .45]) }; if (Math.random() < .22) S.ptCel[1 - w] = { t: -rand(.3, .8), kind: pk(['low', 'low', 'rk']), turn: pk([0, .2]) };
+    const last = S.ptCelLast || (S.ptCelLast = {}), n = S.ptN || 0, big = S.rally >= 6 || kind === 'in'; // 'in': a bola quicou do lado de lá (ponto ganho no golpe)
+    const okW = last[w] !== n - 1 && Math.random() < (big ? .55 : .3), okL = last[1 - w] !== n - 1 && Math.random() < .1;
+    S.ptCel = {}; if (okW) last[w] = n; if (okL) last[1 - w] = n;
+    if (okW) S.ptCel[w] = { t: -rand(0, .45), kind: pk(['five', 'five', 'low', 'rk', 'low']), turn: pk([0, .2, .45]) }; if (okL) S.ptCel[1 - w] = { t: -rand(.3, .8), kind: pk(['low', 'low', 'rk']), turn: pk([0, .2]) };
   }
   pointShow(w, ev, reason, isTitle);
   if (NET.onPoint) NET.onPoint(w, ev, reason);
