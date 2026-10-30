@@ -661,10 +661,11 @@ function updateAI(p, dt) {
             let q = clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), pm = null;
             if (timedAI(p)) { const tm = aiTiming(p, shot, q); q = tm.q; pm = tm.mod; pm.speedMul = (pm.speedMul || 1) * st.speed * (D.pw || 1) * sf; pm.noiseMul = (pm.noiseMul || 1) * st.noise; }
             // CPU padrão: smash no verde pela técnica (atributo de smash) e pelas estrelas; do fundo cai, mas pouco para os
-            // grandes smashadores (98 de smash no Lendário: ~6 em 10 no verde, ~5 do fundo; um 85 no padrão: ~2 em 10)
+            // grandes smashadores (98 de smash no Lendário: ~8 em 10 no verde, também do fundo; um 85 no Lendário ~4,5; no padrão: ~2 em 10)
             else if (shot === 'smash' && ball.pos.y >= 1.5 && p.char) {
               const s01 = clamp(((p.char.a.smash || 70) - 70) / 28, 0, 1), back = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), skN = Math.min(1, attrK(p, 'smash'));
-              const pg = (.05 + .3 * Math.pow(s01, 1.3)) * (1 + (D.up || 0) * 1.2) * (1 - .35 * back * (1 - .6 * s01)) * sf * sf;
+              // Lendário: do fundo quase não perde o tempo (quem lê bem o jogo se ajeita antes de saltar)
+              const pg = (.05 + .3 * Math.pow(s01, 1.3)) * (1 + (D.up || 0) * 1.6) * (1 - .35 * back * (1 - .6 * s01) * (1 - .6 * clamp((D.up || 0) / .85, 0, 1))) * sf * sf;
               if (Math.random() < pg) { q = Math.max(q, lerp(.72, .92, skN)); noteTiming(p, true);
                 pm = { speedMul: lerp(1.02, 1.22, skN) * st.speed * (D.pw || 1) * sf, noiseMul: lerp(1.05, .6, skN) * st.noise, oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true }; }
             }
@@ -690,7 +691,8 @@ function updateAI(p, dt) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
       // CPU/parceira: de vez em quando o saque sai perfeito (mais com atributo de saque alto): mais forte, preciso e com estrelinhas
-      const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), perf = sf >= 1 && (ps.type === 'smash' ? Math.random() < .06 + .16 * svN : ps.type === 'lob' && Math.random() < .03 + .14 * Math.pow((svN + attrK(p, 'lob')) / 2, 2)), sp = ball.pos.clone();
+      // estrelas acima do padrão (Lendário): o tempo do saque fica bem mais certo (saque 97 no Lendário: ~6 em 10 no verde)
+      const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), upK = 1 + ((p.skill && p.skill.up) || 0) * 2.2, perf = sf >= 1 && (ps.type === 'smash' ? Math.random() < (.06 + .16 * svN) * upK : ps.type === 'lob' && Math.random() < (.03 + .14 * Math.pow((svN + attrK(p, 'lob')) / 2, 2)) * upK), sp = ball.pos.clone();
       p.ai.depthK = aiDepthK(p, 'saque');
       // IA Treinada/Planejadora: para a barra do saque como o humano (o verde vem do treino, não é garantido)
       const ts = timedAI(p) ? aiServeTiming(p, ps.type) : null;
