@@ -17,6 +17,7 @@ import { step } from './17-bola';
 import { doHit } from './10-fisica';
 import { READY_FP, updateCamera, updateVisuals } from './18-animacao';
 import { RP, recordTick, replayCamera, replayTick, startReplay } from './21-replay';
+import { ceremonyTick, ceremonyCam } from './22-cerimonia';
 // ---------- Loop ----------
 let last = performance.now();
 // medição de fps a cada segundo: 2 s seguidos abaixo de 54 reduz a resolução; com folga, volta aos poucos
@@ -72,6 +73,7 @@ function frame(now) {
     const n = Math.max(1, Math.round(dt / STEP)), h = dt / n;
     for (let i = 0; i < n; i++) step(h);
   }
+  if (S.mode === 'ceremony' && !S.paused) ceremonyTick(dt);
   const t1 = performance.now(); FPS.ms[0] += t1 - t0;
   if (NET.role === 'host' && NET.hostTick) NET.hostTick(now);
   const tsec = now / 1000;
@@ -84,6 +86,7 @@ function frame(now) {
   updateArena(dt);
   updateCamera(dt);
   if (S.mode === 'replay') replayCamera(dt);
+  if (S.mode === 'ceremony') ceremonyCam(dt);
   const t3 = performance.now(); FPS.ms[2] += t3 - t2;
   renderer.render(scene, camera);
   FPS.ms[3] += performance.now() - t3;

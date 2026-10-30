@@ -583,7 +583,8 @@ function pointTo(w, reason, kind) {
     // entre os pontos a dupla se encontra: quem ganhou quase sempre (tapa de mão no alto, toque baixo ou raquete com
     // raquete); quem perdeu às vezes, para se animar
     const pk = a => a[Math.floor(Math.random() * a.length)];
-    S.ptCel = {}; if (Math.random() < .75) S.ptCel[w] = { t: 0, kind: pk(['five', 'five', 'low', 'rk']) }; if (Math.random() < .35) S.ptCel[1 - w] = { t: 0, kind: pk(['low', 'rk']) };
+    // cada dupla no seu tempo (t negativo = começa depois) e do seu jeito; quem perdeu bem menos e só um toque discreto
+    S.ptCel = {}; if (Math.random() < .65) S.ptCel[w] = { t: -rand(0, .45), kind: pk(['five', 'five', 'low', 'rk', 'low']) }; if (Math.random() < .22) S.ptCel[1 - w] = { t: -rand(.3, .8), kind: pk(['low', 'low', 'rk']) };
   }
   pointShow(w, ev, reason, isTitle);
   if (NET.onPoint) NET.onPoint(w, ev, reason);
@@ -712,7 +713,7 @@ const COURTS = {
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
   S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; });
-  S.tutorial = !!S.tutPending; S.tutPending = false; // lição do tutorial: tudo em 1 estrela (só nesta partida)
+  S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; // lição do tutorial: tudo em 1 estrela (só nesta partida)
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
   configureMode();

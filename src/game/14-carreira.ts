@@ -1189,7 +1189,9 @@ function crEnterNation(opt) {
   return true;
 }
 const crRoundNames = n => n === 4 ? ['Oitavas', 'Quartas', 'Semifinal', 'Final'] : ['Quartas', 'Semifinal', 'Final'];
-const crNRounds = () => crTourT($s.CR.tour).draw === 16 ? 4 : 3;
+// rodadas pela chave que foi montada de verdade (o Estadual de nível BT50+ monta 16 duplas, mas a regra dele dizia 8:
+// o torneio parava depois das semis sem final nem campeão)
+const crNRounds = () => { const t = $s.CR.tour, n0 = t && t.rounds && t.rounds[0] ? t.rounds[0].length : crTourT(t).draw / 2; return n0 >= 8 ? 4 : 3; };
 // faixa de baixo do placar: "BT400 RAVENNA – FINAL"
 function crBoardTitle() { const t = $s.CR && $s.CR.tour; if (!t) return ''; const rn = crRoundNames(crNRounds())[t.round] || ''; return (t.name + (rn ? ' – ' + rn : '')).toUpperCase(); }
 const crIsFinal = () => !!($s.CR && $s.CR.tour && !$s.CR.tour.done && $s.CR.tour.round === crNRounds() - 1);

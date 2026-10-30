@@ -173,7 +173,7 @@ function animateAthlete(p, dt) {
   const hd = Math.atan2(latV, -back), turnT = p.rlx > .3 && sp > 1 && Math.abs(hd) < 1.9 ? clamp(-hd, -1.5, 1.5) * p.rlx : 0;
   p.rlxTurn = (p.rlxTurn || 0) + (turnT - (p.rlxTurn || 0)) * Math.min(1, dt * 5);
   let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep) * (1 - p.rlx) + p.rlxTurn * (1 - p.prep);
-  const cel = S.mode === 'dead' && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
+  const cel = (S.mode === 'dead' || S.mode === 'ceremony') && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
   // comemoração entre pontos (tapa de mão / toque baixo / raquete com raquete): vira para o parceiro quando ele chega perto
   const pc = !cel && S.mode === 'dead' && !S.sideWalk && S.ptCel && S.ptCel[p.team], pMate = pc && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
@@ -182,6 +182,7 @@ function animateAthlete(p, dt) {
   const faceMate = (mateC && cel.t > .7) || (pMate && pc.t > .3 && pc.t < 1.6 && pDist < 2.2);
   if (faceMate) { const mt = mateC || pMate, fy = Math.atan2(-(mt.pos.x - p.pos.x), -(mt.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
   else p.celYaw = undefined;
+  if (p.forceYaw != null) yaw = p.forceYaw; // cerimônia: todos de frente para a câmera
   m.group.rotation.set(0, yaw, 0); // (inteira: o tombo do peixinho não pode acumular de um quadro para o outro)
   // peixinho de verdade: o corpo inteiro se lança na direção da bola, fica quase deitado na areia (de lado ou de peito) e
   // depois se levanta; a esticada curta (sev baixo) continua só o afundo. tiltK: 0 em pé → 1 deitado
@@ -206,7 +207,7 @@ function animateAthlete(p, dt) {
   // split step: pulinho com os dois pés quando o adversário bate, aterrissando abaixado e com as pernas abertas
   const spU = p.split > 0 ? 1 - p.split / .26 : -1;
   const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .1 : 0);
-  m.group.position.set(p.pos.x, jy, p.pos.z);
+  m.group.position.set(p.pos.x, jy + (p.liftY || 0), p.pos.z); // liftY: em cima do pódio
   if (tiltK > 0) { const D = p.dive, la = D.t < .26 ? Math.sin(Math.PI * D.t / .26) * .14 : 0, sh = Math.sin(tiltA) * .5; m.group.position.x -= D.dx * sh; m.group.position.z -= D.dz * sh; m.group.position.y += la + Math.sin(tiltA) * .05; } // voo curto na saída; o corpo deitado fica centrado onde o jogador está
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
   p.strK = (p.strK || 0) + ((sp > .25 ? 1 : 0) - (p.strK || 0)) * Math.min(1, dt * (sp > .25 ? 10 : 6));

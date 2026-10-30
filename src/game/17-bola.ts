@@ -13,6 +13,7 @@ import { sideWalkStep, drillNext, el, placeHeldBall, pointTo, setupPoint, showOv
 import { skillOf, startJump, startToss, handPos, releaseToss } from './11-mira';
 import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
+import { startCeremony } from './22-cerimonia';
 // ---------- Bola ----------
 function updateBall(dt) {
   if (ball.state === 'held') { placeHeldBall(); return; }
@@ -90,7 +91,8 @@ function step(dt) {
   else if (S.mode === 'dead' && S.ptCel && !S.sideWalk) ptCelStep(dt);
   if (S.mode === 'dead') {
     S.deadT -= dt;
-    if (S.deadT <= 0) { if (S.drill) drillNext(); else if (S.matchWinner !== null) showOver(); else setupPoint(); }
+    // título (carreira ou campeonato): cerimônia no pódio antes da tela do fim
+    if (S.deadT <= 0) { if (S.drill) drillNext(); else if (S.matchWinner !== null) { if (S.celebrate && S.celebrate.title && !S.ceremonyDone && !NET.role) startCeremony(); else showOver(); } else setupPoint(); }
   }
 }
 

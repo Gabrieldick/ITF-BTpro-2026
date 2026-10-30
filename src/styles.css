@@ -915,3 +915,26 @@ body[data-tags="off"] .tag { display: none; }
 .sig-prev { width: 96px; height: 110px; border-radius: 48% 48% 44% 44%; border: 3px solid rgba(255,255,255,.25); flex: none; }
 .sig-bars .sig-pm { display: inline-flex; gap: 4px; }
 .sig-bars { grid-template-columns: auto 1fr auto auto; }
+/* cerimônia de título */
+#ceremony { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0; transition: opacity .4s; }
+#ceremony.show { opacity: 1; pointer-events: auto; }
+#ceremony .cer-top { position: absolute; top: 7%; left: 50%; transform: translateX(-50%); text-align: center; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+#ceremony .cer-eb { display: block; font: 800 14px/1.2 system-ui, sans-serif; letter-spacing: .18em; color: #ffd23f; }
+#ceremony .cer-title { display: block; font: 900 clamp(28px, 5vw, 54px)/1.05 'Arial Black', Arial, sans-serif; letter-spacing: .02em; }
+#ceremony .cer-check { position: absolute; right: 6%; top: 34%; background: linear-gradient(135deg, #fbf6ea, #e9dcc4); color: #17324d; border-radius: 10px; padding: 14px 22px; box-shadow: 0 10px 30px rgba(0,0,0,.4); display: grid; gap: 2px; transform: rotate(-3deg); animation: cerIn .45s ease-out; }
+#ceremony .cer-check small { font: 800 11px system-ui; letter-spacing: .2em; opacity: .7; }
+#ceremony .cer-check b { font: 900 34px 'Arial Black', Arial; color: #0a7d3c; }
+#ceremony .cer-check span { font: 700 12px system-ui; }
+#ceremony .cer-int { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); width: min(92%, 640px); display: flex; gap: 12px; align-items: center; background: rgba(8,18,40,.86); color: #fff; border-left: 4px solid #ffd23f; border-radius: 8px; padding: 12px 16px; animation: cerIn .45s ease-out; }
+#ceremony .cer-int .cer-mic { font-size: 30px; }
+#ceremony .cer-int small { display: block; opacity: .75; font: 600 12px system-ui; margin-bottom: 3px; }
+#ceremony .cer-int b { font: 700 15px/1.35 system-ui; }
+#ceremony .cer-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#ceremony .cer-skip { position: absolute; right: 14px; bottom: 12px; color: rgba(255,255,255,.75); font: 600 12px system-ui; background: rgba(0,0,0,.35); padding: 5px 9px; border-radius: 6px; }
+@keyframes cerIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; } }
+#ceremony .cer-int { animation-name: cerInC; }
+@keyframes cerInC { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+/* durante a cerimônia some toda a interface da partida (placar, botões, dicas, faixas) */
+body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !important; }
+#ceremony .cer-top { top: 3%; }
+#ceremony .cer-title { font-size: clamp(22px, 3.6vw, 40px); }
