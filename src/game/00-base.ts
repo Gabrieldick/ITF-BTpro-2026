@@ -168,7 +168,8 @@ const PATTERNS = {
   xadrez: { nome: 'Xadrez', preco: 380, id: 22 }, pixel: { nome: 'Camuflada pixel', preco: 520, id: 24 }, raios: { nome: 'Raios', preco: 640, id: 21 },
   onca: { nome: 'Onça-pintada', preco: 4500, id: 23, ex: { rank: 100 } }, marmore: { nome: 'Mármore', preco: 6000, id: 20, ex: { rank: 50 } },
 };
-const OUTFIT_COLORS = ['#ff5a1f', '#ffd23f', '#e2364a', '#ff86c0', '#9b5cff', '#1f6fd1', '#17324d', '#0b7a83', '#3fd17a', '#2e9e57', '#fbf6ea', '#ffffff', '#9aa3ad', '#141414'];
+// cores das roupas, acessórios e da raquete própria (inclui dourado escuro, bronze, marrons, bege, vinho, oliva, azul claro e prata)
+const OUTFIT_COLORS = ['#ff5a1f', '#ffd23f', '#b8860b', '#9c6b30', '#6b4226', '#3d2817', '#d9c3a0', '#e2364a', '#7a1f3d', '#ff86c0', '#9b5cff', '#7cc6ee', '#1f6fd1', '#17324d', '#0b7a83', '#3fd17a', '#2e9e57', '#5a6b2f', '#fbf6ea', '#ffffff', '#c0c6cc', '#9aa3ad', '#141414'];
 // equipamentos por categoria (como a raquete): você pode ter vários, mas usa um de cada categoria; quanto melhor, mais caro.
 // Somados, no máximo +3 por atributo (GEAR_CAP) — e com a raquete ainda há retorno decrescente
 const GEAR_CAP = 3;

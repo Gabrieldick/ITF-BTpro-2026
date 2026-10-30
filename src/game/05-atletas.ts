@@ -396,7 +396,7 @@ function setSignatureArt(cfg, brand, name) {
   const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
   const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
   // símbolo da marca no centro (com contorno na cor do fundo para destacar do desenho)
-  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 98, 64, c.a2 || '#ffffff', c.bg); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
+  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 98, 64, c.a2 || '#ffffff', c.bg, { mono: true }); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
   const m = RACKET_MATS.assinatura; if (m) { Object.values(m).forEach(v => { if (v.map && v.map !== GRIP_TEX) v.map.dispose(); v.dispose(); }); delete RACKET_MATS.assinatura; }
 }
 function racketMats(key) {

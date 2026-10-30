@@ -3,13 +3,14 @@
 // com o X da Herue's, o "nox" da Nux, o AMA angular da Ana Sport, o K de barra e chevron da Kona, o Z com a faixa verde
 // da Zanb, a estrela-cometa da Drop Shut, a oval de traços da Mormaji, o olho com redemoinho da Vizion, a barbatana da
 // Shank e as três faixas da Adibas. Desenha centrado em (cx, cy) com "raio" r (largura total ~2r); fg = cor principal
-function brandMark(x, brand, cx, cy, r, fg, bg, o = {}) { // o.ring: centro vazado (Vizion); o.swirl: cor dos arcos (Vizion)
+function brandMark(x, brand, cx, cy, r, fg, bg, o = {}) { // o.ring: centro vazado (Vizion); o.swirl: cor dos arcos (Vizion); o.mono: tudo na cor fg (raquete própria, camiseta)
   const b = String(brand || '').toLowerCase(); x.save(); x.translate(cx, cy); x.fillStyle = fg; x.strokeStyle = fg; x.lineJoin = 'round'; x.lineCap = 'round';
   const poly = (pts, s = r) => { x.beginPath(); pts.forEach(([a, c], i) => i ? x.lineTo(a * s, c * s) : x.moveTo(a * s, c * s)); x.closePath(); x.fill(); };
   if (b.startsWith('herue')) { // disco vermelho, X branco vazado e quatro pontas finas saindo em diagonal
-    x.fillStyle = '#e30613'; [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sy]) => poly([[sx * .42, sy * .5], [sx * 1.05, sy * 1.05], [sx * .5, sy * .42]]));
+    x.fillStyle = o.mono ? fg : '#e30613'; [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sy]) => poly([[sx * .42, sy * .5], [sx * 1.05, sy * 1.05], [sx * .5, sy * .42]]));
     x.beginPath(); x.arc(0, 0, r * .62, 0, Math.PI * 2); x.fill();
-    x.strokeStyle = bg || '#ffffff'; x.lineCap = 'butt'; x.lineWidth = r * .2; x.beginPath(); x.moveTo(-r * .44, -r * .44); x.lineTo(r * .44, r * .44); x.moveTo(r * .44, -r * .44); x.lineTo(-r * .44, r * .44); x.stroke(); }
+    // X vazado: na cor do fundo; sem fundo (logo da camiseta, em textura própria) recorta o disco de verdade
+    if (bg === 'rgba(0,0,0,0)') x.globalCompositeOperation = 'destination-out'; x.strokeStyle = bg && bg !== 'rgba(0,0,0,0)' ? bg : '#ffffff'; x.lineCap = 'butt'; x.lineWidth = r * .2; x.beginPath(); x.moveTo(-r * .44, -r * .44); x.lineTo(r * .44, r * .44); x.moveTo(r * .44, -r * .44); x.lineTo(-r * .44, r * .44); x.stroke(); }
   else if (b.startsWith('nux')) { // "nux" minúsculo, arredondado (como o "nox")
     x.font = '700 ' + Math.round(r * 1.05) + 'px "Arial Rounded MT Bold", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('nux', 0, 0); }
   else if (b.startsWith('ana')) { // AMA: um zigue-zague grosso de pontas arredondadas (A-M-A emendados), os A com a barra de
@@ -21,13 +22,13 @@ function brandMark(x, brand, cx, cy, r, fg, bg, o = {}) { // o.ring: centro vaza
     const q = pts => { x.beginPath(); pts.forEach(([a, c], i) => i ? x.lineTo(X(a), Y(c)) : x.moveTo(X(a), Y(c))); x.closePath(); x.fill(); };
     q([[205, 188], [330, 188], [330, 250], [160, 250]]); q([[845, 188], [720, 188], [720, 250], [890, 250]]); x.restore(); }
   else if (b.startsWith('kuna')) { // K de barra vertical + chevron, em degradê amarelo → verde → azul
-    const g = x.createLinearGradient(-r, -r, r, r); g.addColorStop(0, '#f5e663'); g.addColorStop(.5, '#7ee0a8'); g.addColorStop(1, '#3aa0ff'); x.fillStyle = g;
+    const g = x.createLinearGradient(-r, -r, r, r); g.addColorStop(0, '#f5e663'); g.addColorStop(.5, '#7ee0a8'); g.addColorStop(1, '#3aa0ff'); x.fillStyle = o.mono ? fg : g;
     poly([[-.7, -.9], [-.38, -.9], [-.38, .9], [-.7, .9]]); poly([[.62, -.9], [.95, -.9], [.18, 0], [.95, .9], [.62, .9], [-.15, 0]]); }
   else if (b.startsWith('zanb')) { // Z com a faixa verde inclinada (o "A" do logo)
     poly([[-.85, -.6], [.25, -.6], [.25, -.35], [-.38, .38], [.25, .38], [.25, .6], [-.85, .6], [-.85, .35], [-.22, -.38], [-.85, -.38]]);
-    x.fillStyle = '#21d67a'; poly([[.42, .6], [.78, -.6], [1.0, -.6], [.64, .6]]); }
+    x.fillStyle = o.mono ? fg : '#21d67a'; poly([[.42, .6], [.78, -.6], [1.0, -.6], [.64, .6]]); }
   else if (b.startsWith('drop')) { // estrela de quatro pontas dourada com a ponta de baixo-esquerda longa (cometa)
-    const g = x.createLinearGradient(r, -r, -r, r); g.addColorStop(0, '#ffd27a'); g.addColorStop(1, '#e8890c'); x.fillStyle = g;
+    const g = x.createLinearGradient(r, -r, -r, r); g.addColorStop(0, '#ffd27a'); g.addColorStop(1, '#e8890c'); x.fillStyle = o.mono ? fg : g;
     poly([[0, -.85], [.14, -.14], [.8, 0], [.14, .14], [-.75, 1.0], [-.14, .14], [-.65, 0], [-.14, -.14]]); }
   else if (b.startsWith('mormaji')) { // oval formada por três traços inclinados
     x.save(); x.rotate(-.5); x.beginPath(); x.ellipse(0, 0, r * .95, r * .55, 0, 0, Math.PI * 2); x.clip();

@@ -248,7 +248,7 @@ function logoTex(brand, color) {
   // símbolo da marca grande (o mesmo das raquetes e placas) com o nome embaixo; textura quadrada
   const k = brand + color; if (LOGO_TEX[k]) return LOGO_TEX[k];
   const c = document.createElement('canvas'); c.width = 512; c.height = 512; const x = c.getContext('2d');
-  brandMark(x, brand, 256, 200, 170, color, 'rgba(0,0,0,0)');
+  brandMark(x, brand, 256, 200, 170, color, 'rgba(0,0,0,0)', { mono: true });
   x.fillStyle = color; x.textAlign = 'center'; x.textBaseline = 'middle'; let fs = 84; x.font = '900 ' + fs + 'px Arial, sans-serif';
   while (x.measureText(brand.toUpperCase()).width > 490 && fs > 30) { fs -= 6; x.font = '900 ' + fs + 'px Arial, sans-serif'; }
   x.fillText(brand.toUpperCase(), 256, 445);
