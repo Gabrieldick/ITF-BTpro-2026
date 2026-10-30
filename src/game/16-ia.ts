@@ -2,7 +2,7 @@
 // inteligência artificial: planejamento, estilos, escolha de golpes
 import './15-carreira-telas';
 import { $s } from '../state';
-import { C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
+import { bCurve, C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
 import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -172,7 +172,7 @@ function planIntercept(p, speed, react) {
   const pos = ball.pos.clone(), vel = ball.vel.clone(); const dt = .02; let t = 0; let lastP = null, best = null;
   const sgn = p.team === 0 ? 1 : -1;
   for (let i = 0; i < 260; i++) {
-    vel.y -= bG() * dt; pos.addScaledVector(vel, dt); t += dt;
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt); t += dt;
     if (pos.y < C.ballR) break;
     if (pos.z * sgn < .3 || pos.y < .5 - .12 * shortK(p) || pos.y > 2.6 * hScale(p)) continue;
     const d = runDist(p.team, pos.x - p.pos.x, pos.z - p.pos.z); // para trás conta mais longe
@@ -591,7 +591,7 @@ function updateAI(p, dt) {
       p.swing.t += dt;
       if (p.feed && p.swing.t >= p.swing.dur * .45) {
         const f = p.feed; p.feed = null; p.swing.hit = true;
-        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.finisher = f.finisher; ball.threat = f.finisher ? 1 : 0; ball.kick = false; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
+        ball.pos.copy(f.pos); ball.vel.copy(f.vel); ball.gk = f.gk; ball.cx = ball.cz = 0; ball.finisher = f.finisher; ball.threat = f.finisher ? 1 : 0; ball.kick = false; ball.apex = f.apex; ball.prev = null; ball.state = 'live';
         p.contact = { x: f.pos.x, y: f.pos.y, z: f.pos.z, u: .45, hitId: S.hitId };
       }
       if (p.swing.t >= p.swing.dur) p.swing.t = -1;

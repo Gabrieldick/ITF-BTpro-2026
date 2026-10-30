@@ -2,7 +2,7 @@
 // teclado, toque, barras de força e menus
 import './11-mira';
 import { canHit } from './10-fisica';
-import { ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
+import { bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
 import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
@@ -42,7 +42,7 @@ function smashIdealPoint() {
   if (ball.state !== 'live') return null;
   const pos = ball.pos.clone(), vel = ball.vel.clone(); const dt = .01;
   for (let t = 0; t < 3; t += dt) {
-    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
     if (vel.y < 0 && pos.y <= 2.45) return pos;
     if (pos.y < C.ballR) return pos;
   }
@@ -108,7 +108,7 @@ function timeToSmash(p) {
     const side = p.team === 0 ? pos.z > .05 : pos.z < -.05;
     if (side && pos.y >= 1.75 && pos.distanceTo(_ts) <= .95 * hScale(p)) return t;
     if (side && pos.y < 1.75 && pos.y >= .12 && Math.hypot(pos.x - p.pos.x, pos.z - p.pos.z) <= 1.2) return t;
-    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
     if (pos.y < C.ballR) return null;
   }
   return null;
@@ -121,7 +121,7 @@ function timeToReach(p) {
     const f0 = p.team === 0 ? 1 : -1;
     if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && pos.y >= 1.75 && Math.hypot(pos.x - (p.pos.x + .2 * f0), pos.y - 1.75, pos.z - p.pos.z) <= 1.0) return t;
     if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && pos.y < 1.75 && pos.y >= .12 && Math.hypot(pos.x - p.pos.x, pos.z - p.pos.z) <= 1.2) return t;
-    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
     if (pos.y < C.ballR) return null;
   }
   return null;
@@ -131,11 +131,11 @@ function tryDive(type, p = human) {
   if (ball.state !== 'live' || S.lastTeam === p.team || canHit(p, type)) return;
   // se a bola vai passar ao alcance normal em algum momento, não precisa mergulhar
   { const q = ball.pos.clone(), w = ball.vel.clone();
-    for (let t = 0; t < 1.2; t += .01) { w.y -= bG() * .01; q.addScaledVector(w, .01); if (q.y < C.ballR) break;
+    for (let t = 0; t < 1.2; t += .01) { w.y -= bG() * .01; bCurve(w, .01); q.addScaledVector(w, .01); if (q.y < C.ballR) break;
       if ((p.team === 0 ? q.z > .05 : q.z < -.05) && q.y >= .12 && q.y <= 2.4 && Math.hypot(q.x - p.pos.x, q.z - p.pos.z) <= 1.3) return; } }
   const pos = ball.pos.clone(), vel = ball.vel.clone(), dt = .01;
   for (let t = 0; t < .7; t += dt) {
-    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
     if (pos.y < C.ballR) break;
     if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && pos.y < 1.1) {
       const dx = pos.x - p.pos.x, dz = pos.z - p.pos.z, d = Math.hypot(dx, dz), r = 1.35;
@@ -153,7 +153,7 @@ function contactY(p) {
   const pos = ball.pos.clone(), vel = ball.vel.clone(), dt = .01;
   for (let t = 0; t < 2.5; t += dt) {
     if ((p.team === 0 ? pos.z > .05 : pos.z < -.05) && Math.hypot(pos.x - p.pos.x, pos.z - p.pos.z) <= 1.0) return pos.y;
-    vel.y -= bG() * dt; pos.addScaledVector(vel, dt);
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
     if (pos.y < C.ballR) return 0;
   }
   return ball.pos.y;

@@ -9,6 +9,9 @@ const G = 9.8;
 // lançamento do saque: bola "mais pesada" (sobe a mesma altura em menos tempo, lançamento mais ágil)
 const TOSS_G = 1.6;
 const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'toss' ? G * TOSS_G : G;
+// efeito lateral (saque e smash com curva): aceleração horizontal constante enquanto a bola está viva; quem bate já mira
+// compensando (a bola sai para um lado e volta para o alvo). bCurve soma esse desvio nas simulações de trajetória
+const bCurve = (vel, dt) => { if (ball.state === 'live' && (ball.cx || ball.cz)) { vel.x += (ball.cx || 0) * dt; vel.z += (ball.cz || 0) * dt; } };
 const C = { halfL: 8, halfW: 2.25, netH: 1.7, ballR: .035, netHalf: 4.6 };
 const HALF_W = { simples: 2.25, dupla: 4 };
 const STEP = 1 / 120;
@@ -443,4 +446,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

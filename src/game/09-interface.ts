@@ -443,7 +443,7 @@ function drillNext() {
   if (d.n >= d.max) return drillEnd();
   const st = D.seq[d.step || 0];
   if (st === 'saque') return drillServe();
-  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.oppMiss = 0; ball.finisher = false; ball.threat = 0; d.lastR = null;
+  S.mode = 'rally'; S.lastTeam = 1; S.hitId++; S.rally = 1; ball.gk = 1; ball.cx = ball.cz = 0; ball.oppMiss = 0; ball.finisher = false; ball.threat = 0; d.lastR = null;
   human.swing.t = -1; human.charging = false; human.dive = null; human.diveRec = 0;
   // cada treino tem sua faixa da quadra (z mín, z máx, onde começa); a bola sempre vem para dentro dela
   const zone = { curtas: [3.5, 6.5, 5], defesa: [4, 6.5, 5.8], smash: [2.4, 5.2, 3.2], buscar: [1, 2.6, 2] }[st];
@@ -469,7 +469,7 @@ function drillNext() {
     hz = clamp(v === 'fundo' ? rand(5.2, 6.6) : hz, 3.4, 6.8);
     const from = v === 'fundo' ? [-4.6, 2.5, .78, 1.15] : [-1.6, 2.6, .55, 1.35]; // z de quem bate, altura, tempo, gravidade
     const T = from[2] * LV.spd, gk = from[3];
-    ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); ball.vel.set((hx - ball.pos.x) / T, (.75 - from[1] + .5 * g * gk * T * T) / T, (hz - ball.pos.z) / T); ball.gk = gk; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
+    ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); ball.vel.set((hx - ball.pos.x) / T, (.75 - from[1] + .5 * g * gk * T * T) / T, (hz - ball.pos.z) / T); ball.gk = gk; ball.cx = ball.cz = 0; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
     vName = { perto: 'SMASH PERTO DA REDE', fundo: 'SMASH DO FUNDO', angulado: 'SMASH ANGULADO', corpo: 'SMASH NO CORPO' }[v];
   }
   if (st === 'smash') {
@@ -501,7 +501,7 @@ function drillNext() {
 function drillServe() {
   const d = S.drill;
   d.tgt = d.lvl === 1 || d.lvl === 3 ? ['aberto', 'meio', 'fundo'][Math.floor(Math.random() * 3)] : null;
-  S.server = 0; S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; S.hitId++; ball.state = 'held'; ball.vel.set(0, 0, 0); ball.gk = 1; ball.finisher = false; d.lastR = null;
+  S.server = 0; S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; S.hitId++; ball.state = 'held'; ball.vel.set(0, 0, 0); ball.gk = 1; ball.cx = ball.cz = 0; ball.finisher = false; d.lastR = null;
   $s.players.forEach(p => { p.vel.set(0, 0, 0); p.swing.t = -1; p.swing.meter = null; p.jump = 0; p.pendingServe = null; p.serveJumped = false; p.charging = false; p.dive = null; p.diveRec = 0; p.feed = null; });
   MTR.active = false; el.meter.hidden = true;
   S.serverPlayer = human; human.pos.set((d.n % 2 ? -.7 : .7), 0, 8.6);

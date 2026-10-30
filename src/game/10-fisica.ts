@@ -3,7 +3,7 @@
 import './09-interface';
 import { perfHitHook } from './09-interface';
 import { $s } from '../state';
-import { ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN, attrOf } from './00-base';
+import { bCurve, ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN, attrOf } from './00-base';
 import { S, NET } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
@@ -15,9 +15,9 @@ import { sideOf } from './18-animacao';
 function solveShot(p0, tgt, spec) {
   const dx = tgt.x - p0.x, dz = tgt.z - p0.z; const d = Math.hypot(dx, dz);
   let T = spec.lowArc ? Math.max(.3, d / 14) : (spec.T || Math.max(.28, d / spec.speed));
-  const v = new V3(), g = G * (spec.gk || 1);
+  const v = new V3(), g = G * (spec.gk || 1), ax = spec.cA ? spec.cA[0] : 0, az = spec.cA ? spec.cA[1] : 0; // cA: curva lateral (m/s²)
   for (let i = 0; i < 45; i++) {
-    v.set(dx / T, (tgt.y - p0.y + .5 * g * T * T) / T, dz / T);
+    v.set((dx - .5 * ax * T * T) / T, (tgt.y - p0.y + .5 * g * T * T) / T, (dz - .5 * az * T * T) / T);
     if (Math.sign(p0.z) === Math.sign(tgt.z) || Math.abs(v.z) < 1e-4) break;
     const tn = -p0.z / v.z; const yn = p0.y + v.y * tn - .5 * g * tn * tn;
     if (yn >= C.netH + C.ballR + spec.margin) break;
@@ -27,8 +27,8 @@ function solveShot(p0, tgt, spec) {
 }
 function predictLanding() {
   const y = ball.pos.y - C.ballR, vy = ball.vel.y, g = bG();
-  const t = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * y))) / g;
-  return new V3(ball.pos.x + ball.vel.x * t, 0, ball.pos.z + ball.vel.z * t);
+  const t = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * y))) / g, k = ball.state === 'live' ? .5 * t * t : 0;
+  return new V3(ball.pos.x + ball.vel.x * t + (ball.cx || 0) * k, 0, ball.pos.z + ball.vel.z * t + (ball.cz || 0) * k);
 }
 function reachOf(type, p) { return type === 'defesa' ? 1.24 + (p ? attrK(p, 'def') : .65) * .28 : 1.28; }
 const _rf = new V3();
@@ -316,6 +316,22 @@ function doHit(p, type, q, isServe, mod) {
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);
   if (dir < 0 && tgt.z > -.4) tgt.z = -.4;
   if (dir > 0 && tgt.z < .4) tgt.z = .4;
+  // curva e jeito do smash pelo ponto de contato: bola ao lado do corpo (do lado da raquete) sai cortada (slice: curva
+  // lateral forte, flutua um pouco); por cima/atrás da cabeça, com topspin (mergulha mais, curva pouca); na frente do corpo,
+  // pancada (reta e mais rápida). O saque por cima varia o efeito de cada saque (mais slice). A curva do slice é para a
+  // esquerda de quem bate (destro; canhoto ao contrário) e a mira já compensa: a bola abre e volta para o alvo
+  let smStyle = '';
+  if (!pop && !wild && !spec.kick && (key === 'smash' || (isServe && type === 'smash'))) {
+    const f = p.team === 0 ? 1 : -1, hand = p.lefty ? -1 : 1;
+    const lat = (ball.pos.x - p.pos.x) * f * hand, fwd = -(ball.pos.z - p.pos.z) * f;
+    smStyle = isServe ? (Math.random() < .55 ? 'slice' : Math.random() < .5 ? 'top' : 'flat') : lat > .3 ? 'slice' : fwd < .08 ? 'top' : fwd > .3 && Math.abs(lat) < .3 ? 'flat' : 'mix';
+    const a = { slice: rand(4.2, 6.2), top: rand(1, 2), flat: rand(0, .6), mix: rand(1.8, 3.2) }[smStyle] * (isServe ? 1.15 : 1) * (mod.perfect ? 1.1 : 1);
+    const ddx = tgt.x - ball.pos.x, ddz = tgt.z - ball.pos.z, dd = Math.hypot(ddx, ddz) || 1;
+    spec.cA = [a * hand * ddz / dd, -a * hand * ddx / dd];
+    if (smStyle === 'slice') { spec.gk = (spec.gk || 1.35) * .93; if (spec.speed) spec.speed *= .96; }
+    else if (smStyle === 'top') spec.gk = (spec.gk || 1.35) * 1.14;
+    else if (smStyle === 'flat' && spec.speed) spec.speed *= 1.07;
+  }
   let v;
   if (spec.kick && !pop) {
     // lob chutado perfeito: passa acima do alcance do smash de quem está colado na rede, mesmo recuando (≥ 3,3 m de altura
@@ -374,7 +390,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.cx = spec.cA ? spec.cA[0] : 0; ball.cz = spec.cA ? spec.cA[1] : 0; ball.smStyle = smStyle; ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o
   // peso de ter sido encoberto

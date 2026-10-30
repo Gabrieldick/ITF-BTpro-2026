@@ -2,7 +2,7 @@
 // atualização da bola e pontos
 import './16-ia';
 import { $s } from '../state';
-import { C, bG, clamp, rand } from './00-base';
+import { bCurve, C, bG, clamp, rand } from './00-base';
 const BALL_VIS = .055; // raio da bola como ela aparece (07-glb)
 const BALL_MARK = .032; // raio da marca que ela deixa na areia (afunda ~1 cm)
 import { S, NET } from './01-estado';
@@ -20,7 +20,7 @@ function updateBall(dt) {
   // lançamento do saque: a bola acompanha a mão até a soltura
   if (ball.state === 'toss' && ball.inHand && S.serverPlayer) { const sp = S.serverPlayer; handPos(sp, ball.pos); ball.vel.set(0, 0, 0); if (sp.tossT >= (sp.tossRel || 0)) releaseToss(sp); else return; }
   const prev = ball.pos.clone();
-  ball.vel.y -= bG() * dt;
+  ball.vel.y -= bG() * dt; bCurve(ball.vel, dt);
   if (ball.state === 'live' && S.wind) { const ws = S.sideFlip ? -.07 : .07; ball.vel.x += S.wind.x * ws * dt; ball.vel.z += S.wind.z * ws * dt; } // vento: bolas lentas e altas desviam mais (na troca de lado ele passa a soprar ao contrário para cada time)
   ball.pos.addScaledVector(ball.vel, dt);
   if (ball.state === 'toss') {
