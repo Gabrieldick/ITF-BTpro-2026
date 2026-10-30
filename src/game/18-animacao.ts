@@ -85,6 +85,7 @@ function armIK(p, arm, sh, target, pole) {
 }
 // passos por segundo (os dois pés somados) para a velocidade no chão
 const RLX_WX = .55, RLX_WR = .9; // punho andando solto
+const IDL_WX = 1.1, IDL_WR = 0; // punho com o braço caído: raquete apontando para baixo/frente
 const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
 function sideOf(p, pt) { const q = pt || ball.pos; return (q.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1); }
 const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _v2 = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
@@ -405,7 +406,7 @@ function animateAthlete(p, dt) {
   }
   else if (!p.charging && run > .3) { _c.z += Math.cos(p.gait) * .13 * run * lvu; _c.y += Math.abs(Math.sin(p.gait)) * .03 * run; } // braço da raquete balança pouco na corrida
   // solto: raquete desce ao lado do corpo e o braço balança (ao contrário da perna do mesmo lado)
-  if (swingU < 0 && !p.charging && p.rlx > .01) { const am = .03 + .07 * run; _e.set(.12, .02 + .08 * run + Math.sin(p.gait * 2) * .012, -.27 + Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
+  if (swingU < 0 && !p.charging && p.rlx > .01) { const am = .05 + .1 * run; _e.set(.27 - .05 * run, -.02 + .1 * run + Math.sin(p.gait * 2) * .012, -.1 + Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
   _b.fromArray(pose.rp);
   const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   // quem perdeu o ponto reage (um jeito por ponto e por jogador): mão na cabeça, raquete batendo na areia, mãos na cintura
@@ -425,8 +426,20 @@ function animateAthlete(p, dt) {
   if (lsW > 0) { if (lsK === 'rkup') _e.set(.2, .95, -.15); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
   // peixinho: o braço da raquete vai esticado para a frente do mergulho (para onde a bola está)
   if (tiltK > .05 && p.dive) { _g.set(p.dive.dx, 0, p.dive.dz).applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); _e.copy(shR).addScaledVector(_g, .62); _c.lerp(_e, tiltK * (swingU >= 0 && !p.swing.hit ? .45 : .85)); }
+  // parado entre os pontos: os braços soltam (nada da raquete segura no peito em "V"). Cada um do seu jeito, que muda a
+  // cada ponto: braços caídos balançando de leve, raquete na mão de baixo com a outra mão mexendo nas cordas, ou girando a
+  // raquete no punho. Andando solto (rlx) a raquete já desce ao lado do corpo e balança com o passo
+  const idlT = !busy && !p.charging && S.mode === 'dead' && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && (S.ptT || 0) > .6 && sp < .6 ? 1 : 0;
+  p.idl = (p.idl || 0) + (idlT - (p.idl || 0)) * Math.min(1, dt * (idlT ? 2.2 : 8));
+  const idv = ((S.ptN || 0) * 5 + (p.slot > 0 ? 3 : 0) + p.team * 7) % 5, idk = idv < 2 ? 'hang' : idv < 4 ? 'strings' : 'twirl', ph = p.team * 2 + (p.slot > 0 ? 1.3 : 0);
+  if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph);
+    if (idk === 'hang') { _e.set(shR.x + .06, shR.y - .52, -.03 + sw * .025); _b.set(.4, -.2, 1); }
+    else { _e.set(shR.x - .03, shR.y - .44, -.24 + sw * .015); _b.set(.6, -.3, .8); }
+    _c.lerp(_e, p.idl); }
   armIK(p, m.armR, shR, _c, _b);
-  { const rl = swingU < 0 && !p.charging ? (p.rlx || 0) : 0; m.armR.wrist.rotation.set(lerp(pose.wx, RLX_WX, rl), lerp(pose.wr, RLX_WR, rl), 0); } // andando solto: raquete inclinada para a frente, na cintura
+  { const rl = swingU < 0 && !p.charging ? (p.rlx || 0) : 0; let wx = lerp(pose.wx, RLX_WX, rl), wr = lerp(pose.wr, RLX_WR, rl);
+    if (p.idl > .01) { const tw = idk === 'twirl' ? Math.sin(p.gT * 5 + ph) * 1.4 : 0; wx = lerp(wx, idk === 'hang' ? IDL_WX : .9, p.idl); wr = lerp(wr, (idk === 'hang' ? IDL_WR : .4) + tw, p.idl); }
+    m.armR.wrist.rotation.set(wx, wr, 0); } // andando solto: raquete inclinada para a frente, na cintura
   _c.fromArray(pose.lh); _b.fromArray(pose.lp);
   if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
@@ -434,8 +447,8 @@ function animateAthlete(p, dt) {
   if (pgDir && !pgR) { _e.copy(shL).addScaledVector(pgDir, .6); _e.y += pc.kind === 'five' ? .45 : -.25; _e.z -= .12; _c.lerp(_e, pgW); } // tapa de mão no alto ou toque baixo
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
   if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z -= Math.cos(p.gait) * .17 * run * lvu; }
-  // mão livre: na frente do corpo, apoiando a raquete pelo pescoço (pronta para o backhand); correndo solta um pouco e balança
-  if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .02 + .1 * run; _e.set(-.01 - .12 * run, .08 + .06 * run, -.3 + .1 * run - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
+  // andando solto entre os pontos: a mão livre vai ao lado do corpo e balança com o passo (sem segurar a raquete no peito)
+  if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .06 + .12 * run; _e.set(-.27 + .05 * run, -.02 + .1 * run, -.08 - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); } // mão livre solta ao lado, balançando
   if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
@@ -446,6 +459,10 @@ function animateAthlete(p, dt) {
   else if (diveK > .05) { _e.set(-.3, -.6, -.4); _c.lerp(_e, clamp(diveK * 1.4, 0, 1)); }
   else if (swingU >= 0 && p.reachK > .15 && !celPh) { _e.set(-reachS * .48, .28, -.04); _c.lerp(_e, .7 * p.reachK); }
   if (lsW > 0) { if (lsK === 'fist') _e.set(-.2, .5 + .08 * Math.abs(Math.sin(lose.t * 10)), -.2); else if (lsK === 'head') _e.set(-.12, .8, .02); else if (lsK === 'hips') _e.set(-.22, .02, .03); else _e.set(-.2, .02, -.1); _c.lerp(_e, lsW); }
+  if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph + 1.2);
+    if (idk === 'strings') { _e.set(.06, shL.y - .4 + Math.sin(p.gT * 3 + ph) * .03, -.42); _b.set(-.6, -.3, .6); }
+    else { _e.set(shL.x - .06, shL.y - .52, -.02 + sw * .03); _b.set(-.4, -.2, 1); }
+    _c.lerp(_e, p.idl); }
   armIK(p, m.armL, shL, _c, _b);
   m.armL.wrist.rotation.set(.2, 0, 0);
   // cabeça acompanha a bola

@@ -696,10 +696,10 @@ function arenaFor() {
     const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
     const indoor = (t.tier <= 2 || t.special === 'estadual') && /\b(arena|point)\b/i.test(t.name || ''); // points e arenas: ambiente fechado
-    // patrocinador master do torneio (marcas de raquete): a maioria do BT50 para cima tem um, sempre o mesmo para o mesmo torneio na temporada
+    // patrocinador master do torneio (marcas de raquete): BT200 para cima sempre tem um, BT50/BT100 quase sempre; sempre o mesmo para o mesmo torneio na temporada
     let master = '';
     if (t.tier >= 4 && !t.special) { let h = 7; for (const ch of (t.name || '') + ($s.CR.season || 1)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-      if (h % 100 < (t.tier >= 7 ? 85 : 60)) master = TOUR_MASTERS[(h >>> 8) % TOUR_MASTERS.length]; }
+      if (t.tier >= 6 || h % 100 < (t.tier >= 5 ? 85 : 65)) master = TOUR_MASTERS[(h >>> 8) % TOUR_MASTERS.length]; }
     return Object.assign({ size, indoor, master, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO', master: TOUR_MASTERS[(S.champSeed || 0) % TOUR_MASTERS.length] }, ARENA_PAL.BRA);
