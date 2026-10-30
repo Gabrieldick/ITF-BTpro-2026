@@ -1545,20 +1545,34 @@ function crInvBuy(k) {
 }
 // raquete própria (assinatura): vem do patrocínio master quando você tem fama (70) ou um título de BT200 ou maior; Zênite +
 // 2 nos seus três melhores atributos. Você escolhe as cores e o desenho; o logo é o do patrocinador master do momento
-// atributos da raquete própria: você distribui SIG_PTS pontos (até +SIG_MAX em cada um; dá para tirar até −2 de um para
+// atributos da raquete própria: você distribui os pontos do nível dela (15 a 25) (até +SIG_MAX em cada um; dá para tirar até −2 de um para
 // pôr em outro). Sem escolha ainda: a Zênite com +2 nos seus três melhores atributos
 const SIG_PTS = 25, SIG_MAX = 7, SIG_ATTRS = ['forca', 'smash', 'saque', 'def', 'curta', 'lob', 'backhand', 'vel', 'voleio', 'leitura', 'folego'];
+// níveis da raquete própria: começa com 15 pontos e melhora (pagando à marca) até 25 no nível 7
+const SIG_LV_PTS = [15, 17, 18, 20, 22, 23, 25], SIG_LV_COST = [0, 25000, 45000, 70000, 100000, 140000, 190000];
+function crSigLv() {
+  if ($s.CR.sigLv === undefined) { const S0 = $s.CR.sigB, used = S0 ? Object.values(S0).reduce((t, v) => t + v, 0) : 0; const i = SIG_LV_PTS.findIndex(x => x >= used); $s.CR.sigLv = S0 ? (i < 0 ? 7 : i + 1) : 1; } // (saves de antes: o nível que comporta os pontos já distribuídos)
+  return $s.CR.sigLv;
+}
+const crSigPts = () => SIG_LV_PTS[crSigLv() - 1];
+function crSigUp() {
+  const lv = crSigLv(); if (lv >= 7) return false; const c = SIG_LV_COST[lv];
+  if ($s.CR.money < c) { $s.CR.lastMsg = 'Dinheiro insuficiente para melhorar a raquete.'; return false; }
+  $s.CR.money -= c; $s.CR.sigLv = lv + 1; crSignature(); crSyncChars(); saveCareer(); return true;
+}
 function crSigB() {
   const S0 = $s.CR.sigB;
-  if (S0 && Object.values(S0).reduce((t, v) => t + v, 0) <= SIG_PTS) return Object.assign({}, S0);
-  const b = Object.assign({}, RACKET_STATS.zenite.b);
-  Object.entries($s.CR.me.a).filter(([k]) => SIG_ATTRS.includes(k)).sort((x, y) => y[1] - x[1]).slice(0, 3).forEach(([k]) => { b[k] = (b[k] || 0) + 2; });
+  const P = crSigPts();
+  if (S0 && Object.values(S0).reduce((t, v) => t + v, 0) <= P) return Object.assign({}, S0);
+  // sem escolha (ou passou do nível): os pontos do nível espalhados nos seus 5 melhores atributos
+  const b = {}, top = Object.entries($s.CR.me.a).filter(([k]) => SIG_ATTRS.includes(k)).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k]) => k);
+  for (let i = 0; i < P; i++) { const k = top[i % top.length]; if ((b[k] || 0) < SIG_MAX) b[k] = (b[k] || 0) + 1; }
   return b;
 }
 function crSigSet(k, d) {
   if (!SIG_ATTRS.includes(k)) return;
   const b = crSigB(), v = (b[k] || 0) + d, used = Object.values(b).reduce((t, x) => t + x, 0) + d;
-  if (v > SIG_MAX || v < -2 || used > SIG_PTS) return;
+  if (v > SIG_MAX || v < -2 || used > crSigPts()) return;
   b[k] = v; if (!b[k]) delete b[k]; $s.CR.sigB = b; crSignature(); crSyncChars(); saveCareer();
 }
 function crSigLook(key, val) { $s.CR.sigLook = Object.assign({}, $s.CR.sigLook, { [key]: val }); crSignature(); saveCareer(); }
@@ -2074,6 +2088,6 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
+export { crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
 if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };

@@ -4,13 +4,13 @@ import './14-carreira';
 import { $s } from '../state';
 import { SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
 import { S, NET } from './01-estado';
-import { RACKETS, SIG_PATTERNS } from './05-atletas';
+import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
 import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview } from './07-glb';
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
+import { crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -355,17 +355,39 @@ const ATTR_IC = { forca: '💪', vel: '👟', def: '🛡️', backhand: '↩️'
 const bonusChips = b => Object.entries(b).map(([a, v]) => '<em class="' + (v > 0 ? 'up' : 'dn') + '" title="' + ATTRS.find(x => x[0] === a)[1] + '">' + ATTR_IC[a] + ' ' + (v > 0 ? '+' : '') + v + ' ' + ATTRS.find(x => x[0] === a)[1] + '</em>').join(' ');
 const rkKind = b => { const pos = k => Math.max(0, b[k] || 0), atk = pos('forca') + pos('smash') + pos('saque'), ctl = pos('def') + pos('curta') + pos('lob') + pos('backhand') + pos('vel'); return atk + ctl <= 2 ? ['🪵', 'Básica'] : atk > ctl + 2 ? ['⚡', 'Potência'] : ctl > atk + 2 ? ['🎯', 'Controle'] : ['⚖️', 'Equilíbrio']; };
 // raquete própria: desenho, cores e a distribuição dos pontos de bônus
+// prévia 3D da raquete própria (gira sozinha devagar e com o arraste): um renderizador só, que muda de lugar a cada tela
+const SG = { r: null, scene: null, cam: null, g: null, rk: null, rot: .3, drag: null, raf: 0 };
+function sigPreview3D() {
+  const host = $('crSigPrev3d'); cancelAnimationFrame(SG.raf); if (!host || !RACKETS.assinatura) return;
+  if (!SG.r) {
+    SG.r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); SG.r.outputColorSpace = THREE.SRGBColorSpace; SG.r.toneMapping = THREE.ACESFilmicToneMapping;
+    SG.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); SG.r.setSize(150, 210);
+    SG.scene = new THREE.Scene(); SG.scene.add(new THREE.HemisphereLight(0xffffff, 0x6b7a90, 1.6)); const d = new THREE.DirectionalLight(0xffffff, 2); d.position.set(1, 2, 3); SG.scene.add(d);
+    SG.cam = new THREE.PerspectiveCamera(30, 150 / 210, .05, 10); SG.cam.position.set(0, .3, 1.3); SG.cam.lookAt(0, .3, 0);
+    SG.g = new THREE.Group(); SG.scene.add(SG.g); SG.rk = makeRacket('assinatura'); SG.rk.rotation.z = Math.PI; SG.g.add(SG.rk);
+    const cv = SG.r.domElement; cv.style.cursor = 'grab'; cv.style.touchAction = 'none';
+    cv.addEventListener('pointerdown', e => { SG.drag = e.clientX; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', e => { if (SG.drag == null) return; SG.rot += (e.clientX - SG.drag) * .015; SG.drag = e.clientX; });
+    cv.addEventListener('pointerup', () => { SG.drag = null; });
+  }
+  SG.rk.userData.setStyle('assinatura'); host.appendChild(SG.r.domElement);
+  const loop = () => { if (!SG.r.domElement.isConnected) return; SG.g.rotation.y = SG.rot; SG.r.render(SG.scene, SG.cam); SG.raf = requestAnimationFrame(loop); }; loop();
+}
 function crSigHTML() {
   if (!$s.CR.rackets.includes('assinatura')) return '<p class="cr-note">🎾 Raquete própria: com um patrocínio master, a marca faz a sua raquete quando você chegar a 70 de fama ou ganhar um BT200 (ou maior). ' + ($s.CR.master ? 'Patrocínio atual: ' + esc($s.CR.master.brand) + '.' : 'Você ainda não tem patrocínio master.') + '</p>';
   const L = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, $s.CR.sigLook), b = crSigB(), used = Object.values(b).reduce((t, v) => t + v, 0);
   const sw = (key, cur) => OUTFIT_COLORS.map(c => '<button type="button" class="cr-sw' + (cur === c ? ' sel' : '') + '" data-sig-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   const rows = SIG_ATTRS.map(k => { const v = b[k] || 0, nm = (ATTRS.find(x => x[0] === k) || [k, k])[1];
     return '<span>' + nm + '</span><span class="bar"><i class="' + (v > 0 ? 'hi' : v < 0 ? 'lo' : '') + '" style="width:' + Math.round(Math.abs(v) / SIG_MAX * 100) + '%"></i></span><b>' + (v > 0 ? '+' : '') + v + '</b><span class="sig-pm"><button class="arw" data-sigb="' + k + ':-1"' + (v <= -2 ? ' disabled' : '') + '>−</button><button class="arw" data-sigb="' + k + ':1"' + (v >= SIG_MAX || used >= SIG_PTS ? ' disabled' : '') + '>+</button></span>'; }).join('');
-  return '<p class="section-label">🎾 Sua raquete própria' + ($s.CR.master ? ' · logo ' + esc($s.CR.master.brand) : '') + '</p><div class="cr-card sig-card"><div class="sig-top"><canvas id="crSigPrev" width="128" height="128" class="sig-prev"></canvas><div class="cr-look">'
+  return '<p class="section-label">🎾 Sua raquete própria' + ($s.CR.master ? ' · logo ' + esc($s.CR.master.brand) : '') + '</p><div class="cr-card sig-card"><div class="sig-top"><div id="crSigPrev3d" class="sig-prev3d" title="Arraste para girar"></div><div class="cr-look">'
     + '<label class="cr-field">Desenho <select id="crSigPat" class="cr-sel">' + SIG_PATTERNS.map(([k, n]) => '<option value="' + k + '"' + (k === L.pattern ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>'
-    + '<label class="cr-field">Acabamento <select id="crSigCarb" class="cr-sel"><option value="1"' + (L.carbon ? ' selected' : '') + '>Carbono</option><option value=""' + (!L.carbon ? ' selected' : '') + '>Liso</option></select></label></div></div>'
-    + '<div class="cr-sws"><div><span class="cr-lbl">Fundo</span>' + sw('bg', L.bg) + '</div><div><span class="cr-lbl">Desenho</span>' + sw('a1', L.a1) + '</div><div><span class="cr-lbl">Detalhe</span>' + sw('a2', L.a2) + '</div></div>'
-    + '<p class="cr-note">Atributos: distribua ' + SIG_PTS + ' pontos (até +' + SIG_MAX + ' em cada; dá para tirar até −2 de um para pôr em outro). Livres: <b>' + (SIG_PTS - used) + '</b></p><div class="bars cr-bars sig-bars">' + rows + '</div>'
+    + '<label class="cr-field">Acabamento <select id="crSigCarb" class="cr-sel"><option value="1"' + (L.carbon ? ' selected' : '') + '>Carbono</option><option value=""' + (!L.carbon ? ' selected' : '') + '>Liso</option></select></label>'
+    + '<label class="cr-field">Furação <select id="crSigHoles" class="cr-sel">' + SIG_HOLES.map(([k, n]) => '<option value="' + k + '"' + (k === (L.holes || 'side1') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label></div></div>'
+    + '<div class="cr-sws ed-col"><div><span class="cr-lbl">Fundo</span>' + sw('bg', L.bg) + '</div><div><span class="cr-lbl">Desenho</span>' + sw('a1', L.a1) + '</div><div><span class="cr-lbl">Detalhe</span>' + sw('a2', L.a2) + '</div><div><span class="cr-lbl">Grip</span>' + sw('grip', L.grip || '#141414') + '</div></div>'
+    + (() => { const lv = crSigLv(), P = crSigPts(), nx = lv < 7 ? SIG_LV_COST[lv] : 0;
+      return '<p class="cr-note sig-lv">Nível <b>' + lv + '/7</b> · <b>+' + P + '</b> pontos' + (lv < 7 ? ' <button class="cta sm" data-sigup="1"' + ($s.CR.money < nx ? ' disabled' : '') + '>Melhorar para o nível ' + (lv + 1) + ' (+' + SIG_LV_PTS[lv] + ') · ' + money(nx) + '</button>' : ' (máximo)') + '</p>'
+        + '<p class="cr-note">Atributos: distribua ' + P + ' pontos (até +' + SIG_MAX + ' em cada; dá para tirar até −2 de um para pôr em outro). Livres: <b>' + (P - used) + '</b></p>'; })()
+    + '<div class="bars cr-bars sig-bars">' + rows + '</div>'
     + ($s.CR.racket !== 'assinatura' ? '<button class="cta sm" data-equip="assinatura">Usar a raquete própria</button>' : '') + '</div>';
 }
 function crShopHTML() {
@@ -644,8 +666,10 @@ function bindCareerBody() {
   body.querySelectorAll('[data-t-go]').forEach(bt => bt.addEventListener('click', () => { crTab = bt.dataset.tGo; renderCareer(); }));
   body.querySelectorAll('[data-shop]').forEach(bt => bt.addEventListener('click', () => { shopTab = bt.dataset.shop; renderCareer(); }));
   // raquete própria: prévia, cores, desenho e pontos
-  { const cv = $('crSigPrev'); if (cv && RACKETS.assinatura) { const x = cv.getContext('2d'); x.save(); x.scale(.5, .5); RACKETS.assinatura.draw(x, 256, 256); x.restore(); } }
-  ['bg', 'a1', 'a2'].forEach(k => body.querySelectorAll('[data-sig-' + k + ']').forEach(bt => bt.addEventListener('click', () => { crSigLook(k, bt.getAttribute('data-sig-' + k)); renderCareer(); })));
+  sigPreview3D();
+  ['bg', 'a1', 'a2', 'grip'].forEach(k => body.querySelectorAll('[data-sig-' + k + ']').forEach(bt => bt.addEventListener('click', () => { crSigLook(k, bt.getAttribute('data-sig-' + k)); renderCareer(); })));
+  { const sh = $('crSigHoles'); if (sh) sh.addEventListener('change', () => { crSigLook('holes', sh.value); crSyncChars(); renderCareer(); }); }
+  body.querySelectorAll('[data-sigup]').forEach(bt => bt.addEventListener('click', () => { crSigUp(); renderCareer(); }));
   { const sp = $('crSigPat'); if (sp) sp.addEventListener('change', () => { crSigLook('pattern', sp.value); renderCareer(); }); const sc = $('crSigCarb'); if (sc) sc.addEventListener('change', () => { crSigLook('carbon', !!sc.value); renderCareer(); }); }
   body.querySelectorAll('[data-sigb]').forEach(bt => bt.addEventListener('click', () => { const [k, d] = bt.dataset.sigb.split(':'); crSigSet(k, +d); renderCareer(); }));
   body.querySelectorAll('[data-mtake]').forEach(bt => bt.addEventListener('click', () => { crMasterTake(bt.dataset.mtake); renderCareer(); }));

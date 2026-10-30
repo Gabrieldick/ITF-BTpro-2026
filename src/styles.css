@@ -966,3 +966,9 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .cr-edit .cr-look { margin-top: 10px; }
 .cr-edit .section-label { margin-top: 14px; }
 .cr-edit .cr-rng small { color: var(--ui-text); opacity: .85; }
+
+/* raquete própria: prévia 3D girável */
+.sig-prev3d { width: 150px; height: 210px; flex: 0 0 auto; border-radius: 12px; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.12), rgba(255,255,255,0) 70%); }
+.sig-prev3d canvas { display: block; }
+.sig-lv { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sig-card .cr-sws > div { display: block; } .sig-card .cr-lbl { display: block; width: auto; margin-bottom: 4px; } .sig-card .cr-sw { width: 22px; height: 22px; border-width: 2px; margin: 0 4px 4px 0; display: inline-block; }

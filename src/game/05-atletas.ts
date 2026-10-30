@@ -391,12 +391,15 @@ const RK_ART = {
 Object.assign(RACKETS, RK_ART);
 const RACKET_MATS = {};
 // raquete própria da carreira: cores e desenho escolhidos pelo jogador, logo do patrocinador master atual e o nome dele
+// furação da raquete própria (as mesmas da modelagem das raquetes)
+const SIG_HOLES = [['side1', 'Duas colunas laterais'], ['side2', 'Laterais cheias'], ['arc', 'Arco no topo'], ['ring', 'Anel em volta'], ['full', 'Face toda furada'], ['band', 'Grade central']];
 const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras'], ['xcross', 'X grande'], ['star', 'Estrela'], ['swirl', 'Redemoinho'], ['hex', 'Colmeia'], ['fade', 'Degradê'], ['split', 'Metade e metade'], ['zigzag', 'Zigue-zague'], ['halftone', 'Pontilhado'], ['flames', 'Chamas'], ['shards', 'Estilhaços'], ['checker', 'Xadrez'], ['camo', 'Camuflado']];
 function setSignatureArt(cfg, brand, name) {
   const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
   const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
   // símbolo da marca no centro (com contorno na cor do fundo para destacar do desenho)
-  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 98, 64, c.a2 || '#ffffff', c.bg, { mono: true }); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
+  RK_PATTERN.assinatura = SIG_HOLES.some(h => h[0] === c.holes) ? c.holes : 'side1'; delete RACKET_GEOS.assinatura; // furação escolhida
+  RACKETS.assinatura = { edge: c.a1, grip: c.grip || '#141516', throat: c.a1, holes: { band: 'proteo', side1: 'proteo', side2: 'kronos', arc: 'medusa', ring: 'medusa', full: 'supercarbon' }[RK_PATTERN.assinatura] || 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 98, 64, c.a2 || '#ffffff', c.bg, { mono: true }); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
   const m = RACKET_MATS.assinatura; if (m) { Object.values(m).forEach(v => { if (v.map && v.map !== GRIP_TEX) v.map.dispose(); v.dispose(); }); delete RACKET_MATS.assinatura; }
 }
 function racketMats(key) {
@@ -438,7 +441,7 @@ function makeRacket(key) {
   g.userData.setStyle = k => {
     const kk = RACKETS[k] ? k : 'proteo', M = racketMats(kk); g.userData.key = kk;
     face.geometry = racketGeo(kk); face.material = [M.face, M.edge]; bumper.material = M.bumper; handle.material = M.grip; butt.material = M.cap;
-    const G = RK_GLB.geo; old.forEach(o => { o.visible = !G; }); nm.forEach(o => { o.visible = !!G; });
+    const G = RK_GLB.geo; old.forEach(o => { o.visible = !G; }); nm.forEach(o => { o.visible = !!G; }); strap.visible = false; nm[5].visible = false; // sem cordinha: raquete de beach tennis não tem
     if (G) {
       const pt = RK_PATTERN[kk] || 'side1';
       [[G['F_' + pt] || G.F_side1, M.face], [G['E_' + pt] || G.E_side1, M.edge], [G.Bumper, M.bumper], [G.Grip, M.grip], [G.Cap, M.cap], [G.Leash, STRAP_MAT]].forEach(([geo, m], i) => { nm[i].geometry = geo; nm[i].material = m; });
@@ -592,4 +595,4 @@ function profR(prof, y) {
 }
 
 if (typeof window !== 'undefined') window.__pdoSig = setSignatureArt;
-export { brandMark, SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
+export { SIG_HOLES, brandMark, SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
