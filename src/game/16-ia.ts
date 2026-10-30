@@ -101,7 +101,7 @@ function charSkill(p) {
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
   // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
   const stars = S.tutorial ? 1 : S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
-  let adj = stars ? [-.04, -.03, 0, .18, .38, .62][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
+  let adj = stars ? [-.04, -.03, 0, .18, .38, .85][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   if (aiModeOf(p)) adj = S.simAI && (S.simAI[p.team] || {}).adj != null ? S.simAI[p.team].adj : .5; // IA Treinada/Planejadora: leitura de jogo do Lendário
   else if (S.simAI) adj = 0;
   // o seu parceiro (CPU) não sobe junto acima de 4 estrelas: a dificuldade alta é dos adversários, não um parceiro lendário
@@ -114,7 +114,7 @@ function charSkill(p) {
   const k = clamp(kb + adj, 0, 1.4), kt = clamp(kb + Math.min(adj, 0) + Math.max(0, adj) * (stars >= 5 && p.team === 1 ? .95 : .8), 0, 1.25);
   const dm = p.team === 1 && !stars && !S.simAI ? { facil: .92, medio: 1, dificil: 1.04 }[S.settings.diff] || 1 : 1;
   return {
-    speed: P_SPEED * velMul(a.vel) * dm * (S.femPace ? .88 : 1), acc: accOf(a.vel) * dm * (S.femPace ? .85 : 1), react: Math.max(.05, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), letGo: Math.min(.97, lerp(.3, .9, k)), // química: o parceiro reage mais rápido (a mira no buraco por nível, smart, fica desligada: o jogo e o treino são sem ela)
+    speed: P_SPEED * velMul(a.vel) * dm * (S.femPace ? .88 : 1), acc: accOf(a.vel) * dm * (S.femPace ? .85 : 1), react: Math.max(.04, lerp(.3, .09, k)) * styleOf(p).react * (S.careerActive && p.team === 0 && !p.isHuman ? 1 - .05 * (S.careerChem || 0) : 1), letGo: Math.min(.97, lerp(.3, .9, k)), // química: o parceiro reage mais rápido (a mira no buraco por nível, smart, fica desligada: o jogo e o treino são sem ela)
     miss: Math.max(.008, lerp(.15, .018, k)) * lerp(1.3, .7, a.def / 100), err: Math.max(.006, lerp(.2, .015, Math.pow(kt, .8))) * lerp(1.25, .8, tech) * styleOf(p).err, // níveis baixos erram bem mais na rede/fora
     q: [clamp(lerp(.42, .78, kt), .3, .9), clamp(lerp(.72, 1, kt), .5, 1)],
     pw: lerp(.84, 1, Math.min(1, kt)), // nível baixo: golpes mais fracos (não mais bolas furadas)
