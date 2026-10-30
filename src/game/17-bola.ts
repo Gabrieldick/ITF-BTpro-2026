@@ -55,9 +55,9 @@ function updateBall(dt) {
       const LINE = .025 + BALL_MARK;
       const mx = C.halfW + LINE - Math.abs(x), mz = C.halfL + LINE - Math.abs(z); // folga até deixar de tocar (negativa = fora)
       const inB = mx >= 0 && mz >= 0;
-      // lance ajustado (a marca mal encosta ou mal passa da borda de fora da fita, até 3,5 cm): telinha de revisão vista de cima
+      // lance perto da linha (até 7 cm de um lado ou do outro da borda de fora da fita): telinha de revisão vista de cima
       const axis = (mx < 0) !== (mz < 0) ? (mx < 0 ? 'x' : 'z') : (Math.abs(mx) < Math.abs(mz) ? 'x' : 'z'), mg = axis === 'x' ? mx : mz;
-      if (Math.abs(mg) < .035 && !S.drill) { const rv = { x, z, axis, inB, mg, vx: ball.vel.x, vy: ball.vel.y, vz: ball.vel.z }; try { showReview(rv); } catch (e) {} if (NET.ev) NET.ev('review', rv); }
+      if (Math.abs(mg) < .07 && !S.drill) { const rv = { x, z, axis, inB, mg, vx: ball.vel.x, vy: ball.vel.y, vz: ball.vel.z }; try { showReview(rv); } catch (e) {} if (NET.ev) NET.ev('review', rv); }
       const owner = z > 0 ? 0 : 1;
       sndSand(); { const bv = Math.hypot(ball.vel.x, ball.vel.y, ball.vel.z); puff(x, z, 12 + Math.round(Math.min(24, bv * 1.2)), .7 + Math.min(.6, bv * .03), 0, 0, bv > 14 ? .5 : 0); } ballMark(x, z, ball.vel.x, ball.vel.z); if (NET.ev) NET.ev('sand', x, z);
       ball.state = 'dead'; ball.vel.multiplyScalar(.25); ball.vel.y = Math.abs(ball.vel.y) * .3;

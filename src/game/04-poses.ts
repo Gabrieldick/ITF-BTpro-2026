@@ -8,7 +8,7 @@ import { S } from './01-estado';
 // stag: pé de trás recuado (0 a 1) · feet: abertura das pernas (1 = normal, menos = pernas juntas)
 const P = o => Object.assign({ rh: [.2, .42, -.42], rp: [.9, -.6, .3], wx: 1.15, wr: 1.2, lh: [-.03, .34, -.37], lp: [-.9, -.6, .2], tw: 0, lean: .22, bend: 0, crouch: .12, lunge: 0, stag: 0, feet: 1 }, o);
 function newPose() { return P({}); }
-const READY = P({});
+const READY = P({ rh: [.22, .36, -.38], lh: [-.02, .29, -.34], wx: 1.05 }); // prontidão: raquete na frente, mas mãos mais baixas e cotovelos soltos (nada de "V" duro)
 // quadros-chave em u = 0, .3 (armado), .45 (contato), .75 (terminação), 1
 const KU = [0, .3, .45, .75, 1];
 const SMASH_U = [0, .3, .37, .45, .72, 1]; // o smash tem uma fase extra: a raquete cai atrás das costas

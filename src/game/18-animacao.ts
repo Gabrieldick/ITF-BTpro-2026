@@ -431,9 +431,12 @@ function animateAthlete(p, dt) {
   // parado entre os pontos: os braços soltam (nada da raquete segura no peito em "V"). Cada um do seu jeito, que muda a
   // cada ponto: braços caídos balançando de leve, raquete na mão de baixo com a outra mão mexendo nas cordas, ou girando a
   // raquete no punho. Andando solto (rlx) a raquete já desce ao lado do corpo e balança com o passo
-  const idlT = !busy && !p.charging && S.mode === 'dead' && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && (S.ptT || 0) > .6 && sp < .6 ? 1 : 0;
+  // esperando o saque também: o parceiro de quem saca fica solto até a bola entrar em jogo; quem recebe segura a raquete baixa
+  // e solta na frente do corpo (só no lançamento entra na prontidão)
+  const srvW = S.mode === 'serve' && S.serverPlayer !== p ? (p.team === S.server ? 1 : .85) : S.mode === 'toss' && S.serverPlayer !== p && p.team === S.server ? 1 : 0;
+  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'dead' && (S.ptT || 0) > .35 ? 1 : srvW) : 0;
   p.idl = (p.idl || 0) + (idlT - (p.idl || 0)) * Math.min(1, dt * (idlT ? 2.2 : 8));
-  const idv = ((S.ptN || 0) * 5 + (p.slot > 0 ? 3 : 0) + p.team * 7) % 5, idk = idv < 2 ? 'hang' : idv < 4 ? 'strings' : 'twirl', ph = p.team * 2 + (p.slot > 0 ? 1.3 : 0);
+  const idv = ((S.ptN || 0) * 5 + (p.slot > 0 ? 3 : 0) + p.team * 7) % 5, idk = S.mode === 'serve' && p.team !== S.server ? 'strings' : idv < 2 ? 'hang' : idv < 4 ? 'strings' : 'twirl', ph = p.team * 2 + (p.slot > 0 ? 1.3 : 0);
   if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph);
     if (idk === 'hang') { _e.set(shR.x + .06, shR.y - .52, -.03 + sw * .025); _b.set(.4, -.2, 1); }
     else { _e.set(shR.x - .03, shR.y - .44, -.24 + sw * .015); _b.set(.6, -.3, .8); }
