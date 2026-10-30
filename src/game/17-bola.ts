@@ -20,8 +20,10 @@ function staminaStep(dt) {
   for (const p of $s.players) {
     if (p.sta === undefined) p.sta = 1;
     if (S.mode === 'rally') {
-      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.15 - .3 * Math.min(1, attrK(p, 'vel'));
-      let d = dt * (.009 + .045 * Math.pow(Math.min(1.2, sp / 5), 1.5));
+      // andar e trotar quase não gasta: o custo vem da arrancada (acima de ~2,5 m/s), dos golpes, dos saltos e dos mergulhos
+      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.05 - .15 * Math.min(1, attrK(p, 'vel'));
+      // (quem joga no teclado corre sempre no máximo, sem meio-termo como a CPU: a corrida dele pesa 30% menos)
+      let d = dt * (.005 + .05 * Math.pow(clamp((sp - 2.5) / 2.8, 0, 1.2), 1.5) * (p.isHuman ? .7 : 1));
       if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
       if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
       if (p.swing.t >= 0 && !p.staS) { p.staS = true; d += p.swing.type === 'smash' ? .022 : .012; } else if (p.swing.t < 0) p.staS = false; // cada golpe também cansa (o smash mais)
