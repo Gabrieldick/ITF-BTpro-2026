@@ -909,3 +909,9 @@ body[data-tags="off"] .tag { display: none; }
 .pot-bar i b { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #4fb4ff, #b8ff3c); transition: width .5s ease; }
 .pot-bar.gated i b { background: linear-gradient(90deg, #ffb13c, #ffd23f); }
 .perf-pot .pot-bar { margin-top: 6px; }
+/* raquete própria (carreira) */
+.sig-card { display: grid; gap: 8px; }
+.sig-top { display: flex; gap: 12px; align-items: center; }
+.sig-prev { width: 96px; height: 110px; border-radius: 48% 48% 44% 44%; border: 3px solid rgba(255,255,255,.25); flex: none; }
+.sig-bars .sig-pm { display: inline-flex; gap: 4px; }
+.sig-bars { grid-template-columns: auto 1fr auto auto; }

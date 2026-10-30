@@ -346,6 +346,14 @@ const RK_ART = {
 };
 Object.assign(RACKETS, RK_ART);
 const RACKET_MATS = {};
+// raquete própria da carreira: cores e desenho escolhidos pelo jogador, logo do patrocinador master atual e o nome dele
+const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras']];
+function setSignatureArt(cfg, brand, name) {
+  const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
+  const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
+  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } };
+  const m = RACKET_MATS.assinatura; if (m) { Object.values(m).forEach(v => { if (v.map && v.map !== GRIP_TEX) v.map.dispose(); v.dispose(); }); delete RACKET_MATS.assinatura; }
+}
 function racketMats(key) {
   if (RACKET_MATS[key]) return RACKET_MATS[key];
   const r = RACKETS[key];
@@ -538,4 +546,4 @@ function profR(prof, y) {
   return best;
 }
 
-export { drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
+export { SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
