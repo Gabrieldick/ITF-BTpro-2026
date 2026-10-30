@@ -302,7 +302,7 @@ function openEditor() {
   ED.el.hidden = false; renderEditor(); refreshPreview();
   const loop = () => { if (ED.el.hidden) return; const now = performance.now(), dt = Math.min(.05, (now - (ED.last || now)) / 1000); ED.last = now;
     if (ED.srv && ED.sp) { srvPreviewTick(dt); const a = ED.rot + 1.2, zc = -.45; ED.cam.position.set(Math.sin(a) * 6.2, 1.6, Math.cos(a) * 6.2 + zc); ED.cam.lookAt(0, 1.35, zc); }
-    else { if (ED.drag == null) ED.rot += .006; if (ED.model) ED.model.rotation.y = ED.rot; }
+    else if (ED.model) ED.model.rotation.y = ED.rot; // parado: você gira arrastando
     ED.r.render(ED.scene, ED.cam); ED.raf = requestAnimationFrame(loop); };
   cancelAnimationFrame(ED.raf); loop();
 }
@@ -971,7 +971,7 @@ $('btnPause').addEventListener('click', e => { togglePause(); e.currentTarget.bl
 export { adjustFov, money, rkInfo, startFromMenu, syncAssistButtons, toMenu, toggleAssist };
 
 // ---------- perfil do jogador (toque num nome do ranking/parceiros) ----------
-const PF = { el: null, r: null, scene: null, cam: null, model: null, raf: 0, rot: .4 };
+const PF = { el: null, r: null, scene: null, cam: null, model: null, raf: 0, rot: .4, drag: null };
 function openProfile(id) {
   if (!$s.CR || id === 'crme') return;
   const c = crChar(id); if (!c) return;
@@ -979,6 +979,7 @@ function openProfile(id) {
     const m = document.createElement('div'); m.id = 'crProf'; m.className = 'cr-edit'; m.hidden = true;
     m.innerHTML = '<div class="cr-edit-box"><div class="cr-edit-head"><b id="crProfName"></b><button type="button" class="cta sm" id="crProfOk">Fechar</button></div><div class="cr-edit-body"><div class="cr-edit-prev"><canvas id="crProfCv" width="300" height="420"></canvas></div><div class="cr-edit-opts" id="crProfInfo"></div></div></div>';
     document.body.append(m); PF.el = m;
+    { const cv = $('crProfCv'); cv.style.cursor = 'grab'; cv.addEventListener('pointerdown', e => { PF.drag = e.clientX; cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove', e => { if (PF.drag == null) return; PF.rot += (e.clientX - PF.drag) * .012; PF.drag = e.clientX; }); cv.addEventListener('pointerup', () => { PF.drag = null; }); } // arraste para girar
     PF.r = new THREE.WebGLRenderer({ canvas: $('crProfCv'), antialias: true, alpha: true }); PF.r.outputColorSpace = THREE.SRGBColorSpace; PF.r.toneMapping = THREE.ACESFilmicToneMapping; PF.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     PF.scene = new THREE.Scene(); PF.scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a7458, 1.5));
     const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(2, 4, 3); PF.scene.add(sun);
@@ -1002,7 +1003,7 @@ function openProfile(id) {
     + (res.length ? '<p class="section-label">Resultados que contam no ranking (últimas 52 semanas)</p><div class="cr-res">' + res.map(r => '<span><b>' + r.p + '</b> ' + esc(crResLabel(r.p, r.w) || 'pts') + ' <small>' + (r.w > 0 ? wkTxt(r.w) : 'temporada anterior') + '</small></span>').join('') + '</div>' : '')
     + (news.length ? '<p class="section-label">Nas notícias</p>' + news.map(n => '<p class="cr-note">' + n.i + ' ' + esc(n.t) + '</p>').join('') : '');
   PF.el.hidden = false; cancelAnimationFrame(PF.raf);
-  const loop = () => { if (PF.el.hidden) return; PF.rot += .006; if (PF.model) PF.model.rotation.y = PF.rot; PF.r.render(PF.scene, PF.cam); PF.raf = requestAnimationFrame(loop); }; loop();
+  const loop = () => { if (PF.el.hidden) return; if (PF.model) PF.model.rotation.y = PF.rot; PF.r.render(PF.scene, PF.cam); PF.raf = requestAnimationFrame(loop); }; loop();
 }
 const crAgeOfC = c => crAgeOf(c);
 document.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-prof]'); if (!el || e.target.closest('button')) return; if (el.closest('#crBody') || el.closest('#crHead') || el.closest('#crSide')) openProfile(el.dataset.prof); });
