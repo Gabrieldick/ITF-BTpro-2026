@@ -118,7 +118,7 @@ function smashPrep(p, swingU) {
 // estilo do saque no lançamento: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado/à frente leva o braço livre
 function srvStyle(p, pose, u) {
   const st = p.srvSt; if (!st) return;
-  const k = clamp((u - .15) / .5, 0, 1); pose.crouch *= lerp(1, st.crouch, k); pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
+  const k = clamp((u - .15) / .5, 0, 1); pose.crouch = Math.min(.48, pose.crouch * lerp(1, st.crouch, k)); pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
 }
 // prévia animada (editor da carreira): anima e move o modelo realista de um jogador que não está em quadra
 S.previewAnim = (p, dt) => { animateAthlete(p, dt); if (p.skin) driveSkin(p); };
@@ -245,7 +245,7 @@ function animateAthlete(p, dt) {
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
   const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .1 + p.prep * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
-  const crouchD = crouch * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas
+  const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
   const idle = (1 - run) * (acting ? 0 : 1);
