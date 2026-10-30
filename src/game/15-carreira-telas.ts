@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
+import { SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
@@ -171,8 +171,18 @@ function crEditHTML() {
     + '<label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
     + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label>'
     + '<label class="cr-field">Biotipo ' + sel('crLkBuild', BUILDS, me.build || 'atletico') + '</label></div>'
-    + crAccHTML() + crOutfitHTML()
+    + crAccHTML() + crOutfitHTML() + crServeHTML()
     + '<p class="cr-note">Vale a partir da próxima partida.</p>';
+}
+// jeito de sacar (por cima): parte de um estilo pronto e ajusta agachar, pulo, avanço e para onde lança a bola
+const SRV_SL = [['crouch', 'Agachar no troféu', .5, 2, .05, v => Math.round(v * 100) + '%'], ['jump', 'Altura do pulo', 0, .6, .02, v => v < .03 ? 'sem pulo' : Math.round(v * 100) + ' cm'],
+  ['drive', 'Avanço no pulo', 0, 1.4, .05, v => Math.round(v * 100) + '%'], ['tossX', 'Lançamento para o lado', 0, .55, .01, v => v > .35 ? 'bem de lado (slice)' : v < .12 ? 'em cima da cabeça' : Math.round(v * 100) + ' cm'],
+  ['tossZ', 'Lançamento à frente', .25, .95, .01, v => v < .42 ? 'atrás (topspin)' : v > .75 ? 'bem à frente (pancada)' : Math.round(v * 100) + ' cm']];
+function crServeHTML() {
+  const cur = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || { preset: 'classico' });
+  return '<p class="section-label">Saque</p><label class="cr-field">Estilo ' + '<select id="crSrvPre" class="cr-sel"><option value="">Personalizado</option>' + Object.entries(SERVE_STYLES).map(([k, v]) => '<option value="' + k + '"' + (cur.preset === k ? ' selected' : '') + '>' + v.nome + '</option>').join('') + '</select></label>'
+    + '<div class="cr-srv">' + SRV_SL.map(([k, n, mn, mx, stp, fmt]) => '<label class="cr-field cr-rng">' + n + ' <input type="range" id="crSrv_' + k + '" min="' + mn + '" max="' + mx + '" step="' + stp + '" value="' + cur[k] + '"><small id="crSrvV_' + k + '">' + fmt(cur[k]) + '</small></label>').join('') + '</div>'
+    + '<p class="cr-note">Lançar de lado dá mais curva (slice); atrás da cabeça, topspin; bem à frente, pancada reta.</p>';
 }
 // acessórios: cor do boné/viseira/faixa (livre) e o que foi comprado na loja (munhequeiras, manguito, meião, lentes, peças especiais)
 function crAccHTML() {
@@ -214,6 +224,7 @@ function crOutfitHTML() {
     + ($s.CR.master ? '<p class="cr-note">Patrocínio master: o uniforme é da ' + $s.CR.master.brand + ' (só o logo dela na camisa).</p>' : $s.CR.sponsors.length ? '<p class="cr-note">Com o logo de um patrocinador na blusa, ele paga 20% a mais por semana.</p>' : '');
   return h;
 }
+const pre0 = () => $('crSrvPre');
 function bindLook(done) {
   const L = () => $s.CR.me.look;
   document.querySelectorAll('[data-look-skin]').forEach(b => b.addEventListener('click', () => { L().skin = b.dataset.lookSkin; done(); }));
@@ -232,6 +243,8 @@ function bindLook(done) {
   on('crAcWristF', v => { A().wristFab = v; });
   on('crAcLens', v => { A().lens = v; if (v) L().glasses = true; });
   on('crAcHead', v => { A().headFab = v; });
+  { const pre = $('crSrvPre'); if (pre) pre.addEventListener('change', () => { if (pre.value) { const v = SERVE_STYLES[pre.value]; $s.CR.serveStyle = { preset: pre.value, crouch: v.crouch, jump: v.jump, drive: v.drive, tossX: v.tossX, tossZ: v.tossZ }; } done(); }); }
+  SRV_SL.forEach(([k, , , , , fmt]) => { const r = $('crSrv_' + k); if (r) r.addEventListener('input', () => { const st = $s.CR.serveStyle = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || {}); st[k] = +r.value; st.preset = ''; const o = $('crSrvV_' + k); if (o) o.textContent = fmt(+r.value); if (pre0()) pre0().value = ''; }); });
   const OF = () => L().outfit || {};
   on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = $s.CR.master ? $s.CR.master.brand : v; }); on('crOfLogoPos', v => { OF().logoPos = v; });
   ['c1', 'c2', 'bc', 'lc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k === 'lc' ? 'logoCol' : k] = b.getAttribute('data-of-' + k); done(); } })));

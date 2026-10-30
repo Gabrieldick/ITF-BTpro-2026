@@ -8,6 +8,18 @@ const G = 9.8;
 // efeito da bola: topspin mergulha (gk > 1), slice flutua (gk < 1)
 // lançamento do saque: bola "mais pesada" (sobe a mesma altura em menos tempo, lançamento mais ágil)
 const TOSS_G = 1.6;
+// estilos de saque por cima: quanto agacha no troféu (crouch ×), altura do pulo (m; 0 = plantado), quanto avança no pulo,
+// lançamento para o lado da raquete (tossX, m) e à frente (tossZ, m). O lançamento muda o efeito: de lado sai cortado
+// (slice, curva), atrás da cabeça com topspin, bem na frente na pancada
+const SERVE_STYLES = {
+  classico: { nome: 'Clássico', crouch: 1, jump: .34, drive: 1, tossX: .22, tossZ: .62 },
+  agachado: { nome: 'Agachado e explosivo', crouch: 1.9, jump: .44, drive: 1.2, tossX: .2, tossZ: .7 },
+  pulo: { nome: 'Pulo alto', crouch: 1.4, jump: .55, drive: .9, tossX: .16, tossZ: .55 },
+  plantado: { nome: 'Plantado (sem pulo)', crouch: .6, jump: 0, drive: 0, tossX: .25, tossZ: .48 },
+  slice: { nome: 'Lançamento de lado (slice)', crouch: 1, jump: .3, drive: .8, tossX: .46, tossZ: .55 },
+  pancada: { nome: 'Lançamento à frente (pancada)', crouch: 1.1, jump: .38, drive: 1.3, tossX: .12, tossZ: .86 },
+  kick: { nome: 'Lançamento atrás (topspin)', crouch: 1.3, jump: .4, drive: .7, tossX: .06, tossZ: .32 },
+};
 const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'toss' ? G * TOSS_G : G;
 // efeito lateral (saque e smash com curva): aceleração horizontal constante enquanto a bola está viva; quem bate já mira
 // compensando (a bola sai para um lado e volta para o alvo). bCurve soma esse desvio nas simulações de trajetória
@@ -446,4 +458,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

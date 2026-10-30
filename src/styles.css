@@ -938,3 +938,8 @@ body[data-tags="off"] .tag { display: none; }
 body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !important; }
 #ceremony .cer-top { top: 3%; }
 #ceremony .cer-title { font-size: clamp(22px, 3.6vw, 40px); }
+
+/* editor do saque (carreira) */
+.cr-srv { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 14px; margin: 6px 0; }
+.cr-rng input[type=range] { width: 100%; accent-color: var(--accent, #ff6a00); }
+.cr-rng small { font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); }

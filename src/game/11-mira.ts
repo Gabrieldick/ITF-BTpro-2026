@@ -3,7 +3,7 @@
 import './10-fisica';
 import * as THREE from 'three';
 import { $s } from '../state';
-import { ATTR_OF, C, DIFF, G, TOSS_G, SHOTS, TOSS_T, V3, clamp, lerp, shortOf } from './00-base';
+import { ATTR_OF, C, DIFF, G, TOSS_G, SHOTS, TOSS_T, V3, clamp, lerp, shortOf, SERVE_STYLES } from './00-base';
 import { S } from './01-estado';
 import { scene } from './02-render';
 import { human } from './06-modelos';
@@ -96,6 +96,14 @@ function handPos(p, out) {
 // a variação entre lançamentos é metade da sorteada (o verde do saque varia menos que o do smash) e o saque forte
 // tem lançamento bem mais alto (o contato continua na mesma altura; a barra anda na mesma proporção)
 function tossDurOf(type, tf) { const mul = type === 'smash' ? 1.35 : 1; return { dur: TOSS_T * (1 + ((tf || (.82 + Math.random() * .38)) - 1.01) * .5) * mul, mul }; } // tf: sorteado pelo convidado no online
+// jeito de sacar de cada um: o seu na carreira (montado no editor) ou, para todos os outros (e o seu jogador na partida
+// rápida), um estilo fixo por jogador (sempre o mesmo para a mesma pessoa; a maioria saca no clássico)
+const SRV_NPC = ['classico', 'classico', 'classico', 'agachado', 'pulo', 'plantado', 'slice', 'pancada', 'kick', 'slice', 'pulo'];
+function serveStyleOf(p) {
+  if (p === human && S.careerActive && $s.CR && $s.CR.serveStyle) return Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle);
+  let h = 7; for (const ch of String((p.char && p.char.id) || p.name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return SERVE_STYLES[SRV_NPC[h % SRV_NPC.length]];
+}
 function startToss(p, type, tf) {
   S.mode = 'toss'; S.serveType = type; ball.state = 'toss'; p.tossT = 0;
   // cada lançamento é um pouco diferente (mais alto = mais tempo até o contato): o ponto perfeito da barra muda junto
@@ -104,7 +112,8 @@ function startToss(p, type, tf) {
   handPos(p, ball.pos);
   // a bola fica na mão enquanto o braço sobe e só sai quando ele está esticado (30% do tempo); a velocidade é calculada na soltura
   const low = type === 'lob';
-  p.tossTgt = { x: p.pos.x + (low ? .32 : .22) * f, y: low ? 1.05 : 2.62, z: p.pos.z - (low ? .45 : .62) * f }; // por baixo (lob): bola sobe pouco e é batida na cintura
+  const st = serveStyleOf(p); p.srvSt = st;
+  p.tossTgt = { x: p.pos.x + (low ? .32 : st.tossX) * f * (p.lefty ? -1 : 1), y: low ? 1.05 : 2.62, z: p.pos.z - (low ? .45 : st.tossZ) * f }; // por baixo (lob): bola sobe pouco e é batida na cintura
   p.tossRel = p.tossDur * .3; ball.inHand = true; ball.vel.set(0, 0, 0);
   p.serveJumped = false; p.pendingServe = null;
   hideBanner();
@@ -116,4 +125,4 @@ function releaseToss(p) {
   ball.inHand = false;
 }
 
-export { tossDurOf, releaseToss, TAC, defRing, defenseFeedback, defenseFlash, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };
+export { serveStyleOf, tossDurOf, releaseToss, TAC, defRing, defenseFeedback, defenseFlash, handPos, humanAim, humanDepthT, qualityWord, skillOf, startJump, startToss, updateAimMarker, whoKind, whoTag };

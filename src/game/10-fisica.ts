@@ -324,7 +324,8 @@ function doHit(p, type, q, isServe, mod) {
   if (!pop && !wild && !spec.kick && (key === 'smash' || (isServe && type === 'smash'))) {
     const f = p.team === 0 ? 1 : -1, hand = p.lefty ? -1 : 1;
     const lat = (ball.pos.x - p.pos.x) * f * hand, fwd = -(ball.pos.z - p.pos.z) * f;
-    smStyle = isServe ? (Math.random() < .55 ? 'slice' : Math.random() < .5 ? 'top' : 'flat') : lat > .3 ? 'slice' : fwd < .08 ? 'top' : fwd > .3 && Math.abs(lat) < .3 ? 'flat' : 'mix';
+    const ts = p.srvSt || {}; // saque: o lançamento decide o efeito (de lado → slice, atrás → topspin, à frente → pancada)
+    smStyle = isServe ? (Math.random() < .2 ? ['slice', 'top', 'flat'][Math.floor(Math.random() * 3)] : (ts.tossX ?? .22) > .35 ? 'slice' : (ts.tossZ ?? .62) < .42 ? 'top' : (ts.tossZ ?? .62) > .75 ? 'flat' : Math.random() < .55 ? 'slice' : 'flat') : lat > .3 ? 'slice' : fwd < .08 ? 'top' : fwd > .3 && Math.abs(lat) < .3 ? 'flat' : 'mix';
     const a = { slice: rand(4.2, 6.2), top: rand(1, 2), flat: rand(0, .6), mix: rand(1.8, 3.2) }[smStyle] * (isServe ? 1.15 : 1) * (mod.perfect ? 1.1 : 1);
     const ddx = tgt.x - ball.pos.x, ddz = tgt.z - ball.pos.z, dd = Math.hypot(ddx, ddz) || 1;
     spec.cA = [a * hand * ddz / dd, -a * hand * ddx / dd];

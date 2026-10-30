@@ -294,9 +294,9 @@ function updateHuman(dt, c = localCtl()) {
   if (serving) {
     tvz = 0; if (S.mode === 'toss') tvx = 0;
     // pulo do saque: começa ~0,22 s antes do ponto ideal para o contato sair no alto do pulo (subindo em direção à bola)
-    if (S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) - .22 && S.serveType !== 'lob') { tvz = -2.6 * s; if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); } } // saque por baixo: sem pulo
+    if (S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) - .22 && S.serveType !== 'lob') { const st = p.srvSt || {}; tvz = -2.6 * s * (st.drive ?? 1); if (!p.serveJumped) { p.serveJumped = true; if ((st.jump ?? .34) > .02) startJump(p, .55, st.jump ?? .34); } } // saque por baixo: sem pulo; estilo: altura do pulo e avanço
   }
-  if (p.pendingServe) { tvx = 0; tvz = -2.6 * s; }
+  if (p.pendingServe) { tvx = 0; tvz = -2.6 * s * ((p.srvSt && p.srvSt.drive) ?? 1); }
   if ((c.remote ? c.assistMove : S.settings.assistMove) && len < .1 && S.mode === 'rally' && ball.state === 'live' && S.lastTeam === opp && assignee(p.team) === p) {
     if (humanPlan.id !== S.hitId) { humanPlan.plan = planIntercept(p, P_SPEED * .6, 0); humanPlan.id = S.hitId; }
     if (humanPlan.plan) {
@@ -618,8 +618,8 @@ function updateAI(p, dt) {
     if (proMascHold(p)) { tz = (p.team === 0 ? 1 : -1) * Math.max(Math.abs(tz), 5.3); if (Math.abs(p.pos.z) < 5.05) p.pos.z = (p.team === 0 ? 1 : -1) * 5.05; }
   }
   if (S.serverPlayer === p && S.serveType !== 'lob' && ((S.mode === 'toss' && p.tossT > (p.tossDur || TOSS_T) - .22) || p.pendingServe)) {
-    tz = p.pos.z + (p.team === 0 ? -1 : 1) * .8;
-    if (!p.serveJumped) { p.serveJumped = true; startJump(p, .55, .34); }
+    const st = p.srvSt || {}; tz = p.pos.z + (p.team === 0 ? -1 : 1) * .8 * (st.drive ?? 1);
+    if (!p.serveJumped) { p.serveJumped = true; if ((st.jump ?? .34) > .02) startJump(p, .55, st.jump ?? .34); }
   }
   if (S.mode === 'rally' && ball.state === 'live' && S.lastTeam === 1 - p.team) {
     if (p.ai.reactT > 0) { p.ai.reactT -= dt; tx = p.pos.x; tz = p.pos.z; }
