@@ -208,7 +208,9 @@ function crOutfitHTML() {
   h += '<div class="cr-look"><label class="cr-field">Blusa ' + sel('crOfTop', own(W.tops, TOP_KINDS), O.top) + '</label><label class="cr-field">Estampa ' + sel('crOfPat', own(W.pats, PATTERNS), O.pat) + '</label>'
     + '<label class="cr-field">Embaixo ' + sel('crOfBot', own(W.bots, BOT_KINDS), O.bot) + '</label>'
     + '<label class="cr-field">Logo ' + sel('crOfLogo', $s.CR.master ? [[$s.CR.master.brand, $s.CR.master.brand + ' (master)']] : [['', 'Sem logo']].concat($s.CR.sponsors.map(x => [x.brand, x.brand])), $s.CR.master ? $s.CR.master.brand : O.logo) + '</label></div>'
-    + '<div class="cr-sws"><div><span class="cr-lbl">Cor da blusa</span>' + sw('c1', O.c1) + '</div><div><span class="cr-lbl">Cor da estampa</span>' + sw('c2', O.c2) + '</div><div><span class="cr-lbl">Cor de baixo</span>' + sw('bc', O.bc) + '</div></div>'
+    + ((O.logo || $s.CR.master) ? '<label class="cr-field">Posição do logo ' + sel('crOfLogoPos', [['', 'No peito'], ['costas', 'Nas costas (grande)'], ['ambos', 'Peito e costas']], O.logoPos) + '</label>' : '')
+    + '<div class="cr-sws"><div><span class="cr-lbl">Cor da blusa</span>' + sw('c1', O.c1) + '</div><div><span class="cr-lbl">Cor da estampa</span>' + sw('c2', O.c2) + '</div><div><span class="cr-lbl">Cor de baixo</span>' + sw('bc', O.bc) + '</div>'
+    + ((O.logo || $s.CR.master) ? '<div><span class="cr-lbl">Cor do logo</span>' + sw('lc', O.logoCol || O.c2) + '</div>' : '') + '</div>'
     + ($s.CR.master ? '<p class="cr-note">Patrocínio master: o uniforme é da ' + $s.CR.master.brand + ' (só o logo dela na camisa).</p>' : $s.CR.sponsors.length ? '<p class="cr-note">Com o logo de um patrocinador na blusa, ele paga 20% a mais por semana.</p>' : '');
   return h;
 }
@@ -231,8 +233,8 @@ function bindLook(done) {
   on('crAcLens', v => { A().lens = v; if (v) L().glasses = true; });
   on('crAcHead', v => { A().headFab = v; });
   const OF = () => L().outfit || {};
-  on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = $s.CR.master ? $s.CR.master.brand : v; });
-  ['c1', 'c2', 'bc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k] = b.getAttribute('data-of-' + k); done(); } })));
+  on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = $s.CR.master ? $s.CR.master.brand : v; }); on('crOfLogoPos', v => { OF().logoPos = v; });
+  ['c1', 'c2', 'bc', 'lc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k === 'lc' ? 'logoCol' : k] = b.getAttribute('data-of-' + k); done(); } })));
 }
 // editor do jogador: janela com a prévia 3D (gira sozinha; arraste para girar) e as opções de aparência, biotipo e uniforme
 const ED = { el: null, r: null, scene: null, cam: null, model: null, rot: .5, drag: null, raf: 0 };

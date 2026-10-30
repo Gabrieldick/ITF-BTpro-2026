@@ -475,7 +475,7 @@ function shirtTex(o) {
   return canvasTex(256, 256, (x, w, h) => {
     x.fillStyle = o.shirt; x.fillRect(0, 0, w, h);
     if (o.pattern && o.pattern !== 'liso') drawPattern(x, w, h, o.pattern, o.shirt2 || o.trim);
-    if (o.logo) { x.fillStyle = o.shirt2 || o.trim; x.font = 'bold ' + Math.round(h * .07) + 'px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.logo.toUpperCase().slice(0, 14), w * .5, h * .3); }
+    if (o.logo) { const lc = o.logoCol || o.shirt2 || o.trim; if (o.logoPos !== 'costas') brandMark(x, o.logo, w * .5, h * .22, h * .07, lc); x.fillStyle = lc; x.font = 'bold ' + Math.round(h * .05) + 'px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.logo.toUpperCase().slice(0, 14), w * .5, h * .33); }
     for (let i = 0; i < 2600; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)'; x.fillRect(Math.random() * w, Math.random() * h, 2, 1); }
     x.fillStyle = o.trim; x.fillRect(w * .2, 0, w * .06, h); x.fillRect(w * .74, 0, w * .06, h); x.fillRect(0, 0, w, h * .05);
     x.font = 'bold ' + Math.round(h * .24) + 'px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
