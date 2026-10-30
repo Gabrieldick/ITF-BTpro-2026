@@ -47,6 +47,8 @@ function attachSkin(p, gltf) {
         o.material = o.material.clone(); o.material.envMapIntensity = .6;
         // barba e raspado ficam a 1–2 mm da pele: puxados para a frente na profundidade (não piscam com a pele de longe)
         if (/^(Beard|Goatee|Mustache|HairBuzz)/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -6; }
+        // casca do cabelo e sobrancelha também ficam colados na cabeça: de longe a pele "furava" a casca perto da orelha (piscava)
+        else if (/^(Hair|Brow)$/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -1; o.material.polygonOffsetUnits = -4; }
       }
     }
     if (o.isBone) { const k = o.name.replace(/^mixamorig[:_]?/, ''); B[k] = o; o.userData.rq = o.quaternion.clone(); o.userData.rp = o.position.clone(); all.push(o); }
@@ -528,7 +530,7 @@ function makePreview(c) {
   const look = charLook(c, 0, 0), g = c.fem ? GLB.female : GLB.male;
   if (!g) { const m = makeAthlete(look); m.group.scale.setScalar(heightOf(c) / 1.8); return m.group; }
   const root = SkeletonUtils.clone(g.scene);
-  root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; if (o.material) { o.material = o.material.clone(); if (/^(Beard|Goatee|Mustache|HairBuzz)/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -6; } } } });
+  root.traverse(o => { if (o.isMesh) { o.frustumCulled = false; if (o.material) { o.material = o.material.clone(); if (/^(Beard|Goatee|Mustache|HairBuzz)/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -2; o.material.polygonOffsetUnits = -6; } else if (/^(Hair|Brow)$/.test(o.name)) { o.material.polygonOffset = true; o.material.polygonOffsetFactor = -1; o.material.polygonOffsetUnits = -4; } } } });
   const mh = new THREE.Box3().setFromObject(root).max.y || 1.8; root.userData.mh = mh;
   dressSkin({ look, char: c }, root);
   root.scale.setScalar(heightOf(c) / mh);

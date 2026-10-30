@@ -27,7 +27,7 @@ function canvasTex(w, h, draw, srgb) {
 const scene = new THREE.Scene();
 const HORIZON = new THREE.Color(0.58, 0.72, 0.84);
 scene.fog = new THREE.Fog(HORIZON, 140, 1400);
-const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 3200);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.08, 3200); // near 8 cm: mais precisão de profundidade de longe (a pele não fura o cabelo/boné)
 camera.position.set(0, 6, 16);
 scene.add(camera);
 const SUN_DIR = new V3(0.62, 0.66, -0.42).normalize();
