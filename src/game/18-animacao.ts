@@ -168,10 +168,13 @@ function animateAthlete(p, dt) {
   // locomoção solta: entre pontos (ou com a bola longe, indo para o outro lado) o jogador anda/corre ereto, pés sob o
   // corpo, braços balançando e o corpo virado para onde vai — a base baixa de jogo fica para quando a bola vem
   const away = ball.state === 'live' && S.lastTeam === p.team && ball.vel.z * fT < -3;
-  const rlxT = busy || p.lowK > .2 ? 0 : (ball.state !== 'live' || S.mode === 'dead' ? 1 : away ? .55 : 0) * clamp((sp - .4) / .8, 0, 1);
-  p.rlx = (p.rlx || 0) + (rlxT - (p.rlx || 0)) * Math.min(1, dt * (rlxT > (p.rlx || 0) ? 3 : 9));
-  const hd = Math.atan2(latV, -back), turnT = p.rlx > .3 && sp > 1 && Math.abs(hd) < 1.9 ? clamp(-hd, -1.5, 1.5) * p.rlx : 0;
-  p.rlxTurn = (p.rlxTurn || 0) + (turnT - (p.rlxTurn || 0)) * Math.min(1, dt * 5);
+  // troca de lado: anda de frente para onde vai (o corpo vira inteiro, até de costas para a rede) e só no fim se vira
+  const swk = !!(S.sideWalk && S.mode === 'dead');
+  const rlxT = busy || p.lowK > .2 ? 0 : swk && sp > .3 ? 1 : (ball.state !== 'live' || S.mode === 'dead' ? 1 : away ? .55 : 0) * clamp((sp - .4) / .8, 0, 1);
+  p.rlx = (p.rlx || 0) + (rlxT - (p.rlx || 0)) * Math.min(1, dt * (rlxT > (p.rlx || 0) ? (swk ? 8 : 3) : 9));
+  const hd = Math.atan2(latV, -back), r0 = p.rlxTurn || 0;
+  const turnT = swk && sp > .5 ? r0 + Math.atan2(Math.sin(-hd - r0), Math.cos(-hd - r0)) : p.rlx > .3 && sp > 1 && Math.abs(hd) < 1.9 ? clamp(-hd, -1.5, 1.5) * p.rlx : 0;
+  p.rlxTurn = r0 + (turnT - r0) * Math.min(1, dt * (swk ? 7 : 5));
   let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + p.moveTurn * (1 - p.prep) * (1 - p.rlx) + p.rlxTurn * (1 - p.prep);
   const cel = (S.mode === 'dead' || S.mode === 'ceremony') && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;

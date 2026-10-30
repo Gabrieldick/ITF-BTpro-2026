@@ -44,15 +44,15 @@ let reviewT = 0;
 function showReview(r) {
   let box = document.getElementById('review');
   if (!box) { box = document.createElement('div'); box.id = 'review'; box.innerHTML = '<canvas width="260" height="150"></canvas><b></b>'; document.body.appendChild(box); }
-  const cv = box.querySelector('canvas'), x = cv.getContext('2d'), W = cv.width, H = cv.height, PX = 900; // 1 m = 900 px (zoom grande)
+  const cv = box.querySelector('canvas'), x = cv.getContext('2d'), W = cv.width, H = cv.height, PX = 470; // 1 m = 470 px (de mais longe: dá para ver a bola chegando sem ela tomar a tela)
   const ax = r.axis === 'x', lineC = ax ? C.halfW : C.halfL, sg = Math.sign(ax ? r.x : r.z) || 1, pos = Math.abs(ax ? r.x : r.z);
   // velocidade no plano da telinha: "pe" para fora da quadra, "al" ao longo da linha; vy para baixo
   const pe = ((ax ? r.vx : r.vz) || 0) * sg, al = (ax ? r.vz : r.vx) || 0, vy = Math.min(-2, r.vy || -6), MARK = .032, RB = .055;
   const grains = Array.from({ length: 260 }, () => [Math.random() * W, Math.random() * H, Math.random() * .12]);
   const cx = W / 2, tapeW = .05 * PX, bx0 = cx + (pos - lineC) * PX, by0 = H / 2;
   // mini replay em câmera lenta (como o olho eletrônico): a bola chega por cima, a sombra encosta, marca a areia e sai;
-  // os 6 cm de tela correspondem a ~0,05 s de jogo esticados em 1,5 s; depois para na marca com o veredito
-  const T0 = -.032, T1 = .02, DUR = 1500;
+  // ~0,08 s de jogo esticados em 1,7 s; depois para na marca com o veredito
+  const T0 = -.05, T1 = .03, DUR = 1700;
   let st = performance.now();
   const draw = now => {
     const u = Math.min(1, (now - st) / DUR), tau = T0 + (T1 - T0) * u;
@@ -66,7 +66,7 @@ function showReview(r) {
     // bola: posição no plano e altura (antes do toque descendo, depois subindo mais devagar)
     const h = tau < 0 ? -vy * -tau : Math.abs(vy) * .3 * tau, bx = bx0 + pe * tau * PX * (tau < 0 ? 1 : .25), by = by0 + al * tau * PX * (tau < 0 ? 1 : .25);
     if (u < 1) x.beginPath(), x.ellipse(bx + h * PX * .35, by + h * PX * .2, RB * PX * .95, RB * PX * .8, 0, 0, Math.PI * 2), x.fillStyle = 'rgba(40,30,15,' + (.35 - Math.min(.25, h * 2)) + ')', x.fill(); // sombra (some no quadro final)
-    if (u < 1) { const rs = RB * PX * (1 + h * 2.2); const g = x.createRadialGradient(bx - rs * .35, by - rs * .35, rs * .1, bx, by, rs); g.addColorStop(0, '#fff3c4'); g.addColorStop(.6, '#ffb11f'); g.addColorStop(1, '#d9780a');
+    if (u < 1) { const rs = RB * PX * (1 + Math.min(.5, h * 1.1)); const g = x.createRadialGradient(bx - rs * .35, by - rs * .35, rs * .1, bx, by, rs); g.addColorStop(0, '#fff3c4'); g.addColorStop(.6, '#ffb11f'); g.addColorStop(1, '#d9780a');
       x.globalAlpha = .92; x.beginPath(); x.arc(bx, by, rs, 0, Math.PI * 2); x.fillStyle = g; x.fill(); x.globalAlpha = 1; }
     x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 11px sans-serif'; x.fillText('QUADRA', 8, 16); x.fillText('FORA', W - 40, 16);
     if (u < 1) { x.fillText('REPLAY', 8, H - 8); requestAnimationFrame(draw); }
@@ -125,8 +125,15 @@ const SW_START = 1.0, SW_FLIP = 3.3, SW_END = 5.3;
 function sideWalkStep(dt) {
   const W = S.sideWalk; if (!W) return false;
   W.t += dt;
-  if (W.t < SW_START) return false; // comemoração continua
   const ps = $s.players;
+  // a IA/controle ficam parados na troca de lado: quem estava no chão (peixinho) ou no meio de um golpe termina a animação
+  // aqui (senão ficava congelado deitado e era arrastado até o outro lado)
+  for (const p of ps) {
+    if (p.dive) { p.dive.t += dt; if (p.dive.t >= p.dive.dur) { p.dive = null; p.diveRec = 0; } }
+    if (p.swing.t >= 0) { p.swing.t += dt; if (p.swing.t >= p.swing.dur) p.swing.t = -1; }
+    p.charging = false;
+  }
+  if (W.t < SW_START) return false; // comemoração continua
   if (!W.plan) {
     const px = C.netHalf + .55, sx = (human.pos.x || 0) >= 0 ? 1 : -1; // poste do lado onde o jogador está
     W.plan = ps.map(p => {
@@ -150,7 +157,7 @@ function sideWalkStep(dt) {
   const left = (W.flipped ? SW_END : SW_FLIP) - W.t;
   for (const P of W.plan) {
     const p = P.p;
-    if (t < P.delay || !P.pts.length) { p.vel.set(0, 0, 0); continue; }
+    if (t < P.delay || !P.pts.length || p.dive || p.swing.t >= 0) { p.vel.set(0, 0, 0); continue; } // levantando/terminando o golpe: espera
     const [tx, tz] = P.pts[0], dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz);
     const rest = P.pts.length > 1 ? Math.hypot(P.pts[1][0] - tx, P.pts[1][1] - tz) : 0;
     const v = clamp((d + rest) / Math.max(.3, left - .15), 2.2, 5.5);
