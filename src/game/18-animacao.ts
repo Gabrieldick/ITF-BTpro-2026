@@ -87,7 +87,7 @@ function armIK(p, arm, sh, target, pole) {
 const RLX_WX = .55, RLX_WR = .9; // punho andando solto
 const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
 function sideOf(p, pt) { const q = pt || ball.pos; return (q.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1); }
-const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
+const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _v2 = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
 // mola amortecida (pouco abaixo do crítico): a postura chega com velocidade, passa um tico e assenta — o golpe tem
 // continuação e as trocas de pose têm inércia, em vez do "deslizar liso" de um filtro simples
 function springPose(dst, src, vel, w, z, dt) {
@@ -179,8 +179,11 @@ function animateAthlete(p, dt) {
   const pc = !cel && S.mode === 'dead' && !S.sideWalk && S.ptCel && S.ptCel[p.team], pMate = pc && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
   const pDist = pMate ? Math.hypot(pMate.pos.x - p.pos.x, pMate.pos.z - p.pos.z) : 9;
   const pgW = pc && pc.met != null ? clamp((pc.t - pc.met) / .18, 0, 1) * clamp((pc.met + .75 - pc.t) / .22, 0, 1) : 0;
+  // no título se viram de frente um para o outro; entre pontos só giram um pouco (pc.turn) e esticam a mão/raquete de lado
   const faceMate = (mateC && cel.t > .7) || (pMate && pc.t > .3 && pc.t < 1.6 && pDist < 2.2);
-  if (faceMate) { const mt = mateC || pMate, fy = Math.atan2(-(mt.pos.x - p.pos.x), -(mt.pos.z - p.pos.z)); p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
+  if (faceMate) { const mt = mateC || pMate; let fy = Math.atan2(-(mt.pos.x - p.pos.x), -(mt.pos.z - p.pos.z));
+    if (!mateC) { const base = p.team === 0 ? 0 : Math.PI; fy = base + Math.atan2(Math.sin(fy - base), Math.cos(fy - base)) * (pc.turn ?? .2); }
+    p.celYaw = p.celYaw === undefined ? yaw : p.celYaw + Math.atan2(Math.sin(fy - p.celYaw), Math.cos(fy - p.celYaw)) * Math.min(1, dt * 8); yaw = p.celYaw; }
   else p.celYaw = undefined;
   if (p.forceYaw != null) yaw = p.forceYaw; // cerimônia: todos de frente para a câmera
   m.group.rotation.set(0, yaw, 0); // (inteira: o tombo do peixinho não pode acumular de um quadro para o outro)
@@ -411,7 +414,11 @@ function animateAthlete(p, dt) {
   const lsK = lose ? (won ? ['fist', 'rkup', 'fist'][rk % 3] : ['head', 'tap', 'hips', 'shake', 'tap', 'head', 'shake', 'hips'][rk]) : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(.18, 1.05, -.05); _b.set(.8, 0, .3); }
-  if (pgW > 0 && pc.kind === 'rk') { _e.set(.04, .74, -.52); _c.lerp(_e, pgW); } // raquete com raquete: estica a raquete à frente, na altura do peito
+  // gesto com o parceiro: o braço estica na direção dele (de frente ou de lado, conforme o quanto viraram). Raquete com
+  // raquete usa o braço da raquete; tapa/toque usa a mão do lado em que o parceiro está
+  let pgDir = null, pgR = false;
+  if (pgW > 0 && pMate) { pgDir = _v2.set(pMate.pos.x - p.pos.x, 0, pMate.pos.z - p.pos.z).normalize().applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); pgR = pc.kind === 'rk' || pgDir.x > .15; }
+  if (pgDir && pgR) { _e.copy(shR).addScaledVector(pgDir, .6); _e.y += pc.kind === 'five' ? .45 : pc.kind === 'rk' ? .12 : -.25; _e.z -= .12; _c.lerp(_e, pgW); }
   if (lsW > 0) { if (lsK === 'rkup') _e.set(.2, .95, -.15); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
   // peixinho: o braço da raquete vai esticado para a frente do mergulho (para onde a bola está)
   if (tiltK > .05 && p.dive) { _g.set(p.dive.dx, 0, p.dive.dz).applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); _e.copy(shR).addScaledVector(_g, .62); _c.lerp(_e, tiltK * (swingU >= 0 && !p.swing.hit ? .45 : .85)); }
@@ -421,7 +428,7 @@ function animateAthlete(p, dt) {
   if (celPh === 'five') { _c.set(-.12, 1.0, -.4); _b.set(-.8, 0, .4); }
   else if (celPh === 'hug') { _c.set(-.2, .52, -.32); _b.set(-.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(-.18, 1.05, -.05); _b.set(-.8, 0, .3); }
-  if (pgW > 0 && pc.kind !== 'rk') { if (pc.kind === 'five') _e.set(-.1, 1.0, -.42); else _e.set(-.1, .34, -.46); _c.lerp(_e, pgW); } // tapa de mão no alto ou toque baixo
+  if (pgDir && !pgR) { _e.copy(shL).addScaledVector(pgDir, .6); _e.y += pc.kind === 'five' ? .45 : -.25; _e.z -= .12; _c.lerp(_e, pgW); } // tapa de mão no alto ou toque baixo
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
   if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z -= Math.cos(p.gait) * .17 * run * lvu; }
   // mão livre: na frente do corpo, apoiando a raquete pelo pescoço (pronta para o backhand); correndo solta um pouco e balança

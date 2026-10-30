@@ -96,20 +96,20 @@ function step(dt) {
   }
 }
 
-// entre pontos: a dupla se aproxima e faz o gesto (S.ptCel[time]); só quem é da CPU anda até o outro (você não é puxado).
+// entre pontos: a dupla se aproxima (fica a ~1,3 m, cada um estica o braço) e faz o gesto (S.ptCel[time]); só quem é da CPU anda até o outro (você não é puxado).
 // c.met: momento em que ficaram perto (o braço faz o gesto por ~0,55 s a partir daí)
 function ptCelStep(dt) {
   for (const k in S.ptCel) {
     const c = S.ptCel[k], tm = $s.teams[k]; c.t += dt; if (!tm || tm.length < 2 || c.t > 1.9) continue;
     const [a, b] = tm, d0 = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
-    if (c.met == null && d0 < 1.05 && c.t > .3) { c.met = c.t; c.hold = [a, b].map(p => [p.pos.x, p.pos.z]); }
+    if (c.met == null && d0 < 1.45 && c.t > .3) { c.met = c.t; c.hold = [a, b].map(p => [p.pos.x, p.pos.z]); }
     // durante o gesto ficam parados juntos (a IA não puxa de volta para a posição antes da hora)
     if (c.met != null && c.t - c.met < .8) { [a, b].forEach((p, i) => { if (!p.isHuman) { p.pos.x = c.hold[i][0]; p.pos.z = c.hold[i][1]; p.vel.set(0, 0, 0); } }); continue; }
     if (c.t < .3 || c.met != null || d0 > 5) continue;
     const movers = [a, b].filter(p => !p.isHuman), mx = (a.pos.x + b.pos.x) / 2, mz = (a.pos.z + b.pos.z) / 2;
     movers.forEach(p => { const o = p === a ? b : a, both = movers.length === 2;
-      const tx = both ? mx + (p.pos.x - mx) / Math.max(.01, d0 / 2) * .42 : o.pos.x + (p.pos.x - o.pos.x) / Math.max(.01, d0) * .85;
-      const tz = both ? mz + (p.pos.z - mz) / Math.max(.01, d0 / 2) * .42 : o.pos.z + (p.pos.z - o.pos.z) / Math.max(.01, d0) * .85;
+      const tx = both ? mx + (p.pos.x - mx) / Math.max(.01, d0 / 2) * .62 : o.pos.x + (p.pos.x - o.pos.x) / Math.max(.01, d0) * 1.25;
+      const tz = both ? mz + (p.pos.z - mz) / Math.max(.01, d0 / 2) * .62 : o.pos.z + (p.pos.z - o.pos.z) / Math.max(.01, d0) * 1.25;
       const dx = tx - p.pos.x, dz = tz - p.pos.z, d = Math.hypot(dx, dz), sp = Math.min(3.2, d * 4);
       p.vel.set(d > .02 ? dx / d * sp : 0, 0, d > .02 ? dz / d * sp : 0); p.pos.x += p.vel.x * dt; p.pos.z += p.vel.z * dt; p.swing.t = -1; p.charging = false; });
   }

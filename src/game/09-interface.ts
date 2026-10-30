@@ -584,7 +584,8 @@ function pointTo(w, reason, kind) {
     // raquete); quem perdeu às vezes, para se animar
     const pk = a => a[Math.floor(Math.random() * a.length)];
     // cada dupla no seu tempo (t negativo = começa depois) e do seu jeito; quem perdeu bem menos e só um toque discreto
-    S.ptCel = {}; if (Math.random() < .65) S.ptCel[w] = { t: -rand(0, .45), kind: pk(['five', 'five', 'low', 'rk', 'low']) }; if (Math.random() < .22) S.ptCel[1 - w] = { t: -rand(.3, .8), kind: pk(['low', 'low', 'rk']) };
+    // turn: quanto viram um para o outro (0 = seguem de frente para a rede e esticam o braço de lado)
+    S.ptCel = {}; if (Math.random() < .65) S.ptCel[w] = { t: -rand(0, .45), kind: pk(['five', 'five', 'low', 'rk', 'low']), turn: pk([0, .2, .45]) }; if (Math.random() < .22) S.ptCel[1 - w] = { t: -rand(.3, .8), kind: pk(['low', 'low', 'rk']), turn: pk([0, .2]) };
   }
   pointShow(w, ev, reason, isTitle);
   if (NET.onPoint) NET.onPoint(w, ev, reason);
