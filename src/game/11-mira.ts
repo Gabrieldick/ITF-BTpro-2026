@@ -12,8 +12,9 @@ import { $, hideBanner } from './09-interface';
 import { solveShot } from './10-fisica';
 import { MTR } from './12-controles';
 import { assignee, gapX, humanPlan } from './16-ia';
-function humanAim(p = human) {
-  const ix = p.inputX; const lim = C.halfW - .6;
+function humanAim(p = human, edge = false) {
+  // direcional todo para o lado: no smash/saque (edge) o alvo chega a 25 cm da linha (arriscado: ver o erro na lateral em doHit)
+  const ix = p.inputX, full = edge && Math.abs(ix) > .85, lim = C.halfW - (full ? .25 : .6);
   if (Math.abs(ix) > .25) return clamp(ix, -1, 1) * lim;
   return aimAutoX(p.team); // sem direção: o maior espaço vazio (fixo por bola, para a mira não tremer)
 }

@@ -269,8 +269,8 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) mod.oppMissBoost = (mod.oppMissBoost || 0) + Math.max(0, (A.saque - 60) / 100) * .07 * (mod.perfect ? 1 : .3);
   }
   const dir = p.team === 0 ? -1 : 1;
-  const lim = C.halfW - (key === 'curta' ? .8 : .35); // curta mira mais para dentro (é toque, não precisa da linha)
-  let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim(p) : aiAim(p), -lim, lim);
+  const lim = C.halfW - (key === 'curta' ? .8 : p.isHuman && (key === 'smash' || isServe) ? .2 : .35); // curta mira mais para dentro (é toque, não precisa da linha)
+  let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim(p, key === 'smash' || isServe) : aiAim(p), -lim, lim);
   if (mod.aimShift) aim = clamp(aim + mod.aimShift, -lim - .45, lim + .45);
   // smash do fundo cruzado (na diagonal): mais difícil — menos preciso e erra um pouco mais
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
@@ -284,7 +284,7 @@ function doHit(p, type, q, isServe, mod) {
     if (!finisher) spec.label = vfx.label;
     if (vfx.speed && spec.speed) spec.speed *= vfx.speed; if (vfx.depth && !finisher) spec.depth = vfx.depth; if (vfx.T && spec.T) spec.T = vfx.T; // a finalização mantém a profundidade dela
     if (vfx.noise) spec.noise *= vfx.noise; if (vfx.gk && !finisher) spec.gk = vfx.gk;
-    if (vfx.wide) aim = Math.sign(aim || rand(-1, 1)) * lim * .92;
+    if (vfx.wide) aim = Math.sign(aim || rand(-1, 1)) * Math.max(Math.abs(aim), lim * .92);
     if (vfx.jump) startJump(p, .5, .42);
   }
   if (!isServe) p.swing.var = vr;
@@ -305,13 +305,17 @@ function doHit(p, type, q, isServe, mod) {
     if (S.rally === 1) { const sv = clamp((inSpeed - 12) / 8, 0, 1) * (ball.servePerf ? 1.25 : 1); curtaK *= 1 - .55 * Math.min(1, sv); spec.gk = Math.min(spec.gk, lerp(1.3, 1.0, Math.min(1, sv))); spec.depth = [spec.depth[0] + .7 * sv, spec.depth[1] + 1.1 * sv]; if (curtaK <= .86 && spec.label === 'CURTA MATADORA') spec.label = SHOTS[key].label; }
   }
   const err = 1.15 - q;
+  // smash/saque forçando a lateral: quanto mais perto da linha a mira, mais a bola espalha para o lado, e bem mais com o
+  // timing ruim (mirando a 25 cm da linha: tempo perfeito quase sempre entra, médio sai ~1 em 8, ruim ~1 em 4)
+  let edgeSd = 0;
+  if (p.isHuman && !pop && (key === 'smash' || isServe)) { const ek = clamp((Math.abs(aim) - (C.halfW - 1.1)) / .85, 0, 1); edgeSd = ek * (.1 + .9 * (1 - clamp(q, 0, 1))); }
   // na finalização a mira curta (W) vai só até o meio: mais curta, a bola precisaria subir para passar a rede e perderia a velocidade
   const dT = p.isHuman ? (finisher ? .45 + humanDepthT(p) * .55 : humanDepthT(p)) : 0;
   let depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
   if (!p.isHuman && p.ai && p.ai.depthK != null) { if (!pop && p.ai.planDepth == null) depth = lerp(spec.depth[0], spec.depth[1], clamp(p.ai.depthK + rand(-.2, .2), 0, 1)); p.ai.depthK = null; } // CPU treinada: profundidade de cada golpe
   if (!p.isHuman && p.ai && p.ai.planDepth != null) { if (!pop && !isServe) depth = clamp(p.ai.planDepth, spec.depth[0], spec.depth[1]) + rand(-.15, .15); p.ai.planDepth = null; } // IA Planejadora: profundidade escolhida na busca
   { const se = staErr(p); if (se > 1 && !isServe) { spec.noise *= se; mod.misBoost = (mod.misBoost || 0) + (se - 1) * .08; } } // cansado: golpe menos preciso
-  const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
+  const tgt = new V3(aim + gauss() * spec.noise * err + gauss() * edgeSd, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
   if (wild) { tgt.x += (Math.random() < .5 ? -1 : 1) * rand(.8, 2.2); tgt.z += dir * rand(1.2, 3.2); }
   if (finOut) { if (Math.random() < .45) tgt.x = (Math.sign(tgt.x) || 1) * (C.halfW + rand(.5, 2)); else tgt.z = dir * (C.halfL + rand(.6, 2.5)); } // finalização que espirra: sai de verdade
   if (lobLong > 0) tgt.z += dir * (1 + lobLong * 14);
