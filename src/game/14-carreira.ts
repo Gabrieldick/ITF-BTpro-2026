@@ -39,7 +39,8 @@ function crDate(season, week, day) {
 }
 const crDateTxt = (season, week, day, withYear) => { const d = crDate(season, week, day); return DAY_NAMES[day - 1] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + (withYear ? ' ' + d.getFullYear() : ''); };
 // quantas semanas do ano têm torneio de cada nível profissional (os amadores têm toda semana)
-const CAL_N = { 3: 44, 4: 36, 5: 28, 6: 22, 7: 13, 8: 7 }; // como o calendário ITF: ~20 BT400 + Sand Series por ano
+// torneios por ano: grandes no máximo 12 BT400 + 5 Sand Series + o Mundial (nunca dois grandes em semanas seguidas)
+const CAL_N = { 3: 44, 4: 36, 5: 28, 6: 22, 7: 12, 8: 5 };
 const CALC = { key: '', cal: null };
 function crSeasonCal(season) {
   const key = $s.CR.seed + ':' + season;
@@ -50,7 +51,7 @@ function crSeasonCal(season) {
   return cal;
 }
 // torneios de verdade de cada semana (os mesmos que aparecem para você e os únicos que dão pontos para os outros):
-// cidade, nível e valor. BT400 nunca na mesma semana de outro BT400, de Sand Series ou do Mundial; BT400 e Sand Series
+// cidade, nível e valor. BT400 nunca na mesma semana (nem na seguinte) de outro BT400, de Sand Series ou do Mundial; BT400 e Sand Series
 // valem 400/700 ou um pouco mais (até ~470/777, os de maior premiação). Abaixo do BT400 pode haver mais de um na semana
 const EVC = { key: '', ev: null };
 const EV_PER = { 3: [1, .5, .25], 4: [1, .4], 5: [1, .3], 6: [1, .12] }; // chance do 1º, 2º, 3º torneio do nível na semana
@@ -61,11 +62,10 @@ function crSeasonEv(season) {
   for (const [t, n] of Object.entries(CAL_N)) {
     const ws = []; for (let w = 1; w <= 49; w++) ws.push(w); // semanas 50–52: Mundial e fim de ano
     for (let i = ws.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ws[i], ws[j]] = [ws[j], ws[i]]; }
-    weeks[t] = ws.slice(0, n);
+    weeks[t] = t >= 7 ? ws : ws.slice(0, n);
   }
-  // BT400 que caiu na semana de um Sand Series vai para a semana livre mais próxima
-  const ss = new Set(weeks[8]), b4 = new Set();
-  weeks[7] = weeks[7].map(w => { if (!ss.has(w) && !b4.has(w)) { b4.add(w); return w; } for (let d = 1; d < 49; d++) for (const v of [w - d, w + d]) if (v >= 1 && v <= 49 && !ss.has(v) && !b4.has(v)) { b4.add(v); return v; } return w; });
+  // grandes (Sand Series primeiro, depois BT400): nunca na mesma semana nem em semanas seguidas de outro grande
+  const big = new Set(); [8, 7].forEach(t => { const pick = []; for (const w of weeks[t]) { if (pick.length >= CAL_N[t]) break; if (![...big].some(b => Math.abs(b - w) < 2)) { pick.push(w); big.add(w); } } weeks[t] = pick; });
   const r2 = mulberry($s.CR.seed + season * 104729 + 11), ev = {};
   for (let w = 1; w <= SEASON_WEEKS; w++) ev[w] = [];
   const used = {};
