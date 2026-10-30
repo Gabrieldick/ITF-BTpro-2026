@@ -1060,3 +1060,39 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .cfg-cam .cfg-row .pills { flex-wrap: wrap; }
 .qm .roster { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .toggles .cr-field { margin-top: 4px; }
+
+/* ranking compacto: uma linha por atleta ou por dupla */
+.cr-list.rk-long { max-height: 560px; gap: 3px; }
+.cr-row.rk1 { padding: 4px 10px; gap: 8px; }
+.rk-names { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.rk-who { cursor: pointer; white-space: nowrap; }
+.rk-who:hover b { color: var(--ui-acc); }
+.rk-who small { display: inline !important; font-size: 11px; }
+.rk-who svg.flag { width: 16px; height: 11px; vertical-align: -1px; }
+.rk-sep { color: var(--ui-sub); }
+.rk-tools { align-items: center; gap: 12px; } .rk-tools small { color: var(--ui-sub); }
+@keyframes rkFlash { 0%, 60% { background: rgba(51,195,255,.4); } 100% { background: rgba(51,195,255,.12); } }
+.cr-row.flash { animation: rkFlash 1.2s ease-out; }
+/* loja de raquetes: filtros, ordem e comparação com a raquete em uso */
+.rk-filter { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 8px; }
+.rk-filter .pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.rk-filter .ghost.sel { background: var(--ui-acc); color: #041232; border-color: var(--ui-acc); }
+.rk-aff { font-size: 13px; margin-left: 8px; }
+.rk-sort { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ui-sub); margin-left: auto; }
+.rk-sort .cr-sel { padding: 4px 8px; font-size: 13px; }
+.cr-list.rk-shop { max-height: 640px; }
+.rk-cmp { margin-top: 2px; } .rk-cmp em { font-style: normal; font-weight: 700; margin-right: 6px; } .rk-cmp em.up { color: #4FD18B; } .rk-cmp em.dn { color: #ff7b6b; }
+/* calendário: o ano todo numa grade */
+.yr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.yr-m { background: rgba(255,255,255,.04); border: 1px solid var(--ui-line); border-radius: 4px; padding: 6px 8px; display: grid; gap: 4px; }
+.yr-m > b { font: 700 12px var(--f-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ui-acc); }
+.yr-ws { display: flex; gap: 4px; }
+.yr-w { flex: 1; min-width: 0; height: 40px; border-radius: 3px; background: rgba(255,255,255,.06); border: 1.5px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 2px; cursor: default; }
+.yr-w small { font-size: 10px; color: var(--ui-sub); line-height: 1; }
+.yr-w i { width: 70%; height: 4px; border-radius: 2px; }
+.yr-w.past { opacity: .35; }
+.yr-w.can { border-color: rgba(255,255,255,.75); background: rgba(255,255,255,.1); }
+.yr-w.now { box-shadow: 0 0 0 2px var(--ui-acc); }
+.yr-w.reg { border-color: var(--ui-warn); background: rgba(255,207,74,.18); }
+.cr-legend .yr-key { border: 1.5px solid rgba(255,255,255,.75); }
+.rk-gap { text-align: center; color: var(--ui-sub); letter-spacing: .3em; padding: 2px 0; }

@@ -10,7 +10,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
+import { crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -152,8 +152,19 @@ function crCalendarHTML() {
   return '<p class="section-label">Calendário · temporada ' + $s.CR.season + ' · você está na semana ' + $s.CR.week + '/' + SEASON_WEEKS + '</p>'
     + (reg ? '<div class="cr-card gold"><div class="eyebrow">Inscrito nesta semana</div><b>' + esc(reg.name) + '</b></div>' : '')
     + (crMaxTier() < 3 ? '<p class="cr-note">O ITF BT10 libera com ' + TIERS[3].req + ' pontos no ranking ou com um título no Amador A. Os amadores e estaduais aparecem na Agenda, semana a semana.</p>' : '<p class="cr-note">Como profissional, você pode jogar qualquer torneio do circuito, até o Sand Series (os acima do seu nível têm adversários bem mais fortes). As inscrições abrem na segunda da semana do torneio, na Agenda.</p>')
-    + '<div class="cr-legend">' + legend + '</div>'
-    + (months ? '<div class="cr-cal">' + months + '</div>' : '<p class="cr-note">Nenhum torneio profissional no resto da temporada.</p>');
+    + '<div class="cr-legend">' + legend + '<span class="yr-key">contorno = você pode jogar</span></div>' + crYearGrid()
+    + (months ? '<p class="section-label">Próximos torneios</p><div class="cr-cal">' + months + '</div>' : '<p class="cr-note">Nenhum torneio profissional no resto da temporada.</p>');
+}
+// a temporada inteira numa grade: cada semana com os níveis que têm torneio; contorno nos que você pode jogar
+function crYearGrid() {
+  const cal = crSeasonCal($s.CR.season), top = crMaxTier(), reg = $s.CR.tour && $s.CR.tour.pending ? $s.CR.week : 0;
+  const can = t => t === 9 ? crRank() <= 16 : t >= Math.max(3, top - 1) && t <= (top >= 3 ? 8 : top + 1);
+  const byM = Array.from({ length: 12 }, () => []);
+  for (let w = 1; w <= SEASON_WEEKS; w++) byM[crDate($s.CR.season, w, 6).getMonth()].push(w);
+  return '<div class="yr-grid">' + byM.map((ws, m) => '<div class="yr-m"><b>' + MESES[m].slice(0, 3) + '</b><div class="yr-ws">' + ws.map(w => {
+    const ts = (cal[w] || []).filter(t => t >= 3).sort((a, b) => b - a), ok = ts.some(can), d = crDate($s.CR.season, w, 6);
+    return '<span class="yr-w' + (w < $s.CR.week ? ' past' : w === $s.CR.week ? ' now' : '') + (ok && w >= $s.CR.week ? ' can' : '') + (w === reg ? ' reg' : '') + '" title="Semana ' + w + ' · ' + d.getDate() + '/' + (m + 1) + (ts.length ? ': ' + ts.map(t => TIERS[t].curto).join(', ') : ': só amadores') + '"><small>' + d.getDate() + '</small>' + ts.slice(0, 3).map(t => '<i style="background:' + TIER_COR[t] + '"></i>').join('') + '</span>';
+  }).join('') + '</div></div>').join('') + '</div>';
 }
 function crPlayerHTML() {
   const eq = crEquipB();
@@ -372,6 +383,14 @@ function crPartnersHTML() {
 // ícone de cada atributo nos bônus de raquetes e equipamentos
 const ATTR_IC = { forca: '💪', vel: '👟', def: '🛡️', backhand: '↩️', curta: '🪶', lob: '🌈', smash: '💥', saque: '🎾', leitura: '🧠', folego: '🫁', voleio: '⚡' };
 const bonusChips = b => Object.entries(b).map(([a, v]) => '<em class="' + (v > 0 ? 'up' : 'dn') + '" title="' + ATTRS.find(x => x[0] === a)[1] + '">' + ATTR_IC[a] + ' ' + (v > 0 ? '+' : '') + v + ' ' + ATTRS.find(x => x[0] === a)[1] + '</em>').join(' ');
+const RKF = { kind: 'all', own: 'all', sort: 'preco', afford: false };
+const rkTot = b => Object.values(b).reduce((t, v) => t + v, 0);
+// diferença para a raquete em uso, atributo por atributo
+function rkCmp(b) {
+  const cur = (RACKET_STATS[$s.CR.racket] || { b: {} }).b, ks = [...new Set(Object.keys(b).concat(Object.keys(cur)))];
+  const d = ks.map(k => [k, (b[k] || 0) - (cur[k] || 0)]).filter(([, v]) => v);
+  return '<small class="rk-cmp">' + (d.length ? 'vs. a sua: ' + d.map(([k, v]) => '<em class="' + (v > 0 ? 'up' : 'dn') + '">' + (v > 0 ? '+' : '−') + Math.abs(v) + ' ' + ATTRS.find(x => x[0] === k)[1] + '</em>').join(' ') : 'igual à sua nos atributos') + '</small>';
+}
 const rkKind = b => { const pos = k => Math.max(0, b[k] || 0), atk = pos('forca') + pos('smash') + pos('saque'), ctl = pos('def') + pos('curta') + pos('lob') + pos('backhand') + pos('vel'); return atk + ctl <= 2 ? ['🪵', 'Básica'] : atk > ctl + 2 ? ['⚡', 'Potência'] : ctl > atk + 2 ? ['🎯', 'Controle'] : ['⚖️', 'Equilíbrio']; };
 // raquete própria: desenho, cores e a distribuição dos pontos de bônus
 // prévia 3D da raquete própria (gira sozinha devagar e com o arraste): um renderizador só, que muda de lugar a cada tela
@@ -411,11 +430,18 @@ function crSigHTML() {
 }
 function crShopHTML() {
   const disc = $s.CR.discount || 0;
-  const rk = Object.entries(RACKET_STATS).sort((x, y) => ($s.CR.rackets.includes(y[0]) - $s.CR.rackets.includes(x[0])) || (y[0] === 'assinatura') - (x[0] === 'assinatura') || x[1].preco - y[1].preco).map(([k, r]) => {
+  // filtros e ordem da lista de raquetes; cada uma mostra a diferença para a que está em uso
+  const all = Object.entries(RACKET_STATS), kinds = [...new Set(all.map(([, r]) => rkKind(r.b)[1]))];
+  const list = all.filter(([k, r]) => (RKF.kind === 'all' || rkKind(r.b)[1] === RKF.kind) && (RKF.own === 'all' || (RKF.own === 'minhas') === $s.CR.rackets.includes(k)) && (!RKF.afford || $s.CR.rackets.includes(k) || $s.CR.money >= Math.round(r.preco * (1 - disc))))
+    .sort((x, y) => ($s.CR.racket === y[0]) - ($s.CR.racket === x[0]) || ({ preco: x[1].preco - y[1].preco, precod: y[1].preco - x[1].preco, bonus: rkTot(y[1].b) - rkTot(x[1].b) || x[1].preco - y[1].preco, nome: x[1].nome.localeCompare(y[1].nome) })[RKF.sort]);
+  const tools = '<div class="rk-tools rk-filter"><div class="pills">' + [['all', 'Todas']].concat(kinds.map(k => [k, k])).map(([k, n]) => '<button type="button" class="ghost sm' + (RKF.kind === k ? ' sel' : '') + '" data-rkf="kind:' + k + '">' + n + '</button>').join('') + '</div>'
+    + '<div class="pills">' + [['all', 'Todas'], ['minhas', 'Minhas'], ['loja', 'À venda']].map(([k, n]) => '<button type="button" class="ghost sm' + (RKF.own === k ? ' sel' : '') + '" data-rkf="own:' + k + '">' + n + '</button>').join('') + '<label class="chk rk-aff"><input type="checkbox" data-rkaff' + (RKF.afford ? ' checked' : '') + '> Só as que dá para comprar</label></div>'
+    + '<label class="rk-sort">Ordenar <select class="cr-sel" data-rksort>' + [['preco', 'Preço: menor primeiro'], ['precod', 'Preço: maior primeiro'], ['bonus', 'Soma dos bônus'], ['nome', 'Nome']].map(([k, n]) => '<option value="' + k + '"' + (RKF.sort === k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label></div>';
+  const rk = list.map(([k, r]) => {
     const own = $s.CR.rackets.includes(k), eq = $s.CR.racket === k, price = Math.round(r.preco * (1 - disc));
     const bonus = bonusChips(r.b), tot = Object.values(r.b).reduce((t, v) => t + v, 0), kd = rkKind(r.b);
-    return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small></div>' + (eq ? '' : !crRacketOk(k) ? '<button class="ghost sm" disabled title="Patrocínio master: só raquetes da ' + $s.CR.master.brand + '">Só ' + esc($s.CR.master.brand) + '</button>' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : crMasterFree(k) ? '<button class="cta sm" data-mtake="' + k + '" title="A ' + $s.CR.master.brand + ' te dá esta raquete">Pegar grátis</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + (crMasterFree(k) === false && $s.CR.master ? ' title="Acima do teto do contrato (' + money(crMasterCap()) + '): compre ou ganhe mais fama"' : '') + '>' + money(price) + '</button>') + '</div>';
-  }).join('');
+    return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small>' + (eq ? '' : rkCmp(r.b)) + '</div>' + (eq ? '' : !crRacketOk(k) ? '<button class="ghost sm" disabled title="Patrocínio master: só raquetes da ' + $s.CR.master.brand + '">Só ' + esc($s.CR.master.brand) + '</button>' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : crMasterFree(k) ? '<button class="cta sm" data-mtake="' + k + '" title="A ' + $s.CR.master.brand + ' te dá esta raquete">Pegar grátis</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + (crMasterFree(k) === false && $s.CR.master ? ' title="Acima do teto do contrato (' + money(crMasterCap()) + '): compre ou ganhe mais fama"' : '') + '>' + money(price) + '</button>') + '</div>';
+  }).join('') || '<p class="cr-note">Nenhuma raquete com esses filtros.</p>';
   // equipamentos por categoria: um em uso de cada (como a raquete); comprar o melhor de uma categoria já põe em uso
   const on = new Set(gearOn($s.CR.gear, $s.CR.gearEq));
   const gr = GEAR_SLOTS.map(([sl, nm]) => '<p class="section-label" style="margin-top:6px">' + nm + '</p>' + GEAR.filter(g => g.slot === sl).sort((a, b) => a.preco - b.preco).map(g => {
@@ -429,7 +455,7 @@ function crShopHTML() {
   }).join('');
   const sub = SHOP_TABS.map(([k, n]) => '<button type="button" class="' + (shopTab === k ? 'sel' : '') + '" data-shop="' + k + '">' + n + '</button>').join('');
   const head = (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '') + '<div class="cr-tabs cr-shop-tabs">' + sub + '</div>';
-  if (shopTab === 'raquetes') return head + crSigHTML() + '<p class="section-label">🎾 Raquetes (' + Object.keys(RACKET_STATS).length + ')</p><div class="cr-list">' + rk + '</div>';
+  if (shopTab === 'raquetes') return head + crSigHTML() + '<p class="section-label">🎾 Raquetes (' + list.length + ' de ' + all.length + ')</p>' + tools + '<div class="cr-list rk-shop">' + rk + '</div>';
   if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Um em uso por categoria, como a raquete (quanto melhor, mais caro). Somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
   return head + crClothesHTML(shopTab);
 }
@@ -534,8 +560,7 @@ function crRankingHTML() {
   if (crRankView === 'pts') return tabs + crMyPtsHTML();
   if (crRankView === 'nac') { // ranking nacional: só os atletas do seu país (mesmos pontos do mundial)
     const all = crRanking(), r = all.filter(x => { const c = crChar(x.id); return c && c.pais === pais; }), me = r.findIndex(x => x.id === 'crme');
-    const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
-    return tabs + '<p class="section-label">Ranking ' + esc(natName) + ' · ' + r.length + ' atletas · você é o ' + tieRank(r, me) + 'º</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '" data-prof="' + x.id + '"><span class="cr-pos">' + tieRank(r, i) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + (c.pais === 'BRA' && crUf(c) ? crUf(c) + ' · ' : '') + 'OVR ' + crCharOvr(c) + ' · ' + tieRank(all, all.indexOf(x)) + 'º no mundo</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
+    return tabs + '<p class="section-label">Ranking ' + esc(natName) + ' · ' + r.length + ' atletas · você é o ' + tieRank(r, me) + 'º</p>' + crRankList(r, c => (c.pais === 'BRA' && crUf(c) ? crUf(c) + ' · ' : '') + tieRank(all, all.findIndex(y => y.id === c.id)) + 'º no mundo');
   }
   return tabs + crRankingGeral();
 }
@@ -573,9 +598,26 @@ function crMyPtsHTML() {
     + (rest.length ? '<p class="section-label">Fora da conta (só valem se ficarem entre os ' + RANK_BEST + ' melhores)</p><div class="cr-list">' + rest.map(x => row(x, 0, false)).join('') + '</div>' : '');
 }
 function crRankingGeral() {
-  const r = crRanking(), me = r.findIndex(x => x.id === 'crme');
-  const show = r.slice(0, 30); if (me >= 30) show.push(...r.slice(Math.max(30, me - 2), me + 3));
-  return '<p class="section-label">Ranking ' + ($s.CR.me.fem ? 'feminino' : 'masculino') + ' (' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p><div class="cr-list">' + show.map(x => { const i = r.indexOf(x), c = crChar(x.id); return '<div class="cr-row' + (x.id === 'crme' ? ' me' : '') + '" data-prof="' + x.id + '"><span class="cr-pos">' + tieRank(r, i) + '</span><div><b>' + flagSVG(c.pais) + ' ' + esc(nameOf(c)) + '</b><small>' + c.pais + ' · OVR ' + crCharOvr(c) + '</small></div><b class="cr-pts">' + x.pts + '</b></div>'; }).join('') + '</div>';
+  const r = crRanking();
+  return '<p class="section-label">Ranking ' + ($s.CR.me.fem ? 'feminino' : 'masculino') + ' (' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p>' + crRankList(r, c => c.pais);
+}
+// lista do ranking: uma linha por atleta, ou uma linha só para a dupla quando os dois estão lado a lado com os mesmos pontos
+function crRankList(r, sub) {
+  const P = $s.CR.pairs || {}, me = r.findIndex(x => x.id === 'crme'), myMate = $s.CR.partnerTemp ? null : $s.CR.partner;
+  const mateOf = id => id === 'crme' ? myMate : id === myMate ? 'crme' : P[id];
+  const who = (c, id) => '<span class="rk-who" data-prof="' + id + '">' + flagSVG(c.pais) + ' <b>' + esc(nameOf(c)) + '</b> <small>' + esc(sub(c)) + ' · ' + crCharOvr(c) + '</small></span>';
+  // os 100 primeiros e, se você estiver mais para baixo, a sua vizinhança
+  const rows = [], N = Math.min(r.length, 100), near = me >= N ? [Math.max(N, me - 6), Math.min(r.length, me + 7)] : null;
+  const idx = [...Array(N).keys()].concat(near ? [-1, ...Array.from({ length: near[1] - near[0] }, (_, k) => near[0] + k)] : []);
+  for (let j = 0; j < idx.length; j++) {
+    const i = idx[j]; if (i < 0) { rows.push('<div class="rk-gap">⋯</div>'); continue; }
+    const x = r[i], y = idx[j + 1] === i + 1 ? r[i + 1] : null, c = crChar(x.id); if (!c) continue;
+    const two = y && y.pts === x.pts && mateOf(x.id) === y.id && crChar(y.id);
+    rows.push('<div class="cr-row rk1' + (x.id === 'crme' || (two && y.id === 'crme') ? ' me' : '') + '"><span class="cr-pos">' + tieRank(r, i) + '</span><div class="rk-names">' + who(c, x.id) + (two ? '<span class="rk-sep">/</span>' + who(crChar(y.id), y.id) : '') + '</div><b class="cr-pts">' + x.pts + '</b></div>');
+    if (two) j++;
+  }
+  return (me >= 0 ? '<div class="cta-row rk-tools"><button type="button" class="ghost sm" data-rkme>📍 Minha posição (' + tieRank(r, me) + 'º)</button><small>' + r.length + ' atletas · os ' + N + ' primeiros' + (near ? ' e a sua posição' : '') + '</small></div>' : '')
+    + '<div class="cr-list rk-long">' + rows.join('') + '</div>';
 }
 function crRivalsHTML() {
   const l = Object.entries($s.CR.h2hP || {}).filter(([id]) => crRivalP(id)).sort((a, b) => (b[1].w + b[1].l) - (a[1].w + a[1].l)).slice(0, 10);
@@ -673,6 +715,10 @@ function bindCareerBody() {
   body.querySelectorAll('[data-pact]').forEach(bt => bt.addEventListener('click', () => { crPartnerAct(bt.dataset.pact); renderCareer(); }));
   body.querySelectorAll('[data-goal]').forEach(bt => bt.addEventListener('click', () => { crPickGoal(+bt.dataset.goal); renderCareer(); }));
   body.querySelectorAll('[data-rkview]').forEach(bt => bt.addEventListener('click', () => { crRankView = bt.dataset.rkview; renderCareer(); }));
+  body.querySelectorAll('[data-rkf]').forEach(bt => bt.addEventListener('click', () => { const [k, v] = bt.dataset.rkf.split(':'); RKF[k] = v; renderCareer(); }));
+  body.querySelectorAll('[data-rksort]').forEach(e => e.addEventListener('change', () => { RKF.sort = e.value; renderCareer(); }));
+  body.querySelectorAll('[data-rkaff]').forEach(e => e.addEventListener('change', () => { RKF.afford = e.checked; renderCareer(); }));
+  body.querySelectorAll('[data-rkme]').forEach(bt => bt.addEventListener('click', () => { const L = body.querySelector('.rk-long'), m = L && L.querySelector('.cr-row.me'); if (m) { L.scrollTop = m.offsetTop - L.offsetTop - L.clientHeight / 2 + m.offsetHeight / 2; m.classList.remove('flash'); void m.offsetWidth; m.classList.add('flash'); } }));
   body.querySelectorAll('[data-selcat]').forEach(bt => bt.addEventListener('click', () => { crSelCat = +bt.dataset.selcat; renderCareer(); }));
   body.querySelectorAll('[data-inv]').forEach(bt => bt.addEventListener('click', () => { crInvBuy(bt.dataset.inv); renderCareer(); }));
   body.querySelectorAll('[data-hire]').forEach(bt => bt.addEventListener('click', () => { crHire(bt.dataset.hire); renderCareer(); }));
@@ -871,7 +917,7 @@ function rkInfo() {
   const r = RACKET_STATS[$('rkSel').value]; if (!r) return;
   $('rkInfo').innerHTML = esc(r.desc) + ' ' + Object.entries(r.b).map(([a, v]) => '<em class="' + (v > 0 ? 'up' : 'dn') + '">' + (v > 0 ? '+' : '') + v + ' ' + ATTRS.find(x => x[0] === a)[1] + '</em>').join(' ');
 }
-$('rkSel').innerHTML = Object.entries(RACKET_STATS).sort((x, y) => x[1].preco - y[1].preco).map(([k, r]) => '<option value="' + k + '">' + r.nome + ' (' + rkSummary(k) + ')</option>').join('');
+$('rkSel').innerHTML = Object.entries(RACKET_STATS).sort((x, y) => x[1].preco - y[1].preco).map(([k, r]) => '<option value="' + k + '" title="' + rkSummary(k) + '">' + r.nome + ' · ' + rkKind(r.b)[1] + '</option>').join('');
 $('rkSel').addEventListener('change', () => { rkInfo(); readMenu(); });
 function startFromMenu() { ac(); readMenu(); newMatch(); }
 function toMenu() {
