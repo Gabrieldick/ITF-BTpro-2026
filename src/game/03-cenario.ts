@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { C, HALF_W, SHORE_Z, V3, WATERLINE, ZONE3, clamp, fbm, rand, smooth } from './00-base';
 import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene, sun } from './02-render';
+import { brandMark } from './marcas';
 // juntar o cenário parado: centenas de peças pequenas (palmeiras, quiosques, prédios, arquibancadas, placas) viravam uma
 // chamada de desenho cada (e outra na sombra). Junta, dentro de cada grupo, as peças visíveis com o mesmo material numa
 // malha só; o que se mexe é InstancedMesh (fica de fora), e quem precisa ficar separado marca userData.dyn
@@ -724,7 +725,8 @@ function adTex(i, wide) {
   const t = canvasTex(W, H, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, bg); g.addColorStop(1, bg2 || bg); x.fillStyle = g; x.fillRect(0, 0, w, h);
     x.globalAlpha = .08; x.fillStyle = fg; for (let i = -h; i < w; i += 22) { x.beginPath(); x.moveTo(i, h); x.lineTo(i + h * .6, 0); x.lineTo(i + h * .6 + 8, 0); x.lineTo(i + 8, h); x.fill(); } x.globalAlpha = 1; // listras finas no fundo
-    const lr = wide ? 40 : 30, lx = wide ? 70 : 42; adLogo(x, logo, lx, h / 2 - (wide ? 0 : 6), lr, fg, bg);
+    // marcas de raquete: o mesmo símbolo das raquetes (marcas.ts); as outras, o desenho próprio da placa
+    const lr = wide ? 40 : 30, lx = wide ? 70 : 42; if (/^(NUX|HERUE|KUNA|ANA SPORT|MORMAJI|DROP SHUT|ZANB|VIZION)/.test(name)) brandMark(x, name, lx, h / 2 - (wide ? 0 : 6), lr, fg, bg); else adLogo(x, logo, lx, h / 2 - (wide ? 0 : 6), lr, fg, bg);
     x.fillStyle = fg; x.textAlign = 'left'; x.textBaseline = 'middle'; const tx = lx + lr + 14, room = w - tx - 12;
     let fs = wide ? 50 : 34; x.font = 'italic 900 ' + fs + 'px Arial Black, Arial, sans-serif'; while (x.measureText(name).width > room && fs > 14) { fs -= 2; x.font = 'italic 900 ' + fs + 'px Arial Black, Arial, sans-serif'; }
     x.fillText(name, tx, h / 2 - 12);

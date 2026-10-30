@@ -4,6 +4,7 @@ import './04-poses';
 import * as THREE from 'three';
 import { V3, clamp, lerp, rand, smooth } from './00-base';
 import { canvasTex, mat } from './02-render';
+import { brandMark } from './marcas';
 // ---------- Atletas ----------
 const SHADOW_TEX = canvasTex(64, 64, (x) => { const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,.65)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); }, false);
 function capsuleGeo(rTop, rBot, len, seg) {
@@ -215,6 +216,7 @@ function bigX(x, w, cx = 128, cy = 104, sp = 92, arm = 26) { // X grande (dois b
 }
 function wordmark(x, txt, y, col, size, italic, font) { x.save(); x.fillStyle = col; x.font = (italic ? 'italic ' : '') + '900 ' + size + 'px ' + (font || 'Arial Black, Arial, sans-serif'); x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 128, y); x.restore(); }
 function glitter(x, w, h, col, n, a = .6) { for (let i = 0; i < n; i++) { x.fillStyle = col; x.globalAlpha = Math.random() * a; x.fillRect(Math.random() * w, Math.random() * h, 1.3, 1.3); } x.globalAlpha = 1; }
+function vizWord(x, y, col, size) { x.save(); x.fillStyle = col; x.font = 'italic 900 ' + size + 'px "Arial Rounded MT Bold", "Arial Black", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('vizion', 128, y); x.restore(); }
 function rimLine(x, col, lw, inset = 8) { x.strokeStyle = col; x.lineWidth = lw; ell(x, 128, 100, 126 - inset, 92 - inset); x.stroke(); }
 function star4(x, cx, cy, r, ri) { x.beginPath(); for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? ri : r; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); }
 const RK_ART = {
@@ -223,19 +225,19 @@ const RK_ART = {
     const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#fbfaf7'); g.addColorStop(1, '#e7e3dc'); x.fillStyle = g; x.fillRect(0, 0, w, h);
     x.save(); bigX(x); x.clip(); for (let i = 0; i < w; i += 9) for (let j = 0; j < h; j += 9) { x.fillStyle = ['#5d6066', '#7c8087', '#9a9ea5', '#484a4f'][(i * 7 + j * 3) / 9 % 4 | 0]; x.fillRect(i, j, 9, 9); } x.restore();
     bigX(x); x.strokeStyle = '#c9a24a'; x.lineWidth = 2.2; x.stroke(); rimLine(x, '#c9a24a', 1.6);
-    wordmark(x, 'NUX', 182, '#1b1b1d', 15); wordmark(x, 'NG17 LUXURY', 197, '#b38b36', 8);
+    wordmark(x, 'NUX', 181, '#1b1b1d', 18); wordmark(x, 'NG17 LUXURY', 197, '#b38b36', 8);
   } },
   // V10 (Nox, Casadei): coral com brilho, X branco com contorno prata
   atol: { edge: '#e04a4c', grip: '#c8323a', throat: '#f4f0ee', gloss: true, draw(x, w, h) {
     x.fillStyle = '#e8534f'; x.fillRect(0, 0, w, h); glitter(x, w, h, '#ffd9d4', 900, .7);
     bigX(x); x.fillStyle = '#fbfbfb'; x.fill(); bigX(x); x.strokeStyle = '#c4c8cf'; x.lineWidth = 2; x.stroke(); rimLine(x, '#ffd3cf', 1.4);
-    wordmark(x, 'NUX', 182, '#ffffff', 15); wordmark(x, 'V10', 197, '#ffffff', 10);
+    wordmark(x, 'NUX', 181, '#ffffff', 18); wordmark(x, 'V10', 197, '#ffffff', 10);
   } },
   // Nova 87 (Nox, Kudinova/Semenova): perolada, X mais claro com contorno rosa coral
   recife: { edge: '#f4f0ec', grip: '#f6f3f0', throat: '#f07f86', draw(x, w, h) {
     const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#f8f5f1'); g.addColorStop(1, '#e9e3dd'); x.fillStyle = g; x.fillRect(0, 0, w, h);
     bigX(x); x.fillStyle = '#fefdfc'; x.fill(); bigX(x); x.strokeStyle = '#ef7f86'; x.lineWidth = 2.2; x.stroke(); rimLine(x, '#ef9aa0', 1.4);
-    wordmark(x, 'NUX', 180, '#2a2a2c', 14); wordmark(x, 'NOVA 87', 195, '#e86e78', 9);
+    wordmark(x, 'NUX', 179, '#2a2a2c', 18); wordmark(x, 'NOVA 87', 195, '#e86e78', 9);
   } },
   // Rebel (Heroe's, Spoto): preta fosca, disco sol amarelo→laranja cruzado por um X preto, asa roxa embaixo
   aurora: { edge: '#d9d9de', grip: '#f2f2f2', throat: '#8a3fb8', rough: true, draw(x, w, h) {
@@ -243,7 +245,7 @@ const RK_ART = {
     const g = x.createRadialGradient(128, 98, 6, 128, 98, 64); g.addColorStop(0, '#fff3a0'); g.addColorStop(.45, '#ffc21a'); g.addColorStop(1, '#ff6a10'); ell(x, 128, 98, 64, 64); x.fillStyle = g; x.fill();
     x.strokeStyle = '#d4782a'; x.lineWidth = 1.2; for (const [a, b, c, d] of [[20, 10, 236, 190], [236, 10, 20, 190]]) { x.beginPath(); x.moveTo(a, b); x.lineTo(c, d); x.stroke(); }
     bigX(x, w, 128, 98, 58, 16); x.fillStyle = '#0e0e10'; x.fill();
-    x.fillStyle = '#ff4b1f'; x.fillRect(40, 168, 176, 13); wordmark(x, "HERUE'S", 175, '#111', 10);
+    x.fillStyle = '#ff4b1f'; x.fillRect(40, 168, 176, 13); wordmark(x, "HERUE'S", 175, '#111', 14);
     x.fillStyle = '#9b3fd0'; x.beginPath(); x.moveTo(30, 186); x.lineTo(128, 214); x.lineTo(226, 186); x.lineTo(226, 198); x.lineTo(128, 232); x.lineTo(30, 198); x.closePath(); x.fill();
     x.strokeStyle = '#d58cff'; x.lineWidth = 1.5; for (let i = 0; i < 3; i++) { x.beginPath(); x.moveTo(70, 196 + i * 5); x.lineTo(128, 214 + i * 5); x.lineTo(186, 196 + i * 5); x.stroke(); }
   } },
@@ -251,7 +253,7 @@ const RK_ART = {
   zjump: { edge: '#ffd21a', grip: '#121314', throat: '#ffd21a', rough: true, draw(x, w, h) {
     carbonBase(x, w, h, '#101113', .06);
     x.fillStyle = '#ffd21a'; x.beginPath(); [[62, 46], [194, 46], [194, 70], [100, 150], [194, 150], [194, 174], [62, 174], [62, 150], [156, 70], [62, 70]].forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.closePath(); x.fill();
-    rimLine(x, '#ffd21a', 1.6); wordmark(x, 'ZANB', 190, '#ffffff', 14); wordmark(x, 'Z JUMP', 205, '#ffd21a', 9);
+    rimLine(x, '#ffd21a', 1.6); wordmark(x, 'ZANB', 188, '#ffffff', 18); wordmark(x, 'Z JUMP', 205, '#ffd21a', 9);
   } },
   // Fierce (Heroe's, Cappelletti): preta, disco branco, X preto com pontas ciano, aro laranja-vermelho
   eclipse: { edge: '#ff4a1f', grip: '#131315', throat: '#7d8288', rough: true, draw(x, w, h) {
@@ -259,7 +261,7 @@ const RK_ART = {
     ell(x, 128, 98, 62, 62); x.fillStyle = '#f7f7f5'; x.fill();
     bigX(x, w, 128, 98, 58, 16); x.fillStyle = '#101012'; x.fill();
     x.fillStyle = '#35c8f0'; for (const [cx, cy, a] of [[46, 22, .8], [210, 22, 2.35], [62, 176, -.8], [194, 176, -2.35]]) { x.save(); x.translate(cx, cy); x.rotate(a); x.beginPath(); x.moveTo(0, -5); x.lineTo(26, 0); x.lineTo(0, 5); x.closePath(); x.fill(); x.restore(); }
-    wordmark(x, "HERUE'S", 186, '#c47a45', 12); wordmark(x, 'FIERCE', 199, '#c47a45', 8);
+    wordmark(x, "HERUE'S", 184, '#c47a45', 15); wordmark(x, 'FIERCE', 199, '#c47a45', 8);
   } },
   // Starlight (Heroe's, Gasparri/Valentini): branca, disco azul-céu, estrela de 4 pontas fina com pontas furta-cor
   proteo: { edge: '#f4f6f8', grip: '#8fe0c8', throat: '#cfe9f7', draw(x, w, h) {
@@ -268,7 +270,7 @@ const RK_ART = {
     star4(x, 128, 98, 96, 9); x.fillStyle = '#1f3a5c'; x.fill();
     for (const [cx, cy] of [[128, 8], [128, 188], [36, 98], [220, 98]]) { const g = x.createLinearGradient(cx - 12, cy - 12, cx + 12, cy + 12); g.addColorStop(0, '#ff7ad9'); g.addColorStop(.33, '#7ae1ff'); g.addColorStop(.66, '#c8ff7a'); g.addColorStop(1, '#ffd97a'); ell(x, cx, cy, 7, 7); x.fillStyle = g; x.fill(); }
     x.strokeStyle = '#3d8fd8'; x.lineWidth = 2; for (let i = 0; i < 3; i++) { x.beginPath(); x.moveTo(84, 168 + i * 7); x.lineTo(128, 186 + i * 7); x.lineTo(172, 168 + i * 7); x.stroke(); }
-    wordmark(x, "HERUE'S", 160, '#1f3a5c', 10);
+    wordmark(x, "HERUE'S", 160, '#1f3a5c', 14);
   } },
   // Gladiator (Kona, Baran): preta fosca em carbono, grande "K" em chevron com degradê neon amarelo→laranja→magenta
   kronos: { edge: '#111214', grip: '#121314', throat: '#5ec8ff', rough: true, draw(x, w, h) {
@@ -277,16 +279,15 @@ const RK_ART = {
     const g = x.createLinearGradient(70, 40, 190, 170); g.addColorStop(0, '#ffe23a'); g.addColorStop(.5, '#ff7a1a'); g.addColorStop(1, '#ff2fa0'); x.strokeStyle = g; x.lineWidth = 11; x.lineJoin = 'miter';
     x.beginPath(); x.moveTo(178, 34); x.lineTo(118, 100); x.lineTo(178, 166); x.stroke(); x.beginPath(); x.moveTo(92, 34); x.lineTo(92, 166); x.stroke();
     x.strokeStyle = '#121214'; x.lineWidth = 3.5; x.beginPath(); x.moveTo(178, 34); x.lineTo(118, 100); x.lineTo(178, 166); x.stroke(); x.beginPath(); x.moveTo(92, 34); x.lineTo(92, 166); x.stroke();
-    wordmark(x, 'KUNA', 186, '#e8e8ea', 13); wordmark(x, 'GLADIATOR', 199, '#ff7a1a', 8);
+    wordmark(x, 'KUNA', 184, '#e8e8ea', 19); wordmark(x, 'GLADIATOR', 201, '#ff7a1a', 9);
   } },
-  // Poison Bee (Ama Sport, Cariani): branca coberta de losangos cinza, abelha/ferrão estilizado no centro, faixa preta
-  supercarbon: { edge: '#f4f5f6', grip: '#b08a5e', throat: '#f4f5f6', rough: true, draw(x, w, h) {
+  // Poison Bee (Ama Sport, Cariani): branca coberta de favos cinza, abelha grande preta e amarela no centro, AMA embaixo
+  supercarbon: { edge: '#f4f5f6', grip: '#b08a5e', throat: '#f5c400', rough: true, draw(x, w, h) {
     x.fillStyle = '#f7f7f7'; x.fillRect(0, 0, w, h);
-    for (let j = 0; j < 180; j += 11) for (let i = 0; i < w; i += 11) { const d = Math.hypot(i - 128, (j - 95) * 1.2); if (d > 120 + Math.random() * 20) continue; x.fillStyle = ['#c9cbcf', '#aeb1b6', '#d9dbde', '#93969c'][Math.random() * 4 | 0]; x.save(); x.translate(i + (j / 11 % 2) * 5.5, j); x.rotate(Math.PI / 4); x.fillRect(-4, -4, 8, 8); x.restore(); }
-    x.fillStyle = '#111'; x.beginPath(); x.moveTo(128, 50); x.bezierCurveTo(176, 62, 182, 120, 128, 150); x.bezierCurveTo(150, 116, 146, 80, 128, 50); x.fill();
-    x.beginPath(); x.moveTo(128, 50); x.bezierCurveTo(80, 62, 74, 120, 128, 150); x.bezierCurveTo(106, 116, 110, 80, 128, 50); x.fillStyle = '#fff'; x.fill(); x.strokeStyle = '#111'; x.lineWidth = 2; x.stroke();
-    x.fillStyle = '#111'; x.beginPath(); x.moveTo(128, 150); x.lineTo(122, 166); x.lineTo(134, 166); x.closePath(); x.fill();
-    x.fillStyle = '#121212'; x.save(); x.transform(1, 0, -.25, 1, 20, 0); x.fillRect(40, 174, 180, 16); x.restore(); wordmark(x, 'ANA SPORT', 182, '#fff', 10, true);
+    x.strokeStyle = 'rgba(150,154,160,.45)'; x.lineWidth = 1.2; for (let j = 0; j < 190; j += 13) for (let i = 0; i < w + 15; i += 15) { const cx = i + (j / 13 % 2) * 7.5; x.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + Math.PI / 6; x.lineTo(cx + Math.cos(a) * 7.5, j + Math.sin(a) * 7.5); } x.closePath(); x.stroke(); }
+    brandMark(x, 'poison bee', 128, 96, 74, '#111214', '#f7f7f7', { stripe: '#f5c400' });
+    x.fillStyle = '#121212'; x.save(); x.transform(1, 0, -.25, 1, 20, 0); x.fillRect(40, 172, 180, 22); x.restore();
+    brandMark(x, 'Ana Sport', 128, 183, 30, '#f5c400'); wordmark(x, 'POISON BEE', 202, '#111214', 8);
   } },
   // Medusa 6K (Ama Sport, Bazzi): preta em carbono 6K, ondas de pontinhos dourados, triângulo dourado, faixa champanhe
   medusa: { edge: '#d9c08a', grip: '#17181a', throat: '#d9c08a', draw(x, w, h) {
@@ -294,7 +295,7 @@ const RK_ART = {
     x.fillStyle = '#d6b46c'; for (let r = 30; r < 140; r += 13) { const n = Math.floor(r * .6); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, wob = Math.sin(a * 6 + r * .1) * 3; ell(x, 128 + Math.cos(a) * (r + wob), 100 + Math.sin(a) * (r + wob) * .9, 1.3, 1.3); x.fill(); } }
     triPath(x, 128, 100, 30); x.strokeStyle = '#e2c27a'; x.lineWidth = 3; x.stroke();
     x.fillStyle = '#e6d3a6'; x.fillRect(0, 176, w, 80); zigzag(x, 176, w, 12, 20, '#b8915a', 3);
-    wordmark(x, 'MEDUSA 6K', 194, '#6e5530', 11);
+    brandMark(x, 'Ana Sport', 128, 190, 26, '#6e5530'); wordmark(x, 'MEDUSA 6K', 208, '#6e5530', 9);
   } },
   // Bruxo (Zand, Antomi Ramos): branca com coroinhas bege, glifo em seta (bronze com brilho + carbono xadrez)
   ventosul: { edge: '#f6f4f0', grip: '#f4f2ee', throat: '#f6f4f0', rough: true, draw(x, w, h) {
@@ -303,7 +304,7 @@ const RK_ART = {
     x.save(); x.beginPath(); x.moveTo(128, 34); x.lineTo(70, 168); x.lineTo(96, 168); x.lineTo(128, 92); x.closePath(); x.clip(); const g = x.createLinearGradient(70, 34, 128, 168); g.addColorStop(0, '#a8682f'); g.addColorStop(1, '#d9a050'); x.fillStyle = g; x.fillRect(0, 0, w, h); glitter(x, w, h, '#ffe6a0', 500, .9); x.restore();
     x.save(); x.beginPath(); x.moveTo(128, 34); x.lineTo(186, 168); x.lineTo(160, 168); x.lineTo(128, 92); x.closePath(); x.clip(); for (let i = 0; i < w; i += 6) for (let j = 0; j < h; j += 6) { x.fillStyle = ((i + j) / 6) % 2 ? '#1a1a1a' : '#3a3a3a'; x.fillRect(i, j, 6, 6); } x.restore();
     x.fillStyle = '#b07a3e'; x.beginPath(); x.moveTo(80, 182); x.lineTo(128, 172); x.lineTo(176, 182); x.lineTo(128, 192); x.closePath(); x.fill();
-    wordmark(x, 'ZANB', 202, '#1a1a1a', 11);
+    wordmark(x, 'ZANB', 202, '#1a1a1a', 17);
   } },
   // Vitória III (Mormaii, Marchezini): branca, onda roxo→magenta→vermelho à direita com malha fina, letreiro dourado vertical
   mare: { edge: '#f2e7c9', grip: '#f4f4f2', throat: '#e0303a', gloss: true, draw(x, w, h) {
@@ -312,78 +313,78 @@ const RK_ART = {
     const g = x.createLinearGradient(160, 0, 230, 220); g.addColorStop(0, '#6a2ccf'); g.addColorStop(.5, '#e0309a'); g.addColorStop(1, '#e8283a'); x.fillStyle = g; x.fillRect(0, 0, w, h);
     x.strokeStyle = 'rgba(255,255,255,.22)'; x.lineWidth = .8; for (let i = -10; i < 30; i++) { x.beginPath(); x.moveTo(140 + i * 6, 0); x.bezierCurveTo(100 + i * 6, 70, 210 + i * 6, 130, 130 + i * 6, 230); x.stroke(); } x.restore();
     x.save(); x.translate(110, 100); x.rotate(-Math.PI / 2); x.fillStyle = '#c9a24a'; x.font = '900 22px Arial Black, Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('VITÓRIA', 0, 0); x.restore();
-    wordmark(x, 'MORMAJI', 186, '#c9a24a', 11); rimLine(x, '#d6b45c', 1.2);
+    brandMark(x, 'Mormaji', 128, 158, 17, '#c9a24a'); wordmark(x, 'MORMAJI', 186, '#c9a24a', 17); rimLine(x, '#d6b45c', 1.2);
   } },
   // Prime Attack (Drop Shot): preta com favos escuros, estrela de 4 pontas verde-limão
   tufao: { edge: '#8a8d92', grip: '#141516', throat: '#b7f000', rough: true, draw(x, w, h) {
     x.fillStyle = '#121314'; x.fillRect(0, 0, w, h);
     x.strokeStyle = 'rgba(80,84,90,.45)'; x.lineWidth = 1; for (let j = 0; j < h; j += 13) for (let i = 0; i < w; i += 15) { const cx = i + (j / 13 % 2) * 7.5, cy = j; x.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; x.lineTo(cx + Math.cos(a) * 7, cy + Math.sin(a) * 7); } x.closePath(); x.stroke(); }
     star4(x, 128, 100, 70, 20); x.fillStyle = '#b7f000'; x.fill(); star4(x, 128, 100, 42, 12); x.fillStyle = '#121314'; x.fill();
-    wordmark(x, 'DROP SHUT', 184, '#b7f000', 11); wordmark(x, 'PRIME ATTACK', 198, '#cfd2d6', 7);
+    brandMark(x, 'Drop Shut', 36, 182, 20, '#f2c14e'); wordmark(x, 'DROP SHUT', 184, '#b7f000', 16); wordmark(x, 'PRIME ATTACK', 200, '#cfd2d6', 8);
   } },
   // Predator (Shark): preta com estilhaços geométricos brancos hachurados, aro vermelho
   trovao: { edge: '#d8262c', grip: '#141516', throat: '#d8262c', draw(x, w, h) {
     carbonBase(x, w, h, '#101113', .06);
     x.save(); x.beginPath(); x.moveTo(60, 40); x.lineTo(176, 40); x.lineTo(200, 90); x.lineTo(120, 110); x.lineTo(150, 170); x.lineTo(96, 170); x.lineTo(70, 100); x.closePath(); x.clip(); x.strokeStyle = '#f2f2f2'; x.lineWidth = 2.2; for (let i = -200; i < 400; i += 7) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i - 160, 220); x.stroke(); } x.restore();
     x.fillStyle = '#d8262c'; x.fillRect(0, 178, w, 10); x.fillStyle = '#8a3fb8'; x.fillRect(0, 188, w, 3);
-    wordmark(x, 'SHANK', 200, '#f2f2f2', 11);
+    wordmark(x, 'SHANK', 202, '#f2f2f2', 17);
   } },
-  // Precision (Vision): preta com anéis orbitais brancos, furos com aro azul, aro branco
-  abismo: { edge: '#f4f6f8', grip: '#f4f6f8', throat: '#f4f6f8', draw(x, w, h) {
-    x.fillStyle = '#0d0e10'; x.fillRect(0, 0, w, h);
-    x.strokeStyle = '#f2f4f6'; for (let k = 0; k < 4; k++) { x.lineWidth = 3 - k * .5; x.beginPath(); x.ellipse(128, 100, 70 - k * 8, 26 + k * 6, k * .7 - .5, 0, Math.PI * 2); x.stroke(); }
-    ell(x, 128, 100, 10, 10); x.fillStyle = '#2f7fff'; x.fill();
-    x.strokeStyle = '#2f7fff'; x.lineWidth = 2; rimLine(x, '#2f7fff', 1.5, 12);
-    wordmark(x, 'VIZION', 186, '#f2f4f6', 12);
+  // a família Vision (Vizion): o "olho" com redemoinho grande no centro e o "vizion" em itálico embaixo
+  // Supercarbon 2026 (Vision): cinza-claro, olho azul cheio de pontinhos e arcos em degradê azul→ciano
+  abismo: { edge: '#e6e8ea', grip: '#f2f2f2', throat: '#e6e8ea', draw(x, w, h) {
+    const g0 = x.createLinearGradient(0, 0, w, h); g0.addColorStop(0, '#f1f2f3'); g0.addColorStop(1, '#d4d7da'); x.fillStyle = g0; x.fillRect(0, 0, w, h);
+    x.globalAlpha = .1; for (let i = -h; i < w; i += 6) { x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.moveTo(i, 0); x.lineTo(i + h, h); x.stroke(); } x.globalAlpha = 1;
+    const g = x.createLinearGradient(40, 40, 220, 150); g.addColorStop(0, '#1b8fe6'); g.addColorStop(1, '#35d0e6');
+    brandMark(x, 'Vizion', 128, 92, 82, '#1f7fd8', '#e6e8ea', { swirl: g });
+    for (let i = 0; i < 140; i++) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()); x.fillStyle = 'rgba(160,220,255,' + rand(.3, .8) + ')'; x.fillRect(128 + Math.cos(a) * 36 * r * .95 - Math.sin(a) * 6, 92 + Math.sin(a) * 26 * r, 1.6, 1.6); }
+    wordmark(x, 'SUPERCARBOM', 18, '#173b6e', 12); vizWord(x, 176, '#1a2a3a', 30); wordmark(x, 'PRO', 197, '#35b8d8', 8);
   } },
-  // Vizion Power: preta com um V largo em degradê azul→ciano e anéis finos atrás
-  vizpower: { edge: '#2f7fff', grip: '#0d0e10', throat: '#2f7fff', rough: true, draw(x, w, h) {
-    carbonBase(x, w, h, '#0d0e10', .06);
-    x.strokeStyle = 'rgba(242,244,246,.35)'; x.lineWidth = 1.2; for (let k = 0; k < 3; k++) { x.beginPath(); x.ellipse(128, 100, 84 - k * 10, 30 + k * 5, -.4 + k * .4, 0, Math.PI * 2); x.stroke(); }
-    brandMark(x, 'Vizion', 128, 98, 46, '#2f9bff', '#0d0e10'); rimLine(x, '#2f7fff', 1.6);
-    wordmark(x, 'VIZION', 182, '#f2f4f6', 13); wordmark(x, 'POWER', 197, '#2f9bff', 8);
+  // Supercarbon 2025 (Vision): branca com "hélices" de três pontas coloridas (rosa, ciano, amarelo, lilás) e olho preto grande
+  vizsc25: { edge: '#e9ebee', grip: '#f6f6f6', throat: '#d9dce0', draw(x, w, h) {
+    x.fillStyle = '#f8f8f8'; x.fillRect(0, 0, w, h);
+    const C = ['#ff6fa8', '#38c9e8', '#ffcf3a', '#a77cf2', '#7fe07a'];
+    for (let j = 6; j < 200; j += 17) for (let i = 4; i < w; i += 18) { const cx = i + (j / 17 % 2) * 9, cy = j; x.strokeStyle = C[(i * 7 + j * 3) % 5]; x.lineWidth = 2.4; x.save(); x.translate(cx, cy); x.rotate((i + j) % 3); x.beginPath(); for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3; x.moveTo(0, 0); x.lineTo(Math.cos(a) * 6, Math.sin(a) * 6); } x.stroke(); x.restore(); }
+    x.fillStyle = 'rgba(248,248,248,.75)'; ell(x, 128, 92, 96, 58); x.fill();
+    brandMark(x, 'Vizion', 128, 92, 86, '#0e0f11', '#f8f8f8');
+    ell(x, 128, 92, 15, 10); x.fillStyle = '#f8f8f8'; x.fill();
+    x.fillStyle = '#f8f8f8'; x.fillRect(0, 160, w, h - 160); x.fillRect(60, 8, 136, 20);
+    wordmark(x, 'SUPERCARBOM', 18, '#7a7f86', 11); vizWord(x, 178, '#5c6168', 28); wordmark(x, '2025', 197, '#8a8f96', 8);
   } },
-  // Vizion Control: branca com anéis azuis e o V pequeno no centro
-  vizcontrol: { edge: '#f4f6f8', grip: '#2f7fff', throat: '#2f7fff', draw(x, w, h) {
-    x.fillStyle = '#f6f7f9'; x.fillRect(0, 0, w, h);
-    x.strokeStyle = '#2f7fff'; for (let k = 0; k < 4; k++) { x.lineWidth = 2.6 - k * .5; x.beginPath(); x.ellipse(128, 100, 72 - k * 9, 28 + k * 6, .5 - k * .5, 0, Math.PI * 2); x.stroke(); }
-    brandMark(x, 'Vizion', 128, 100, 22, '#0d0e10', '#f6f7f9'); rimLine(x, '#2f7fff', 1.4);
-    wordmark(x, 'VIZION', 182, '#0d0e10', 13); wordmark(x, 'CONTROL', 197, '#2f7fff', 8);
+  // Magnum (Vision): preta com aro verde, molduras verde-limão em cima e embaixo, olho com contorno limão e arcos furta-cor
+  vizpower: { edge: '#2fbf4a', grip: '#0d0e10', throat: '#2fbf4a', rough: true, draw(x, w, h) {
+    carbonBase(x, w, h, '#0e100f', .06);
+    x.fillStyle = '#c9f23a'; x.beginPath(); x.moveTo(52, 14); x.lineTo(204, 14); x.lineTo(186, 34); x.lineTo(70, 34); x.closePath(); x.fill();
+    x.strokeStyle = '#c9f23a'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(30, 52); x.lineTo(60, 40); x.lineTo(196, 40); x.lineTo(226, 52); x.stroke(); x.beginPath(); x.moveTo(30, 152); x.lineTo(60, 164); x.lineTo(196, 164); x.lineTo(226, 152); x.stroke();
+    wordmark(x, 'MAGNUN', 24, '#0e100f', 13);
+    const g = x.createLinearGradient(50, 50, 210, 150); g.addColorStop(0, '#f2f2f2'); g.addColorStop(.35, '#9ff0ff'); g.addColorStop(.6, '#f7c1ff'); g.addColorStop(1, '#d6ff6a');
+    brandMark(x, 'Vizion', 128, 100, 74, '#c9f23a', '#0e100f', { ring: true, swirl: g });
+    x.fillStyle = '#c9f23a'; x.beginPath(); x.moveTo(40, 168); x.lineTo(216, 168); x.lineTo(200, 192); x.lineTo(56, 192); x.closePath(); x.fill();
+    vizWord(x, 180, '#0e100f', 26);
+  } },
+  // Strange (Vision): preta em carbono, aro rosa e azul salpicado, olho só em contorno branco e "STRENGE" em cima
+  vizcontrol: { edge: '#ff4fb8', grip: '#1a1b1e', throat: '#ff4fb8', rough: true, draw(x, w, h) {
+    carbonBase(x, w, h, '#101113', .08);
+    x.save(); ell(x, 128, 100, 126, 92); x.lineWidth = 16; x.clip(); for (let i = 0; i < 900; i++) { const a = Math.random() * Math.PI * 2, rr = .9 + Math.random() * .12; x.fillStyle = Math.random() < .5 ? '#ff4fb8' : '#6f8cff'; x.fillRect(128 + Math.cos(a) * 126 * rr, 100 + Math.sin(a) * 92 * rr, 3, 3); } x.restore();
+    x.save(); x.lineJoin = 'round'; brandMark(x, 'Vizion', 128, 96, 80, '#f2f2f2', '#101113', { ring: true }); x.restore();
+    wordmark(x, 'STRENGE', 22, '#e8e8ea', 12, true); vizWord(x, 176, '#f2f2f2', 30); wordmark(x, 'PRO', 197, '#ff4fb8', 8);
   } },
   // World Cup (Adidas): azul royal com linhas topográficas verdes, taça dourada no centro
   tsunami: { edge: '#1c3fae', grip: '#f4f4f4', throat: '#ffd23f', draw(x, w, h) {
     x.fillStyle = '#1c3fae'; x.fillRect(0, 0, w, h);
     x.strokeStyle = 'rgba(70,200,120,.55)'; x.lineWidth = 1.2; for (let k = 0; k < 16; k++) { x.beginPath(); for (let i = 0; i <= 64; i++) { const t = i / 64 * Math.PI * 2, r = 20 + k * 9 + Math.sin(t * 3 + k) * 6; x.lineTo(128 + Math.cos(t) * r, 100 + Math.sin(t) * r * .85); } x.stroke(); }
     x.fillStyle = '#ffcf33'; x.beginPath(); x.moveTo(104, 62); x.lineTo(152, 62); x.bezierCurveTo(152, 100, 140, 112, 132, 116); x.lineTo(134, 140); x.lineTo(146, 146); x.lineTo(110, 146); x.lineTo(122, 140); x.lineTo(124, 116); x.bezierCurveTo(116, 112, 104, 100, 104, 62); x.fill();
-    wordmark(x, 'ADIBAS', 186, '#ffd23f', 12);
+    wordmark(x, 'ADIBAS', 186, '#ffd23f', 17);
   } },
 };
 Object.assign(RACKETS, RK_ART);
 const RACKET_MATS = {};
-// símbolo de cada marca (estilizado, como nas raquetes e placas): o X da Herue's, o A da Ana Sport, a estrela da Drop Shut…
-function brandMark(x, brand, cx, cy, r, fg, bg) {
-  const b = String(brand || '').toLowerCase(); x.save(); x.translate(cx, cy); x.fillStyle = fg; x.strokeStyle = fg; x.lineJoin = 'round'; x.lineCap = 'round';
-  const poly = pts => { x.beginPath(); pts.forEach(([a, c], i) => i ? x.lineTo(a * r, c * r) : x.moveTo(a * r, c * r)); x.closePath(); x.fill(); };
-  if (b.startsWith('herue')) { x.lineWidth = r * .34; x.beginPath(); x.moveTo(-r * .7, -r * .75); x.lineTo(r * .7, r * .75); x.moveTo(r * .7, -r * .75); x.lineTo(-r * .7, r * .75); x.stroke(); x.fillStyle = bg; x.beginPath(); x.arc(0, 0, r * .16, 0, Math.PI * 2); x.fill(); }
-  else if (b.startsWith('nux')) { poly([[-.75, .8], [-.75, -.8], [-.4, -.8], [.38, .35], [.38, -.8], [.75, -.8], [.75, .8], [.4, .8], [-.38, -.35], [-.38, .8]]); x.fillStyle = bg; poly([[.5, -.95], [.62, -.95], [-.5, .95], [-.62, .95]]); }
-  else if (b.startsWith('ana')) { poly([[0, -.9], [.82, .85], [.45, .85], [.28, .38], [-.28, .38], [-.45, .85], [-.82, .85]]); x.fillStyle = bg; poly([[0, -.3], [.14, .12], [-.14, .12]]); }
-  else if (b.startsWith('kuna')) { poly([[-.7, -.85], [-.35, -.85], [-.35, -.1], [.35, -.85], [.8, -.85], [.05, 0], [.8, .85], [.35, .85], [-.35, .1], [-.35, .85], [-.7, .85]]); }
-  else if (b.startsWith('zanb')) { poly([[-.75, -.8], [.75, -.8], [.75, -.5], [-.25, .5], [.75, .5], [.75, .8], [-.75, .8], [-.75, .5], [.25, -.5], [-.75, -.5]]); }
-  else if (b.startsWith('drop')) { x.beginPath(); for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? r * .3 : r; x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } x.closePath(); x.fill(); }
-  else if (b.startsWith('mormaji')) { x.lineWidth = r * .22; for (let k = 0; k < 2; k++) { x.beginPath(); for (let i = 0; i <= 20; i++) { const t = i / 20, px = (t - .5) * 1.7 * r, py = Math.sin(t * Math.PI * 2) * r * .28 + (k - .5) * r * .55; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); } }
-  else if (b.startsWith('vizion')) { x.lineWidth = r * .12; x.beginPath(); x.ellipse(0, 0, r, r * .42, -.35, 0, Math.PI * 2); x.stroke(); poly([[-.72, -.75], [-.38, -.75], [0, .3], [.38, -.75], [.72, -.75], [.18, .85], [-.18, .85]]); }
-  else if (b.startsWith('shank')) { poly([[-.85, .6], [-.1, -.9], [.15, -.2], [.85, .6]]); x.fillStyle = bg; poly([[-.2, .6], [.1, .1], [.35, .6]]); }
-  else if (b.startsWith('adibas')) { for (let k = 0; k < 3; k++) poly([[-.75 + k * .55, .75], [-.55 + k * .55, .75 - (.5 + k * .45) * 1.1], [-.25 + k * .55, .75 - (.5 + k * .45) * 1.1], [-.45 + k * .55, .75]]); }
-  else { x.font = '900 ' + Math.round(r * 1.4) + 'px Arial Black, Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((brand || '?').slice(0, 1).toUpperCase(), 0, r * .05); }
-  x.restore();
-}
 // raquete própria da carreira: cores e desenho escolhidos pelo jogador, logo do patrocinador master atual e o nome dele
 const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras']];
 function setSignatureArt(cfg, brand, name) {
   const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
   const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
   // símbolo da marca no centro (com contorno na cor do fundo para destacar do desenho)
-  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 100, 34, c.a2 || '#ffffff', c.bg); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
+  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 98, 64, c.a2 || '#ffffff', c.bg); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
   const m = RACKET_MATS.assinatura; if (m) { Object.values(m).forEach(v => { if (v.map && v.map !== GRIP_TEX) v.map.dispose(); v.dispose(); }); delete RACKET_MATS.assinatura; }
 }
 function racketMats(key) {
@@ -405,7 +406,7 @@ const STRAP_MAT = mat('#1b1e22', { roughness: .8 });
 // depois do carregamento; até lá (ou sem o arquivo) fica a desenhada aqui. Cada modelo tem um padrão de furação.
 const RK_GLB = { geo: null, all: [] };
 // furação de cada modelo (padrões de antes; o contorno é o mesmo para todas)
-const RK_PATTERN = { basica: 'band', tropic: 'side1', brisa: 'side1', fibra: 'side2', areia: 'side1', mare: 'side1', coral: 'side2', duna: 'side1', medusa: 'ring', proteo: 'arc', vela: 'arc', tufao: 'arc', atol: 'side2', kronos: 'full', ventosul: 'side2', maresia: 'band', recife: 'side2', farol: 'side1', supercarbon: 'arc', corsario: 'side2', tsunami: 'band', abismo: 'side1', eclipse: 'side1', trovao: 'side1', aurora: 'side1', zenite: 'side2', assinatura: 'side1' };
+const RK_PATTERN = { basica: 'band', tropic: 'side1', brisa: 'side1', fibra: 'side2', areia: 'side1', mare: 'side1', coral: 'side2', duna: 'side1', medusa: 'ring', proteo: 'arc', vela: 'arc', tufao: 'arc', atol: 'side2', kronos: 'full', ventosul: 'side2', maresia: 'band', recife: 'side2', farol: 'side1', supercarbon: 'arc', corsario: 'side2', tsunami: 'band', abismo: 'side1', vizsc25: 'side1', eclipse: 'side1', trovao: 'side1', aurora: 'side1', zenite: 'side2', assinatura: 'side1' };
 function setRacketModels(gltf) {
   const geo = {}; gltf.scene.traverse(o => { if (o.isMesh) geo[o.name] = o.geometry; });
   if (!geo.Grip || !geo.F_side1) return;
