@@ -15,7 +15,7 @@ import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 import { startCeremony } from './22-cerimonia';
 // stamina: gasta correndo no ponto (bem mais em arrancada), em cada golpe, salto e mergulho (quem tem mais velocidade/físico
-// cansa menos). A recuperação é por ponto (não pelo tempo parado): +7% a cada ponto e +30% na troca de lado
+// cansa menos). A recuperação é por ponto (não pelo tempo parado): +10% a cada ponto, +25% no fim do game e +30% na troca de lado, até o teto que cai com a duração da partida
 function staminaStep(dt) {
   for (const p of $s.players) {
     if (p.sta === undefined) p.sta = 1;
@@ -28,6 +28,7 @@ function staminaStep(dt) {
       if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
       if (p.swing.t >= 0 && !p.staS) { p.staS = true; d += p.swing.type === 'smash' ? .022 : .012; } else if (p.swing.t < 0) p.staS = false; // cada golpe também cansa (o smash mais)
       p.sta = Math.max(0, p.sta - d * k);
+      p.staTired = (p.staTired || 0) + dt * .002 * k; // cansaço acumulado: ~3 min de bola em jogo (um set de 6 games) baixam o teto ~25%; até −45% (menos com fôlego)
     }
   }
 }

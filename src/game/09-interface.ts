@@ -120,7 +120,7 @@ let wipeT = 0;
 function sideWipe(f) {
   S.deadT = Math.max(S.deadT || 0, 0) + 4.2; // a pausa antes do próximo saque cresce para caber a caminhada
   S.sideWalk = { t: 0, f, flipped: false, banner: false, plan: null };
-  $s.players.forEach(q => { q.sta = Math.min(1, (q.sta ?? 1) + .3); }); // troca de lado: recupera bem mais
+  $s.players.forEach(q => staGain(q, .3)); // troca de lado: recupera bem mais
   clearTimeout(wipeT);
 }
 const SW_START = 1.0, SW_FLIP = 3.3, SW_END = 5.3;
@@ -203,6 +203,9 @@ function renderBoard() {
   const wt = weatherText(); $('sbWeather').textContent = wt; $('sbWeather').hidden = !wt;
 }
 const isGolden = () => !S.score.tb && S.score.pts[0] === 3 && S.score.pts[1] === 3;
+// recuperação da stamina: o teto cai com o cansaço acumulado da partida (staTired, ver 17-bola): partida longa não volta a 100%
+const staCap = q => 1 - Math.min(.45, q.staTired || 0);
+function staGain(q, v) { q.sta = Math.min(staCap(q), (q.sta ?? 1) + v); }
 function rotateServe() { S.serverIdx[S.server]++; S.server = 1 - S.server; }
 function awardPoint(w) {
   const sc = S.score, l = 1 - w; S.stats.pts[w]++;
@@ -579,9 +582,10 @@ function pointTo(w, reason, kind) {
   S.mode = 'dead'; S.deadT = 2.0;
   S.stats.maxRally = Math.max(S.stats.maxRally, S.rally);
   S.ptWin = w; S.ptT = 0; S.ptN = (S.ptN || 0) + 1; // reações entre pontos (18-animacao)
-  $s.players.forEach(q => { q.sta = Math.min(1, (q.sta ?? 1) + .07); }); // fôlego: recupera um tanto fixo por ponto
   if (S.rallyLog) S.rallyLog.push(S.rally);
   const ev = awardPoint(w);
+  // fôlego: recupera um tanto fixo por ponto (+10%) e mais no fim de cada game (+15%); nunca acima do teto da partida
+  $s.players.forEach(q => staGain(q, ev === 'point' ? .1 : .25));
   updateLiveRating();
   let isTitle = false;
   if (ev === 'set' || ev === 'stb') S.deadT = 2.6;
@@ -727,7 +731,7 @@ const COURTS = {
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
-  S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; q.sta = 1; });
+  S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; q.sta = 1; q.staTired = 0; });
   S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; // lição do tutorial: tudo em 1 estrela (só nesta partida)
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
