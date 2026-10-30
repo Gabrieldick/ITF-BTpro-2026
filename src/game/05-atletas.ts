@@ -176,6 +176,18 @@ function mkRacketDraw(c) {
     else if (c.pattern === 'chevron') { x.strokeStyle = c.a1; x.lineWidth = 9; for (let k = 0; k < 3; k++) { x.beginPath(); x.moveTo(w * .12, h * (.2 + k * .12)); x.lineTo(w / 2, h * (.32 + k * .12)); x.lineTo(w * .88, h * (.2 + k * .12)); x.stroke(); } if (c.a2) { x.strokeStyle = c.a2; x.lineWidth = 3; x.beginPath(); x.moveTo(w * .12, h * .56); x.lineTo(w / 2, h * .66); x.lineTo(w * .88, h * .56); x.stroke(); } }
     else if (c.pattern === 'rings') { x.strokeStyle = c.a1; for (let k = 0; k < 5; k++) { x.lineWidth = 2 + (k % 2) * 2; x.beginPath(); x.arc(w / 2, h * .42, 18 + k * 18, 0, Math.PI * 2); x.stroke(); } }
     else if (c.pattern === 'tri') { x.strokeStyle = c.a1; x.lineWidth = 3; for (let k = 0; k < 5; k++) { triPath(x, w / 2, h * .42, 20 + k * 15); x.stroke(); } }
+    else if (c.pattern === 'xcross') { x.fillStyle = c.a1; bigX(x, w, w / 2, h * .42, 88, 30); x.fill(); if (c.a2) { x.fillStyle = c.a2; bigX(x, w, w / 2, h * .42, 88, 8); x.fill(); } }
+    else if (c.pattern === 'star') { star4(x, w / 2, h * .42, 92, 20); x.fillStyle = c.a1; x.fill(); if (c.a2) { star4(x, w / 2, h * .42, 54, 11); x.fillStyle = c.a2; x.fill(); } }
+    else if (c.pattern === 'hex') { x.strokeStyle = c.a1; x.lineWidth = 2; for (let j = 0; j < h * .74; j += 15) for (let i = 0; i < w + 18; i += 18) { const cx = i + (j / 15 % 2) * 9; x.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + Math.PI / 6; x.lineTo(cx + Math.cos(a) * 8.5, j + Math.sin(a) * 8.5); } x.closePath(); x.stroke(); } if (c.a2) { x.fillStyle = c.a2; for (let k = 0; k < 9; k++) { const cx = 60 + (k * 53) % 140, cy = 30 + (k * 37) % 130; x.beginPath(); for (let q = 0; q < 6; q++) { const a = q * Math.PI / 3 + Math.PI / 6; x.lineTo(cx + Math.cos(a) * 8.5, cy + Math.sin(a) * 8.5); } x.fill(); } } }
+    else if (c.pattern === 'fade') { const g = x.createLinearGradient(0, 0, 0, h * .74); g.addColorStop(0, c.a1); g.addColorStop(1, c.a2 || c.bg); x.fillStyle = g; x.fillRect(0, 0, w, h * .74); }
+    else if (c.pattern === 'split') { x.fillStyle = c.a1; x.beginPath(); x.moveTo(w * .62, 0); x.lineTo(w, 0); x.lineTo(w, h * .74); x.lineTo(w * .28, h * .74); x.fill(); if (c.a2) { x.strokeStyle = c.a2; x.lineWidth = 5; x.beginPath(); x.moveTo(w * .58, 0); x.lineTo(w * .24, h * .74); x.stroke(); } }
+    else if (c.pattern === 'swirl') { x.strokeStyle = c.a1; for (let k = 0; k < 5; k++) { x.lineWidth = 9 - k * 1.4; x.beginPath(); x.ellipse(w / 2, h * .42, 30 + k * 18, 18 + k * 11, -.4, Math.PI * (.85 + k * .12), Math.PI * (2.15 + k * .12)); x.stroke(); } x.fillStyle = c.a2 || c.a1; x.beginPath(); x.ellipse(w / 2, h * .42, 24, 15, -.4, 0, Math.PI * 2); x.fill(); }
+    else if (c.pattern === 'zigzag') { x.strokeStyle = c.a1; x.lineWidth = 7; x.lineJoin = 'miter'; for (let k = 0; k < 4; k++) { x.beginPath(); for (let i = 0; i <= 10; i++) { const px = i * w / 10, py = h * (.16 + k * .14) + (i % 2 ? 12 : -12); i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); } if (c.a2) { x.strokeStyle = c.a2; x.lineWidth = 2; x.beginPath(); for (let i = 0; i <= 10; i++) { const px = i * w / 10, py = h * .66 + (i % 2 ? 8 : -8); i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); } }
+    else if (c.pattern === 'halftone') { x.fillStyle = c.a1; for (let j = 6; j < h * .74; j += 11) for (let i = 6; i < w; i += 11) { const r = 5 * (1 - j / (h * .74)) * (.6 + .4 * Math.sin(i / 30)); if (r > .4) { x.beginPath(); x.arc(i + (j / 11 % 2) * 5.5, j, r, 0, Math.PI * 2); x.fill(); } } }
+    else if (c.pattern === 'flames') { const r = mulberry(31); for (let k = 0; k < 2; k++) { x.fillStyle = k ? (c.a2 || c.a1) : c.a1; x.beginPath(); x.moveTo(0, h * .74); for (let i = 0; i <= 12; i++) { const px = i * w / 12, top = h * (k ? .48 : .3) - r() * h * (k ? .14 : .22); x.quadraticCurveTo(px - w / 24, top + 30, px, top); x.quadraticCurveTo(px + w / 48, top + 40, px + w / 24, h * (k ? .6 : .5)); } x.lineTo(w, h * .74); x.fill(); } }
+    else if (c.pattern === 'shards') { const r = mulberry(13); x.fillStyle = c.a1; for (let k = 0; k < 9; k++) { const cx = r() * w, cy = r() * h * .7, s0 = 14 + r() * 30, a = r() * 6; x.beginPath(); x.moveTo(cx + Math.cos(a) * s0, cy + Math.sin(a) * s0); x.lineTo(cx + Math.cos(a + 2.3) * s0 * .6, cy + Math.sin(a + 2.3) * s0 * .6); x.lineTo(cx + Math.cos(a + 3.9) * s0 * .8, cy + Math.sin(a + 3.9) * s0 * .8); x.fill(); } if (c.a2) { x.strokeStyle = c.a2; x.lineWidth = 1.5; for (let i = -200; i < 400; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i - 120, h * .74); x.stroke(); } } }
+    else if (c.pattern === 'checker') { x.fillStyle = c.a1; for (let j = 0; j < h * .74; j += 16) for (let i = (j / 16 % 2) * 16; i < w; i += 32) x.fillRect(i, j, 16, 16); }
+    else if (c.pattern === 'camo') { const r = mulberry(5); [c.a1, c.a2 || c.a1].forEach((cc, k) => { x.fillStyle = cc; for (let i = 0; i < 26; i++) { x.beginPath(); x.ellipse(r() * w, r() * h * .74, 10 + r() * 22, 6 + r() * 14, r() * 3, 0, Math.PI * 2); x.fill(); } }); }
     x.fillStyle = c.band || c.a1; x.fillRect(0, h * .74, w, h * .1);
     modelName(x, c.label, h * .79, c.labelColor || c.bg, c.label.length > 9 ? 11 : 13);
   };
@@ -379,7 +391,7 @@ const RK_ART = {
 Object.assign(RACKETS, RK_ART);
 const RACKET_MATS = {};
 // raquete própria da carreira: cores e desenho escolhidos pelo jogador, logo do patrocinador master atual e o nome dele
-const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras']];
+const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras'], ['xcross', 'X grande'], ['star', 'Estrela'], ['swirl', 'Redemoinho'], ['hex', 'Colmeia'], ['fade', 'Degradê'], ['split', 'Metade e metade'], ['zigzag', 'Zigue-zague'], ['halftone', 'Pontilhado'], ['flames', 'Chamas'], ['shards', 'Estilhaços'], ['checker', 'Xadrez'], ['camo', 'Camuflado']];
 function setSignatureArt(cfg, brand, name) {
   const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
   const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
@@ -579,4 +591,5 @@ function profR(prof, y) {
   return best;
 }
 
+if (typeof window !== 'undefined') window.__pdoSig = setSignatureArt;
 export { brandMark, SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
