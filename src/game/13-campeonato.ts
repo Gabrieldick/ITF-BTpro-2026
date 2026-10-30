@@ -5,7 +5,7 @@ import { ROSTER, charById, clamp, nameOf, overall, shortOf } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, el, newMatch } from './09-interface';
-import { readMenu } from './12-controles';
+import { readMenu, saveSettings } from './12-controles';
 import { toMenu } from './15-carreira-telas';
 // ---------- Campeonato ----------
 // duplas que jogam juntas no circuito (ids do elenco); quem não tiver par conhecido é pareado pelo ranking
@@ -60,7 +60,7 @@ function startChampionship() {
   let teamsSel = list;
   if (!list.includes(list.find(t => t.a === myTeam.a && t.b === myTeam.b))) { teamsSel = list.slice(0, 7).concat([myTeam]); }
   const idx = teamsSel.findIndex(t => t.a === myTeam.a && t.b === myTeam.b);
-  CH = { cat: champPick.cat, teams: teamsSel, me: idx, ctrl: champPick.ctrl, round: 0, alive: true, champion: null,
+  CH = { cat: champPick.cat, teams: teamsSel, me: idx, ctrl: champPick.ctrl, round: 0, alive: true, champion: null, seed: Math.floor(Math.random() * 1000), // seed: patrocinador master do campeonato
     rounds: [SEED_ORDER.map(([a, b]) => ({ a: a < teamsSel.length ? a : -1, b: b < teamsSel.length ? b : -1, w: null, score: '' })), [], []] };
   resolveByes(0); saveChamp(); showBracket();
 }
@@ -86,6 +86,7 @@ function showBracket() {
   const names = ['Quartas', 'Semifinal', 'Final'];
   const catName = { masc: 'masculino', fem: 'feminino', misto: 'misto' }[CH.cat];
   $('champEyebrow').textContent = 'Campeonato ' + catName + ' · ' + S.settings.games + ' games por partida';
+  { const gs = $('champGames'); if (gs) gs.value = String(S.settings.games); }
   $('bracket').innerHTML = CH.rounds.map((rd, r) => '<div class="rd"><h4>' + names[r] + '</h4>' + (rd.length ? rd.map(m => {
     const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const t = CH.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === CH.me ? ' me' : ''); return '<div class="tm ' + cls + '">' + teamName(t) + '<b>' + teamOvr(t) + '</b></div>'; };
     return '<div class="m' + (m.a === CH.me || m.b === CH.me ? ' mine' : '') + '">' + row(m.a) + row(m.b) + (m.score ? '<div class="tm"><b>' + m.score + '</b></div>' : '') + '</div>';
@@ -106,7 +107,7 @@ function playChampMatch() {
   CH.prev = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode };
   S.settings.mode = 'dupla';
   S.settings.pick = { me: CH.ctrl ? mine.b : mine.a, mate: CH.ctrl ? mine.a : mine.b, o1: opp.a, o2: opp.b };
-  S.champActive = true; saveChamp();
+  S.champActive = true; S.champSeed = CH.seed || 0; saveChamp();
   $('champ').hidden = true; ac(); newMatch();
 }
 function champMatchEnded(won) {
@@ -134,6 +135,8 @@ $('btnCustom').addEventListener('click', () => {
 });
 $('btnChampBack').addEventListener('click', () => { $('champ').hidden = true; el.menu.hidden = false; });
 $('btnChampPlay').addEventListener('click', playChampMatch);
+// games por partida: dá para trocar entre 4 e 6 no meio do campeonato (vale da próxima partida em diante)
+{ const gs = $('champGames'); if (gs) gs.addEventListener('change', () => { S.settings.games = +gs.value; const g = document.querySelector('input[name=len][value="' + gs.value + '"]'); if (g) g.checked = true; saveSettings(); if (CH) showBracket(); }); }
 $('btnChampNew').addEventListener('click', () => { CH = null; saveChamp(); $('champSetup').hidden = false; $('champBracket').hidden = true; renderChampSetup(); });
 $('btnChampMenu').addEventListener('click', () => { $('champ').hidden = true; toMenu(); });
 $('btnOverChamp').addEventListener('click', () => { el.over.hidden = true; showBracket(); });

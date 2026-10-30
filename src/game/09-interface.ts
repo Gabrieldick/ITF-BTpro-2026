@@ -655,6 +655,7 @@ const ARENA_PAL = {
   ARU: { line: '#1f4fb8', trim: '#418fde', sand: '#fffdf8', seat: '#418fde', board: ['#418fde', '#fbe122'] },
   MUN: { line: '#111111', trim: '#e8a317', sand: '#fffaf0', seat: '#17324d', board: ['#111111', '#e8a317'] },
 };
+const TOUR_MASTERS = ['NUX', "HERUE'S", 'KUNA', 'ANA SPORT', 'MORMAJI', 'DROP SHUT', 'ZANB'];
 function arenaFor() {
   if (S.careerActive && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();
@@ -662,9 +663,13 @@ function arenaFor() {
     const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
     const indoor = (t.tier <= 2 || t.special === 'estadual') && /\b(arena|point)\b/i.test(t.name || ''); // points e arenas: ambiente fechado
-    return Object.assign({ size, indoor, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
+    // patrocinador master do torneio (marcas de raquete): a maioria do BT50 para cima tem um, sempre o mesmo para o mesmo torneio na temporada
+    let master = '';
+    if (t.tier >= 4 && !t.special) { let h = 7; for (const ch of (t.name || '') + ($s.CR.season || 1)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      if (h % 100 < (t.tier >= 7 ? 85 : 60)) master = TOUR_MASTERS[(h >>> 8) % TOUR_MASTERS.length]; }
+    return Object.assign({ size, indoor, master, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
-  if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO' }, ARENA_PAL.BRA);
+  if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO', master: TOUR_MASTERS[(S.champSeed || 0) % TOUR_MASTERS.length] }, ARENA_PAL.BRA);
   // partida rápida e online: modelo de quadra escolhido (no online vale o de quem criou a sala)
   const ct = COURTS[NET.role === 'guest' ? S.netCourt : S.settings.court] || COURTS.praia;
   return Object.assign({}, ct.a);

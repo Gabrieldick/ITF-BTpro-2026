@@ -308,6 +308,12 @@ const drawBand = c => (x, w, h) => { x.fillStyle = '#f6f4ee'; x.fillRect(0, 0, w
 const bandTex = canvasTex(512, 16, drawBand('#1f4fb8'));
 bandTex.wrapS = THREE.RepeatWrapping; bandTex.repeat.set(3, 1);
 const band = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .07, .012), mat('#ffffff', { map: bandTex, roughness: .6 }));
+// torneio com patrocinador master: a faixa da rede leva o nome da marca repetido, nas cores dela
+const bandBrandTex = canvasTex(2048, 32, () => {}); bandBrandTex.wrapS = THREE.RepeatWrapping;
+function drawBrandBand(name, bg, fg) { const x = bandBrandTex.image.getContext('2d'), w = bandBrandTex.image.width, h = bandBrandTex.image.height;
+  x.fillStyle = bg; x.fillRect(0, 0, w, h); x.fillStyle = fg; x.font = 'italic 900 24px Arial Black, Arial, sans-serif'; x.textBaseline = 'middle';
+  const step = x.measureText(name).width + 90; for (let px = 30; px < w; px += step) { x.fillText(name, px, h / 2 + 1); x.fillRect(px + step - 60, h / 2 - 3, 30, 6); }
+  bandTex.needsUpdate = true; bandBrandTex.needsUpdate = true; }
 band.position.set(0, C.netH - .035, 0); band.castShadow = true; ENV.add(band);
 const padMat = mat('#1f4fb8', { roughness: .7 });
 const band2 = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .035, .01), mat('#1f4fb8'));
@@ -555,6 +561,9 @@ function crowdArms(cr, t, amp) {
   });
   cr.arms.instanceMatrix.needsUpdate = true;
 }
+// faixas das arquibancadas: com patrocinador master, nas cores da marca e com o nome dela junto do torneio
+const brd = a => a.mi != null ? [ADS[a.mi][1], ADS[a.mi][2]] : [a.board[0], a.board[1]];
+const brdT = a => a.mi != null ? ADS[a.mi][0] + ' · ' + (a.text || '') : a.text;
 function boards(x0, z0, len, along, c1, c2, text) {
   const t = canvasTex(1024, 64, (x, w, h) => { x.fillStyle = c1; x.fillRect(0, 0, w, h); x.fillStyle = c2; x.font = 'bold 40px sans-serif'; x.textBaseline = 'middle';
     const step = x.measureText(text).width + 70; for (let px = 24; px < w; px += step) x.fillText(text, px, h / 2); });
@@ -637,6 +646,11 @@ function applyArena(a) {
   // linha da quadra nunca amarela (nem amarelada): se vier uma cor assim, usa o azul padrão
   { const lc = col(a.line), hsl = {}; lc.getHSL(hsl); tapeMat.color.copy(hsl.h > .08 && hsl.h < .2 && hsl.s > .3 && hsl.l > .25 ? col('#1f4fb8') : lc); tapeFaint.color.copy(tapeMat.color); } padMat.color.copy(col(a.trim)); band2.material.color.copy(col(a.trim));
   const bc = bandTex.image.getContext('2d'); drawBand(a.trim)(bc, bandTex.image.width, bandTex.image.height); bandTex.needsUpdate = true;
+  // patrocinador master do torneio: faixa da rede, protetores e as placas alternadas com a marca
+  a.mi = a.master ? ADS.findIndex(d => d[0] === a.master) : -1; if (a.mi < 0) a.mi = null;
+  if (a.mi != null) { const [nm, bg, fg] = ADS[a.mi]; drawBrandBand(nm, bg, fg); band.material.map = bandBrandTex; padMat.color.copy(col(bg)); band2.material.color.copy(col(bg)); }
+  else band.material.map = bandTex;
+  band.material.needsUpdate = true;
   sandMat.color.copy(col(a.sand)); courtSandMat.color.copy(sandMat.color);
   // arquibancadas
   ARENA.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
@@ -649,7 +663,7 @@ function applyArena(a) {
   if (a.size >= 2) seats = seats.concat(bleachers(1, W, -1, L, a.size >= 3 ? 8 : 5, a.seat, 'z'));
   if (a.size >= 3) seats = seats.concat(bleachers(-1, 0, -(C.halfL + 5.5), 2 * W - 1, 6, a.seat, 'x'));
   crowd(seats);
-  if (a.size === 0 && a.text) boards(0, -(C.halfL + 3.5), 8, 'x', a.board[0], a.board[1], a.text); // torneio local: uma faixa no fundo
+  if (a.size === 0 && a.text) boards(0, -(C.halfL + 3.5), 8, 'x', ...brd(a), brdT(a)); // torneio local: uma faixa no fundo
   if (a.amateur) { // público em pé dos dois lados e no fundo, e duas quadras vizinhas com jogo
     const spots = [];
     // não fica perto da câmera (atrás da sua linha de fundo), só da metade da quadra para lá
@@ -658,8 +672,8 @@ function applyArena(a) {
     standingCrowd(spots);
     sideGames([-(HALF_W.dupla * 2 + 5), HALF_W.dupla * 2 + 5]);
   }
-  if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', a.board[0], a.board[1], a.text); boards(W - .6, -1, L - 2, 'z', a.board[0], a.board[1], a.text); }
-  if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', a.board[0], a.board[1], a.text);
+  if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', ...brd(a), brdT(a)); boards(W - .6, -1, L - 2, 'z', ...brd(a), brdT(a)); }
+  if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', ...brd(a), brdT(a));
   indoorHall(a);
   if (!a.indoor && (a.amateur || a.size >= 1)) beachDecor(a);
   mergeStatic(ARENA.group); ENV.children.forEach(g => { if (g.name === 'cidade') mergeStatic(g); });
@@ -745,14 +759,14 @@ function tentStall(x, z, i, spots) {
 }
 // decoração dos torneios na praia: placas de patrocínio, bandeiras, barracas e um food truck
 function beachDecor(a) {
-  const hw = HALF_W.dupla, spots = [];
+  const hw = HALF_W.dupla, spots = [], ab = (x, z, w, h, i, ry) => adBoard(x, z, w, h, a.mi != null && i % 2 === 0 ? a.mi : i, ry);
   // placas baixas atrás do fundo do adversário e nas laterais (fora da área de jogo)
-  for (let i = 0, x = -7.5; x <= 7.6; x += 2.5, i++) adBoard(x, -(C.halfL + 2.6), 2.3, .62, i);
-  [-1, 1].forEach((sd, k) => { for (let i = 0, z = -C.halfL + 1; z <= 2; z += 3, i++) adBoard(sd * (hw + 1.9), z, 2.6, .55, i + 3 + k * 4, sd * -Math.PI / 2); });
+  for (let i = 0, x = -7.5; x <= 7.6; x += 2.5, i++) ab(x, -(C.halfL + 2.6), 2.3, .62, i);
+  [-1, 1].forEach((sd, k) => { for (let i = 0, z = -C.halfL + 1; z <= 2; z += 3, i++) ab(sd * (hw + 1.9), z, 2.6, .55, i + 3 + k * 4, sd * -Math.PI / 2); });
   // bandeiras nas pontas
   [[-hw - 3, -C.halfL - 3.4], [hw + 3, -C.halfL - 3.4], [-hw - 3.6, 1.5], [hw + 3.6, 1.5]].forEach(([x, z], i) => featherFlag(x, z, i * 3 + 1));
   // atrás do seu fundo de quadra também (aparece depois da troca de lado): placas viradas para a quadra e barracas
-  for (let i = 0, x = -7.5; x <= 7.6; x += 2.5, i++) adBoard(x, C.halfL + 2.6, 2.3, .62, i + 2, Math.PI);
+  for (let i = 0, x = -7.5; x <= 7.6; x += 2.5, i++) ab(x, C.halfL + 2.6, 2.3, .62, i + 2, Math.PI);
   [-11, 11].forEach((x, i) => tentStall(x, C.halfL + 9.5, i * 3 + 1, spots));
   // vila de barracas ao fundo
   [-12, -6.5, 6.5, 12].forEach((x, i) => tentStall(x, -(C.halfL + 9.5) - (i % 2) * 1.5, i * 2 + (a.amateur ? 0 : 5), spots));
