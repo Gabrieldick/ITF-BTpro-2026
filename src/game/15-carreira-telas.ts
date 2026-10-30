@@ -157,7 +157,7 @@ function crPlayerHTML() {
 }
 // aparência do seu jogador: dá para mudar a qualquer momento da carreira (vale a partir da próxima partida)
 const HAIR_ST = [['', 'Automático'], ['curto', 'Curto'], ['raspado', 'Raspado'], ['careca', 'Careca'], ['cacheado', 'Cacheado'], ['topete', 'Topete'], ['moicano', 'Moicano'], ['longo', 'Longo'], ['rabo', 'Rabo de cavalo'], ['coque', 'Coque (samurai nos homens)'], ['tranca', 'Trança']];
-const BUILDS = [['atletico', 'Atlético'], ['esguio', 'Magro'], ['forte', 'Forte (musculoso)'], ['compacto', 'Pesado']]; // só a aparência
+const BUILDS = [['fino', 'Muito magro'], ['esguio', 'Magro'], ['atletico', 'Atlético'], ['forte', 'Forte (musculoso)'], ['compacto', 'Pesado']]; // só a aparência
 const BEARDS = [['', 'Sem barba'], ['barba', 'Barba'], ['cavanhaque', 'Cavanhaque'], ['bigode', 'Bigode']];
 const ACCS = [['cap', 'Boné'], ['visor', 'Viseira'], ['band', 'Faixa'], ['none', 'Nada']];
 const lookAcc = L => L.cap ? 'cap' : L.visor ? 'visor' : L.headband ? 'band' : 'none';

@@ -390,7 +390,7 @@ function makeAthlete(o) {
   const hips = new THREE.Group(); hips.position.y = .92; root.add(hips);
   mesh(latheGeo(PELVIS_PROF[fem ? 1 : 0], 24, .74), shortM, hips);
   const hipX = fem ? .1 : .092;
-  const BF = { compacto: [1.06, 1.08], forte: [1.12, 1.12], esguio: [.92, .87], atletico: [1, 1] }[o.build] || [1, 1];
+  const BF = { compacto: [1.06, 1.08], forte: [1.12, 1.12], esguio: [.92, .87], fino: [.84, .78], atletico: [1, 1] }[o.build] || [1, 1];
   const legs = [];
   const footG = FOOT_GEO[fem ? 1 : 0];
   [-1, 1].forEach(s => {

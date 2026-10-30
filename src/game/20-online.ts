@@ -206,7 +206,7 @@ function sanitizeCC(c, mid) {
   for (const k of ['skin', 'hair', 'hairStyle', 'beard', 'cap', 'visor', 'headband', 'glasses', 'band', 'tank', 'num', 'glassStyle', 'lens']) if (L[k] !== undefined && typeof L[k] !== 'object') look[k] = typeof L[k] === 'string' ? L[k].slice(0, 24) : L[k];
   look.racket = RACKET_STATS[L.racket] ? L.racket : 'proteo';
   return { id: 'cc_' + mid, name: String(c.name || 'Jogador').slice(0, 24), alt: clamp(+c.alt || 182, 150, 215), pais: String(c.pais || 'BRA').slice(0, 3).toUpperCase(), fem: !!c.fem,
-    build: ['atletico', 'esguio', 'compacto', 'forte'].includes(c.build) ? c.build : 'atletico', estilo: String(c.estilo || 'Carreira').slice(0, 30), canhoto: !!c.canhoto || undefined, a, look, career: true };
+    build: ['atletico', 'esguio', 'fino', 'compacto', 'forte'].includes(c.build) ? c.build : 'atletico', estilo: String(c.estilo || 'Carreira').slice(0, 30), canhoto: !!c.canhoto || undefined, a, look, career: true };
 }
 const regOnlineChars = list => { $s.ONLINE_CHARS = (list || members()).filter(m => m.cc).map(m => m.cc); };
 function fixCpu() {

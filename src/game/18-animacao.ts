@@ -63,7 +63,7 @@ function ik2(upper, lower, origin, target, pole, L1, L2) {
 }
 // tronco "sólido" (no espaço da coluna, frente em −z): mão e cotovelo não atravessam o corpo — na troca de forehand para
 // backhand a mão contorna o tronco em vez de passar por dentro dele
-const BODY_W = { compacto: [1.1, 1.18], forte: [1.1, 1.08], esguio: [.92, .88] };
+const BODY_W = { compacto: [1.1, 1.18], forte: [1.1, 1.08], esguio: [.92, .88], fino: [.84, .78] };
 function keepOut(v, p, rx0, rz0) {
   if (v.y < -.28 || v.y > .5) return false;
   const bw = BODY_W[p.look && p.look.build] || [1, 1], top = clamp((v.y - .3) / .2, 0, 1);

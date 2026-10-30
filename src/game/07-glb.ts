@@ -348,7 +348,9 @@ function dressSkin(p, root) {
   // pele: os trechos que a blusa escolhida cobre somem (não atravessam a roupa)
   for (const n in parts) if (n.startsWith('BodySk_')) show(n, !n.slice(7).split('_').includes(top));
   // físico: formas do arquivo sobre o atlético
-  const shape = { esguio: { Magro: 1 }, compacto: { Gordo: .7 }, forte: { Forte: 1 } }[look.build || c.build] || {};
+  // (muito magro: a forma Magro além do arquivo — corpo e roupa afinam juntos, todas as peças têm as mesmas formas)
+  const shape = { fino: { Magro: look.fem ? 5 : 4 }, // (no masculino, além de ~4 o short deforma no quadril)
+     esguio: { Magro: 1 }, compacto: { Gordo: .7 }, forte: { Forte: 1 } }[look.build || c.build] || {};
   root.traverse(o => { if (o.isMesh && o.morphTargetDictionary) for (const k in o.morphTargetDictionary) o.morphTargetInfluences[o.morphTargetDictionary[k]] = shape[k] || 0; });
   // cores (cada jogador tem os próprios materiais, clonados em attachSkin)
   for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => tint(o.material, look.skin || '#c68a62', SKIN_BASE));
