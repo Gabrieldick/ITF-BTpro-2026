@@ -71,8 +71,9 @@ function showReview(r) {
     x.fillStyle = 'rgba(255,255,255,.85)'; x.font = 'bold 11px sans-serif'; x.fillText('QUADRA', 8, 16); x.fillText('FORA', W - 40, 16);
     if (u < 1) { x.fillText('REPLAY', 8, H - 8); requestAnimationFrame(draw); }
   };
-  const cm = Math.abs(r.mg * 100).toFixed(1).replace('.', ',');
-  const t = box.querySelector('b'); t.textContent = 'REVISÃO · ' + (r.inB ? 'DENTRO (a marca tocou a linha · ' + cm + ' cm)' : 'FORA por ' + cm + ' cm'); t.className = r.inB ? 'in' : 'out';
+  // dentro: quanto da fita a marca pegou; fora: a distância entre a marca e a borda de fora da fita
+  const ov = Math.max(0, Math.min(pos + MARK, lineC + .025) - Math.max(pos - MARK, lineC - .025)), cm = ((r.inB ? ov : Math.abs(r.mg)) * 100).toFixed(1).replace('.', ',');
+  const t = box.querySelector('b'); t.textContent = 'REVISÃO · ' + (r.inB ? 'DENTRO (a marca pegou ' + cm + ' cm da fita)' : 'FORA por ' + cm + ' cm'); t.className = r.inB ? 'in' : 'out';
   t.style.visibility = 'hidden'; setTimeout(() => { t.style.visibility = ''; }, DUR); // o veredito aparece depois do replay
   requestAnimationFrame(draw);
   box.classList.add('show'); clearTimeout(reviewT); reviewT = setTimeout(() => box.classList.remove('show'), 5500 + DUR);

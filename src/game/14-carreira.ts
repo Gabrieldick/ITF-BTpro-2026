@@ -610,9 +610,13 @@ function crSimWorld(rnd, list, aw, ovrs) {
       const k = Math.min(EVN[t], Math.ceil(here.length / 16)), inn = here.slice(0, k * 16); carry = here.slice(k * 16);
       const ev = Array.from({ length: k }, () => []); inn.forEach((x, i) => { const r = Math.floor(i / k) % 2 ? k - 1 - i % k : i % k; ev[r].push(x); }); // cabeças espalhadas
       const T = TIERS[t];
-      ev.forEach(E => { E.forEach(x => { x.perf = x.o + gaussR(rnd) * 2.2; }); E.sort((a, b) => b.perf - a.perf);
-        E.forEach((x, i) => { x.t = t; x.done = true; x.pts = T.pts[PLACE[Math.min(i, 15)]] || 0; });
-        const w = E[0]; if (live && w && w.mate && !!w.c.fem === !!$s.CR.me.fem && t >= 7 && (!best || t > best.t)) best = { t, perf: 1, a: w.c.id, b: w.mate.id }; });
+      // o torneio que você jogou nesta semana é um destes (o primeiro da sua chave/gênero): ninguém mais é campeão dele
+      // (todos descem uma colocação, você ocupou uma vaga) e não sai notícia de outro campeão do mesmo torneio
+      const wt = $s.CR.wkTour, mineT = live && wt && wt.w === aw && wt.tier === t && fm === !!$s.CR.me.fem;
+      ev.forEach((E, ei) => { E.forEach(x => { x.perf = x.o + gaussR(rnd) * 2.2; }); E.sort((a, b) => b.perf - a.perf);
+        const sh = mineT && ei === 0 ? 1 : 0;
+        E.forEach((x, i) => { x.t = t; x.done = true; x.pts = T.pts[PLACE[Math.min(i + sh, 15)]] || 0; });
+        const w = E[0]; if (live && !sh && w && w.mate && !!w.c.fem === !!$s.CR.me.fem && t >= 7 && (!best || t > best.t)) best = { t, perf: 1, a: w.c.id, b: w.mate.id }; });
     }
   });
   teams.forEach(x => {
@@ -1141,7 +1145,7 @@ function crEnter(opt) {
   { const rest = teams.splice(Object.keys(seeds).length); rest.sort((x, y) => crTeamOvr(y) - crTeamOvr(x)); teams.push(...rest); }
   const me = teams.findIndex(t => t.me);
   const seedOrder = T.draw === 16 ? SEED16 : SEED8;
-  $s.CR.wkTour = { w: absWeek(), name: opt.name || '' };
+  $s.CR.wkTour = { w: absWeek(), name: opt.name || '', tier: opt.special || opt.singles ? -1 : opt.tier };
   $s.CR.tour = { seeds, tier: opt.tier, special: opt.special || null, uf: opt.uf || (opt.special === 'estadual' ? $s.CR.me.uf || 'SP' : null), name: opt.name, teams, me, star: star ? star.id : null, round: 0, alive: true, champion: null, done: false, beaten: [], log: [],
     rounds: [seedOrder.map(([a, b]) => ({ a: a < teams.length ? a : -1, b: b < teams.length ? b : -1, w: null, score: '' }))] };
   $s.CR.tour.rounds[0].forEach(m => { if (m.w === null && (m.a < 0 || m.b < 0)) { m.w = m.a < 0 ? m.b : m.a; m.score = 'passa direto'; } });
