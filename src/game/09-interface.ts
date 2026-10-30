@@ -678,7 +678,7 @@ const ARENA_PAL = {
   ARU: { line: '#1f4fb8', trim: '#418fde', sand: '#fffdf8', seat: '#418fde', board: ['#418fde', '#fbe122'] },
   MUN: { line: '#111111', trim: '#e8a317', sand: '#fffaf0', seat: '#17324d', board: ['#111111', '#e8a317'] },
 };
-const TOUR_MASTERS = ['NUX', "HERUE'S", 'KUNA', 'ANA SPORT', 'MORMAJI', 'DROP SHUT', 'ZANB'];
+const TOUR_MASTERS = ['NUX', "HERUE'S", 'KUNA', 'ANA SPORT', 'MORMAJI', 'DROP SHUT', 'ZANB', 'VIZION'];
 function arenaFor() {
   if (S.careerActive && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();

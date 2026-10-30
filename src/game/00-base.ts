@@ -74,6 +74,8 @@ const RACKET_STATS = {
   supercarbon: { nome: 'Ana Sport Poison Bee', preco: 46000, desc: 'Topo de linha em carbono: melhora tudo.', b: { forca: 3, smash: 3, saque: 2, def: 2, curta: 1, lob: 1, backhand: 1 } },
   corsario: { nome: 'Corsário Hybrid', preco: 62000, desc: 'Híbrida de circuito: completa e muito estável.', b: { smash: 2, def: 2, saque: 2, lob: 2, curta: 2, backhand: 2, forca: 1 } },
   tsunami: { nome: 'Adibas World Cup', preco: 82000, desc: 'A mais potente do circuito: pancada pura.', b: { forca: 6, smash: 5, saque: 3, def: 1, curta: -1 } },
+  vizcontrol: { nome: 'Vizion Control', preco: 24000, desc: 'Controle macio: defesa e backhand na mão.', b: { def: 3, backhand: 3, curta: 1, lob: 1, forca: -1 } },
+  vizpower: { nome: 'Vizion Power', preco: 68000, desc: 'Potência com estabilidade: smash e saque firmes.', b: { forca: 4, smash: 4, saque: 3, def: 1 } },
   abismo: { nome: 'Vizion Precision', preco: 108000, desc: 'Defesa de elite: devolve até a finalização.', b: { def: 5, vel: 1, backhand: 4, lob: 3, curta: 2 } },
   zjump: { nome: 'Zanb Z Jump', preco: 120000, desc: 'Ataque explosivo: smash e saque de quem pula alto.', b: { forca: 4, smash: 5, saque: 3, vel: 1, curta: -1 } },
   eclipse: { nome: 'Herue\'s Fierce', preco: 145000, desc: 'Controle de elite: defesa, curta e lob de outro nível.', b: { def: 5, curta: 4, backhand: 3, lob: 3, vel: 1 } },

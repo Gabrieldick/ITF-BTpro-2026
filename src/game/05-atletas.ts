@@ -336,6 +336,20 @@ const RK_ART = {
     x.strokeStyle = '#2f7fff'; x.lineWidth = 2; rimLine(x, '#2f7fff', 1.5, 12);
     wordmark(x, 'VIZION', 186, '#f2f4f6', 12);
   } },
+  // Vizion Power: preta com um V largo em degradê azul→ciano e anéis finos atrás
+  vizpower: { edge: '#2f7fff', grip: '#0d0e10', throat: '#2f7fff', rough: true, draw(x, w, h) {
+    carbonBase(x, w, h, '#0d0e10', .06);
+    x.strokeStyle = 'rgba(242,244,246,.35)'; x.lineWidth = 1.2; for (let k = 0; k < 3; k++) { x.beginPath(); x.ellipse(128, 100, 84 - k * 10, 30 + k * 5, -.4 + k * .4, 0, Math.PI * 2); x.stroke(); }
+    brandMark(x, 'Vizion', 128, 98, 46, '#2f9bff', '#0d0e10'); rimLine(x, '#2f7fff', 1.6);
+    wordmark(x, 'VIZION', 182, '#f2f4f6', 13); wordmark(x, 'POWER', 197, '#2f9bff', 8);
+  } },
+  // Vizion Control: branca com anéis azuis e o V pequeno no centro
+  vizcontrol: { edge: '#f4f6f8', grip: '#2f7fff', throat: '#2f7fff', draw(x, w, h) {
+    x.fillStyle = '#f6f7f9'; x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#2f7fff'; for (let k = 0; k < 4; k++) { x.lineWidth = 2.6 - k * .5; x.beginPath(); x.ellipse(128, 100, 72 - k * 9, 28 + k * 6, .5 - k * .5, 0, Math.PI * 2); x.stroke(); }
+    brandMark(x, 'Vizion', 128, 100, 22, '#0d0e10', '#f6f7f9'); rimLine(x, '#2f7fff', 1.4);
+    wordmark(x, 'VIZION', 182, '#0d0e10', 13); wordmark(x, 'CONTROL', 197, '#2f7fff', 8);
+  } },
   // World Cup (Adidas): azul royal com linhas topográficas verdes, taça dourada no centro
   tsunami: { edge: '#1c3fae', grip: '#f4f4f4', throat: '#ffd23f', draw(x, w, h) {
     x.fillStyle = '#1c3fae'; x.fillRect(0, 0, w, h);
@@ -346,12 +360,30 @@ const RK_ART = {
 };
 Object.assign(RACKETS, RK_ART);
 const RACKET_MATS = {};
+// símbolo de cada marca (estilizado, como nas raquetes e placas): o X da Herue's, o A da Ana Sport, a estrela da Drop Shut…
+function brandMark(x, brand, cx, cy, r, fg, bg) {
+  const b = String(brand || '').toLowerCase(); x.save(); x.translate(cx, cy); x.fillStyle = fg; x.strokeStyle = fg; x.lineJoin = 'round'; x.lineCap = 'round';
+  const poly = pts => { x.beginPath(); pts.forEach(([a, c], i) => i ? x.lineTo(a * r, c * r) : x.moveTo(a * r, c * r)); x.closePath(); x.fill(); };
+  if (b.startsWith('herue')) { x.lineWidth = r * .34; x.beginPath(); x.moveTo(-r * .7, -r * .75); x.lineTo(r * .7, r * .75); x.moveTo(r * .7, -r * .75); x.lineTo(-r * .7, r * .75); x.stroke(); x.fillStyle = bg; x.beginPath(); x.arc(0, 0, r * .16, 0, Math.PI * 2); x.fill(); }
+  else if (b.startsWith('nux')) { poly([[-.75, .8], [-.75, -.8], [-.4, -.8], [.38, .35], [.38, -.8], [.75, -.8], [.75, .8], [.4, .8], [-.38, -.35], [-.38, .8]]); x.fillStyle = bg; poly([[.5, -.95], [.62, -.95], [-.5, .95], [-.62, .95]]); }
+  else if (b.startsWith('ana')) { poly([[0, -.9], [.82, .85], [.45, .85], [.28, .38], [-.28, .38], [-.45, .85], [-.82, .85]]); x.fillStyle = bg; poly([[0, -.3], [.14, .12], [-.14, .12]]); }
+  else if (b.startsWith('kuna')) { poly([[-.7, -.85], [-.35, -.85], [-.35, -.1], [.35, -.85], [.8, -.85], [.05, 0], [.8, .85], [.35, .85], [-.35, .1], [-.35, .85], [-.7, .85]]); }
+  else if (b.startsWith('zanb')) { poly([[-.75, -.8], [.75, -.8], [.75, -.5], [-.25, .5], [.75, .5], [.75, .8], [-.75, .8], [-.75, .5], [.25, -.5], [-.75, -.5]]); }
+  else if (b.startsWith('drop')) { x.beginPath(); for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? r * .3 : r; x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } x.closePath(); x.fill(); }
+  else if (b.startsWith('mormaji')) { x.lineWidth = r * .22; for (let k = 0; k < 2; k++) { x.beginPath(); for (let i = 0; i <= 20; i++) { const t = i / 20, px = (t - .5) * 1.7 * r, py = Math.sin(t * Math.PI * 2) * r * .28 + (k - .5) * r * .55; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); } }
+  else if (b.startsWith('vizion')) { x.lineWidth = r * .12; x.beginPath(); x.ellipse(0, 0, r, r * .42, -.35, 0, Math.PI * 2); x.stroke(); poly([[-.72, -.75], [-.38, -.75], [0, .3], [.38, -.75], [.72, -.75], [.18, .85], [-.18, .85]]); }
+  else if (b.startsWith('shank')) { poly([[-.85, .6], [-.1, -.9], [.15, -.2], [.85, .6]]); x.fillStyle = bg; poly([[-.2, .6], [.1, .1], [.35, .6]]); }
+  else if (b.startsWith('adibas')) { for (let k = 0; k < 3; k++) poly([[-.75 + k * .55, .75], [-.55 + k * .55, .75 - (.5 + k * .45) * 1.1], [-.25 + k * .55, .75 - (.5 + k * .45) * 1.1], [-.45 + k * .55, .75]]); }
+  else { x.font = '900 ' + Math.round(r * 1.4) + 'px Arial Black, Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((brand || '?').slice(0, 1).toUpperCase(), 0, r * .05); }
+  x.restore();
+}
 // raquete própria da carreira: cores e desenho escolhidos pelo jogador, logo do patrocinador master atual e o nome dele
 const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras']];
 function setSignatureArt(cfg, brand, name) {
   const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
   const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
-  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } };
+  // símbolo da marca no centro (com contorno na cor do fundo para destacar do desenho)
+  RACKETS.assinatura = { edge: c.a1, grip: '#141516', throat: c.a1, holes: 'supercarbon', draw: (x, w, h) => { base(x, w, h); if (name) { x.save(); x.shadowColor = c.bg; x.shadowBlur = 6; brandMark(x, brand, 128, 100, 34, c.a2 || '#ffffff', c.bg); x.restore(); wordmark(x, String(name).toUpperCase(), h * .9, c.a2 || c.a1, 9); } } };
   const m = RACKET_MATS.assinatura; if (m) { Object.values(m).forEach(v => { if (v.map && v.map !== GRIP_TEX) v.map.dispose(); v.dispose(); }); delete RACKET_MATS.assinatura; }
 }
 function racketMats(key) {
@@ -546,4 +578,4 @@ function profR(prof, y) {
   return best;
 }
 
-export { SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
+export { brandMark, SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
