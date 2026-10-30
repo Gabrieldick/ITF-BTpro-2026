@@ -121,6 +121,9 @@ function charSkill(p) {
     netK: lerp(.8, .45, Math.min(1, kt)), // erro de nível baixo vai mais na rede que para fora
     // estrelas baixas (carreira): a CPU troca bola sem pancada — golpes mais lentos, quase sem smash forte, lob baixo e saque sem força
     k, up: Math.max(0, adj), // up: quanto as estrelas sobem acima do padrão (0 no padrão: nada muda)
+    // tk: acerto do tempo (saque e smash no verde) pelas estrelas — 1 estrela erra muito, o Lendário quase não erra; o seu
+    // parceiro da CPU para no nível de 4 estrelas
+    tk: (() => { let t = stars ? [.35, .6, 1, 1.6, 2.3, 3.3][stars - 1] : p.team === 1 && !S.simAI ? { facil: .6, medio: 1, dificil: 1.4 }[S.settings.diff] || 1 : 1; if (stars >= 4 && p.team === 0 && !p.isHuman && !S.simAI) t = Math.min(t, 1.6); return t; })(),
     soft: stars ? [.7, .84, 1, 1, 1, 1][stars - 1] : 1,
   };
 }
@@ -661,11 +664,12 @@ function updateAI(p, dt) {
             let q = clamp(rand(D.q[0], D.q[1]) + momentum(p.team) * .05, 0, 1), pm = null;
             if (timedAI(p)) { const tm = aiTiming(p, shot, q); q = tm.q; pm = tm.mod; pm.speedMul = (pm.speedMul || 1) * st.speed * (D.pw || 1) * sf; pm.noiseMul = (pm.noiseMul || 1) * st.noise; }
             // CPU padrão: smash no verde pela técnica (atributo de smash) e pelas estrelas; do fundo cai, mas pouco para os
-            // grandes smashadores (98 de smash no Lendário: ~8 em 10 no verde, também do fundo; um 85 no Lendário ~4,5; no padrão: ~2 em 10)
+            // grandes smashadores (tk: estrelas). 98 de smash: 1 estrela ~1 em 10, padrão ~3,5, Lendário ~9 (também do fundo);
+            // um 85: 1 estrela ~0,6, padrão ~2, Lendário ~6
             else if (shot === 'smash' && ball.pos.y >= 1.5 && p.char) {
               const s01 = clamp(((p.char.a.smash || 70) - 70) / 28, 0, 1), back = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), skN = Math.min(1, attrK(p, 'smash'));
               // Lendário: do fundo quase não perde o tempo (quem lê bem o jogo se ajeita antes de saltar)
-              const pg = (.05 + .3 * Math.pow(s01, 1.3)) * (1 + (D.up || 0) * 1.6) * (1 - .35 * back * (1 - .6 * s01) * (1 - .6 * clamp((D.up || 0) / .85, 0, 1))) * sf * sf;
+              const tk = D.tk || 1, pg = Math.min(.9, (.05 + .3 * Math.pow(s01, 1.3)) * tk * (1 - .35 * back * (1 - .6 * s01) * (1 - .6 * clamp((tk - 1) / 2.3, 0, 1))));
               if (Math.random() < pg) { q = Math.max(q, lerp(.72, .92, skN)); noteTiming(p, true);
                 pm = { speedMul: lerp(1.02, 1.22, skN) * st.speed * (D.pw || 1) * sf, noiseMul: lerp(1.05, .6, skN) * st.noise, oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true }; }
             }
@@ -691,8 +695,8 @@ function updateAI(p, dt) {
       const ps = p.pendingServe; p.pendingServe = null;
       ball.state = 'live'; S.mode = 'rally';
       // CPU/parceira: de vez em quando o saque sai perfeito (mais com atributo de saque alto): mais forte, preciso e com estrelinhas
-      // estrelas acima do padrão (Lendário): o tempo do saque fica bem mais certo (saque 97 no Lendário: ~6 em 10 no verde)
-      const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), upK = 1 + ((p.skill && p.skill.up) || 0) * 2.2, perf = sf >= 1 && (ps.type === 'smash' ? Math.random() < (.06 + .16 * svN) * upK : ps.type === 'lob' && Math.random() < (.03 + .14 * Math.pow((svN + attrK(p, 'lob')) / 2, 2)) * upK), sp = ball.pos.clone();
+      // tempo do saque pelas estrelas (tk): saque 97 → 1 estrela ~1 em 10 no verde, padrão ~2, Lendário ~7
+      const sf = (p.skill && p.skill.soft) || 1, svN = attrK(p, 'saque'), upK = (p.skill && p.skill.tk) || 1, perf = ps.type === 'smash' ? Math.random() < Math.min(.85, (.06 + .16 * svN) * upK) : ps.type === 'lob' && Math.random() < Math.min(.8, (.03 + .14 * Math.pow((svN + attrK(p, 'lob')) / 2, 2)) * upK), sp = ball.pos.clone();
       p.ai.depthK = aiDepthK(p, 'saque');
       // IA Treinada/Planejadora: para a barra do saque como o humano (o verde vem do treino, não é garantido)
       const ts = timedAI(p) ? aiServeTiming(p, ps.type) : null;
