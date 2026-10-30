@@ -672,6 +672,12 @@ function updateAI(p, dt) {
               if (Math.random() < pg) { q = Math.max(q, lerp(.72, .92, skN)); noteTiming(p, true);
                 pm = { speedMul: lerp(1.02, 1.22, skN) * st.speed * (D.pw || 1) * sf, noiseMul: lerp(1.05, .6, skN) * st.noise, oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true }; }
             }
+            // CPU padrão: tempo da defesa, curta e lob (o "anel verde" do humano) pelas estrelas e pelo atributo do golpe —
+            // padrão ~3 em 10 na hora certa, 1 estrela ~1, Lendário ~9; fora do verde, perto dele (o nível já pesa na qualidade)
+            else if (shot === 'defesa' || shot === 'curta' || shot === 'lob') {
+              const aK = attrK(p, shot === 'defesa' ? 'def' : shot), pt = Math.min(.88, .3 * (D.tk || 1) * lerp(.7, 1.15, aK)), ok = Math.random() < pt;
+              pm = { timing: ok ? 1 : rand(.6, .95) }; if (ok) noteTiming(p, true);
+            }
             // altura do lob pela situação: em apuros, o alto (recuperação); contra quem colou na rede, chutado ou médio por cima;
             // no resto, médio
             const trb = aiTrouble(p, ball.pos.y), lobSit = soft ? { lobPower: rand(.35, .6) } : trb > .5 ? { lobPower: rand(.8, 1) }
