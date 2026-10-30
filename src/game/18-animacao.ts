@@ -232,7 +232,7 @@ function animateAthlete(p, dt) {
   const cya = Math.cos(yaw), sya = Math.sin(yaw);
   p.accF = (p.accF || 0) + (clamp(-(sya * acx + cya * acz), -14, 14) - (p.accF || 0)) * Math.min(1, dt * 8);
   p.accR = (p.accR || 0) + (clamp(cya * acx - sya * acz, -14, 14) - (p.accR || 0)) * Math.min(1, dt * 8);
-  const accLean = clamp(p.accF * .022, -.22, .22), accRoll = clamp(p.accR * .018, -.16, .16);
+  const accLean = clamp(p.accF * .018, -.18, .18), accRoll = clamp(p.accR * .009, -.08, .08); // na arrancada de lado o tronco tombava antes da perna sair
   m.hips.position.x += clamp(-p.accR * .006, -.05, .05);
   m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6) + p.bhTw * .35, Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
@@ -280,7 +280,10 @@ function animateAthlete(p, dt) {
   const T0 = 2 / cad, capW = Math.min(1.7 * reach, .9) * Math.sqrt(hs) * dirK; // (gente mais baixa: passada proporcionalmente maior, não passinhos) // ciclo de cada pé (s) · distância que o pé fica no chão (m)
   const thrW = clamp(Math.min(sp * T0 * (1 - swF) * dirK, capW), .14, .8);
   const Te = sp > .3 ? Math.min(T0, thrW / (sp * (1 - swF))) : T0; // perna curta para a velocidade: passos mais rápidos, não mais longos
-  const leadD = thrW * .4, thr = thrW / hs, stepDur = clamp(swF * Te, .12, .4), spn = Math.max(sp, .01);
+  // o pé pousa à frente de onde o corpo está indo (de lado bem mais: no deslocamento lateral a perna da frente abre primeiro
+  // e o corpo vem atrás, sem o tronco passar dos pés)
+  const shufK = clamp(Math.abs(lvx) / 1.4, 0, 1) * (1 - lvu);
+  const leadD = thrW * (.45 + .3 * shufK), thr = thrW / hs * (p.burst > 0 || (p.accF * p.accF + p.accR * p.accR > 30 && sp < 1.6) ? .6 : 1), stepDur = clamp(swF * Te, .12, .4), spn = Math.max(sp, .01);
   // corrida cruzada (de lado para trás ou lateral longa): pés perto da linha do corpo e o de trás cruza pela frente
   const crossK = clamp((Math.abs(lvx) - 1.8) / 1.5, 0, 1) * clamp(Math.abs(p.moveTurn || 0) / .6, 0, 1);
   // deslocamento lateral de jogo (sem cruzar): base mais aberta, os pés não se juntam
