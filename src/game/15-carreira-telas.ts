@@ -6,7 +6,7 @@ import { SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_S
 import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
-import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview } from './07-glb';
+import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview } from './07-glb';
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
@@ -180,7 +180,7 @@ const SRV_SL = [['crouch', 'Agachar no troféu', .5, 2, .05, v => Math.round(v *
   ['tossZ', 'Lançamento à frente', .25, .95, .01, v => v < .42 ? 'atrás (topspin)' : v > .75 ? 'bem à frente (pancada)' : Math.round(v * 100) + ' cm']];
 function crServeHTML() {
   const cur = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || { preset: 'classico' });
-  return '<p class="section-label">Saque</p><label class="cr-field">Estilo ' + '<select id="crSrvPre" class="cr-sel"><option value="">Personalizado</option>' + Object.entries(SERVE_STYLES).map(([k, v]) => '<option value="' + k + '"' + (cur.preset === k ? ' selected' : '') + '>' + v.nome + '</option>').join('') + '</select></label>'
+  return '<p class="section-label">Saque <button type="button" class="ghost sm" id="crSrvPrev">' + (ED.srv ? 'Ver aparência' : '▶ Ver saque') + '</button></p><label class="cr-field">Estilo ' + '<select id="crSrvPre" class="cr-sel"><option value="">Personalizado</option>' + Object.entries(SERVE_STYLES).map(([k, v]) => '<option value="' + k + '"' + (cur.preset === k ? ' selected' : '') + '>' + v.nome + '</option>').join('') + '</select></label>'
     + '<div class="cr-srv">' + SRV_SL.map(([k, n, mn, mx, stp, fmt]) => '<label class="cr-field cr-rng">' + n + ' <input type="range" id="crSrv_' + k + '" min="' + mn + '" max="' + mx + '" step="' + stp + '" value="' + cur[k] + '"><small id="crSrvV_' + k + '">' + fmt(cur[k]) + '</small></label>').join('') + '</div>'
     + '<p class="cr-note">Lançar de lado dá mais curva (slice); atrás da cabeça, topspin; bem à frente, pancada reta.</p>';
 }
@@ -243,14 +243,43 @@ function bindLook(done) {
   on('crAcWristF', v => { A().wristFab = v; });
   on('crAcLens', v => { A().lens = v; if (v) L().glasses = true; });
   on('crAcHead', v => { A().headFab = v; });
-  { const pre = $('crSrvPre'); if (pre) pre.addEventListener('change', () => { if (pre.value) { const v = SERVE_STYLES[pre.value]; $s.CR.serveStyle = { preset: pre.value, crouch: v.crouch, jump: v.jump, drive: v.drive, tossX: v.tossX, tossZ: v.tossZ }; } done(); }); }
-  SRV_SL.forEach(([k, , , , , fmt]) => { const r = $('crSrv_' + k); if (r) r.addEventListener('input', () => { const st = $s.CR.serveStyle = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || {}); st[k] = +r.value; st.preset = ''; const o = $('crSrvV_' + k); if (o) o.textContent = fmt(+r.value); if (pre0()) pre0().value = ''; }); });
+  { const bt = $('crSrvPrev'); if (bt) bt.addEventListener('click', () => { ED.srv = !ED.srv; ED.st = 0; bt.textContent = ED.srv ? 'Ver aparência' : '▶ Ver saque'; srvPreviewShow(); }); }
+  { const pre = $('crSrvPre'); if (pre) pre.addEventListener('change', () => { ED.srv = true; ED.st = 0; if (pre.value) { const v = SERVE_STYLES[pre.value]; $s.CR.serveStyle = { preset: pre.value, crouch: v.crouch, jump: v.jump, drive: v.drive, tossX: v.tossX, tossZ: v.tossZ }; } done(); }); }
+  SRV_SL.forEach(([k, , , , , fmt]) => { const r = $('crSrv_' + k); if (r) r.addEventListener('input', () => { if (!ED.srv) { ED.srv = true; ED.st = 0; const bt = $('crSrvPrev'); if (bt) bt.textContent = 'Ver aparência'; srvPreviewShow(); } const st = $s.CR.serveStyle = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || {}); st[k] = +r.value; st.preset = ''; const o = $('crSrvV_' + k); if (o) o.textContent = fmt(+r.value); if (pre0()) pre0().value = ''; }); });
   const OF = () => L().outfit || {};
   on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = $s.CR.master ? $s.CR.master.brand : v; }); on('crOfLogoPos', v => { OF().logoPos = v; });
   ['c1', 'c2', 'bc', 'lc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k === 'lc' ? 'logoCol' : k] = b.getAttribute('data-of-' + k); done(); } })));
 }
 // editor do jogador: janela com a prévia 3D (gira sozinha; arraste para girar) e as opções de aparência, biotipo e uniforme
-const ED = { el: null, r: null, scene: null, cam: null, model: null, rot: .5, drag: null, raf: 0 };
+const ED = { el: null, r: null, scene: null, cam: null, model: null, rot: .5, drag: null, raf: 0, srv: false, sp: null, st: 0, ball: null, last: 0 };
+// prévia do saque: o seu jogador repete o lançamento e o saque com o estilo escolhido (agachar, pulo, lançamento); a bola
+// sobe para onde o estilo lança. Arraste para girar a câmera em volta
+function srvPreviewShow() {
+  if (!ED.scene) return;
+  if (ED.srv && !ED.sp) { const me = $s.CR.me; try { ED.sp = makeServePreview(Object.assign({}, me, { id: 'crme', look: me.look })); } catch (e) { ED.sp = null; }
+    if (ED.sp) { ED.scene.add(ED.sp.skin.holder, ED.sp.skin.racket); ED.ball = new THREE.Mesh(new THREE.SphereGeometry(.035, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff7a12, roughness: .6 })); ED.scene.add(ED.ball); } }
+  if (ED.model) ED.model.visible = !ED.srv || !ED.sp;
+  if (!ED.srv && ED.cam) { const h = ED.h || 1.8; ED.cam.position.set(0, h * .6, h * 2.25); ED.cam.lookAt(0, h * .52, 0); }
+  if (ED.sp) { ED.sp.skin.holder.visible = ED.srv; ED.sp.skin.racket.visible = ED.srv; ED.ball.visible = false; }
+}
+function srvPreviewDrop() { if (!ED.sp) return; ED.scene.remove(ED.sp.skin.holder, ED.sp.skin.racket, ED.ball); ED.sp = null; }
+function srvPreviewTick(dt) {
+  const p = ED.sp; if (!p || !S.previewAnim) return;
+  const st = p.srvSt = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || {}), td = .72, hand = $s.CR.me.canhoto ? -1 : 1;
+  ED.st += dt; if (ED.st > td + 1.1) { ED.st = 0; p.jumped = false; }
+  const t = ED.st;
+  p.model.group.visible = true; p.pos.set(0, 0, t > td - .22 && t < td + .6 ? -st.drive * .5 * Math.min(1, (t - td + .22) / .5) : 0);
+  if (t < td) { p.debug = { type: 'serve', u: t / td }; if (t > td - .22 && !p.jumped) { p.jumped = true; if (st.jump > .02) { p.jump = .55; p.jumpDur = .55; p.jumpH = st.jump; } } }
+  else if (t < td + .5) p.debug = { type: 'smash_saque', u: (t - td) / .5 };
+  else p.debug = null;
+  S.previewAnim(p, dt);
+  // bola: sai da mão aos 30% do lançamento e chega ao ponto de contato no fim; depois do contato some para a frente
+  const b = ED.ball, s0 = .3 * td;
+  if (t < s0) { b.visible = true; b.position.set(.05 * hand, 1.05 + t / s0 * .45, -.35); }
+  else if (t < td) { const k = (t - s0) / (td - s0); b.visible = true; b.position.set(st.tossX * hand * k, 1.5 + (2.62 - 1.5) * k + 1.1 * Math.sin(Math.PI * k) * .8, -.35 - (st.tossZ - .35) * k + p.pos.z * k); }
+  else if (t < td + .25) { const k = (t - td) / .25; b.position.set(st.tossX * hand, 2.62 - k * .6, -st.tossZ + p.pos.z - k * 6); }
+  else b.visible = false;
+}
 function openEditor() {
   if (!ED.el) {
     const m = document.createElement('div'); m.id = 'crEdit'; m.className = 'cr-edit'; m.hidden = true;
@@ -271,7 +300,10 @@ function openEditor() {
     m.addEventListener('click', e => { if (e.target === m) closeEditor(); });
   }
   ED.el.hidden = false; renderEditor(); refreshPreview();
-  const loop = () => { if (ED.el.hidden) return; if (ED.drag == null) ED.rot += .006; if (ED.model) ED.model.rotation.y = ED.rot; ED.r.render(ED.scene, ED.cam); ED.raf = requestAnimationFrame(loop); };
+  const loop = () => { if (ED.el.hidden) return; const now = performance.now(), dt = Math.min(.05, (now - (ED.last || now)) / 1000); ED.last = now;
+    if (ED.srv && ED.sp) { srvPreviewTick(dt); const a = ED.rot + 1.2, zc = -.45; ED.cam.position.set(Math.sin(a) * 6.2, 1.6, Math.cos(a) * 6.2 + zc); ED.cam.lookAt(0, 1.35, zc); }
+    else { if (ED.drag == null) ED.rot += .006; if (ED.model) ED.model.rotation.y = ED.rot; }
+    ED.r.render(ED.scene, ED.cam); ED.raf = requestAnimationFrame(loop); };
   cancelAnimationFrame(ED.raf); loop();
 }
 function closeEditor() { if (!ED.el) return; ED.el.hidden = true; cancelAnimationFrame(ED.raf); renderCareer(); }
@@ -285,8 +317,9 @@ function refreshPreview() {
   try { ED.model = makePreview(c); } catch (e) { ED.model = null; }
   if (!ED.model) return;
   ED.scene.add(ED.model); ED.model.rotation.y = ED.rot;
-  const h = new THREE.Box3().setFromObject(ED.model).max.y || 1.8;
+  const h = new THREE.Box3().setFromObject(ED.model).max.y || 1.8; ED.h = h;
   ED.cam.position.set(0, h * .6, h * 2.25); ED.cam.lookAt(0, h * .52, 0);
+  srvPreviewDrop(); srvPreviewShow();
 }
 function crPersonRow(c, extra, btn) {
   const fw = c.id === 'crme' ? null : crFormWord(c.id);

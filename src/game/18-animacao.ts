@@ -115,16 +115,23 @@ function smashPrep(p, swingU) {
   if (!p.isHuman && S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team && p.swing.t < 0 && p.ai.planId === S.hitId && p.ai.shot === 'smash' && p.ai.plan && p.ai.plan.pt.y >= 1.9 && assignee(p.team) === p) return 1;
   return 0;
 }
+// estilo do saque no lançamento: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado/à frente leva o braço livre
+function srvStyle(p, pose, u) {
+  const st = p.srvSt; if (!st) return;
+  const k = clamp((u - .15) / .5, 0, 1); pose.crouch *= lerp(1, st.crouch, k); pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
+}
+// prévia animada (editor da carreira): anima e move o modelo realista de um jogador que não está em quadra
+S.previewAnim = (p, dt) => { animateAthlete(p, dt); if (p.skin) driveSkin(p); };
 function animateAthlete(p, dt) {
   const m = p.model; let pose = p.poseT || (p.poseT = newPose());
   const sp = Math.hypot(p.vel.x, p.vel.z), run = clamp(sp / 4.2, 0, 1);
   let mirror = false, swingU = -1;
   if (p.debug) {
-    if (p.debug.type === 'serve' || p.debug.type === 'servelow') poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose);
+    if (p.debug.type === 'serve' || p.debug.type === 'servelow') { poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose); if (p.debug.type === 'serve') srvStyle(p, pose, p.debug.u); }
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); styleSwing(pose, p.debug.type, swingU, p.debug.st); mirror = /^(defesa|curta|lob)/.test(p.debug.type) && p.debug.side < 0; }
   } else if (S.mode === 'toss' && S.serverPlayer === p) { const u = clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1); poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, u, pose);
     // estilo do saque: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado abre o braço livre
-    if (S.serveType !== 'lob' && p.srvSt) { const st = p.srvSt, k = clamp((u - .15) / .5, 0, 1); pose.crouch *= lerp(1, st.crouch, k); pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k; } }
+    if (S.serveType !== 'lob') srvStyle(p, pose, u); }
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR; poseAt(ACT[M.type === 'lob' ? 'lob' : 'smash'], uOf(M.type === 'lob' ? 'lob' : 'smash'), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); mirror = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15; let ak = swingKey(p); if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh';

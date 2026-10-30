@@ -11,7 +11,7 @@ import { camera, canvasTex, col, mat, scene } from './02-render';
 import { ENV, sandH } from './03-cenario';
 import { RACKETS, SHADOW_TEX, capsuleGeo, makeRacket, setRacketModels } from './05-atletas';
 import { brandMark } from './marcas';
-import { ALL, cpuA, cpuB, human, makeAthlete, partner } from './06-modelos';
+import { ALL, cpuA, cpuB, human, makeAthlete, makePlayer, partner } from './06-modelos';
 import { charSkill, playStyleOf } from './16-ia';
 // ---------- Jogadores com modelo 3D (GLB) dirigidos pelo rig de animação ----------
 const GLB = { male: null, female: null };
@@ -533,6 +533,17 @@ function charLook(c, team, idx) {
   return look;
 }
 // prévia do jogador (editor da carreira): o modelo realista vestido como em quadra, parado; sem os modelos, o desenhado
+// boneco animado para a prévia do saque no editor da carreira: um jogador à parte (fora da quadra), com o modelo realista
+// e a raquete, que a tela do editor move para a cena dela
+function makeServePreview(c) {
+  const look = charLook(c, 0, 0), g = c.fem ? GLB.female : GLB.male;
+  if (!g) return null;
+  const p = makePlayer(0, 1, look, false, 'prévia'); p.char = c; p.preview = true;
+  attachSkin(p, g); scene.remove(p.skin.holder); scene.remove(p.skin.racket);
+  p.skin.racket.userData.setStyle(look.racket || 'proteo');
+  p.height = heightOf(c); applyLefty(p); scaleSkin(p); p.skinOn = true;
+  return p;
+}
 function makePreview(c) {
   const look = charLook(c, 0, 0), g = c.fem ? GLB.female : GLB.male;
   if (!g) { const m = makeAthlete(look); m.group.scale.setScalar(heightOf(c) / 1.8); return m.group; }
@@ -802,4 +813,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, scuffMark, trail, trailGeo, trailPos, updateParticles };
+export { makeServePreview, makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, scuffMark, trail, trailGeo, trailPos, updateParticles };

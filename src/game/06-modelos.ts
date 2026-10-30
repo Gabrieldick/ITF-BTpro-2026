@@ -493,4 +493,4 @@ const ALL = [human, partner, cpuA, cpuB];
 $s.players = [human, cpuA];
 $s.teams = [[human], [cpuA]];
 
-export { ALL, MALE, cpuA, cpuB, human, makeAthlete, partner };
+export { ALL, MALE, cpuA, cpuB, human, makeAthlete, makePlayer, partner };

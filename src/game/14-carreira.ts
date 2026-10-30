@@ -21,7 +21,7 @@ const TIERS = [
   { id: 'BT100', nome: 'ITF BT100', curto: 'BT100', ovr: [68, 81], draw: 16, fee: 500, travel: 800, prize: [14000, 7000, 3200, 1300, 400], pts: [100, 70, 45, 25, 10], xp: [9, 7, 5, 3, 2], diff: 'medio', req: 250, cities: ['BT100 Copacabana', 'BT100 Riccione', 'BT100 Aruba', 'BT100 Gran Canaria'] },
   { id: 'BT200', nome: 'ITF BT200', curto: 'BT200', ovr: [73, 86], draw: 16, fee: 800, travel: 1200, prize: [28000, 14000, 6500, 2600, 800], pts: [200, 140, 90, 50, 20], xp: [11, 8, 6, 4, 2], diff: 'dificil', req: 600, cities: ['BT200 Rio de Janeiro', 'BT200 Ravenna', 'BT200 Terracina', 'BT200 Fortaleza'] },
   { id: 'BT400', nome: 'ITF BT400', curto: 'BT400', ovr: [78, 90], draw: 16, fee: 1200, travel: 1800, prize: [50000, 25000, 12000, 5000, 1500], pts: [400, 280, 180, 100, 40], xp: [13, 10, 7, 4, 2], diff: 'dificil', req: 1300, cities: ['BT400 Sul Special Cup', 'BT400 Matinhos', 'BT400 Cuiabá', 'BT400 Feira de Santana', 'BT400 Maceió', 'BT400 Marechal Deodoro', 'BT400 Petrolina', 'BT400 Amazônia Open Sunset', 'BT400 Cervia', 'BT400 Saint-Georges-de-Didonne'] }, // etapas reais (2025): quase todas no Brasil
-  { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [600, 420, 270, 145, 60], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba', 'Sand Series Copacabana', 'Sand Series Cascais', 'Sand Series Gran Canaria'] },
+  { id: 'SS', nome: 'Sand Series', curto: 'SAND SERIES', ovr: [82, 95], draw: 16, fee: 2000, travel: 2500, prize: [90000, 45000, 22000, 9000, 3000], pts: [700, 490, 315, 170, 70], xp: [16, 12, 8, 5, 3], diff: 'dificil', req: 2800, cities: ['Sand Series Cervia', 'Sand Series Fortaleza', 'Sand Series Ravenna', 'Sand Series Aruba', 'Sand Series Copacabana', 'Sand Series Cascais', 'Sand Series Gran Canaria'] },
   { id: 'WC', nome: 'Campeonato Mundial ITF', curto: 'MUNDIAL', ovr: [84, 99], draw: 16, fee: 0, travel: 3000, prize: [150000, 75000, 36000, 15000, 5000], pts: [1000, 700, 450, 250, 100], xp: [20, 14, 10, 6, 3], diff: 'dificil', req: 1e9, cities: ['Mundial de Matosinhos'] },
 ];
 // torneios a cada ~2 semanas: cada um paga mais (prêmio ×1,6) e rende o dobro da evolução de fim de torneio
@@ -51,7 +51,7 @@ function crSeasonCal(season) {
 }
 // torneios de verdade de cada semana (os mesmos que aparecem para você e os únicos que dão pontos para os outros):
 // cidade, nível e valor. BT400 nunca na mesma semana de outro BT400, de Sand Series ou do Mundial; BT400 e Sand Series
-// valem 400/600 ou um pouco mais (até ~470/705, os de maior premiação). Abaixo do BT400 pode haver mais de um na semana
+// valem 400/700 ou um pouco mais (até ~470/777, os de maior premiação). Abaixo do BT400 pode haver mais de um na semana
 const EVC = { key: '', ev: null };
 const EV_PER = { 3: [1, .5, .25], 4: [1, .4], 5: [1, .3], 6: [1, .12] }; // chance do 1º, 2º, 3º torneio do nível na semana
 function crSeasonEv(season) {
@@ -71,7 +71,7 @@ function crSeasonEv(season) {
   const used = {};
   const add = (t, w) => { const T = TIERS[t], cs = T.cities, u = used[t + ':' + w] || (used[t + ':' + w] = new Set());
     let i = Math.floor(r2() * cs.length); for (let k = 0; k < cs.length && u.has(i); k++) i = (i + 1) % cs.length; u.add(i);
-    const r = r2(), m = t >= 7 && t <= 8 ? (r < .55 ? 1 : r < .85 ? 1.1 : 1.175) : 1;
+    const r = r2(), m = t === 7 ? (r < .55 ? 1 : r < .85 ? 1.1 : 1.175) : t === 8 ? (r < .5 ? 1 : r < .8 ? 1.06 : 1.11) : 1; // BT400 400–470 · Sand Series 700–777
     ev[w].push({ t, city: cs[i], m, id: season + ':' + w + ':' + t + ':' + ev[w].filter(e => e.t === t).length }); };
   for (const [t, ws] of Object.entries(weeks)) for (const w of ws) { const n = +t; if (EV_PER[n]) EV_PER[n].forEach((pc, k) => { if (k === 0 || r2() < pc) add(n, w); }); else add(n, w); }
   add(9, 51); // Mundial (top 16 do ranking)
@@ -500,7 +500,7 @@ function crPairBoard(n) {
 }
 // fim de temporada: compara os pontos de cada dupla com o que o nível dela prometia
 // final de torneio grande nas últimas 52 semanas (BT400 campeão, Sand Series e Mundial: campeão ou vice)
-const BIG_F = new Set([400, 440, 470, 420, 462, 494, 600, 660, 705, 700, 1000]); // (BT400/Sand Series valem até ~17% a mais)
+const BIG_F = new Set([400, 440, 470, 490, 519, 544, 700, 742, 777, 1000]); // (BT400 até 470; Sand Series de 700 a 777)
 const bigFinal = id => { const a = ($s.CR.npcR || {})[id] || [], lim = absWeek() - SEASON_WEEKS; return a.some(x => { const w = Math.floor(x / 10000); return w > lim && BIG_F.has(x - w * 10000); }); };
 function crPairsSeason() {
   const P = crPairs(true), B = $s.CR.pairBad = $s.CR.pairBad || {}, RK0 = $s.CR.pairRk || {}, RK1 = {};
@@ -746,7 +746,7 @@ function crCreate(o) {
   const me = { id: 'crme', uf: (o.pais || 'BRA') === 'BRA' ? o.uf || 'SP' : undefined, name: o.name || 'Você', alt: o.alt, pais: o.pais || 'BRA', estilo: STYLES[o.style].nome, build: o.build || 'atletico', fem: o.fem, canhoto: o.canhoto || undefined,
     a: attrs || makeAttrs(target, o.style, rnd), look: Object.assign({ skin: o.skin, hair: o.hair, num: '99', racket: 'basica' }, o.acc === 'cap' ? { cap: '#fbf6ea' } : o.acc === 'visor' ? { visor: '#fbf6ea' } : o.acc === 'band' ? { headband: '#ff5a1f' } : {}, o.hairStyle ? { hairStyle: o.hairStyle } : {}, !o.fem && o.beard ? { beard: o.beard } : { beard: '' }, o.fem ? { tank: true } : {}, { glasses: !!o.glasses, band: true }) };
   $s.CR = { v: 2, id: 'c' + seed, seed, me, pot: promessa ? 94 + Math.floor(rnd() * 4) : 86 + Math.floor(rnd() * 4), age: (promessa ? 17 : 22) + Math.round(st * .8),
-    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, ptsV: 4, titles: {}, maxTier: st, startTier: st,
+    money: Math.round((promessa ? 800 : 1200) + (st ? T0.prize[0] * .6 : 0)), pe: 0, energy: 100, season: 1, week: 1, day: 1, wlog: {}, results: [], npcR: {}, ptsV: 5, titles: {}, maxTier: st, startTier: st,
     partner: null, chemBy: {}, offers: [], beat: {}, racket: 'basica', rackets: promessa ? ['basica'] : ['basica', 'fibra'], gear: [], staff: {},
     history: [], ovrLog: [], tour: null, games: 4, lastMsg: '', pool: genPool(seed) };
   if (!promessa) $s.CR.racket = 'fibra';
@@ -1898,7 +1898,7 @@ function crMigrate() {
   // os resultados dos outros passam a sair de chaves de verdade (o ranking antigo era achatado): refaz o último ano deles
   if ($s.CR.ptsV === 2 && $s.CR.npcR) { $s.CR.npcR = {}; crSimYear(53); $s.CR.ptsV = 3; RK.key = ''; saveCareer(); }
   // calendário real (só torneios que existem dão pontos, BT400 sem coincidir com Sand Series): refaz um ano de resultados
-  if ($s.CR.ptsV === 3 && $s.CR.npcR) { $s.CR.npcR = {}; crSimYear(61); $s.CR.ptsV = 4; RK.key = ''; saveCareer(); }
+  if (($s.CR.ptsV === 3 || $s.CR.ptsV === 4) && $s.CR.npcR) { $s.CR.npcR = {}; crSimYear(61); $s.CR.ptsV = 5; RK.key = ''; saveCareer(); } // (5: Sand Series vale 700–777)
 }
 // ---------- equipe técnica ----------
 const crStaffList = () => STAFF.filter(s => $s.CR.staff[s.id]);
