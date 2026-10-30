@@ -566,18 +566,34 @@ function applyRackets() {
   if (fpRacket) fpRacket.userData.setStyle(human.rkKey || mine); // a mesma raquete do seu jogador
 }
 // braço em primeira pessoa (preso à câmera)
+const latheGeoFP = (prof, zs) => { const g = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 22); g.scale(1, 1, zs); g.computeVertexNormals(); return g; };
 let fpRacket = null;
 let fpWrist = null, fpSkin = null;
 // o braço fica dentro de um grupo espelhável (canhoto em primeira pessoa)
 const fpMirror = new THREE.Group(); camera.add(fpMirror);
 const fpArm = new THREE.Group(); fpArm.position.set(.24, -.34, -.34); fpArm.rotation.order = 'YXZ'; fpMirror.add(fpArm);
 {
-  const skin = mat('#c68a5e', { roughness: .55 }); fpSkin = skin;
-  fpArm.add(new THREE.Mesh(capsuleGeo(.04, .03, .4), skin));
-  const hand = new THREE.Mesh(new THREE.SphereGeometry(.038, 10, 8), skin); hand.scale.set(.8, 1.2, .65); hand.position.y = -.44; fpArm.add(hand);
-  const wband = new THREE.Mesh(new THREE.CylinderGeometry(.036, .036, .04, 12), mat('#ff5a1f')); wband.position.y = -.36; fpArm.add(wband);
+  // pele: textura clara (a cor do jogador entra no color) com variação de tom, poros e uns pelinhos; o relevo sai da mesma imagem
+  const skTex = canvasTex(256, 256, (x, w, h) => {
+    x.fillStyle = '#fff5ef'; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 70; i++) { const g = x.createRadialGradient(0, 0, 0, 0, 0, 1); const r = rand(12, 40); g.addColorStop(0, `rgba(${rand(200, 235) | 0},${rand(150, 190) | 0},${rand(140, 175) | 0},${rand(.05, .14)})`); g.addColorStop(1, 'rgba(0,0,0,0)'); x.save(); x.translate(Math.random() * w, Math.random() * h); x.scale(r, r * rand(.6, 1.6)); x.fillStyle = g; x.fillRect(-1, -1, 2, 2); x.restore(); }
+    for (let i = 0; i < 2600; i++) { x.fillStyle = `rgba(110,70,55,${rand(.04, .13)})`; x.fillRect(Math.random() * w, Math.random() * h, 1.2, 1.2); }
+    x.strokeStyle = 'rgba(90,60,45,.12)'; x.lineWidth = .7; for (let i = 0; i < 260; i++) { const px = Math.random() * w, py = Math.random() * h; x.beginPath(); x.moveTo(px, py); x.lineTo(px + rand(-2, 2), py + rand(3, 6)); x.stroke(); }
+  }, true);
+  skTex.wrapS = skTex.wrapT = THREE.RepeatWrapping; skTex.repeat.set(2, 3);
+  const skin = new THREE.MeshPhysicalMaterial({ color: col('#c68a5e'), map: skTex, bumpMap: skTex, bumpScale: .6, roughness: .5, sheen: .2, sheenRoughness: .6, sheenColor: col('#ffcfb0'), clearcoat: .08, clearcoatRoughness: .5 }); fpSkin = skin;
+  // antebraço: perfil anatômico (mais grosso perto do cotovelo, afina no pulso) e achatado, não um tubo
+  const fore = new THREE.Mesh(latheGeoFP([[0, .03], [.03, .022], [.045, -.01], [.05, -.06], [.048, -.12], [.042, -.2], [.035, -.29], [.029, -.37], [.026, -.42], [.027, -.45], [0, -.47]], .78), skin);
+  fpArm.add(fore);
+  // dorso da mão saindo do pulso, os dedos fechados em volta do cabo e o polegar por cima (no espaço do pulso)
+  const back = new THREE.Mesh(new THREE.SphereGeometry(.03, 14, 10), skin); back.scale.set(1.05, 1.1, .62); back.position.set(0, -.47, .004); fpArm.add(back);
   fpWrist = new THREE.Group(); fpWrist.position.y = -.44; fpArm.add(fpWrist);
   fpRacket = makeRacket('proteo'); fpRacket.position.y = .03; fpWrist.add(fpRacket);
+  const fist = new THREE.Group(); fist.position.y = -.035; fpWrist.add(fist);
+  for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.TorusGeometry(.024, .0105 - i * .0007, 8, 14, Math.PI * 1.45), skin); f.rotation.set(Math.PI / 2, 0, -.6); f.position.y = .03 - i * .021; fist.add(f);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(.0105 - i * .0007, 8, 6), skin); tip.position.set(Math.cos(-.6 + Math.PI * 1.45) * .024, .03 - i * .021, -Math.sin(-.6 + Math.PI * 1.45) * .024); fist.add(tip); }
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(.03, 12, 8), skin); palm.scale.set(.75, 1.45, .75); palm.position.set(-.022, 0, 0); fist.add(palm);
+  const thumb = new THREE.Mesh(capsuleGeo(.011, .0095, .05, 8), skin); thumb.position.set(.006, .04, .02); thumb.rotation.set(.3, 0, 2.4); fist.add(thumb);
 }
 fpArm.visible = false;
 // Bola
