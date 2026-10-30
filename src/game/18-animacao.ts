@@ -649,6 +649,9 @@ function updateTags(fp) {
       t.append(p.char ? shortOf(p.char) : p.name);
       if (p.char) { const b = document.createElement('b'); b.textContent = overall(p.char.a); t.append(b); }
     }
+    // barrinha de stamina embaixo do nome (verde → amarelo → vermelho)
+    { let bar = t.querySelector('.sta'); if (!bar) { bar = document.createElement('i'); bar.className = 'sta'; bar.append(document.createElement('i')); t.append(bar); }
+      const sv = Math.round((p.sta ?? 1) * 50) / 50; if (bar.dataset.v !== String(sv)) { bar.dataset.v = String(sv); const f = bar.firstChild; f.style.width = (sv * 100) + '%'; f.style.background = sv > .6 ? '#4fd18b' : sv > .35 ? '#ffd23f' : '#e5484d'; } }
     t.style.left = ((_tv.x * .5 + .5) * innerWidth) + 'px';
     t.style.top = ((-_tv.y * .5 + .5) * innerHeight) + 'px';
   }

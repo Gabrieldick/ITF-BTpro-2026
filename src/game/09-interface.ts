@@ -725,7 +725,7 @@ const COURTS = {
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
-  S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; });
+  S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; q.sta = 1; });
   S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; // lição do tutorial: tudo em 1 estrela (só nesta partida)
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();

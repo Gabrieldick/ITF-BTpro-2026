@@ -23,6 +23,9 @@ const SERVE_STYLES = {
 const bG = () => ball.state === 'live' ? G * (ball.gk || 1) : ball.state === 'toss' ? G * TOSS_G : G;
 // efeito lateral (saque e smash com curva): aceleração horizontal constante enquanto a bola está viva; quem bate já mira
 // compensando (a bola sai para um lado e volta para o alvo). bCurve soma esse desvio nas simulações de trajetória
+// stamina na partida (0 a 1): abaixo de 35% o jogador fica mais lento (até −16%) e erra mais (ruído do golpe até +75%)
+const staMul = p => { const s = p.sta ?? 1; return s >= .35 ? 1 : .84 + .16 * s / .35; };
+const staErr = p => { const s = p.sta ?? 1; return s >= .35 ? 1 : 1 + (.35 - s) * 2.15; };
 const bCurve = (vel, dt) => { if (ball.state === 'live' && (ball.cx || ball.cz)) { vel.x += (ball.cx || 0) * dt; vel.z += (ball.cz || 0) * dt; } };
 const C = { halfL: 8, halfW: 2.25, netH: 1.7, ballR: .035, netHalf: 4.6 };
 const HALF_W = { simples: 2.25, dupla: 4 };
@@ -458,4 +461,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { staMul, staErr, SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

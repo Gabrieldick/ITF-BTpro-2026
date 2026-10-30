@@ -3,7 +3,7 @@
 import './09-interface';
 import { perfHitHook } from './09-interface';
 import { $s } from '../state';
-import { bCurve, ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN, attrOf } from './00-base';
+import { staErr, bCurve, ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN, attrOf } from './00-base';
 import { S, NET } from './01-estado';
 import { VAR_FX, swingVar } from './04-poses';
 import { ball } from './07-glb';
@@ -310,6 +310,7 @@ function doHit(p, type, q, isServe, mod) {
   let depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
   if (!p.isHuman && p.ai && p.ai.depthK != null) { if (!pop && p.ai.planDepth == null) depth = lerp(spec.depth[0], spec.depth[1], clamp(p.ai.depthK + rand(-.2, .2), 0, 1)); p.ai.depthK = null; } // CPU treinada: profundidade de cada golpe
   if (!p.isHuman && p.ai && p.ai.planDepth != null) { if (!pop && !isServe) depth = clamp(p.ai.planDepth, spec.depth[0], spec.depth[1]) + rand(-.15, .15); p.ai.planDepth = null; } // IA Planejadora: profundidade escolhida na busca
+  { const se = staErr(p); if (se > 1 && !isServe) { spec.noise *= se; mod.misBoost = (mod.misBoost || 0) + (se - 1) * .08; } } // cansado: golpe menos preciso
   const tgt = new V3(aim + gauss() * spec.noise * err, C.ballR, dir * (depth + gauss() * spec.noise * err * 1.2));
   if (wild) { tgt.x += (Math.random() < .5 ? -1 : 1) * rand(.8, 2.2); tgt.z += dir * rand(1.2, 3.2); }
   if (finOut) { if (Math.random() < .45) tgt.x = (Math.sign(tgt.x) || 1) * (C.halfW + rand(.5, 2)); else tgt.z = dir * (C.halfL + rand(.6, 2.5)); } // finalização que espirra: sai de verdade

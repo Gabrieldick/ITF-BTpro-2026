@@ -2,7 +2,7 @@
 // atualização da bola e pontos
 import './16-ia';
 import { $s } from '../state';
-import { bCurve, C, bG, clamp, rand } from './00-base';
+import { bCurve, C, bG, clamp, rand, attrK } from './00-base';
 const BALL_VIS = .055; // raio da bola como ela aparece (07-glb)
 const BALL_MARK = .032; // raio da marca que ela deixa na areia (afunda ~1 cm)
 import { S, NET } from './01-estado';
@@ -14,6 +14,21 @@ import { skillOf, startJump, startToss, handPos, releaseToss } from './11-mira';
 import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 import { startCeremony } from './22-cerimonia';
+// stamina: gasta correndo no ponto (bem mais em arrancada), em cada salto e em cada mergulho (quem tem mais velocidade/físico
+// cansa menos); recupera entre os pontos e bem mais na troca de lado
+function staminaStep(dt) {
+  for (const p of $s.players) {
+    if (p.sta === undefined) p.sta = 1;
+    if (S.mode === 'rally') {
+      const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.25 - .5 * Math.min(1, attrK(p, 'vel'));
+      let d = dt * (.009 + .045 * Math.pow(Math.min(1.2, sp / 5), 1.5));
+      if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
+      if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
+      p.sta = Math.max(0, p.sta - d * k);
+    } else if (S.mode === 'dead') p.sta = Math.min(1, p.sta + dt * (S.sideWalk ? .08 : .028));
+    else if (S.mode === 'serve') p.sta = Math.min(1, p.sta + dt * .02);
+  }
+}
 // ---------- Bola ----------
 function updateBall(dt) {
   if (ball.state === 'held') { placeHeldBall(); return; }
@@ -85,6 +100,7 @@ function step(dt) {
   }
   updateBall(dt);
   if (S.mode === 'dead') S.ptT = (S.ptT || 0) + dt;
+  staminaStep(dt);
   // mapa de calor: onde o seu jogador ficou durante os ralis (meia quadra 8 × 8 m, rede em cima)
   if (S.mode === 'rally' && S.posHeat && !S.spectate) { S.heatT = (S.heatT || 0) + dt; if (S.heatT > .2) { S.heatT = 0; const p = human, f = p.team === 0 ? 1 : -1, cx = Math.floor(clamp((p.pos.x * f + 4) / 8, 0, .999) * 8), cz = Math.floor(clamp(p.pos.z * f / 8, 0, .999) * 8); S.posHeat[cz * 8 + cx]++; } }
   if (S.mode === 'dead' && !sideWalkStep(dt) && S.celebrate) celebrateStep(dt); // troca de lado: caminhada até o poste

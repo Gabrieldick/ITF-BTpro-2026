@@ -2,7 +2,7 @@
 // inteligência artificial: planejamento, estilos, escolha de golpes
 import './15-carreira-telas';
 import { $s } from '../state';
-import { bCurve, C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
+import { staMul, bCurve, C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
 import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -282,7 +282,7 @@ function updateHuman(dt, c = localCtl()) {
   p.inputX = ix; p.inputZ = iz;
   const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
   if (p.diveRec > 0) p.diveRec = Math.max(0, p.diveRec - dt);
-  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8); // depois do mergulho: começa a 55% e volta ao normal
+  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8) * staMul(p); // depois do mergulho: começa a 55% e volta ao normal
   let tvx = ix * spd, tvz = iz * spd;
   if (p.dive) {
     p.dive.t += dt;
@@ -707,7 +707,7 @@ function updateAI(p, dt) {
     }
   }
   const lowB = p.ai.plan && p.ai.planId === S.hitId && p.ai.plan.pt.y < 1;
-  moveToward(p, tx, tz, D.speed * (1 + shortK(p) * (lowB ? .1 : .03)), dt);
+  moveToward(p, tx, tz, D.speed * (1 + shortK(p) * (lowB ? .1 : .03)) * staMul(p), dt); // cansado (stamina baixa): mais lento
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);
   if (p.swing.t >= 0) {
