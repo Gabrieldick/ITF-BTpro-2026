@@ -880,17 +880,28 @@ function toMenu() {
   S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; el.menu.hidden = false;
   document.body.classList.add('in-menu'); hideBanner(); syncMenu(); menuStep('home');
 }
-// menu em passos: início (blocos) → partida rápida 1 (elenco e modalidade) → 2 (jogadores) → 3 (ajustes) → começar
-function menuStep(st) {
-  const m = $('menu'); m.dataset.step = st;
-  m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });
-  readMenu(); syncMenu();
-  const dupla = S.settings.mode === 'dupla';
-  const side = m.querySelector('input[name=side]'), tac = $('tacticSel');
+// menu: início (blocos) → partida rápida (uma tela só) → começar; Configurações volta para a tela de onde veio
+let menuPrev = 'home';
+function qmDupla() {
+  const m = $('menu'), dupla = (m.querySelector('input[name=mode]:checked') || {}).value === 'dupla';
+  const side = m.querySelector('input[name=side]'), tac = $('tacticSel'), fsel = $('formSel');
   if (side) side.closest('fieldset').hidden = !dupla;
-  if (tac) tac.closest('label').hidden = !dupla; const fsel = $('formSel'); if (fsel) fsel.closest('label').hidden = !dupla;
+  if (tac) tac.closest('label').hidden = !dupla; if (fsel) fsel.closest('label').hidden = !dupla;
+}
+document.querySelectorAll('#menu input[name=mode]').forEach(r => r.addEventListener('change', qmDupla));
+function menuStep(st) {
+  const m = $('menu');
+  if (st === 'back') st = menuPrev; else if (st === 'cfg' && m.dataset.step !== 'cfg' && m.dataset.step !== 'keys') menuPrev = m.dataset.step || 'home';
+  m.dataset.step = st;
+  m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });
+  readMenu(); syncMenu(); qmDupla();
   m.scrollTop = 0;
 }
+// configurações em abas
+document.querySelectorAll('#menu [data-cfgt]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#menu [data-cfgt]').forEach(x => x.classList.toggle('sel', x === b));
+  document.querySelectorAll('#menu [data-cfgp]').forEach(x => { x.hidden = x.dataset.cfgp !== b.dataset.cfgt; });
+}));
 document.querySelectorAll('#menu [data-goto]').forEach(b => b.addEventListener('click', () => { ac(); menuStep(b.dataset.goto); }));
 // configurações: aplicar confirma e já mostra (gráficos, jogadores realista/desenhado, roupa, raquete)
 $('cfgApply').addEventListener('click', () => {
@@ -992,17 +1003,17 @@ $('btnGameCfg').addEventListener('click', () => { $('gameCfg').hidden = false; }
 $('gameCfgClose').addEventListener('click', () => { $('gameCfg').hidden = true; });
 // nomes sobre os jogadores (pausa): alterna normal → pequenos → simples → escondidos
 const TAG_STYLES = ['normal', 'pequena', 'simples', 'off'], TAG_TXT = { normal: 'normal', pequena: 'pequenos', simples: 'simples', off: 'escondidos' };
-const syncTagsBtn = () => { $('btnTags').textContent = 'Nomes: ' + TAG_TXT[S.settings.tagStyle || 'normal']; };
+const syncTagsBtn = () => { $('btnTags').querySelector('b').textContent = TAG_TXT[S.settings.tagStyle || 'normal']; };
 $('btnTags').addEventListener('click', () => { const c = S.settings.tagStyle || 'normal'; S.settings.tagStyle = TAG_STYLES[(TAG_STYLES.indexOf(c) + 1) % TAG_STYLES.length]; saveSettings(); applyMeterLook(); syncTagsBtn(); });
 syncTagsBtn();
 document.querySelectorAll('[data-barcfg]').forEach(b => b.addEventListener('click', () => { $('barCfg').hidden = false; }));
 $('barCfgClose').addEventListener('click', () => { $('barCfg').hidden = true; });
 $('btnBall').addEventListener('click', () => { const l = Object.keys(BALL_STYLES), cur = S.settings.ballStyle || 'laranja'; S.settings.ballStyle = l[(l.indexOf(cur) + 1) % l.length]; saveSettings(); setBallStyle(S.settings.ballStyle); syncAssistButtons(); });
 function syncAssistButtons() {
-  $('btnAsMove').textContent = 'Seguir a bola: ' + (S.settings.assistMove ? 'ligado' : 'desligado');
-  $('btnAsMark').textContent = 'Onde a bola cai: ' + (S.settings.assistMark ? 'ligado' : 'desligado');
-  $('btnShotTxt').textContent = 'Nome do golpe: ' + SHOT_TXT[S.settings.shotText || 'discreto'];
-  $('btnBall').textContent = 'Bolinha: ' + (BALL_STYLES[S.settings.ballStyle || 'laranja'] || BALL_STYLES.laranja).nome.replace(' (padrão)', '').toLowerCase();
+  // pausa: interruptores (ligado/desligado) e opções que giram mostrando o valor à direita
+  [['btnAsMove', 'assistMove'], ['btnAsMark', 'assistMark']].forEach(([id, k]) => { const b = $(id); b.classList.toggle('on', !!S.settings[k]); b.setAttribute('aria-checked', S.settings[k] ? 'true' : 'false'); });
+  $('btnShotTxt').querySelector('b').textContent = SHOT_TXT[S.settings.shotText || 'discreto'];
+  $('btnBall').querySelector('b').textContent = (BALL_STYLES[S.settings.ballStyle || 'laranja'] || BALL_STYLES.laranja).nome.replace(' (padrão)', '').toLowerCase();
 }
 function adjustFov(d) {
   S.settings.fovFp = clamp((S.settings.fovFp || 72) + d, 55, 110); saveSettings(); applyCam();

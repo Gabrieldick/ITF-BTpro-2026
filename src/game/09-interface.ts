@@ -785,8 +785,10 @@ function matchExtras(teams, win) {
     S.posHeat.forEach((v, i) => { if (!v) return; const col = i % 8, row = Math.floor(i / 8), k = v / mxh; x.fillStyle = 'rgba(' + Math.round(255) + ',' + Math.round(200 - 170 * k) + ',' + Math.round(40) + ',' + (.15 + .75 * k) + ')'; x.fillRect(col * 12, row * 12, 12, 12); });
     x.strokeStyle = '#fff'; x.lineWidth = 2; x.strokeRect(1, 1, 94, 94); x.fillStyle = '#fff'; x.fillRect(0, 0, 96, 3); // rede em cima
     heat = '<div class="mx-heat"><img src="' + c.toDataURL() + '" alt=""><small>Onde você jogou (rede em cima)</small></div>'; }
-  return '<div class="mx"><div><p class="section-label">Como os pontos foram ganhos</p>' + bar(0) + bar(1) + '<small class="mx-leg"><i class="win"></i> golpes vencedores <i class="err"></i> erros do adversário</small></div>'
-    + '<div><p class="section-label">Tamanho dos ralis (golpes)</p>' + hist + '</div>' + heat + '</div>';
+  // gráfico sem dado nenhum (partida simulada, abandonada no 0 a 0…) não aparece como caixa vazia
+  const howC = W[0] + W[1] + E[0] + E[1] > 0 ? '<div><p class="section-label">Como os pontos foram ganhos</p>' + bar(0) + bar(1) + '<small class="mx-leg"><i class="win"></i> golpes vencedores <i class="err"></i> erros do adversário</small></div>' : '';
+  const histC = R.length ? '<div><p class="section-label">Tamanho dos ralis (golpes)</p>' + hist + '</div>' : '';
+  return howC || histC || heat ? '<div class="mx">' + howC + histC + heat + '</div>' : '';
 }
 const esc2 = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 // carreira: simula o resto da partida ponto a ponto, pela força das duplas (e as estrelas); a nota fica a do que já foi jogado

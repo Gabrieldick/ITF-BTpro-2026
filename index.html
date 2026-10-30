@@ -57,14 +57,13 @@
 <div id="menu" class="overlay" data-step="home">
   <div class="card">
     <div>
-      <div class="eyebrow">Beach tennis · simples 16 × 4,5 m · dupla 16 × 8 m · rede 1,80 m (pro masc.) / 1,70 m</div>
       <h1 class="title">ITF-BT <span>PRO 2026</span></h1>
     </div>
 
     <!-- início: só os modos (blocos) -->
     <section data-step="home">
     <div class="cta-row tiles">
-      <button class="cta tile tile-main" id="btnPlay" data-goto="q1"><small>Partida rápida</small>Jogar</button>
+      <button class="cta tile tile-main" id="btnPlay" data-goto="q"><small>Partida rápida</small>Jogar</button>
       <button class="ghost tile" id="btnCareer"><small>Do amador ao Mundial</small>Carreira</button>
       <button class="ghost tile" id="btnChamp"><small>Chave de 8 duplas</small>Campeonato</button>
       <button class="ghost tile" id="btnOnline"><small>Com amigos</small>Online</button>
@@ -73,12 +72,11 @@
       <div class="cta-row" style="margin-top:8px"><button class="ghost sm" id="btnTut" type="button">🎓 Tutorial</button><button class="ghost sm" data-goto="help">Como jogar</button><button class="ghost sm" data-goto="cfg">Configurações</button><button class="ghost sm" id="btnAcct" type="button">👤 Conta</button></div>
       <p class="app-ver"><span id="appVer"></span> <button type="button" id="btnLog" class="info-btn" title="Últimas mudanças" aria-label="Últimas mudanças" hidden>i</button></p>
     </section>
-    <!-- partida rápida, passo 1: elenco e modalidade -->
-    <section data-step="q1" hidden>
-      <div class="eyebrow">Partida rápida · 1 de 3</div>
-      <p class="section-label">Escolha o elenco e a modalidade</p>
-      <div class="opts">
-      <fieldset class="seg" style="margin-bottom:10px"><legend>Elenco</legend><div class="pills">
+    <!-- partida rápida: tudo numa tela só, com o botão de começar sempre à vista -->
+    <section data-step="q" hidden class="qm">
+      <div class="eyebrow">Partida rápida</div>
+      <div class="qm-grid">
+      <fieldset class="seg"><legend>Elenco</legend><div class="pills">
         <input type="radio" name="gender" id="gMix" value="mista" checked><label for="gMix">Misto</label>
         <input type="radio" name="gender" id="gMasc" value="masc"><label for="gMasc">Masculino</label>
         <input type="radio" name="gender" id="gFem" value="fem"><label for="gFem">Feminino</label>
@@ -87,26 +85,6 @@
         <input type="radio" name="mode" id="modS" value="simples" checked><label for="modS">Simples · 1×1</label>
         <input type="radio" name="mode" id="modD" value="dupla"><label for="modD">Dupla · 2×2</label>
       </div></fieldset>
-      </div>
-      <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button><button class="cta" data-goto="q2">Próximo</button></div>
-    </section>
-    <!-- passo 2: jogadores -->
-    <section data-step="q2" hidden>
-      <div class="eyebrow">Partida rápida · 2 de 3</div>
-      <p class="section-label">Jogadores · overall de 0 a 100</p>
-      <div class="roster" id="roster">
-        <div class="pick" data-slot="me"></div>
-        <div class="pick" data-slot="mate"></div>
-        <div class="pick" data-slot="o1"></div>
-        <div class="pick" data-slot="o2"></div>
-      </div>
-      <div class="cta-row step-nav"><button class="ghost" data-goto="q1">Voltar</button><button class="cta" data-goto="q3">Próximo</button></div>
-    </section>
-    <!-- passo 3: as outras escolhas -->
-    <section data-step="q3" hidden>
-      <div class="eyebrow">Partida rápida · 3 de 3</div>
-      <p class="section-label">Ajustes da partida</p>
-      <div class="opts">
       <fieldset class="seg"><legend>Seu lado na dupla</legend><div class="pills">
         <input type="radio" name="side" id="sideL" value="esquerda"><label for="sideL">Esquerda</label>
         <input type="radio" name="side" id="sideR" value="direita" checked><label for="sideR">Direita</label>
@@ -122,36 +100,28 @@
         <input type="radio" name="len" id="len4" value="4" checked><label for="len4">Set curto · 4 games</label>
         <input type="radio" name="len" id="len6" value="6"><label for="len6">Set · 6 games</label>
       </div></fieldset>
+      </div>
+      <p class="section-label">Jogadores · overall de 0 a 100</p>
+      <div class="roster" id="roster">
+        <div class="pick" data-slot="me"></div>
+        <div class="pick" data-slot="mate"></div>
+        <div class="pick" data-slot="o1"></div>
+        <div class="pick" data-slot="o2"></div>
+      </div>
+      <div class="qm-grid">
       <fieldset class="seg"><legend>Raquete</legend><select class="psel" id="rkSel" aria-label="Raquete"></select><p id="rkInfo" style="margin:.4rem 0 0;font-size:.78rem;color:#5b6b78"></p></fieldset>
-      <fieldset class="seg"><legend>Câmera</legend><div class="pills">
-        <input type="radio" name="cam" id="cam3" value="3p" checked><label for="cam3">3ª pessoa</label>
-        <input type="radio" name="cam" id="cam1" value="1p"><label for="cam1">1ª pessoa</label>
-      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">FOV da 1ª pessoa <input type="range" id="fovFp" min="55" max="110" step="1" value="72" style="flex:1"> <span id="fovFpV">72°</span></label>
-        <p class="cam3-lbl">Ângulo da 3ª pessoa <kbd>C</kbd> troca</p><div class="pills">
-        <input type="radio" name="cam3" id="c3pad" value="padrao"><label for="c3pad">Padrão</label>
-        <input type="radio" name="cam3" id="c3alt" value="alta" checked><label for="c3alt">Alta (TV)</label>
-        <input type="radio" name="cam3" id="c3per" value="perto"><label for="c3per">Perto</label>
-      </div><label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">Distância da 3ª pessoa <input type="range" id="camDist" min="60" max="170" step="5" value="120" style="flex:1"> <span id="camDistV">120%</span> <kbd>−</kbd><kbd>+</kbd></label>
-      <label style="display:flex;align-items:center;gap:.5rem;margin-top:.45rem;font-size:.85rem">Altura da 3ª pessoa <input type="range" id="camHeight" min="40" max="250" step="5" value="75" style="flex:1"> <span id="camHeightV">75%</span> <kbd>[</kbd><kbd>]</kbd></label></fieldset>
-      <div class="toggles">
-        <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
-        <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
-        <label class="cr-field">Flecha para onde a bola cai (quando fora da tela) <select data-setting="landArrow" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
-        <label class="cr-field">Aviso de linha (perto ou fora da quadra) <select data-setting="lineWarn" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
-        <label class="cr-field" style="margin:4px 0">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
-        <label class="cr-field" style="margin:4px 0">Formação da dupla <select id="formSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="rede">Parceiro colado na rede</option><option value="fundo">Parceiro no fundo</option></select></label>
-        <div class="cr-field" style="margin:4px 0">Quadra <div class="court-pick" data-courtpick></div></div>
-        <div class="cr-field" style="margin:4px 0">Bolinha <div class="ball-pick" data-ballpick></div></div>
-        <label class="cr-field" style="margin:4px 0">Nome do golpe na tela <select id="shotTextSel" class="cr-sel"><option value="completo">Completo</option><option value="discreto" selected>Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
-        <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W funda / S curta) <kbd>V</kbd></label>
+        <div class="seg qm-court"><p class="qm-lbl">Quadra</p><div class="court-pick" data-courtpick></div></div>
+        <label class="cr-field">Tática da dupla <select id="tacticSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o adversário mais fraco</option><option value="meio">Jogar no meio dos dois</option><option value="lobs">Lobs no fundo</option></select></label>
+        <label class="cr-field">Formação da dupla <select id="formSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="rede">Parceiro colado na rede</option><option value="fundo">Parceiro no fundo</option></select></label>
       </div>
-      </div>
-      <div class="cta-row step-nav"><button class="ghost" data-goto="q2">Voltar</button><button class="cta" id="btnStart">Começar partida</button></div>
+      <p class="cr-note qm-cfg">Câmera, ajudas (seguir a bola, onde a bola cai, flecha de mira) e bolinha ficam em <button type="button" class="linkbtn" data-goto="cfg">Configurações</button>.</p>
+      <div class="cta-row step-nav qm-go"><button class="ghost" data-goto="home">Voltar</button><button class="cta" id="btnStart">Começar partida</button></div>
     </section>
     <!-- configurações gerais -->
     <section data-step="cfg" hidden>
       <div class="eyebrow">Configurações</div>
-      <div class="opts">
+      <div class="cfg-tabs" role="tablist"><button type="button" data-cfgt="tela" class="sel">Gráficos</button><button type="button" data-cfgt="cam">Câmera</button><button type="button" data-cfgt="ajuda">Ajudas na partida</button><button type="button" data-cfgt="jogo">Jogo e controles</button></div>
+      <div class="opts" data-cfgp="tela">
       <fieldset class="seg"><legend>Gráficos</legend><div class="pills">
         <input type="radio" name="gfx" id="gfxH" value="alto" checked><label for="gfxH">Alto</label>
         <input type="radio" name="gfx" id="gfxL" value="leve"><label for="gfxL">Leve · celular</label>
@@ -170,6 +140,32 @@
         <input type="radio" name="players" id="plDraw" value="desenhado" checked><label for="plDraw">Desenhado</label>
         <input type="radio" name="players" id="pl3d" value="3d"><label for="pl3d">Realista</label>
       </div><p class="credit" style="margin:.4rem 0 0;font-size:.72rem;opacity:.7">Realista: corpo do MakeHuman (CC0), montado e texturizado no Blender.</p></fieldset>
+      </div>
+      <div class="opts" data-cfgp="cam" hidden>
+      <fieldset class="seg cfg-cam"><legend>Câmera</legend>
+        <div class="cfg-row"><span>Visão</span><div class="pills">
+          <input type="radio" name="cam" id="cam3" value="3p" checked><label for="cam3">3ª pessoa</label>
+          <input type="radio" name="cam" id="cam1" value="1p"><label for="cam1">1ª pessoa</label>
+        </div></div>
+        <div class="cfg-row"><span>Ângulo da 3ª pessoa <kbd>C</kbd></span><div class="pills">
+          <input type="radio" name="cam3" id="c3pad" value="padrao"><label for="c3pad">Padrão</label>
+          <input type="radio" name="cam3" id="c3alt" value="alta" checked><label for="c3alt">Alta (TV)</label>
+          <input type="radio" name="cam3" id="c3per" value="perto"><label for="c3per">Perto</label>
+        </div></div>
+        <label class="cfg-row"><span>Distância da 3ª pessoa <kbd>−</kbd><kbd>+</kbd></span><span class="cfg-rng"><input type="range" id="camDist" min="60" max="170" step="5" value="120"> <b id="camDistV">120%</b></span></label>
+        <label class="cfg-row"><span>Altura da 3ª pessoa <kbd>[</kbd><kbd>]</kbd></span><span class="cfg-rng"><input type="range" id="camHeight" min="40" max="250" step="5" value="75"> <b id="camHeightV">75%</b></span></label>
+        <label class="cfg-row"><span>FOV da 1ª pessoa</span><span class="cfg-rng"><input type="range" id="fovFp" min="55" max="110" step="1" value="72"> <b id="fovFpV">72°</b></span></label>
+      </fieldset>
+      </div>
+      <div class="opts toggles" data-cfgp="ajuda" hidden>
+        <label class="chk"><input type="checkbox" id="assistMove"> Seguir a bola: o jogador corre sozinho até ela <kbd>B</kbd></label>
+        <label class="chk"><input type="checkbox" id="assistMark" checked> Mostrar onde a bola cai e o seu alcance <kbd>N</kbd></label>
+        <label class="cr-field">Flecha para onde a bola cai (quando fora da tela) <select data-setting="landArrow" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
+        <label class="cr-field">Aviso de linha (perto ou fora da quadra) <select data-setting="lineWarn" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
+        <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W funda / S curta) <kbd>V</kbd></label>
+        <label class="cr-field">Nome do golpe na tela <select id="shotTextSel" class="cr-sel"><option value="completo">Completo</option><option value="discreto" selected>Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
+      </div>
+      <div class="opts" data-cfgp="jogo" hidden>
       <div class="cr-field">Bolinha <div class="ball-pick" data-ballpick></div></div>
       <label class="cr-field">Sua dificuldade de timing (janela do perfeito nas barras e nos golpes) <select data-setting="playerDiff" class="cr-sel"><option value="1">★ Bem fácil</option><option value="2">★★ Fácil</option><option value="3">★★★ Padrão</option><option value="4">★★★★ Difícil</option><option value="5">★★★★★ Muito difícil</option><option value="6">★★★★★★ Lendário</option></select></label>
       <label class="cr-field">Nomes sobre os jogadores <select data-setting="tagStyle" class="cr-sel"><option value="normal">Normal</option><option value="pequena">Pequenos</option><option value="simples">Simples (só o nome, sem caixa)</option><option value="off">Esconder</option></select></label>
@@ -177,7 +173,7 @@
       <button type="button" class="ghost" data-barcfg style="justify-self:start">🎚️ Barra de golpe…</button>
       <button type="button" class="ghost" data-goto="keys" style="justify-self:start">⌨️ Teclas…</button>
       </div>
-      <div class="cta-row step-nav"><button class="ghost" data-goto="home">Voltar</button><button type="button" class="cta" id="cfgApply">Aplicar</button></div>
+      <div class="cta-row step-nav"><button class="ghost" data-goto="back">Voltar</button><button type="button" class="cta" id="cfgApply">Aplicar</button></div>
     </section>
     <section data-step="keys" hidden>
       <div class="eyebrow">Configurações</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">TECLAS</h2>
@@ -216,7 +212,7 @@
 
 <!-- Campeonato -->
 <div id="champ" class="overlay" hidden>
-  <div class="card" style="width:min(100%,800px)">
+  <div class="card">
     <div><div class="eyebrow" id="champEyebrow">Modo campeonato · chave de 8 duplas</div><h2 class="title" style="font-size:clamp(34px,7vw,52px)">CAMPEONATO</h2></div>
     <div id="champSetup" style="display:grid;gap:14px">
       <fieldset class="seg"><legend>Categoria</legend><div class="pills">
@@ -242,7 +238,7 @@
 
 <!-- Carreira -->
 <div id="career" class="overlay" hidden>
-  <div class="card cr-card-main" style="width:min(100%,980px)">
+  <div class="card cr-card-main">
     <div class="cr-top"><div><div class="eyebrow">Modo carreira · do amador ao Mundial</div><h2 class="title" style="font-size:clamp(32px,6vw,50px)">CARREIRA</h2></div><div class="cr-topbtns"><button class="ghost sm" id="crExport" type="button" hidden title="Baixa a carreira num arquivo .json">Exportar save</button><button class="cta sm" id="crCloudBtn" type="button" hidden title="Salvar a carreira na nuvem e abrir em outros aparelhos">☁️ Nuvem</button><button class="ghost sm" id="crSwitch" type="button" hidden>Carreiras</button><button class="ghost sm" id="crBack" type="button">Menu</button></div></div>
     <div id="crEntry" class="cr-entry" hidden><button type="button" class="ghost" data-entry="conta">👤 Conta</button><button type="button" class="ghost" data-entry="load">📂 Carregar carreira</button><button type="button" class="ghost" data-entry="new">✨ Criar carreira</button></div>
     <div id="crAccount" class="cr-saves" hidden><div id="crCloud" class="cr-cloud"></div></div>
@@ -321,7 +317,7 @@
 
 <!-- Configurações dentro do online -->
 <div id="onCfg" class="overlay" hidden>
-  <div class="card" style="width:min(100%,640px);display:grid;gap:12px">
+  <div class="card dlg" style="display:grid;gap:12px">
     <div><div class="eyebrow">Online</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CONFIGURAÇÕES</h2></div>
     <div class="cr-field">Bolinha <div class="ball-pick" data-ballpick></div></div>
     <label class="cr-field">Nome do golpe na tela <select id="shotTextSel2" class="cr-sel"><option value="completo">Completo</option><option value="discreto">Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
@@ -341,7 +337,7 @@
 
 <!-- Treino com desafios -->
 <div id="drillPick" class="overlay" hidden>
-  <div class="card" style="width:min(100%,460px)">
+  <div class="card">
     <div><div class="eyebrow">Treino com desafios</div><h2 class="title" style="font-size:40px">TREINO</h2></div>
     <p class="lede">Um lançador manda as bolas. Cumpra a meta para passar no desafio.</p>
     <fieldset class="seg"><legend>Nível</legend><div class="pills" id="drillLvls">
@@ -366,14 +362,14 @@
 </div>
 <!-- Tutorial: lições em ordem, com medalha -->
 <div id="tutPick" class="overlay" hidden>
-  <div class="card" style="width:min(100%,560px);display:grid;gap:12px">
+  <div class="card" style="display:grid;gap:12px">
     <div><div class="eyebrow">Aprenda jogando · bronze, prata e ouro</div><h2 class="title" style="font-size:clamp(30px,6vw,42px)">TUTORIAL</h2></div>
     <div id="tutList" class="tut-list"></div>
     <div class="cta-row"><button type="button" class="ghost" id="tutBack">Voltar</button></div>
   </div>
 </div>
 <div id="tutHow" class="overlay" hidden>
-  <div class="card" style="width:min(100%,520px);display:grid;gap:12px">
+  <div class="card" style="display:grid;gap:12px">
     <div><div class="eyebrow" id="tutHowN"></div><h2 class="title" style="font-size:clamp(28px,6vw,38px)" id="tutHowT"></h2></div>
     <div id="tutHowB" class="tut-how"></div>
     <div class="cta-row"><button type="button" class="cta" id="tutGo">Começar</button><button type="button" class="ghost" id="tutHowBack">Voltar</button></div>
@@ -381,7 +377,7 @@
 </div>
 <!-- Online -->
 <div id="online" class="overlay" hidden>
-  <div class="card" style="width:min(100%,640px)">
+  <div class="card">
     <div><div class="eyebrow">Jogue com amigos pela internet</div><h2 class="title" style="font-size:44px">ONLINE</h2></div>
     <p id="onMsg" class="cr-msg" hidden></p>
     <button type="button" class="ghost sm" id="onCfgBtn" style="justify-self:start">⚙️ Configurações</button>
@@ -441,38 +437,44 @@
 
 <!-- Pausa -->
 <div id="pause" class="overlay" hidden>
-  <div class="card" style="width:min(100%,420px)">
+  <div class="card pz-card">
     <div><div class="eyebrow">Jogo pausado</div><h2 class="title" style="font-size:44px">PAUSA</h2></div>
     <div class="cta-row">
       <button class="cta" id="btnResume">Continuar</button>
-      <button class="ghost" id="btnPauseCam">Trocar câmera</button>
-      <button class="ghost" id="btnAsMove">Seguir a bola</button>
-      <button class="ghost" id="btnAsMark">Onde a bola cai</button>
-      <button class="ghost" id="btnBall">Bolinha</button>
-      <button class="ghost" data-barcfg>Barra de golpe</button>
-      <button class="ghost" id="btnTags">Nomes</button>
-      <button class="ghost" id="btnGameCfg">Configurações</button>
-      <button class="ghost" id="btnShotTxt">Nome do golpe</button>
+      <button class="ghost" id="btnPauseCam">Trocar câmera <kbd>C</kbd></button>
       <button class="ghost" id="btnSimRest" hidden>Simular o resto da partida</button>
       <button class="ghost" id="btnQuit">Sair para o menu</button>
     </div>
-    <div class="cam-adj" id="pTac">
-      <label>Tática <select id="pTacSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></label>
-      <label>Formação <select id="pFormSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="rede">Parceiro colado na rede</option><option value="fundo">Parceiro no fundo</option></select></label>
-    </div>
-    <div class="cam-adj">
-      <label>Distância da câmera <input type="range" id="pCamDist" min="60" max="170" step="5" value="100"> <span id="pCamDistV">100%</span></label>
-      <label>Altura da câmera <input type="range" id="pCamHeight" min="40" max="250" step="5" value="100"> <span id="pCamHeightV">100%</span></label>
-      <label>Resolução <select id="pResSel" class="cr-sel"><option value="auto">Automática</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select></label>
-      <label>Gráficos <select id="pGfxSel" class="cr-sel"><option value="alto">Alto</option><option value="leve">Leve</option></select></label>
-      <label><input type="checkbox" id="pFps"> Mostrar FPS</label>
+    <div class="pz-grid">
+      <section class="pz-sec"><h4>Jogo</h4>
+        <div id="pTac" class="pz-rows">
+          <label class="pz-row"><span>Tática</span><select id="pTacSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="fraco">Atacar o mais fraco</option><option value="meio">Jogar no meio</option><option value="lobs">Lobs no fundo</option></select></label>
+          <label class="pz-row"><span>Formação</span><select id="pFormSel" class="cr-sel"><option value="normal">Equilibrada</option><option value="rede">Parceiro colado na rede</option><option value="fundo">Parceiro no fundo</option></select></label>
+        </div>
+        <button type="button" class="pz-row pz-cyc" id="btnBall"><span>Bolinha</span><b></b></button>
+        <button type="button" class="pz-row pz-cyc" data-barcfg><span>Barra de golpe</span><b>Ajustar…</b></button>
+        <button type="button" class="pz-row pz-cyc" id="btnGameCfg"><span>Mais configurações</span><b>Abrir…</b></button>
+      </section>
+      <section class="pz-sec"><h4>Ajudas</h4>
+        <button type="button" class="pz-row pz-tgl" id="btnAsMove" role="switch"><span>Seguir a bola <kbd>B</kbd></span><i></i></button>
+        <button type="button" class="pz-row pz-tgl" id="btnAsMark" role="switch"><span>Onde a bola cai <kbd>N</kbd></span><i></i></button>
+        <button type="button" class="pz-row pz-cyc" id="btnShotTxt"><span>Nome do golpe</span><b></b></button>
+        <button type="button" class="pz-row pz-cyc" id="btnTags"><span>Nomes</span><b></b></button>
+      </section>
+      <section class="pz-sec"><h4>Câmera e tela</h4>
+        <label class="pz-row"><span>Distância</span><span class="cfg-rng"><input type="range" id="pCamDist" min="60" max="170" step="5" value="100"> <b id="pCamDistV">100%</b></span></label>
+        <label class="pz-row"><span>Altura</span><span class="cfg-rng"><input type="range" id="pCamHeight" min="40" max="250" step="5" value="100"> <b id="pCamHeightV">100%</b></span></label>
+        <label class="pz-row"><span>Resolução</span><select id="pResSel" class="cr-sel"><option value="auto">Automática</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select></label>
+        <label class="pz-row"><span>Gráficos</span><select id="pGfxSel" class="cr-sel"><option value="alto">Alto</option><option value="leve">Leve</option></select></label>
+        <label class="pz-row pz-tgl pz-chk"><span>Mostrar FPS <kbd>F</kbd></span><input type="checkbox" id="pFps"><i></i></label>
+      </section>
     </div>
   </div>
 </div>
 
 <!-- Configurações durante o jogo (abre pela pausa) -->
 <div id="gameCfg" class="overlay" hidden>
-  <div class="card" style="width:min(100%,520px);display:grid;gap:12px">
+  <div class="card dlg" style="display:grid;gap:12px">
     <div><div class="eyebrow">Durante o jogo</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CONFIGURAÇÕES</h2></div>
     <label class="cr-field">Sua dificuldade de timing (janela do perfeito nas barras e nos golpes) <select data-setting="playerDiff" class="cr-sel"><option value="1">★ Bem fácil</option><option value="2">★★ Fácil</option><option value="3">★★★ Padrão</option><option value="4">★★★★ Difícil</option><option value="5">★★★★★ Muito difícil</option><option value="6">★★★★★★ Lendário</option></select></label>
       <label class="cr-field">Nomes sobre os jogadores <select data-setting="tagStyle" class="cr-sel"><option value="normal">Normal</option><option value="pequena">Pequenos</option><option value="simples">Simples (só o nome, sem caixa)</option><option value="off">Esconder</option></select></label>
@@ -485,7 +487,7 @@
 </div>
 <!-- Nova senha (volta do link de recuperação do e-mail) -->
 <div id="clReset" class="overlay" hidden>
-  <div class="card" style="width:min(100%,440px);display:grid;gap:12px">
+  <div class="card dlg" style="display:grid;gap:12px">
     <div><div class="eyebrow">Conta na nuvem</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">NOVA SENHA</h2></div>
     <p class="cr-note" id="clResetWho"></p>
     <input id="clResetPw" class="cr-sel" type="password" placeholder="nova senha (mín. 6)" autocomplete="new-password">
@@ -496,14 +498,14 @@
 </div>
 <!-- Conta (menu principal): o mesmo quadro de entrar/criar conta da carreira -->
 <div id="acctOv" class="overlay" hidden>
-  <div class="card" style="width:min(100%,560px);display:grid;gap:12px">
+  <div class="card dlg" style="display:grid;gap:12px">
     <div><div class="eyebrow">Salva suas carreiras e configurações na nuvem</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">CONTA</h2></div>
     <div id="acctSlot"></div>
     <div class="cta-row"><button type="button" class="cta" id="acctClose">Fechar</button></div>
   </div>
 </div>
 <div id="logOv" class="overlay" hidden>
-  <div class="card" style="width:min(100%,620px);display:grid;gap:12px">
+  <div class="card dlg" style="display:grid;gap:12px">
     <div><div class="eyebrow">O que mudou no jogo</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">ÚLTIMAS MUDANÇAS</h2></div>
     <div id="logList" class="log-list"></div>
     <div class="cta-row"><button type="button" class="cta" id="logClose">Fechar</button></div>
@@ -511,7 +513,7 @@
 </div>
 <!-- Barra de golpe (smash, lob e saque) -->
 <div id="barCfg" class="overlay" hidden>
-  <div class="card" style="width:min(100%,520px);display:grid;gap:12px">
+  <div class="card dlg" style="display:grid;gap:12px">
     <div><div class="eyebrow">Configurações</div><h2 class="title" style="font-size:clamp(28px,6vw,40px)">BARRA DE GOLPE</h2></div>
       <label class="cr-field">Tamanho da barra (smash, lob e saque) <select data-setting="meterSize" class="cr-sel"><option value="pequena">Pequena</option><option value="normal">Normal</option><option value="grande">Grande</option></select></label>
       <label class="cr-field">Opacidade da barra <select data-setting="meterOp" class="cr-sel"><option value="100">100%</option><option value="75">75%</option><option value="50">50%</option><option value="35">35%</option></select></label>
@@ -523,7 +525,7 @@
 </div>
 <!-- Fim -->
 <div id="over" class="overlay" hidden>
-  <div class="card" style="width:min(100%,640px)">
+  <div class="card">
     <div><div class="eyebrow" id="overEyebrow">Fim de set</div><h2 class="title" style="font-size:clamp(36px,8vw,56px)" id="overTitle">VOCÊ VENCEU</h2></div>
     <div class="big-score" id="overScore">4–2</div>
     <div class="stats">
@@ -531,14 +533,14 @@
       <div><b id="stRally">0</b>maior rally (golpes)</div>
       <div><b id="stSmash">0</b>smashes seus</div>
     </div>
-    <div id="stTable" class="mstats-wrap"></div>
-    <div class="cta-row">
+    <div class="cta-row over-acts">
       <button class="cta" id="btnOverChamp" hidden>Ver a chave</button>
       <button class="cta" id="btnOverCareer" hidden>Voltar à carreira</button>
-      <button class="ghost" id="btnReplay" hidden>🎬 Replays</button>
       <button class="cta" id="btnAgain">Jogar de novo</button>
-      <button class="ghost" id="btnMenu">Menu</button>
+      <button class="cta replay-btn" id="btnReplay" hidden>🎬 Replays e melhores momentos</button>
+      <button class="ghost over-menu" id="btnMenu">Menu</button>
     </div>
+    <div id="stTable" class="mstats-wrap"></div>
   </div>
 </div>
 <!--ASSETS-->
