@@ -118,7 +118,7 @@ function smashPrep(p, swingU) {
 // estilo do saque no lançamento: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado/à frente leva o braço livre
 function srvStyle(p, pose, u) {
   const st = p.srvSt; if (!st) return;
-  const k = clamp((u - .15) / .5, 0, 1); pose.crouch = Math.min(.48, pose.crouch * lerp(1, st.crouch, k)); pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
+  const k = clamp((u - .15) / .5, 0, 1); pose.crouch = Math.min(.3, pose.crouch * lerp(1, st.crouch, k)); // (agachado: no máximo um joelho bem dobrado, nunca ajoelhado) pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
 }
 // prévia animada (editor da carreira): anima e move o modelo realista de um jogador que não está em quadra
 S.previewAnim = (p, dt) => { animateAthlete(p, dt); if (p.skin) driveSkin(p); };
