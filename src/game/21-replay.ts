@@ -69,9 +69,11 @@ function cleanClip(F, hits, deadT) {
       const lat = over ? .25 : bh ? -.55 : .62, fw = over ? .15 : .25;
       const k = idx(h.t), P = R[k].p[i];
       let cx = (h.x - rightS * lat) - P.x, cz = (h.z - fwdS * fw) - P.z;
-      const m = Math.hypot(cx, cz); if (m > 1.8) { cx *= 1.8 / m; cz *= 1.8 / m; }
+      // (correção limitada e espalhada por mais tempo: antes puxava até 1,8 m em meio segundo — parecia um teleporte; o que
+      // falta o braço/raquete estica)
+      const m = Math.hypot(cx, cz); if (m > .7) { cx *= .7 / m; cz *= .7 / m; }
       for (let f = 0; f < N; f++) {
-        const t = R[f].t - h.t, w = t < 0 ? sstep(-.6, -.08, t) : 1 - sstep(.12, .55, t);
+        const t = R[f].t - h.t, w = t < 0 ? sstep(-1.1, -.05, t) : 1 - sstep(.1, .9, t);
         if (w > 0) { dx[f] += cx * w; dz[f] += cz * w; wsum[f] += w; }
       }
       // o golpe com o tempo certo: a raquete chega na bola no ponto de contato

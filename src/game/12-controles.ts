@@ -61,7 +61,7 @@ function startMeter(kind, type, c = localCtl()) {
   // lob: a barra sobe um pouco mais rápido que antes (.45 s até o fim da faixa normal) e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
   // dificuldade de timing: com menos estrelas, faixas do chutado e do alto maiores e a do lob longo (ruim) menor
   else if (kind === 'lob') { M.fill = .45; M.center = -1; M.half = 0; M.lmax = 1 + lerp(.25, .1, Math.min(1, attrK(p, 'lob'))) / M.tk; M.altoLo = clamp(.75 - (M.tk - 1) * .4, .55, .86); p.charging = true; }
-  else { M.fill = .9 * (p.tossMul || 1); M.center = ((p.tossDur || TOSS_T) - .06) / M.fill; // o verde varia com a altura de cada lançamento; −0,06 s: a raquete leva esse tempo da soltura ao contato
+  else { M.fill = .9 * (p.tossMul || 1); M.center = ((p.tossDur || TOSS_T) - SRV_LEAD) / M.fill; // o verde varia com a altura de cada lançamento; −SRV_LEAD: a raquete leva esse tempo da soltura ao contato
     M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
   if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
@@ -197,6 +197,8 @@ function releaseMeter(c = localCtl()) {
     if (res !== 'voleio' && ball.state === 'live' && ball.pos.y > 1.6) startJump(p, .42, .3);
   } else serveRelease(res, amt, word, p);
 }
+// do soltar da barra até a raquete chegar na bola: o golpe do saque sai do troféu (início do golpe) e bate a 45% dele
+const SRV_LEAD = SWING_DUR * .45;
 function serveRelease(res, amt, word, human) {
   if (S.mode !== 'toss' || S.serverPlayer !== human) return;
   const type = S.serveType; let q, mod;
@@ -209,7 +211,7 @@ function serveRelease(res, amt, word, human) {
   else { q = lerp(.72, .32, amt); mod = { speedMul: amt < .6 ? lerp(.97, .9, amt / .6) : lerp(.9, .8, (amt - .6) / .4), noiseMul: lerp(1.25, 1.8, amt), misBoost: lerp(.06, .5, amt) * (type === 'smash' ? 1 : .5) }; }
   // a batida acontece quando a raquete chega na bola (meio do movimento)
   human.pendingServe = { type, q, mod, res, word };
-  const sw = human.swing; sw.t = sw.dur * .3; sw.type = 'smash'; sw.var = type === 'lob' ? 'saquebaixo' : 'saque'; sw.hit = false; sw.meter = null; // animação própria do saque (por baixo no lob)
+  const sw = human.swing; sw.dur = SWING_DUR; sw.t = 0; sw.type = 'smash'; sw.var = type === 'lob' ? 'saquebaixo' : 'saque'; sw.hit = false; sw.meter = null; // animação própria do saque (por baixo no lob)
 }
 function pressShot(type, c) {
   if (!c) {

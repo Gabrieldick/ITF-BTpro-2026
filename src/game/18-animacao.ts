@@ -129,7 +129,7 @@ function animateAthlete(p, dt) {
   if (p.debug) {
     if (p.debug.type === 'serve' || p.debug.type === 'servelow') { poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose); if (p.debug.type === 'serve') srvStyle(p, pose, p.debug.u); }
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); styleSwing(pose, p.debug.type, swingU, p.debug.st); mirror = /^(defesa|curta|lob)/.test(p.debug.type) && p.debug.side < 0; }
-  } else if (S.mode === 'toss' && S.serverPlayer === p) { const u = clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1); poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, u, pose);
+  } else if (S.mode === 'toss' && S.serverPlayer === p && p.swing.t < 0) { const u = clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1); // (o golpe do saque, quando começa, já aparece: antes só surgia na batida e a raquete saltava do troféu para o meio do golpe) poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, u, pose);
     // estilo do saque: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado abre o braço livre
     if (S.serveType !== 'lob') srvStyle(p, pose, u); }
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
@@ -404,7 +404,12 @@ function animateAthlete(p, dt) {
     const hitDone = p.swing.hit && p.contact && p.contact.hitId === S.hitId;
     const pre = !hitDone && S.mode === 'replay' && p.contact && p.contact.pre; // replay: já se sabe onde e quando vai bater
     const cu = hitDone || pre ? p.contact.u : .45;
-    const w = hitDone ? clamp(1 - (swingU - cu) / .22, 0, 1) : clamp(1 - Math.abs(swingU - cu) / .3, 0, 1);
+    // o peso do alvo muda de regra na batida (antes: perto do contato previsto; depois: decai desde o contato real): quando a
+    // batida não cai exatamente no meio do golpe isso dava um salto no braço — o peso agora persegue o alvo rapidamente
+    // (contato adiantado — raquete ainda atrás das costas na pose — solta mais devagar, para o braço não voltar de um salto)
+    const wT = hitDone ? clamp(1 - (swingU - cu) / (.24 + 1.4 * Math.max(0, .45 - cu)), 0, 1) : clamp(1 - Math.abs(swingU - cu) / .3, 0, 1);
+    if (p.armW === undefined || swingU < .04) p.armW = wT; else p.armW += (wT - p.armW) * Math.min(1, dt * 12);
+    const w = p.armW;
     if (w > 0) {
       if (hitDone || pre) _e.set(p.contact.x, p.contact.y, p.contact.z); else _e.copy(ball.pos);
       m.spine.worldToLocal(_e);

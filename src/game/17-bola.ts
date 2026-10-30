@@ -2,7 +2,7 @@
 // atualização da bola e pontos
 import './16-ia';
 import { $s } from '../state';
-import { bCurve, C, bG, clamp, rand, attrK } from './00-base';
+import { bCurve, C, bG, clamp, rand, attrK, SWING_DUR, TOSS_T } from './00-base';
 const BALL_VIS = .055; // raio da bola como ela aparece (07-glb)
 const BALL_MARK = .032; // raio da marca que ela deixa na areia (afunda ~1 cm)
 import { S, NET } from './01-estado';
@@ -43,10 +43,11 @@ function updateBall(dt) {
   ball.pos.addScaledVector(ball.vel, dt);
   if (ball.state === 'toss') {
     const sp = S.serverPlayer;
-    if (!sp.isHuman && !sp.pendingServe && ball.vel.y < 0 && ball.pos.y <= (S.serveType === 'lob' ? 1.35 : 2.7)) {
+    // CPU: começa o golpe do troféu na hora certa para a raquete chegar na bola no fim do lançamento (o golpe bate a 45%)
+    if (!sp.isHuman && !sp.pendingServe && sp.tossT >= (sp.tossDur || TOSS_T) - SWING_DUR * .45) {
       const D = skillOf(sp);
       sp.pendingServe = { type: S.serveType, q: S.serveType === 'smash' ? rand(D.q[0] - .15, D.q[1]) : rand(D.q[0], 1) };
-      sp.swing.t = sp.swing.dur * .3; sp.swing.type = 'smash'; sp.swing.hit = false; sp.swing.var = S.serveType === 'lob' ? 'saquebaixo' : 'saque';
+      sp.swing.dur = SWING_DUR; sp.swing.t = 0; sp.swing.type = 'smash'; sp.swing.hit = false; sp.swing.var = S.serveType === 'lob' ? 'saquebaixo' : 'saque';
     }
     return;
   }
