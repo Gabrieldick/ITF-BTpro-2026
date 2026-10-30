@@ -540,6 +540,12 @@ function expectK(o, key) {
   const up = (o.skill && o.skill.up) || 0; if (up <= 0 || (key !== 'curta' && key !== 'lob')) return 1;
   const t = oppTend(o.team); return 1 - (key === 'curta' ? t.c : t.l) * clamp(up * 3, 0, 1) * .45;
 }
+// o companheiro vai bater smash nesta bola: você armando o smash, ou a CPU que escolheu smash, ou a bola chega alta nele
+function mateSmash(m) {
+  if (m.isHuman) return !!(m.charging && m.mtr ? m.mtr.type === 'smash' : m.charging) || (m.swing.t >= 0 && m.swing.type === 'smash') || (ball.apex || 0) > 3 && contactHigh(m);
+  return (m.ai && m.ai.planId === S.hitId && m.ai.shot === 'smash') || (m.swing.t >= 0 && m.swing.type === 'smash');
+}
+function contactHigh(m) { const pl = m.ai && m.ai.planId === S.hitId ? m.ai.plan : planIntercept(m, skillOf(m).speed, 0); return !!pl && pl.pt.y >= 2.1; }
 function homeOf(p) {
   const s = p.team === 0 ? 1 : -1;
   const hz = styleOf(p).home;
@@ -563,13 +569,18 @@ function homeOf(p) {
   if (ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally') {
     const l = predictLanding(), lz = Math.abs(l.z), apex = ball.apex || 0;
     if (apex > 3.4 && lz > 5.2) ph = -clamp((lz - 5.2) / 1.6, 0, 1) * 1.25; // lob fundo: sobe
-    else if (apex > 2.6 && lz < 4.2) { ph = clamp((apex - 2.6) / 1.2, 0, 1) * 1.05; wideK = .35; } // bola de smash para eles: recua e abre
+    else if (apex > 2.6 && lz < 4.2) { ph = clamp((apex - 2.6) / 1.2, 0, 1) * 1.05; wideK = .2; } // bola de smash para eles: recua e abre um pouco
     else if (apex < 2.2) ph = -.25; // pancada baixa: aperta
   }
   const center = clamp(fx * (A.homeShift ?? .5), -1.7, 1.7), hw = (A.homeHw ?? 1.8) - Math.abs(center) * .18 + wideK;
   let x = center + p.slot * hw;
   const mate = $s.teams[p.team].find(o => o !== p);
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
+  // o adversário vai bater: quem está na diagonal de quem bate fecha o meio (a paralela fica com quem está na frente dele);
+  // quanto mais estrelas, mais fechado (o meio é o alvo preferido de quem ataca)
+  if (ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally' && Math.abs(fx) > .5 && Math.sign(p.slot) !== Math.sign(fx)) x -= Math.sign(p.slot) * (.3 + .3 * clamp(up * 2.5, 0, 1));
+  // o companheiro vai smashar: adianta um pouco e fecha o meio para pegar a sobra (a devolução de defesa curta/no meio)
+  if (mate && ball.state === 'live' && S.lastTeam === 1 - p.team && S.mode === 'rally' && assignee(p.team) === mate && mateSmash(mate)) { ahead += .9 + .5 * clamp(up * 2.5, 0, 1); x = lerp(x, mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * 1.7, .5); }
   if (A.rush && ball.state === 'live' && S.lastTeam === p.team) ahead += A.rush; // depois do próprio golpe: sobe para a rede
   // formação escolhida para a sua dupla: o parceiro (CPU) fica colado na rede ou no fundo
   const fm = p.team === 0 && !p.isHuman ? S.settings.formation : '';
