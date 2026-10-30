@@ -953,3 +953,16 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .cr-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 10px; font-size: 13px; margin: 4px 0 8px; }
 .cr-res b { font-family: var(--f-num); color: var(--gold); }
 .cr-res small { opacity: .65; }
+/* editor do jogador: abas e cores compactas (rótulo em cima, bolinhas menores) */
+.ed-tabs { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 4px; padding: 0 0 10px; margin-bottom: 4px; background: var(--ui-bg2, #0b1a3a); }
+.ed-tabs button { flex: 1 1 auto; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--ui-line); background: var(--ui-tile); color: var(--ui-sub); font: 800 11px var(--f-ui); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.ed-tabs button:hover { color: var(--ui-text); }
+.ed-tabs button.on { background: var(--ui-acc); border-color: var(--ui-acc); color: #071330; }
+.ed-sec[hidden] { display: none; }
+.cr-edit .cr-sws { gap: 12px; margin: 6px 0; }
+.cr-edit .cr-sws > div { display: block; }
+.cr-edit .cr-lbl { display: block; width: auto; margin-bottom: 6px; }
+.cr-edit .cr-sw { display: inline-block; width: 22px; height: 22px; border-width: 2px; margin: 0 5px 5px 0; vertical-align: middle; }
+.cr-edit .cr-look { margin-top: 10px; }
+.cr-edit .section-label { margin-top: 14px; }
+.cr-edit .cr-rng small { color: var(--ui-text); opacity: .85; }

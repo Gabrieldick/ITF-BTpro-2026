@@ -165,13 +165,18 @@ function crEditHTML() {
   const me = $s.CR.me, L = me.look;
   const sw = (arr, key) => arr.map(c => '<button type="button" class="cr-sw' + (L[key] === c ? ' sel' : '') + '" data-look-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   const sel = (id, opts, v) => '<select id="' + id + '" class="cr-sel">' + opts.map(([k, n]) => '<option value="' + k + '"' + (k === (v || '') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
-  return '<p class="section-label">Aparência</p><div class="cr-sws"><div><span class="cr-lbl">Pele</span>' + sw(SKINS, 'skin') + '</div><div><span class="cr-lbl">Cabelo</span>' + sw(HAIRS, 'hair') + '</div></div>'
-    + '<div class="cr-look"><label class="cr-field">Corte ' + sel('crLkHair', HAIR_ST, L.hairStyle) + '</label>'
-    + (me.fem ? '' : '<label class="cr-field">Barba ' + sel('crLkBeard', BEARDS, L.beard) + '</label>')
-    + '<label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
-    + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label>'
-    + '<label class="cr-field">Biotipo ' + sel('crLkBuild', BUILDS, me.build || 'atletico') + '</label></div>'
-    + crAccHTML() + crOutfitHTML() + crServeHTML()
+  // abas: cada parte do jogador numa página (antes era tudo numa lista longa); a aba do saque mostra o saque animado
+  const tab = ED.tab || 'corpo', T = [['corpo', 'Corpo'], ['cabeca', 'Cabeça e acessórios'], ['uniforme', 'Uniforme'], ['saque', 'Saque']];
+  const sec = (k, h) => '<div class="ed-sec" data-sec="' + k + '"' + (k === tab ? '' : ' hidden') + '>' + h + '</div>';
+  return '<div class="ed-tabs" role="tablist">' + T.map(([k, n]) => '<button type="button" role="tab" data-ed-tab="' + k + '" class="' + (k === tab ? 'on' : '') + '">' + n + '</button>').join('') + '</div>'
+    + sec('corpo', '<div class="cr-sws ed-col"><div><span class="cr-lbl">Pele</span><div class="ed-swl">' + sw(SKINS, 'skin') + '</div></div><div><span class="cr-lbl">Cabelo</span><div class="ed-swl">' + sw(HAIRS, 'hair') + '</div></div></div>'
+      + '<div class="cr-look"><label class="cr-field">Corte ' + sel('crLkHair', HAIR_ST, L.hairStyle) + '</label>'
+      + (me.fem ? '' : '<label class="cr-field">Barba ' + sel('crLkBeard', BEARDS, L.beard) + '</label>')
+      + '<label class="cr-field">Biotipo ' + sel('crLkBuild', BUILDS, me.build || 'atletico') + '</label></div>')
+    + sec('cabeca', '<div class="cr-look"><label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
+      + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label></div>' + crAccHTML())
+    + sec('uniforme', crOutfitHTML())
+    + sec('saque', crServeHTML())
     + '<p class="cr-note">Vale a partir da próxima partida.</p>';
 }
 // jeito de sacar (por cima): parte de um estilo pronto e ajusta agachar, pulo, avanço e para onde lança a bola
@@ -180,7 +185,7 @@ const SRV_SL = [['crouch', 'Agachar no troféu', .5, 2, .05, v => Math.round(v *
   ['tossZ', 'Lançamento à frente', .25, .95, .01, v => v < .42 ? 'atrás (topspin)' : v > .75 ? 'bem à frente (pancada)' : Math.round(v * 100) + ' cm']];
 function crServeHTML() {
   const cur = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || { preset: 'classico' });
-  return '<p class="section-label">Saque <button type="button" class="ghost sm" id="crSrvPrev">' + (ED.srv ? 'Ver aparência' : '▶ Ver saque') + '</button></p><label class="cr-field">Estilo ' + '<select id="crSrvPre" class="cr-sel"><option value="">Personalizado</option>' + Object.entries(SERVE_STYLES).map(([k, v]) => '<option value="' + k + '"' + (cur.preset === k ? ' selected' : '') + '>' + v.nome + '</option>').join('') + '</select></label>'
+  return '<label class="cr-field">Estilo ' + '<select id="crSrvPre" class="cr-sel"><option value="">Personalizado</option>' + Object.entries(SERVE_STYLES).map(([k, v]) => '<option value="' + k + '"' + (cur.preset === k ? ' selected' : '') + '>' + v.nome + '</option>').join('') + '</select></label>'
     + '<div class="cr-srv">' + SRV_SL.map(([k, n, mn, mx, stp, fmt]) => '<label class="cr-field cr-rng">' + n + ' <input type="range" id="crSrv_' + k + '" min="' + mn + '" max="' + mx + '" step="' + stp + '" value="' + cur[k] + '"><small id="crSrvV_' + k + '">' + fmt(cur[k]) + '</small></label>').join('') + '</div>'
     + '<p class="cr-note">Lançar de lado dá mais curva (slice); atrás da cabeça, topspin; bem à frente, pancada reta.</p>';
 }
@@ -191,7 +196,7 @@ function crAccHTML() {
   const sw = (key, cur) => OUTFIT_COLORS.map(c => '<button type="button" class="cr-sw' + (cur === c ? ' sel' : '') + '" data-acc-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   const headC = L.cap || L.visor || L.headband || '';
   let h = '<p class="section-label">Acessórios</p>';
-  if (headC) h += '<div class="cr-sws"><div><span class="cr-lbl">Cor do ' + (L.cap ? 'boné' : L.visor ? 'viseira' : 'faixa') + '</span>' + sw('head', headC) + '</div></div>';
+  if (headC) h += '<div class="cr-sws ed-col"><div><span class="cr-lbl">Cor do ' + (L.cap ? 'boné' : L.visor ? 'viseira' : 'faixa') + '</span><div class="ed-swl">' + sw('head', headC) + '</div></div></div>';
   const has = k => own.includes(k), slotOwn = sl => own.filter(k => ACCESS[k] && ACCESS[k].slot === sl);
   const f = [];
   // lado: não, esquerdo, direito ou os dois (manguito: padrão no braço da raquete)
@@ -310,6 +315,10 @@ function closeEditor() { if (!ED.el) return; ED.el.hidden = true; cancelAnimatio
 function renderEditor() {
   const box = $('crEditOpts'); box.innerHTML = crEditHTML();
   bindLook(() => { crSyncChars(); saveCareer(); renderEditor(); refreshPreview(); });
+  box.querySelectorAll('[data-ed-tab]').forEach(b => b.addEventListener('click', () => {
+    ED.tab = b.dataset.edTab; box.querySelectorAll('[data-ed-tab]').forEach(x => x.classList.toggle('on', x === b));
+    box.querySelectorAll('.ed-sec').forEach(x => { x.hidden = x.dataset.sec !== ED.tab; });
+    ED.srv = ED.tab === 'saque'; ED.st = 0; srvPreviewShow(); }));
 }
 function refreshPreview() {
   if (ED.model) { ED.scene.remove(ED.model); ED.model.traverse(o => { if (o.isMesh && o.material && o.material.dispose) o.material.dispose(); }); }
