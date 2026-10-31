@@ -1111,3 +1111,9 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .crn-steps button.sel i, .crn-steps button.done i { background: var(--ui-acc); color: #041232; }
 .crn-nav { justify-content: flex-end; border-top: 1px solid var(--ui-line); padding-top: 12px; }
 @media (max-width: 640px) { .crn-steps { grid-template-columns: repeat(2, 1fr); } }
+/* dificuldade na faixa do topo: com rótulo e estrelas maiores */
+.cr-strip .cs-diff { max-width: none; display: grid; gap: 0; }
+.cr-strip .cs-diff .cs-lbl { font: 700 10.5px var(--f-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ui-acc); flex-basis: auto; margin: 0; }
+.cr-strip .cs-diff .cs-st { display: flex; }
+.cr-strip .cs-diff button { font-size: 20px; padding: 0 1px; }
+.cr-strip .cs-diff small:last-child { margin: 0; color: #fff; font-weight: 600; }

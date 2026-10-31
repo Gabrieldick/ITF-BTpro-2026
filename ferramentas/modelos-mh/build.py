@@ -187,7 +187,7 @@ def top_keep(p, kind, m=0.):
     if p[1] < WAIST0 - P.get('hemDrop', .3) + m: return False  # barra
     arm = KW['arm'] > .5 and abs(p[0]) > ARMX - .2
     if kind == 'sbra':  # top esportivo: alças largas e barra logo abaixo do peito
-        if p[1] < P.get('braHem', 3.62) + m: return False
+        if p[1] < P.get('braHem', 3.05) + m: return False  # (~1,07 m num corpo de 1,61 m: cobre um palmo abaixo do peito)
         if p[1] > neckline(p, P.get('neckF', .75) + .15, .55) - m: return False
         ax = 1.05 + .55 * min(1., max(0., (4.95 - p[1]) / .65))
         return abs(p[0]) < ax - m
@@ -197,7 +197,7 @@ def top_keep(p, kind, m=0.):
         ax = 1.3 + .45 * min(1., max(0., (4.6 - p[1]) / .6))
         return abs(p[0]) < ax - m
     if kind in ('tank', 'crop'):
-        if kind == 'crop' and p[1] < P.get('cropHem', 3.6) + m: return False
+        if kind == 'crop' and p[1] < P.get('cropHem', 2.3) + m: return False  # cropped: bem mais comprido que o top, termina pouco acima do umbigo (~1,0 m)
         if p[1] > neckline(p, P.get('neckF', .75), P.get('neckB', .4)) - m: return False
         ax = .95 + .62 * min(1., max(0., (4.95 - p[1]) / .65))  # cava: alça estreita em cima, abre até a lateral
         return abs(p[0]) < ax - m
