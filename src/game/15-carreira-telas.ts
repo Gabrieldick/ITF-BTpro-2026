@@ -16,7 +16,7 @@ import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
 let crTab = 'agenda';
 // abas agrupadas: cada grupo tem as suas sub-abas (a primeira é a que abre)
-const CR_GROUPS = { agenda: [['agenda', 'Semana'], ['calendario', 'Calendário']], jogador: [['jogador', 'Atributos'], ['parceiros', 'Parceiros'], ['ajustes', 'Ajustes']], loja: [['loja', 'Loja']], ranking: [['ranking', 'Ranking']], negocios: [['patrocinio', 'Patrocínios'], ['negocios', 'Negócios']], historico: [['historico', 'Histórico'], ['trofeus', 'Troféus']] };
+const CR_GROUPS = { agenda: [['agenda', 'Semana'], ['calendario', 'Calendário']], jogador: [['jogador', 'Atributos'], ['parceiros', 'Dupla'], ['ajustes', 'Ajustes']], loja: [['loja', 'Loja']], ranking: [['ranking', 'Ranking']], patrocinio: [['patrocinio', 'Patrocínios']], negocios: [['negocios', 'Negócios']], historico: [['historico', 'Histórico'], ['trofeus', 'Troféus']] };
 const crGroupOf = t => Object.keys(CR_GROUPS).find(g => CR_GROUPS[g].some(x => x[0] === t)) || 'agenda';
 const money = v => '$' + Math.round(v).toLocaleString('pt-BR');
 let crEntry = '';
@@ -49,7 +49,7 @@ function renderCareer() {
   $('crEntry').hidden = !!$s.CR;
   document.querySelectorAll('[data-entry]').forEach(b => b.classList.toggle('sel', b.dataset.entry === crEntry));
   $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
-  $('crExport').hidden = $('crSwitch').hidden = !$s.CR;
+  $('crExport').hidden = $('crSwitch').hidden = $('crGuideBtn').hidden = !$s.CR;
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
@@ -78,6 +78,7 @@ function renderCareer() {
   if ($s.CR.tour && !$s.CR.tour.pending) { body.innerHTML = crTourHTML(); bindTour(); return; }
   body.innerHTML = ({ agenda: crAgendaHTML, calendario: crCalendarHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML, trofeus: crTrophyHTML, ajustes: crSettingsHTML }[crTab])();
   bindCareerBody();
+  if (GD.i >= 0) guidePaint();
 }
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 function crAgendaHTML() {
@@ -117,10 +118,10 @@ function crAgendaHTML() {
   const nx = crUpcoming(1)[0];
   const cal = '<p class="cr-note cr-nextcal">' + (nx ? '🗓️ Próximo: <b>' + esc(nx.o.name) + '</b> · ' + nx.date + ' · ' : '') + '<button type="button" class="ghost sm" data-t-go="calendario">Ver calendário</button></p>';
   // a ação principal (torneios da semana) vem primeiro; a escada de categorias e o calendário ficam no fim
-  return regC + tours
+  return '<div class="cr-tours">' + regC + tours + '</div>'
     + '<div class="cr-week">' + week + '</div>'
     + '<p class="cr-note">Parceiro: <b>' + (p ? esc(nameOf(p)) + ' (' + crCharOvr(p) + ')' : 'nenhum — um parceiro de ocasião será escolhido na inscrição') + '</b>' + (p ? ' · química ' + crChem() + ' (' + CHEM_NOME[crChemLv()] + ') · humor: ' + crMoodWord() : '') + '</p>'
-    + injC + arcC + goal + acts + '<p class="section-label">Categorias</p><div class="cr-ladder">' + ladder + '</div>' + cal;
+    + injC + arcC + '<div class="cr-goal">' + goal + '</div><div class="cr-acts">' + acts + '</div><p class="section-label">Categorias</p><div class="cr-ladder">' + ladder + '</div>' + cal;
 }
 // ilustrações dos cards do dia (SVG, no canto do card): academia, quadra com cones, prancheta de aula e rede na praia
 const ACT_ART = {
@@ -665,7 +666,7 @@ function crTourHTML() {
     const s = t.summary;
     msg = '<div class="cr-sum"><b class="champion">' + (s.place === 0 ? '🏆 Campeões do ' + esc(t.name) + '!' : s.placeName) + '</b><span>Prêmio ' + money(s.prize) + (t.sponsorBonus ? ' + bônus de patrocínio ' + money(t.sponsorBonus) : '') + ' · +' + s.pts + ' pts de ranking · +' + s.xp + ' pontos de evolução</span>'
       + (t.stand ? '<p class="section-label">Classificação dos estados (4 / 2 / 1 por categoria)</p><div class="cr-list">' + t.stand.map((x, i) => '<div class="cr-row' + (x.uf === t.teams[t.me].uf ? ' me' : '') + '"><span class="cr-pos">' + (i + 1) + '</span><div><b>' + esc(STATES.find(q => q[0] === x.uf)[1]) + '</b><small>' + ['C', 'B', 'A', 'Pro'].map((c, k) => c + ': ' + (x.cats[k] ? x.cats[k] + 'º' : '–')).join(' · ') + '</small></div><b class="cr-pts">' + x.pts + '</b></div>').join('') + '</div>' : '')
-      + (s.offers.length ? '<span>Convites para formar dupla: ' + s.offers.map(id => esc(nameOf(crChar(id)))).join(', ') + ' (veja em Parceiros)</span>' : '') + '<span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div>';
+      + (s.offers.length ? '<span>Convites para formar dupla: ' + s.offers.map(id => esc(nameOf(crChar(id)))).join(', ') + ' (veja em Jogador e dupla › Dupla)</span>' : '') + '<span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div>';
   } else if (mm) {
     const opp = t.teams[mm.a === t.me ? mm.b : mm.a];
     const sty = id => PLAY_STYLES[playStyleOf(crChar(id))].nome.toLowerCase();
@@ -758,6 +759,64 @@ function bindCareerBody() {
   const mn = $('crMeNat'); if (mn) mn.addEventListener('change', () => { $s.CR.me.pais = mn.value; crSyncChars(); saveCareer(); renderCareer(); });
   const rst = $('crReset'); if (rst) rst.addEventListener('click', () => { if (rst.dataset.sure) { $s.CR = null; saveCareer(); crSyncChars(); renderCareer(); } else { rst.dataset.sure = '1'; rst.textContent = 'Clique de novo para confirmar'; } });
   body.querySelectorAll('.cr-rk').forEach(sp => { const r = RACKETS[sp.dataset.r]; if (r) sp.style.background = r.edge; });
+}
+
+// ---------- tutorial da carreira: tour guiado (abre sozinho na 1ª carreira e pelo botão ❓ Tutorial) ----------
+const GUIDE = [
+  { t: 'Bem-vindo à carreira', b: 'Você começa no amador e sobe até o circuito mundial. Cada semana tem 7 dias: de segunda a sexta você treina, dá aulas ou descansa; no fim de semana joga torneios. Os torneios dão pontos no ranking, dinheiro e evolução. Vamos ver cada parte da tela.' },
+  { sel: '#crHead .cs-id', t: 'Seu jogador', b: 'OVR é o seu overall (a média dos atributos). O potencial ("pot.") é o teto atual: o overall não passa dele. O potencial sobe jogando bem (a nota de cada partida) e cumprindo desafios. Fama abre patrocínios e peças exclusivas.' },
+  { sel: '#crHead .cr-strip', t: 'A faixa do topo', b: 'Da esquerda para a direita: posição no ranking e pontos, dinheiro, pontos de evolução (para gastar em atributos), a data (temporada e semana), a energia e a dificuldade. Clique nas estrelas da dificuldade para mudar quando quiser.' },
+  { sel: '#crHead .cs-en', t: 'Energia', b: 'Treinar e jogar gastam energia; descansar recupera. Com energia alta você joga um pouco melhor (+ nos atributos); com energia baixa, pior. Jogar muitos torneios seguidos e treinar demais aumenta o risco de lesão.' },
+  { tab: 'agenda', sel: '#crTabs', t: 'As abas', b: 'Agenda (semana e calendário), Jogador e dupla (atributos, dupla e ajustes), Loja, Ranking, Patrocínios, Negócios e Histórico (resultados e troféus). Algumas abas têm sub-abas logo embaixo.' },
+  { tab: 'agenda', sel: '.cr-tours', t: 'Torneios da semana', b: 'Aqui aparecem os torneios do fim de semana. As inscrições vão até sexta. Cada card mostra o nível, o nível dos adversários (OVR), quanto o campeão ganha em dinheiro e pontos e quanto custa (inscrição + viagem). Torneio marcado "acima do seu nível" tem adversários bem mais fortes.' },
+  { tab: 'agenda', sel: '.cr-week', t: 'A semana', b: 'Cada dia mostra o que você fez. Hoje fica destacado. O torneio acontece no sábado (no profissional, sábado e domingo).' },
+  { tab: 'agenda', sel: '.cr-goal', t: 'Meta da temporada', b: 'Escolha uma meta no começo da temporada. Cumprida até o fim do ano, ela dá dinheiro, pontos de evolução e fama.' },
+  { tab: 'agenda', sel: '.cr-acts', t: 'O que fazer hoje', b: 'Treinar dá pontos de evolução (gasta energia e um pouco de dinheiro). O treino com desafio é jogado na quadra: evolução por acerto e um pouco de potencial. Dar aulas rende dinheiro. Descansar recupera energia. "Dias automáticos" treina e descansa por você até o torneio, chegando inteiro.' },
+  { tab: 'agenda', sel: '.cr-ladder', t: 'Categorias', b: 'Amador C, B e A, depois ITF BT10, BT50, BT100, BT200, BT400, Sand Series e o Mundial. Cada categoria libera com pontos no ranking ou com um título na categoria de baixo.' },
+  { tab: 'calendario', sel: '.yr-grid', t: 'Calendário', b: 'O ano inteiro: cada semana mostra os níveis que têm torneio (pelas cores). As semanas com contorno são as que você pode jogar. Use para planejar quando descansar e quando ir para os torneios grandes.' },
+  { tab: 'jogador', sel: '.cr-bars', t: 'Atributos', b: 'Gaste pontos de evolução no "+" de cada atributo. O custo sobe conforme o atributo fica alto, e o overall não passa do potencial. Os números em verde e vermelho são o efeito da raquete e dos equipamentos.' },
+  { tab: 'parceiros', sel: '#crBody', t: 'Dupla', b: 'Na dupla, o parceiro faz muita diferença. Jogadores melhores só aceitam jogar com você quando você tem nível (ranking e overall) parecido. A química cresce jogando juntos e dá bônus.' },
+  { tab: 'ajustes', sel: '.cr-set', t: 'Ajustes', b: 'Partidas de 4 ou 6 games, seu lado na dupla, estado e nacionalidade. Para mudar a aparência e o uniforme, use "Editar jogador" na aba Atributos.' },
+  { tab: 'loja', sel: '.cr-shop-tabs', t: 'Loja', b: 'Raquetes (com filtros e a comparação com a sua), equipe técnica e equipamentos (bônus nos atributos), e roupas. Peças exclusivas pedem ranking, títulos ou fama.' },
+  { tab: 'ranking', sel: '#crBody', t: 'Ranking', b: 'Conta a soma dos seus 10 melhores resultados das últimas 52 semanas: cada resultado vale por um ano e depois sai da conta. "Meus pontos" mostra quais contam e quando saem. O botão "Minha posição" leva até você na lista.' },
+  { tab: 'patrocinio', sel: '#crBody', t: 'Patrocínios', b: 'Com fama e bons resultados chegam ofertas de patrocínio (dinheiro por semana e bônus por título). O patrocínio master dá raquete própria e torneios com a marca dele.' },
+  { tab: 'negocios', sel: '#crBody', t: 'Negócios', b: 'Invista o dinheiro em negócios (marca própria, coleção com o patrocinador, quadra de beach…) para ter renda toda semana e outros benefícios, como treinar de graça na sua quadra.' },
+  { tab: 'historico', sel: '#crBody', t: 'Histórico e troféus', b: 'Todos os seus torneios e resultados, e na sub-aba Troféus as conquistas da carreira.' },
+  { sel: '.cr-topbtns', t: 'Salvar', b: 'A carreira salva sozinha neste navegador. Com uma conta (☁️ Nuvem) ela fica salva também na nuvem e abre em outros aparelhos. "Exportar save" baixa um arquivo de backup. Este tutorial fica no botão ❓ Tutorial.' },
+  { tab: 'agenda', t: 'Pronto!', b: 'Para começar: escolha a meta da temporada, treine durante a semana e se inscreva num torneio do seu nível até sexta. Boa sorte no circuito!' },
+];
+const GD = { i: -1, el: null, box: null };
+function guideStart() { if (!$s.CR) return; GD.i = 0; guideShow(); }
+function guideEnd() {
+  if (GD.box) GD.box.hidden = true; if (GD.el) GD.el.classList.remove('crt-hl'); GD.el = null; GD.i = -1;
+  if ($s.CR && !$s.CR.tutSeen) { $s.CR.tutSeen = 1; saveCareer(); }
+  crTab = 'agenda'; renderCareer();
+}
+function guideShow() {
+  const st = GUIDE[GD.i]; if (!st) { guideEnd(); return; }
+  if (st.tab && crTab !== st.tab) { crTab = st.tab; renderCareer(); }
+  guidePaint();
+}
+// desenha o destaque e a caixa (renderCareer recria a tela, então repinta depois de cada desenho)
+function guidePaint() {
+  const st = GUIDE[GD.i]; if (!st) return;
+  if (GD.el) GD.el.classList.remove('crt-hl');
+  GD.el = st.sel ? document.querySelector('#career ' + st.sel) : null;
+  if (GD.el) { GD.el.classList.add('crt-hl'); GD.el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  if (!GD.box) {
+    const b = document.createElement('div'); b.id = 'crGuide'; b.className = 'crt-box';
+    b.innerHTML = '<div class="crt-n"></div><b class="crt-t"></b><p class="crt-b"></p><div class="cta-row"><button type="button" class="ghost sm" data-gd="skip">Pular tutorial</button><span class="crt-sp"></span><button type="button" class="ghost sm" data-gd="prev">Voltar</button><button type="button" class="cta sm" data-gd="next">Próximo</button></div>';
+    document.body.append(b); GD.box = b;
+    b.addEventListener('click', e => { const a = e.target.closest('[data-gd]'); if (!a) return; const k = a.dataset.gd;
+      if (k === 'skip') guideEnd(); else if (k === 'prev') { GD.i = Math.max(0, GD.i - 1); guideShow(); } else { GD.i++; guideShow(); } });
+  }
+  const B = GD.box; B.hidden = false;
+  B.querySelector('.crt-n').textContent = 'Tutorial da carreira · ' + (GD.i + 1) + ' de ' + GUIDE.length;
+  B.querySelector('.crt-t').textContent = st.t; B.querySelector('.crt-b').textContent = st.b;
+  B.querySelector('[data-gd=prev]').hidden = GD.i === 0;
+  B.querySelector('[data-gd=next]').textContent = GD.i === GUIDE.length - 1 ? 'Começar' : 'Próximo';
+  // a caixa fica embaixo; se o destaque estiver na metade de baixo, vai para cima
+  setTimeout(() => { const r = GD.el && GD.el.getBoundingClientRect(); B.classList.toggle('top', !!r && (r.top + r.bottom) / 2 > innerHeight * .55); }, 380);
 }
 // ---------- saves ----------
 function crDownload(id) {
@@ -910,11 +969,12 @@ function crStart() {
   const v = n => { const i = document.querySelector('input[name=' + n + ']:checked'); return i ? i.value : null; };
   crForm.fem = v('crGen') === 'f'; crForm.style = v('crStyle') || 'completo'; crForm.perfil = v('crPerfil') || 'promessa'; crForm.acc = v('crAcc') || 'cap'; crForm.canhoto = v('crHand') === 'c';
   crCreate({ uf: $('crUf') ? $('crUf').value : 'SP', hairStyle: $('crHairSt').value || '', beard: $('crBeard').value || '', build: $('crBuild') ? $('crBuild').value : 'atletico', pais: $('crNat').value || 'BRA', name: ($('crName').value || '').trim() || 'Promessa', fem: crForm.fem, alt: crForm.alt, style: crForm.style, perfil: crForm.perfil, attrs: crForm.attrs, start: +($('crStart') ? $('crStart').value : 0) || 0, skin: crForm.skin, hair: crForm.hair, acc: crForm.acc, canhoto: crForm.canhoto, glasses: Math.random() < .5 });
-  crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo ' + TIERS[$s.CR.startTier || 0].nome + ', ache um parceiro e suba no ranking.'; saveCareer(); renderCareer();
+  crTab = 'agenda'; $s.CR.lastMsg = 'Bem-vindo ao circuito! Comece pelo ' + TIERS[$s.CR.startTier || 0].nome + ', ache um parceiro e suba no ranking.'; saveCareer(); renderCareer(); setTimeout(guideStart, 400);
 }
 // pelo menu principal sempre abre a tela de escolher/criar (a carreira aberta é salva e fechada); a volta de uma partida continua indo direto
 $('btnCareer').addEventListener('click', () => { if ($s.CR) { saveCareer(); crCloseSlot(); } crEntry = null; crSaveMsg(''); openCareer(); });
-$('crBack').addEventListener('click', () => { $('career').hidden = true; toMenu(); });
+$('crBack').addEventListener('click', () => { if (GD.i >= 0) guideEnd(); $('career').hidden = true; toMenu(); });
+$('crGuideBtn').addEventListener('click', guideStart);
 $('crCreate').addEventListener('click', crStart);
 $('crNat').innerHTML = COUNTRIES.map(c => '<option value="' + c.code + '"' + (c.code === 'BRA' ? ' selected' : '') + '>' + c.nome + '</option>').join('');
 const natFlag = () => { $('crNatFlag').innerHTML = flagSVG($('crNat').value); const uw = $('crUfWrap'); if (uw) uw.hidden = $('crNat').value !== 'BRA'; };

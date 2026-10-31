@@ -1118,3 +1118,12 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .cr-strip .cs-diff button { font-size: 20px; padding: 0 1px; }
 .cr-strip .cs-diff small:last-child { margin: 0; color: #fff; font-weight: 600; }
 .gc-keys { border-top: 1px solid var(--ui-line); padding-top: 8px; } .gc-keys summary { cursor: pointer; margin: 0 0 6px; } .gc-keys .bind-list { max-height: 46vh; overflow-y: auto; margin: 6px 0; }
+/* tutorial da carreira: destaque do elemento e caixa com o texto */
+.crt-hl { position: relative; z-index: 5; outline: 3px solid var(--ui-acc); outline-offset: 4px; border-radius: 4px; box-shadow: 0 0 0 9999px rgba(2,8,24,.62); }
+.crt-box { position: fixed; z-index: 60; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); background: linear-gradient(160deg, #0f2a5e, #0a1a3e); border: 1px solid var(--ui-acc); border-radius: 6px; box-shadow: 0 20px 60px rgba(0,0,0,.6); padding: 14px 16px 12px; color: var(--ui-text); display: grid; gap: 6px; font-family: var(--f-ui-body); }
+.crt-box.top { bottom: auto; top: 18px; }
+.crt-box[hidden] { display: none; }
+.crt-n { font: 700 11px var(--f-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--ui-acc); }
+.crt-t { font: 800 20px var(--f-ui); text-transform: uppercase; letter-spacing: .02em; color: #fff; }
+.crt-b { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--ui-text); }
+.crt-box .cta-row { margin-top: 4px; align-items: center; } .crt-sp { flex: 1; }
