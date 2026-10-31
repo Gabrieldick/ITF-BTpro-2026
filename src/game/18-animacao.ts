@@ -13,7 +13,7 @@ import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, f
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
 import { canHit, predictLanding, reachOf } from './10-fisica';
 import { defRing, updateAimMarker } from './11-mira';
-import { LOB_MAX, MTR, timeToReach } from './12-controles';
+import { LOB_MAX, MTR, timeToReach, p2MeterFrame } from './12-controles';
 import { assignee } from './16-ia';
 // ---------- Animação: cinemática inversa em braços e pernas ----------
 const _iE = new V3(), _iP = new V3(), _iM = new V3();
@@ -618,6 +618,7 @@ function updateCamera(dt) {
 }
 const _mv = new V3();
 function placeMeter(fp) {
+  p2MeterFrame(1 / 60); // barra do jogador 2 (2 jogadores no mesmo PC)
   if (el.meter.hidden) return;
   let mx, my;
   if (fp) { mx = innerWidth * .63; my = innerHeight * .64; }

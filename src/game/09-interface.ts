@@ -11,7 +11,7 @@ import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, la
 import { swingVar } from './04-poses';
 import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
-import { MTR, applyCam } from './12-controles';
+import { MTR, applyCam, setupLocal2 } from './12-controles';
 import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
 import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded, crPotBarHTML } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
@@ -735,6 +735,7 @@ function newMatch(guest) {
   S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; // lição do tutorial: tudo em 1 estrela (só nesta partida)
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
+  if (!guest) setupLocal2(); // 2 jogadores no mesmo PC (partida rápida): o controle fica com o jogador 2
   configureMode();
   warmShaders();
   { // rede: 1,80 m só no profissional masculino (carreira: BT10 para cima); feminino, misto e amador: 1,70 m

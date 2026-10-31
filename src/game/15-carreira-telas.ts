@@ -1008,12 +1008,21 @@ function qmDupla() {
   if (tac) tac.closest('label').hidden = !dupla; if (fsel) fsel.closest('label').hidden = !dupla;
 }
 document.querySelectorAll('#menu input[name=mode]').forEach(r => r.addEventListener('change', qmDupla));
+// 2 jogadores no mesmo PC: explica quem usa o quê e avisa se não há controle conectado
+function qmLocal2() {
+  const v = (document.querySelector('#menu input[name=local2]:checked') || {}).value, n = $('local2Note'); if (!n) return;
+  const pad = navigator.getGamepads && [...navigator.getGamepads()].some(g => g && g.connected);
+  n.hidden = !v; n.classList.toggle('warn', !!v && !pad);
+  n.textContent = (v === 'coop' ? 'Juntos: o jogador 2 é a sua dupla (na simples, vira um contra o outro).' : 'Contra: o jogador 2 fica do outro lado da rede (na dupla, com a CPU de parceira).') + ' Jogador 1 no teclado, jogador 2 no controle (Xbox/PS).' + (pad ? '' : ' Nenhum controle conectado: conecte um e aperte um botão.');
+}
+document.querySelectorAll('#menu input[name=local2]').forEach(r => r.addEventListener('change', qmLocal2));
+addEventListener('gamepadconnected', qmLocal2); addEventListener('gamepaddisconnected', qmLocal2);
 function menuStep(st) {
   const m = $('menu');
   if (st === 'back') st = menuPrev; else if (st === 'cfg' && m.dataset.step !== 'cfg' && m.dataset.step !== 'keys') menuPrev = m.dataset.step || 'home';
   m.dataset.step = st;
   m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });
-  readMenu(); syncMenu(); qmDupla();
+  readMenu(); syncMenu(); qmDupla(); qmLocal2();
   m.scrollTop = 0;
 }
 // configurações em abas

@@ -6,7 +6,7 @@ import { bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SW
 import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
 import { swingVar } from './04-poses';
-import { human } from './06-modelos';
+import { human, partner, cpuA } from './06-modelos';
 import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
 import { ac, surf, applyGfx } from './08-audio';
 import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback, COURTS } from './09-interface';
@@ -363,8 +363,9 @@ function padStep() {
   const playing = inPlay() && el.pause.hidden && S.mode !== 'replay';
   const edge = i => { const d = padDown(gp, i), was = !!padPrev[i]; padPrev[i] = d; return d && !was ? 1 : !d && was ? -1 : 0; };
   if (playing) {
-    PAD.x = x; PAD.z = z;
-    for (const id of ['defesa', 'curta', 'lob', 'smash', 'smash2', 'lob2']) { const e = edge(padBtn(id)), t = id.replace('2', ''); if (e === 1) pressShot(t); else if (e === -1) releaseShot(t); }
+    const c2 = P2.c; // 2 jogadores no mesmo PC: o controle é do jogador 2 (o teclado continua com o 1)
+    if (c2) { PAD.x = PAD.z = 0; c2.ix = x; c2.iz = z; } else { PAD.x = x; PAD.z = z; }
+    for (const id of ['defesa', 'curta', 'lob', 'smash', 'smash2', 'lob2']) { const e = edge(padBtn(id)), t = id.replace('2', ''); if (e === 1) { if (c2) { if (!S.paused) pressShot(t, c2); } else pressShot(t); } else if (e === -1) { if (c2) releaseShot(t, c2); else releaseShot(t); } }
     if (edge(padBtn('pause')) === 1) togglePause();
     if (edge(padBtn('cam')) === 1) toggleCam();
     if (edge(padBtn('aim')) === 1) { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
@@ -382,6 +383,45 @@ function padStep() {
   }
 }
 if (typeof window !== 'undefined' && navigator.getGamepads) { requestAnimationFrame(padLoop); window.__padStep = () => padStep(); }
+// ---------- 2 jogadores no mesmo PC: o 1 no teclado (time de baixo), o 2 no controle ----------
+// contra: o 2 joga do outro lado da rede; juntos (dupla): o 2 é o seu parceiro. Usa o mesmo controle de "humano extra"
+// do online (barra e mensagens saem pela fila "out"), mas desenhado aqui numa segunda barra
+const P2 = { c: null, dom: null, mrT: 0 };
+function setupLocal2() {
+  if (P2.c) { const q = P2.c.p; q.isHuman = false; q.netHuman = false; q.netName = ''; q.mtr = null; q.charging = false; NET.remote = NET.remote.filter(c => c !== P2.c); P2.c = null; }
+  if (P2.dom) P2.dom.meter.hidden = true;
+  const on = S.settings.local2 && !NET.role && !S.careerActive && !S.champActive && !S.drill && !S.tutorial;
+  document.body.classList.toggle('local2', !!on);
+  if (!on) return;
+  const p = S.settings.local2 === 'coop' && dupla() ? partner : cpuA;
+  const c = makeRemoteCtl(p); c.local2 = true; c.pd = S.settings.playerDiff || 3; p.pdRemote = c.pd;
+  p.isHuman = true; p.netHuman = true; p.netName = 'Jogador 2';
+  NET.remote.push(c); P2.c = c;
+  if (!P2.dom) { const m = el.meter.cloneNode(true); m.id = 'meter2'; m.hidden = true; document.body.append(m);
+    P2.dom = { meter: m, mFill: m.querySelector('.fill'), mZone: m.querySelector('.zone'), mRes: m.querySelector('.res'), mLbl: m.querySelector('.lbl') }; }
+}
+// desenha na barra do jogador 2 (as funções da barra escrevem em el.meter…: troca por um instante)
+function onP2Meter(fn) { const keep = { meter: el.meter, mFill: el.mFill, mZone: el.mZone, mRes: el.mRes, mLbl: el.mLbl }; Object.assign(el, P2.dom); try { fn(); } finally { Object.assign(el, keep); } }
+function p2MeterFrame(dt) {
+  const c = P2.c; if (!c || !P2.dom) return;
+  for (const e of c.out.splice(0)) {
+    if (e[0] === 'ms') onP2Meter(() => meterDom(c.m));
+    else if (e[0] === 'mr') { const D = P2.dom; D.meter.className = e[1]; D.mRes.textContent = e[2]; D.mFill.style.height = e[3] + '%'; D.meter.hidden = false; P2.mrT = .9; }
+    else if (e[0] === 'mh') { P2.dom.meter.hidden = true; P2.mrT = 0; }
+    else if (e[0] === 'fb') shotFeedback(e[1], e[2], e[3]);
+  }
+  const D = P2.dom, M = c.m;
+  if (P2.mrT > 0 && !M.active) { P2.mrT -= dt; if (P2.mrT <= 0) D.meter.hidden = true; }
+  if (D.meter.hidden) return;
+  const v3 = new V3(c.p.pos.x, 1.75 + c.p.model.group.position.y, c.p.pos.z).project(camera);
+  D.meter.style.left = clamp((v3.x * .5 + .5) * innerWidth + 60, 30, innerWidth - 120) + 'px';
+  D.meter.style.top = clamp((-v3.y * .5 + .5) * innerHeight, 150, innerHeight - 40) + 'px';
+  if (M.active) {
+    const v = M.v;
+    if (M.kind === 'lob') { D.mFill.style.height = (clamp(v / (M.lmax || LOB_MAX), 0, 1) * 100) + '%'; D.meter.classList.toggle('over', v > 1); }
+    else { D.mFill.style.height = (clamp(v, 0, 1) * 100) + '%'; D.meter.classList.toggle('in', Math.abs(v - M.center) <= M.half); }
+  }
+}
 
 // modelos de quadra (partida rápida/online) e de bolinha (todos os modos)
 function fillLooks() {
@@ -544,13 +584,13 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil)
-  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.uniforms = 'simples';
+  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.local2 = v('local2') || ''; S.settings.uniforms = 'simples';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal'; S.settings.formation = ($('formSel') && $('formSel').value) || 'normal';
   S.quietSave = true; saveSettings(); S.quietSave = false;
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
-  set('mode', S.settings.mode); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('gender', S.settings.gender);
+  set('mode', S.settings.mode); set('local2', S.settings.local2 || ''); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('gender', S.settings.gender);
   $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'discreto'; fillLooks(); $('tacticSel').value = S.settings.tactic || 'normal'; if ($('formSel')) $('formSel').value = S.settings.formation || 'normal';
   renderRoster();
 }
@@ -599,7 +639,7 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { setupLocal2, p2MeterFrame, P2, startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
 
 // pausa: tática e formação da dupla podem mudar no meio do jogo
 { const ts = $('pTacSel'), fs = $('pFormSel');
