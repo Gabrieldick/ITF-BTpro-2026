@@ -118,7 +118,7 @@ function smashPrep(p, swingU) {
 // estilo do saque no lançamento: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado/à frente leva o braço livre
 function srvStyle(p, pose, u) {
   const st = p.srvSt; if (!st) return;
-  const k = clamp((u - .15) / .5, 0, 1); pose.crouch = Math.min(.3, pose.crouch * lerp(1, st.crouch, k)); // (agachado: no máximo um joelho bem dobrado, nunca ajoelhado) pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
+  const k = clamp((u - .15) / .5, 0, 1); pose.crouch = Math.min(.3, pose.crouch * lerp(1, st.crouch, k)); /* (agachado: no máximo um joelho bem dobrado, nunca ajoelhado) */ pose.lean += (st.crouch - 1) * -.05 * k; pose.lh[0] += (st.tossX - .22) * .5 * k; pose.lh[2] -= (st.tossZ - .62) * .3 * k;
 }
 // prévia animada (editor da carreira): anima e move o modelo realista de um jogador que não está em quadra
 S.previewAnim = (p, dt) => { animateAthlete(p, dt); if (p.skin) driveSkin(p); };
@@ -129,7 +129,7 @@ function animateAthlete(p, dt) {
   if (p.debug) {
     if (p.debug.type === 'serve' || p.debug.type === 'servelow') { poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose); if (p.debug.type === 'serve') srvStyle(p, pose, p.debug.u); }
     else { swingU = p.debug.u; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); styleSwing(pose, p.debug.type, swingU, p.debug.st); mirror = /^(defesa|curta|lob)/.test(p.debug.type) && p.debug.side < 0; }
-  } else if (S.mode === 'toss' && S.serverPlayer === p && p.swing.t < 0) { const u = clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1); // (o golpe do saque, quando começa, já aparece: antes só surgia na batida e a raquete saltava do troféu para o meio do golpe) poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, u, pose);
+  } else if (S.mode === 'toss' && S.serverPlayer === p && p.swing.t < 0) { const u = clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1); /* (o golpe do saque, quando começa, já aparece: antes só surgia na batida e a raquete saltava do troféu para o meio do golpe) */ poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, u, pose);
     // estilo do saque: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado abre o braço livre
     if (S.serveType !== 'lob') srvStyle(p, pose, u); }
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
