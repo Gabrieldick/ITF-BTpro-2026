@@ -1117,3 +1117,4 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 .cr-strip .cs-diff .cs-st { display: flex; }
 .cr-strip .cs-diff button { font-size: 20px; padding: 0 1px; }
 .cr-strip .cs-diff small:last-child { margin: 0; color: #fff; font-weight: 600; }
+.gc-keys { border-top: 1px solid var(--ui-line); padding-top: 8px; } .gc-keys summary { cursor: pointer; margin: 0 0 6px; } .gc-keys .bind-list { max-height: 46vh; overflow-y: auto; margin: 6px 0; }

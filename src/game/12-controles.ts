@@ -470,6 +470,7 @@ addEventListener('keydown', e => {
   renderBinds();
 }, true);
 { const rb = document.getElementById('bindReset'); if (rb) rb.addEventListener('click', () => { S.settings.binds = null; BINDCAP.on = null; saveSettings(); renderBinds(); }); }
+document.querySelectorAll('[data-bindreset]').forEach(rb => rb.addEventListener('click', () => { S.settings.binds = null; BINDCAP.on = null; saveSettings(); renderBinds(); }));
 renderBinds();
 Object.entries(shotBtns).forEach(([type, b]) => {
   b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) {} pressShot(type); });
