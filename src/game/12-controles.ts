@@ -5,7 +5,7 @@ import { canHit } from './10-fisica';
 import { bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
 import { S, isMobile, NET } from './01-estado';
 import { camera } from './02-render';
-import { swingVar } from './04-poses';
+import { swingVar, predictPt } from './04-poses';
 import { human } from './06-modelos';
 import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
 import { ac, surf, applyGfx } from './08-audio';
@@ -180,7 +180,7 @@ function releaseMeter(c = localCtl()) {
     M.active = false; M.showT = .9;
     meterResult(c, 'lobm ' + (kick ? 'perfeito' : lv < kc - kh ? 'cedo' : lv <= 1 ? (lv >= aLo ? 'perfeito' : '') : 'tarde'), word, lv / LM * 100);
     p.charging = false;
-    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power, word, kick }; sw.side = sideOf(p); sw.var = '';
+    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'lob'; sw.hit = false; sw.meter = null; sw.lob = { power, word, kick }; sw.side = sideOf(p); { const cp = ball.state === 'live' ? predictPt(p) : ball.pos; sw.var = swingVar('lob', cp.y, p, undefined, { pt: cp, prepared: true }); } // (bola alta no backhand: verônica lob)
     return;
   }
   let res = Math.abs(diff) <= M.half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
@@ -193,7 +193,7 @@ function releaseMeter(c = localCtl()) {
   meterResult(c, res + (res !== 'perfeito' && amt < .2 ? ' quase' : ''), word, clamp(v, 0, 1) * 100);
   if (M.kind === 'smash') {
     p.charging = false;
-    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: M.ideal }; sw.hold = 0; sw.var = swingVar('smash', ball.pos.y, p);
+    const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: M.ideal }; sw.hold = 0; const cp = ball.state === 'live' ? predictPt(p) : ball.pos; sw.var = swingVar('smash', cp.y, p, undefined, { pt: cp, late: res === 'tarde' && amt > .5, prepared: true }); // (golpe pela situação: bola alta atrás → gancho/verônica, atrasado → bandeja)
     if (res !== 'voleio' && ball.state === 'live' && ball.pos.y > 1.6) startJump(p, .42, .3);
   } else serveRelease(res, amt, word, p);
 }
@@ -237,7 +237,8 @@ function pressShot(type, c) {
     sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team ? timeToReach(p) : null; // para o timing: quanto faltava a bola chegar
     if (sw.pressT !== null && c.remote) sw.pressT += c.lag; // o convidado apertou vendo a bola um pouco atrasada
     sw.side = sideOf(p, plan.id === S.hitId && plan.plan ? plan.plan.pt : null);
-    sw.var = swingVar(type, plan.id === S.hitId && plan.plan ? plan.plan.pt.y : ball.pos.y, p);
+    const pp = plan.id === S.hitId && plan.plan ? plan.plan.pt : null; // tempo até a bola: bem pouco → bloqueio reflexo
+    sw.var = swingVar(type, pp ? pp.y : ball.pos.y, p, undefined, { pt: pp || undefined, tt: sw.pressT !== null ? sw.pressT : S.mode === 'rally' && canHit(p, type) ? 0 : undefined });
   }
 }
 function releaseShot(type, c) {

@@ -386,7 +386,7 @@ function scaleSkin(p) {
 const _k1 = new V3(), _k2 = new V3(), _k3 = new V3(), _kS = new V3(), _kM = new V3(), _kE = new V3(), _kU = new V3(), _kT = new V3(), _kP = new V3(), _kJ = new V3();
 const _ka = new V3(), _kb = new V3(), _kc = new V3(), _ke1 = new V3(), _ke2 = new V3(), _ke3 = new V3();
 const _kq = new THREE.Quaternion(), _kq2 = new THREE.Quaternion(), _kq3 = new THREE.Quaternion(), _kD = new THREE.Quaternion(), _kH = new THREE.Quaternion(), _kN = new THREE.Quaternion();
-const _kR = new THREE.Quaternion(), _kRi = new THREE.Quaternion(), _kI = new THREE.Quaternion(), _kSq = new THREE.Quaternion(), _kHg = new THREE.Quaternion();
+const _kR = new THREE.Quaternion(), _kRi = new THREE.Quaternion(), _kI = new THREE.Quaternion(), _kSq = new THREE.Quaternion(), _kHg = new THREE.Quaternion(), _kHq = new THREE.Quaternion(), _kD2 = new THREE.Quaternion(), _kYa = new THREE.Vector3(0, 1, 0);
 function setDelta(bone, restW, D) {
   _kq.copy(_kR).multiply(D).multiply(_kRi).multiply(restW);
   bone.parent.getWorldQuaternion(_kq2); _kq2.invert().multiply(_kq);
@@ -451,15 +451,17 @@ function driveSkin(p) {
   // quadril desce e desloca como no rig
   _k1.set(m.hips.position.x * (L ? -1 : 1), m.hips.position.y - .92, m.hips.position.z).applyQuaternion(_kR);
   B.Hips.getWorldPosition(_k2).add(_k1); B.Hips.parent.worldToLocal(_k2); B.Hips.position.copy(_k2); B.Hips.updateMatrixWorld(true);
+  // giro do quadril dos golpes (hpY: o quadril abre antes do tronco) entra embaixo de tudo, como no rig
+  const hq = mir(_kHq.setFromAxisAngle(_kYa, p.hpY || 0));
   const sq = mir(_kSq.copy(m.spine.quaternion));
-  const D = t => _kD.copy(_kI).slerp(sq, t);
+  const D = t => _kD.copy(hq).multiply(_kD2.copy(_kI).slerp(sq, t));
   setDelta(B.Hips, k.restW.Hips, D(.25));
   setDelta(B.Spine, k.restW.Spine, D(.5));
   setDelta(B.Spine1, k.restW.Spine1, D(.78));
   setDelta(B.Spine2, k.restW.Spine2, D(1));
   setDelta(B.LeftShoulder, k.restW.LeftShoulder, D(1));
   setDelta(B.RightShoulder, k.restW.RightShoulder, D(1));
-  _kH.copy(sq).multiply(mir(_kHg.copy(m.headG.quaternion))); _kN.copy(sq).slerp(_kH, .5);
+  _kH.copy(hq).multiply(sq).multiply(mir(_kHg.copy(m.headG.quaternion))); _kN.copy(hq).multiply(sq).slerp(_kH, .5);
   setDelta(B.Neck, k.restW.Neck, _kN); setDelta(B.Head, k.restW.Head, _kH);
   // braço da raquete do rig → braço direito do modelo (esquerdo no canhoto); pernas também trocam de lado
   const R = L ? 'Left' : 'Right', O = L ? 'Right' : 'Left', aR = L ? k.armL : k.arm, aO = L ? k.arm : k.armL;

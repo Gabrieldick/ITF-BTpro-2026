@@ -5,7 +5,7 @@ import { perfHitHook } from './09-interface';
 import { $s } from '../state';
 import { staErr, bCurve, ATTR_OF, C, G, SERVES, SHOTS, V3, attrK, bG, clamp, gauss, hScale, lerp, rand, shortK , overall, weakK, attrN, attrOf } from './00-base';
 import { S, NET } from './01-estado';
-import { VAR_FX, swingVar } from './04-poses';
+import { VAR_FX, swingVar, hitVar } from './04-poses';
 import { ball } from './07-glb';
 import { sndHit } from './08-audio';
 import { humanAim, humanDepthT, skillOf, startJump } from './11-mira';
@@ -278,12 +278,18 @@ function doHit(p, type, q, isServe, mod) {
     if (farX * crossK > 0) { spec.noise *= 1 + .5 * farX * crossK; mod.misBoost = (mod.misBoost || 0) + .12 * farX * crossK; }
   }
   // variação do golpe conforme o contato
-  const vr = isServe || pop ? '' : swingVar(type, ball.pos.y, p, aim);
-  const vfx = vr && key !== 'drive' ? VAR_FX[type + '_' + vr] : null;
+  // (a escolha feita na preparação — gancho, verônica, bandeja, voleios… — continua no contato: hitVar)
+  const vrHit = isServe || pop ? '' : swingVar(type, ball.pos.y, p, aim, { atHit: true });
+  const vr = isServe ? '' : hitVar(type, vrHit, p.swing.t >= 0 && p.swing.type === type ? p.swing.var : '');
+  const vf0 = vr && !pop ? VAR_FX[type + '_' + vr] : null, vfx = vf0 && (key !== 'drive' || vf0.drive) ? vf0 : null;
   if (vfx) {
-    if (!finisher) spec.label = vfx.label;
+    // (soft: só troca o nome quando o golpe ainda está com o nome padrão)
+    if (!finisher && (!vfx.soft || spec.label === SHOTS[key].label || spec.label === 'VOLEIO')) spec.label = vfx.label;
     if (vfx.speed && spec.speed) spec.speed *= vfx.speed; if (vfx.depth && !finisher) spec.depth = vfx.depth; if (vfx.T && spec.T) spec.T = vfx.T; // a finalização mantém a profundidade dela
+    if (vfx.minT && spec.T && !spec.kick) spec.T = Math.max(spec.T, vfx.minT); // verônica lob: sobe alto
     if (vfx.noise) spec.noise *= vfx.noise; if (vfx.gk && !finisher) spec.gk = vfx.gk;
+    if (vfx.mis) mod.misBoost = (mod.misBoost || 0) + vfx.mis;
+    if (vfx.calm) topK = 0; // bandeja: sem a pancada com efeito para baixo
     if (vfx.wide) aim = Math.sign(aim || rand(-1, 1)) * Math.max(Math.abs(aim), lim * .92);
     if (vfx.jump) startJump(p, .5, .42);
   }
@@ -308,7 +314,7 @@ function doHit(p, type, q, isServe, mod) {
   // smash/saque forçando a lateral: quanto mais perto da linha a mira, mais a bola espalha para o lado, e bem mais com o
   // timing ruim (mirando a 25 cm da linha: tempo perfeito quase sempre entra, médio sai ~1 em 8, ruim ~1 em 4)
   let edgeSd = 0;
-  if (p.isHuman && !pop && (key === 'smash' || isServe)) { const ek = clamp((Math.abs(aim) - (C.halfW - 1.1)) / .85, 0, 1); edgeSd = ek * (.1 + .9 * (1 - clamp(q, 0, 1))); }
+  if (p.isHuman && !pop && (key === 'smash' || isServe)) { const ek = clamp((Math.abs(aim) - (C.halfW - 1.1)) / .85, 0, 1); edgeSd = ek * (.1 + .9 * (1 - clamp(q, 0, 1))) * (vfx && vfx.edge || 1); }
   // na finalização a mira curta (W) vai só até o meio: mais curta, a bola precisaria subir para passar a rede e perderia a velocidade
   const dT = p.isHuman ? (finisher ? .45 + humanDepthT(p) * .55 : humanDepthT(p)) : 0;
   let depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
@@ -369,7 +375,7 @@ function doHit(p, type, q, isServe, mod) {
   } else v = solveShot(ball.pos, tgt, spec);
   let mis = false;
   const prs = S.pressure && p.char ? (1 - clamp((overall(p.char.a) - 60) / 35, 0, 1)) * .05 : 0; // nervosismo no ponto decisivo
-  const riskK = ({ smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1) * (volleyish ? lerp(1.3, .7, vlK) : 1); // golpes arriscados erram mais
+  const riskK = ({ smash: 1.25, drive: 1.1, curta: 1.35, lob: .8, defesa: .75 }[key] || 1) * (volleyish ? lerp(1.3, .7, vlK) : 1) * (vfx && vfx.risk || 1) * (vfx && vfx.edge ? 1.1 : 1); // gancho/verônica: um pouco mais de erro // golpes arriscados erram mais
   const unforced = !p.isHuman && !isServe && Math.random() < skillOf(p).err * riskK + prs;
   // finalização de perto (menos de 2 m da rede) em cima de quem está colado na rede: com a barra perfeita, mesmo a defesa
   // perfeita volta para dentro no máximo 1 em 5; sem o perfeito, metade (o reflexo salva a bola, mas sem controle)
@@ -389,7 +395,7 @@ function doHit(p, type, q, isServe, mod) {
   let threat = 0;
   if (!pop && !wild && !mis) {
     threat = clamp((Math.hypot(v.x, v.z) - 12) / 8, 0, 1);
-    if (key === 'smash') threat = Math.max(threat, .55);
+    if (key === 'smash') threat = Math.max(threat, vfx && vfx.calm ? .3 : .55); // bandeja: bola controlada, ameaça menor
     if (key === 'curta') threat = Math.max(threat, clamp((curtaK - .35) / .55, 0, 1));
     if (spec.kick) threat = Math.max(threat, .85);
     if (finisher) threat = 1;
@@ -397,7 +403,7 @@ function doHit(p, type, q, isServe, mod) {
   }
   ball.threat = threat;
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.cx = spec.cA ? spec.cA[0] : 0; ball.cz = spec.cA ? spec.cA[1] : 0; ball.smStyle = smStyle; ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
-  { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
+  { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? (vfx && vfx.calm ? .5 : 1) * Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o
   // peso de ter sido encoberto
   ball.defPerf = !pop && !wild ? defPerf : 0;
