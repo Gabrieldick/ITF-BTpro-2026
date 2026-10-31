@@ -885,6 +885,19 @@ function renderCrAttrs(reset) {
 }
 document.querySelectorAll('input[name=crStyle], input[name=crPerfil]').forEach(r => r.addEventListener('change', () => renderCrAttrs(true)));
 if ($('crStart')) $('crStart').addEventListener('change', () => renderCrAttrs(true));
+// criar carreira em etapas: identidade → aparência → começo → estilo e atributos
+let crnStep = 1;
+function crnShow(n) {
+  crnStep = Math.max(1, Math.min(4, n));
+  document.querySelectorAll('#crNew [data-crn]').forEach(x => { x.hidden = +x.dataset.crn !== crnStep; });
+  document.querySelectorAll('#crNew [data-crn-go]').forEach(x => { x.classList.toggle('sel', +x.dataset.crnGo === crnStep); x.classList.toggle('done', +x.dataset.crnGo < crnStep); });
+  $('crnPrev').hidden = crnStep === 1; $('crnNext').hidden = crnStep === 4; $('crCreate').hidden = crnStep !== 4;
+  if (crnStep === 4) renderCrAttrs();
+  const c = document.querySelector('#career'); if (c) c.scrollTop = 0;
+}
+document.querySelectorAll('#crNew [data-crn-go]').forEach(b => b.addEventListener('click', () => crnShow(+b.dataset.crnGo)));
+$('crnPrev').addEventListener('click', () => crnShow(crnStep - 1));
+$('crnNext').addEventListener('click', () => crnShow(crnStep + 1));
 function renderCrNew() {
   const sw = (arr, key) => arr.map(c => '<button type="button" class="cr-sw' + (crForm[key] === c ? ' sel' : '') + '" data-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   $('crSw').innerHTML = '<div><span class="cr-lbl">Pele</span>' + sw(SKINS, 'skin') + '</div><div><span class="cr-lbl">Cabelo</span>' + sw(HAIRS, 'hair') + '</div>';

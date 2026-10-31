@@ -97,7 +97,7 @@ const escHtml = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&
 function openOnline() {
   ac(); readMenu(); // usa o que está marcado no menu (games, dificuldade, jogadores)
   msg('');
-  if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); $('onName').value = ON.name; setTimeout(() => $('onCode').focus(), 0); }
+  if (NET.role) { showPart('onRoom'); renderRoom(true); } else { showPart('onStart'); $('onName').value = ON.name; setTimeout(() => { if (!$('onCode').closest('[hidden]')) $('onCode').focus(); }, 0); }
   if (!QQ.on) { qFill(); qLoadCloud(); } // carreiras da conta (nuvem) para a fila
   if (!NET.role) { renderRoomList(); rlChannel().catch(() => { RL.state = 'erro'; renderRoomList(); }); }
 }
@@ -1065,10 +1065,15 @@ $('onQCancel').addEventListener('click', () => queueStop());
 // link com #sala=CÓDIGO: abre a tela do online com o código preenchido
 {
   const m = /sala=([A-Za-z0-9]{5})/.exec(location.hash);
-  if (m) { $('onCode').value = m[1].toUpperCase(); openOnline(); setTimeout(() => $('onJoin').focus(), 0); }
+  if (m) { $('onCode').value = m[1].toUpperCase(); openOnline(); { const t = document.querySelector('[data-onmain=sala]'); if (t) t.click(); } setTimeout(() => $('onJoin').focus(), 0); }
 }
 addEventListener('beforeunload', () => { if (NET.role === 'guest') send(['bye']); else if (NET.role === 'host') for (const g of ON.guests) sendTo(g.conn, ['bye']); });
 // para testes no console
 window.__pdoNet = { ON, NET };
 export { ON, openOnline, joinRoom };
 if (typeof window !== 'undefined') window.__pdoON = { ON, renderRoom: f => renderRoom(f), showPart: x => showPart(x), startChamp: () => startChamp() };
+// início do online em duas abas: procurar partida (fila) e sala com amigos
+document.querySelectorAll('[data-onmain]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-onmain]').forEach(x => x.classList.toggle('sel', x === b));
+  document.querySelectorAll('[data-onmainp]').forEach(x => { x.hidden = x.dataset.onmainp !== b.dataset.onmain; });
+}));
