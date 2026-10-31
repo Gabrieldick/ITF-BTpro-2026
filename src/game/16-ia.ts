@@ -48,7 +48,7 @@ function gapX(team, jitter) {
 // faz a CPU jogar contra ela mesma milhares de pontos e guarda o conjunto que mais vence (IA Treinada do jogo rápido)
 const AIP_BASE = { bestP: 2.2, smartAim: 2, gapDirect: 2.1, weakW: 8, errW: .35, bhAim: .7, lobNet: .55, lobAttr: .6, curtaBase: .5, curtaAttr: .6, curtaMid: .2,
   smashW: 1, defBase: .33, tie: .12, fav: .7, deepSmashAvoid: 2, deepMin: 5.05, ahead: .7, letGoMin: .05, serveSmash: .88, serveLob: .03, serveCurta: .03 };
-const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.407, smartAim: .651, gapDirect: 2.629, weakW: 4.919, errW: .147, bhAim: .763, lobNet: .377, lobAttr: .447, curtaBase: .243, curtaAttr: .363, curtaMid: .775, smashW: 1.262, defBase: .129, tie: .121, fav: .393, deepSmashAvoid: 0, deepMin: 4.63, ahead: .976, letGoMin: .237, serveSmash: .44, serveLob: .083, serveCurta: .002, aimMax: .535, bestMax: .905, homeShift: .122, homeHw: 1.713, homeZ: 4.427, rush: 1.432, recvHw: 1.537, recvZ: -.033, sideOff: .26, lobPow: .835, lobKickP: .317, d_smash: .149, d_defesa: .44, d_lob: .772, d_curta: .366, d_saque: .962, tLead: .219, tSmash: -.002, tServe: -.018 }); // treino: 66,2% contra a Lendária, 49,5% contra a versão anterior, 49,6% contra a Planejadora, 84,3% no verde
+const AIP_TUNED = Object.assign({}, AIP_BASE, { bestP: 2.068, smartAim: .544, gapDirect: 2.82, weakW: 0, errW: .14, bhAim: .901, lobNet: .208, lobAttr: .378, curtaBase: .2, curtaAttr: .8, curtaMid: .715, smashW: 1.283, defBase: .122, tie: .002, fav: .447, deepSmashAvoid: .215, deepMin: 5.308, ahead: .963, letGoMin: .196, serveSmash: .493, serveLob: .208, serveCurta: .003, aimMax: .567, bestMax: .945, homeShift: .154, homeHw: 2.038, homeZ: 3.922, rush: .364, recvHw: 1.352, recvZ: -.5, sideOff: .183, lobPow: .996, lobKickP: .647, d_smash: .487, d_defesa: .357, d_lob: .954, d_curta: .345, d_saque: .967, tLead: .201, tSmash: .003, tServe: .003 }); // treino: 67,9% contra a Lendária, 50,8% contra a versão anterior, 51,0% contra a Planejadora, 92,0% no verde
 // pesos da busca da IA Planejadora (planShot): erro, saída pela linha, folga de chegada, contra-ataque, pressão, alcance e
 // um bônus por golpe; thr: nota mínima para a busca assumir a jogada; PLN_TUNED também vem do treino
 const PLN_BASE = { err: 2.2, out: 1.7, marg: .12, counter: 1, press: .16, reach: .85, bSmash: 0, bDef: 0, bCurta: 0, bLob: 0, bKick: 0, thr: .75 };
@@ -666,11 +666,14 @@ function updateAI(p, dt) {
       else if (!p.swing.hit && (p.ai.replanT = (p.ai.replanT ?? .2) - dt) <= 0) { p.ai.replanT = .2; const np = planIntercept(p, D.speed, 0); if (np) p.ai.plan = np; }
       if (p.ai.letGo) { tx = p.pos.x; tz = p.pos.z; }
       else {
-        if (p.ai.plan) { tx = p.ai.plan.pt.x + (aiP(p).sideOff ?? .35) * (p.team === 1 ? 1 : -1); tz = p.ai.plan.pt.z; }
+        if (p.ai.plan) { tx = p.ai.plan.pt.x + (aiP(p).sideOff ?? .35) * (p.team === 1 ? 1 : -1) * (p.lefty ? -1 : 1); tz = p.ai.plan.pt.z; } // (canhoto: a bola fica do lado da raquete dele)
         const shot = p.ai.shot;
         // arma o golpe quando a bola se aproxima
         if (!p.ai.swung && p.swing.t < 0 && Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) < 2.6 && ball.pos.y < 3.4) {
-          p.ai.swung = true; p.swing.dur = shot === 'curta' ? .5 : SWING_DUR; p.swing.t = 0; p.swing.type = shot; p.swing.hit = false; p.swing.side = sideOf(p, p.ai.plan ? p.ai.plan.pt : null); p.swing.var = swingVar(shot, p.ai.plan ? p.ai.plan.pt.y : ball.pos.y, p);
+          p.ai.swung = true; p.swing.dur = shot === 'curta' ? .5 : SWING_DUR; p.swing.t = 0; p.swing.type = shot; p.swing.hit = false; p.swing.side = sideOf(p, p.ai.plan ? p.ai.plan.pt : null); // golpe pela situação: a bola em relação a onde o jogador vai estar no contato (o quanto ainda dá para andar até lá)
+          const pl = p.ai.plan, dd = Math.hypot(tx - p.pos.x, tz - p.pos.z);
+          const ttc = Math.max(0, Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) - .8) / Math.max(1, Math.hypot(ball.vel.x, ball.vel.z)), go = Math.min(1, D.speed * ttc / Math.max(.01, dd));
+          p.swing.var = swingVar(shot, pl ? pl.pt.y : ball.pos.y, p, undefined, { pt: pl ? pl.pt : undefined, ref: pl ? { x: p.pos.x + (tx - p.pos.x) * go, z: p.pos.z + (tz - p.pos.z) * go } : undefined });
         }
         if ((shot === 'smash' && ball.pos.y >= 1.9 ? canHit(p, 'smash', .66) : canHit(p, 'defesa', .9)) && !(shot !== 'smash' && ball.pos.y > .6 && ball.vel.y > -4 && waitCloser(p, 0, dt) && p.swing.t >= 0 && p.swing.t < p.swing.dur * .7)) { // espera a bola chegar perto do corpo
           // erro: quase sempre a bola vai na rede/fora; furar (raquete passa e a bola segue) só chegando no limite
