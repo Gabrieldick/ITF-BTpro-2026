@@ -15,7 +15,7 @@ import { sideOf } from './18-animacao';
 function solveShot(p0, tgt, spec) {
   const dx = tgt.x - p0.x, dz = tgt.z - p0.z; const d = Math.hypot(dx, dz);
   let T = spec.lowArc ? Math.max(.3, d / 14) : (spec.T || Math.max(.28, d / spec.speed));
-  const v = new V3(), g = G * (spec.gk || 1), ax = spec.cA ? spec.cA[0] : 0, az = spec.cA ? spec.cA[1] : 0; // cA: curva lateral (m/s²)
+  const v = new V3(), g = G * (spec.gk || 1), ax = (spec.cA ? spec.cA[0] : 0) + (spec.wA ? spec.wA[0] : 0), az = (spec.cA ? spec.cA[1] : 0) + (spec.wA ? spec.wA[1] : 0); // cA: curva lateral (m/s²); wA: vento que quem bate compensa
   for (let i = 0; i < 45; i++) {
     v.set((dx - .5 * ax * T * T) / T, (tgt.y - p0.y + .5 * g * T * T) / T, (dz - .5 * az * T * T) / T);
     if (Math.sign(p0.z) === Math.sign(tgt.z) || Math.abs(v.z) < 1e-4) break;
@@ -308,7 +308,7 @@ function doHit(p, type, q, isServe, mod) {
   // smash/saque forçando a lateral: quanto mais perto da linha a mira, mais a bola espalha para o lado, e bem mais com o
   // timing ruim (mirando a 25 cm da linha: tempo perfeito quase sempre entra, médio sai ~1 em 8, ruim ~1 em 4)
   let edgeSd = 0;
-  if (p.isHuman && !pop && (key === 'smash' || isServe)) { const ek = clamp((Math.abs(aim) - (C.halfW - 1.1)) / .85, 0, 1); edgeSd = ek * (.1 + .9 * (1 - clamp(q, 0, 1))); }
+  if (p.isHuman && !pop && (key === 'smash' || isServe)) { const ek = clamp((Math.abs(aim) - (C.halfW - 1.1)) / .85, 0, 1), aK = Math.min(1, attrK(p, isServe ? 'saque' : 'smash')); edgeSd = ek * (lerp(.12, .04, aK) * (mod.perfect ? .7 : 1) + .9 * (1 - clamp(q, 0, 1))); } // o espalhamento mínimo cai com o atributo (e com a barra perfeita)
   // na finalização a mira curta (W) vai só até o meio: mais curta, a bola precisaria subir para passar a rede e perderia a velocidade
   const dT = p.isHuman ? (finisher ? .45 + humanDepthT(p) * .55 : humanDepthT(p)) : 0;
   let depth = p.isHuman && !pop && !isServe ? lerp(spec.depth[0], spec.depth[1], dT) + rand(-.2, .2) : rand(spec.depth[0], spec.depth[1]);
@@ -338,6 +338,8 @@ function doHit(p, type, q, isServe, mod) {
     else if (smStyle === 'top') spec.gk = (spec.gk || 1.35) * 1.14;
     else if (smStyle === 'flat' && spec.speed) spec.speed *= 1.07;
   }
+  // vento: no saque o jogador ajusta a mira contra o vento (perfeito: compensa todo; fora do perfeito, pela metade)
+  if (isServe && p.isHuman && !pop && !wild && S.wind) { const ws = (S.sideFlip ? -.07 : .07) * (mod.perfect ? 1 : .5); spec.wA = [S.wind.x * ws, S.wind.z * ws]; }
   let v;
   if (spec.kick && !pop) {
     // lob chutado perfeito: passa acima do alcance do smash de quem está colado na rede, mesmo recuando (≥ 3,3 m de altura
