@@ -1131,3 +1131,8 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 /* 2 jogadores no mesmo PC: barra de força do jogador 2 (controle) com etiqueta própria */
 #meter2 .lbl::after { content: ' · J2'; color: #ffd23f; }
 .qm-note { grid-column: 1 / -1; margin: 6px 0 0; font-size: 12.5px; color: var(--ui-sub); } .qm-note.warn { color: var(--ui-warn); }
+/* tela dividida (2 jogadores, um contra o outro) */
+#splitLine { display: none; }
+body.split2:not(.in-menu):not(.in-replay) #splitLine { display: block; position: fixed; top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; background: linear-gradient(180deg, var(--ui-acc), #1e6bff); z-index: 3; pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,.5); }
+body.split2 #tags, body.split2 #reach, body.split2 #landArrow, body.split2 #shots, body.split2 #hint { display: none !important; }
+.qm-split { grid-column: 1 / -1; margin-top: 6px; font-size: 13px; }

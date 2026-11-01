@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { $s } from '../state';
 import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, smooth, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
-import { SUN_DIR, camera, sun } from './02-render';
+import { SUN_DIR, camera, camera2, sun } from './02-render';
 import { sky } from './03-cenario';
 import { pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf, swingVar, predictPt, tailRate, mirrorKey } from './04-poses';
 import { ALL, human } from './06-modelos';
@@ -13,7 +13,7 @@ import { RING_MATE, RING_MINE, TRAIL_N, ball, ballMesh, ballShadow, driveSkin, f
 import { $, dupla, el, placeHeldBall, shotBtns } from './09-interface';
 import { canHit, predictLanding, reachOf } from './10-fisica';
 import { defRing, updateAimMarker } from './11-mira';
-import { LOB_MAX, MTR, timeToReach, p2MeterFrame } from './12-controles';
+import { LOB_MAX, MTR, timeToReach, p2MeterFrame, P2, splitOn } from './12-controles';
 import { assignee } from './16-ia';
 // ---------- Animação: cinemática inversa em braços e pernas ----------
 const _iE = new V3(), _iP = new V3(), _iM = new V3();
@@ -563,6 +563,7 @@ function animateFP() {
   if (fpWrist) fpWrist.rotation.set(fw, 0, -.15);
 }
 const camPos = new V3(0, 6, 16), camLook = new V3(0, 1, 0), tmpA = new V3(), tmpB = new V3();
+const camPos2 = new V3(0, 6, -16), camLook2 = new V3(0, 1, 0);
 let fpBodyOn = false;
 function setFpBody(on) {
   if (on === fpBodyOn && human.model.__fpModel === human.model) return;
@@ -628,6 +629,12 @@ function updateCamera(dt) {
   if (!isFinite(camPos.x + camPos.y + camPos.z)) camPos.set(0, 3.4, 12);
   if (!isFinite(camLook.x + camLook.y + camLook.z)) camLook.set(0, 1, 0);
   if (S.debugCam) { camPos.fromArray(S.debugCam.pos); camLook.fromArray(S.debugCam.look); }
+  if (splitOn()) { // tela dividida: a câmera do jogador 2 é a mesma conta da 3ª pessoa, espelhada para o outro lado da rede
+    const q = P2.c.p, d = dupla() ? 1 : 0, V = CAM3[S.settings.cam3] || CAM3.padrao, dk = (S.settings.camDist || 100) / 100, hk = (S.settings.camHeight || 100) / 100;
+    const bz = lerp(6, -q.pos.z, V.zf), hb = ball.state === 'live' ? clamp((ball.pos.y - 4) * .45, 0, 2.6) : 0;
+    tmpA.set(q.pos.x * V.fx[d], V.ly + (V.h[d] - V.ly) * dk * hk, -(bz + V.back[d] * dk)); camPos2.lerp(tmpA, k);
+    tmpB.set(q.pos.x * V.lx[d], V.ly + hb, -(bz + V.lz)); camLook2.lerp(tmpB, k);
+    camera2.position.copy(camPos2); camera2.lookAt(camLook2); camera2.fov = camera.fov; }
   camera.position.copy(camPos);
   if (S.shake > 0) { S.shake = Math.max(0, S.shake - dt); const s = S.shake * .12; camera.position.x += rand(-s, s); camera.position.y += rand(-s, s); }
   camera.lookAt(camLook);
@@ -644,7 +651,7 @@ function placeMeter(fp) {
   if (fp) { mx = innerWidth * .63; my = innerHeight * .64; }
   else {
     _mv.set(human.pos.x, 1.75 + human.model.group.position.y, human.pos.z).project(camera);
-    mx = (_mv.x * .5 + .5) * innerWidth + 60; my = (-_mv.y * .5 + .5) * innerHeight;
+    mx = splitOn() ? (_mv.x * .5 + .5) * innerWidth / 2 + 40 : (_mv.x * .5 + .5) * innerWidth + 60; my = (-_mv.y * .5 + .5) * innerHeight;
   }
   el.meter.style.left = clamp(mx, 30, innerWidth - 120) + 'px';
   el.meter.style.top = clamp(my, 150, innerHeight - 40) + 'px';

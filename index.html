@@ -42,6 +42,7 @@
 </div></div>
 <div id="replayBar" hidden><b>REPLAY</b><span id="replayTxt"></span><button class="ghost sm" id="replaySkip">Pular ⏭</button></div>
 <div id="tags"></div>
+<div id="splitLine" aria-hidden="true"></div>
 <div id="reach">NO ALCANCE</div>
 <div id="meter" hidden><div class="track"><div class="zone"></div><div class="kz"></div><div class="az"></div><div class="fill"></div></div><div class="res"></div><div class="lbl">FORÇA</div></div>
 <div id="shots" class="hud">
@@ -89,7 +90,7 @@
         <input type="radio" name="local2" id="lc1" value="" checked><label for="lc1">Só eu</label>
         <input type="radio" name="local2" id="lc2" value="vs"><label for="lc2">2 · um contra o outro</label>
         <input type="radio" name="local2" id="lc3" value="coop"><label for="lc3">2 · juntos (dupla)</label>
-      </div><p class="qm-note" id="local2Note" hidden>Jogador 1 no teclado, jogador 2 no controle (Xbox/PS). Contra: o jogador 2 fica do outro lado da rede (na dupla, com a CPU de parceira). Juntos: o jogador 2 é a sua dupla.</p></fieldset>
+      </div><label class="chk qm-split" id="split2Wrap" hidden><input type="checkbox" id="split2" checked> Tela dividida lado a lado (cada um com a sua câmera)</label><p class="qm-note" id="local2Note" hidden>Jogador 1 no teclado, jogador 2 no controle (Xbox/PS). Contra: o jogador 2 fica do outro lado da rede (na dupla, com a CPU de parceira). Juntos: o jogador 2 é a sua dupla.</p></fieldset>
       <fieldset class="seg"><legend>Seu lado na dupla</legend><div class="pills">
         <input type="radio" name="side" id="sideL" value="esquerda"><label for="sideL">Esquerda</label>
         <input type="radio" name="side" id="sideR" value="direita" checked><label for="sideR">Direita</label>

@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import { STEP, RACKET_STATS, charById } from './00-base';
 import { makeRacket } from './05-atletas';
 import { S, NET } from './01-estado';
-import { camera, renderer, scene } from './02-render';
+import { camera, camera2, renderer, scene } from './02-render';
+import { splitOn } from './12-controles';
 import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
 import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
@@ -88,8 +89,19 @@ function frame(now) {
   if (S.mode === 'replay') replayCamera(dt);
   if (S.mode === 'ceremony') ceremonyCam(dt);
   const t3 = performance.now(); FPS.ms[2] += t3 - t2;
-  renderer.render(scene, camera);
+  if (splitOn()) renderSplit(); else { if (camera.aspect !== innerWidth / innerHeight) { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); } renderer.render(scene, camera); }
   FPS.ms[3] += performance.now() - t3;
+}
+// tela dividida lado a lado: jogador 1 à esquerda, jogador 2 à direita (a sombra é calculada só uma vez por quadro)
+function renderSplit() {
+  const w = innerWidth, h = innerHeight, hw = Math.floor(w / 2), a = hw / h;
+  for (const c of [camera, camera2]) if (c.aspect !== a || c.userData.fov !== c.fov) { c.aspect = a; c.userData.fov = c.fov; c.updateProjectionMatrix(); }
+  renderer.setScissorTest(true);
+  renderer.setViewport(0, 0, hw, h); renderer.setScissor(0, 0, hw, h); renderer.render(scene, camera);
+  const au = renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate = false;
+  renderer.setViewport(hw, 0, w - hw, h); renderer.setScissor(hw, 0, w - hw, h); renderer.render(scene, camera2);
+  renderer.shadowMap.autoUpdate = au;
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h);
 }
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 // ---------- Início (com hot reload do viewer) ----------

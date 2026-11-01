@@ -30,6 +30,9 @@ scene.fog = new THREE.Fog(HORIZON, 140, 1400);
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.08, 3200); // near 8 cm: mais precisão de profundidade de longe (a pele não fura o cabelo/boné)
 camera.position.set(0, 6, 16);
 scene.add(camera);
+// tela dividida (2 jogadores, um contra o outro): câmera atrás do jogador 2, do outro lado da rede
+const camera2 = new THREE.PerspectiveCamera(55, innerWidth / 2 / innerHeight, 0.08, 3200);
+camera2.position.set(0, 6, -16); scene.add(camera2);
 const SUN_DIR = new V3(0.62, 0.66, -0.42).normalize();
 const hemi = new THREE.HemisphereLight(col('#bfdcff'), col('#d9bf8c'), 0.35 * Math.PI);
 scene.add(hemi);
@@ -52,4 +55,4 @@ function warmShaders() {
   hid.forEach(o => { o.visible = false; }); cull.forEach(o => { o.frustumCulled = true; });
   renderer.render(scene, camera);
 }
-export { warmShaders, HORIZON, MAX_ANISO, SUN_DIR, camera, canvasTex, col, hemi, mat, renderer, scene, sun };
+export { warmShaders, HORIZON, MAX_ANISO, SUN_DIR, camera, camera2, canvasTex, col, hemi, mat, renderer, scene, sun };

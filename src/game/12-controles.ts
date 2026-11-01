@@ -4,7 +4,7 @@ import './11-mira';
 import { canHit } from './10-fisica';
 import { bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
 import { S, isMobile, NET } from './01-estado';
-import { camera } from './02-render';
+import { camera, camera2 } from './02-render';
 import { swingVar, predictPt } from './04-poses';
 import { human, partner, cpuA } from './06-modelos';
 import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
@@ -387,12 +387,13 @@ if (typeof window !== 'undefined' && navigator.getGamepads) { requestAnimationFr
 // ---------- 2 jogadores no mesmo PC: o 1 no teclado (time de baixo), o 2 no controle ----------
 // contra: o 2 joga do outro lado da rede; juntos (dupla): o 2 é o seu parceiro. Usa o mesmo controle de "humano extra"
 // do online (barra e mensagens saem pela fila "out"), mas desenhado aqui numa segunda barra
-const P2 = { c: null, dom: null, mrT: 0 };
+const P2 = { c: null, dom: null, mrT: 0, split: false };
 function setupLocal2() {
   if (P2.c) { const q = P2.c.p; q.isHuman = false; q.netHuman = false; q.netName = ''; q.mtr = null; q.charging = false; NET.remote = NET.remote.filter(c => c !== P2.c); P2.c = null; }
   if (P2.dom) P2.dom.meter.hidden = true;
   const on = S.settings.local2 && !NET.role && !S.careerActive && !S.champActive && !S.drill && !S.tutorial;
-  document.body.classList.toggle('local2', !!on);
+  P2.split = !!on && S.settings.local2 !== 'coop' && S.settings.split2 !== false; // contra: tela dividida (dá para desligar)
+  document.body.classList.toggle('local2', !!on); document.body.classList.toggle('split2', P2.split);
   if (!on) return;
   const p = S.settings.local2 === 'coop' && dupla() ? partner : cpuA;
   const c = makeRemoteCtl(p); c.local2 = true; c.pd = S.settings.playerDiff || 3; p.pdRemote = c.pd;
@@ -403,6 +404,8 @@ function setupLocal2() {
 }
 // desenha na barra do jogador 2 (as funções da barra escrevem em el.meter…: troca por um instante)
 function onP2Meter(fn) { const keep = { meter: el.meter, mFill: el.mFill, mZone: el.mZone, mRes: el.mRes, mLbl: el.mLbl }; Object.assign(el, P2.dom); try { fn(); } finally { Object.assign(el, keep); } }
+// tela dividida só durante o jogo (replay, cerimônia e menus voltam à tela inteira)
+const splitOn = () => P2.split && !!P2.c && S.mode !== 'menu' && S.mode !== 'replay' && S.mode !== 'ceremony';
 function p2MeterFrame(dt) {
   const c = P2.c; if (!c || !P2.dom) return;
   for (const e of c.out.splice(0)) {
@@ -414,8 +417,8 @@ function p2MeterFrame(dt) {
   const D = P2.dom, M = c.m;
   if (P2.mrT > 0 && !M.active) { P2.mrT -= dt; if (P2.mrT <= 0) D.meter.hidden = true; }
   if (D.meter.hidden) return;
-  const v3 = new V3(c.p.pos.x, 1.75 + c.p.model.group.position.y, c.p.pos.z).project(camera);
-  D.meter.style.left = clamp((v3.x * .5 + .5) * innerWidth + 60, 30, innerWidth - 120) + 'px';
+  const sp = splitOn(), v3 = new V3(c.p.pos.x, 1.75 + c.p.model.group.position.y, c.p.pos.z).project(sp ? camera2 : camera);
+  D.meter.style.left = (sp ? clamp(innerWidth / 2 + (v3.x * .5 + .5) * innerWidth / 2 + 40, innerWidth / 2 + 30, innerWidth - 60) : clamp((v3.x * .5 + .5) * innerWidth + 60, 30, innerWidth - 120)) + 'px';
   D.meter.style.top = clamp((-v3.y * .5 + .5) * innerHeight, 150, innerHeight - 40) + 'px';
   if (M.active) {
     const v = M.v;
@@ -585,13 +588,13 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => document.querySelector(`input[name=${n}]:checked`).value;
   // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil)
-  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.local2 = v('local2') || ''; S.settings.uniforms = 'simples';
+  S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.local2 = v('local2') || ''; { const sp = $('split2'); if (sp) S.settings.split2 = sp.checked; } S.settings.uniforms = 'simples';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal'; S.settings.formation = ($('formSel') && $('formSel').value) || 'normal';
   S.quietSave = true; saveSettings(); S.quietSave = false;
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
-  set('mode', S.settings.mode); set('local2', S.settings.local2 || ''); set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('gender', S.settings.gender);
+  set('mode', S.settings.mode); set('local2', S.settings.local2 || ''); { const sp = $('split2'); if (sp) sp.checked = S.settings.split2 !== false; } set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('gender', S.settings.gender);
   $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'discreto'; fillLooks(); $('tacticSel').value = S.settings.tactic || 'normal'; if ($('formSel')) $('formSel').value = S.settings.formation || 'normal';
   renderRoster();
 }
@@ -640,7 +643,7 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { setupLocal2, p2MeterFrame, P2, startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { setupLocal2, p2MeterFrame, P2, splitOn, startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
 
 // pausa: tática e formação da dupla podem mudar no meio do jogo
 { const ts = $('pTacSel'), fs = $('pFormSel');
