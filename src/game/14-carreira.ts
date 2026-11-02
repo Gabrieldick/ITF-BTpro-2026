@@ -586,13 +586,13 @@ function crCatPts(id) {
 // categoria em que o atleta joga hoje (o nível dele, nunca abaixo da categoria mínima)
 const crCatLevel = c => Math.max(crMinCat(c.id), c.id === 'crme' ? catOfTier(crMaxTier()) : catOfTier(npcTier(crCharOvr(c))));
 // ranking de uma categoria (só atletas de um estado, se uf): quem ainda pode jogar nela e tem pontos nela ou joga nela hoje
+// os pontos mostrados (e a ordem) são os do ranking geral: os mesmos em todas as telas; a categoria só decide quem entra
 function crCatRanking(k, uf) {
-  const out = [];
+  const out = [], W = new Map(crRanking().map(x => [x.id, x.pts]));
   crWorld().concat([crMeChar()]).forEach(c => {
     if (uf && (c.pais !== 'BRA' || crUf(c) !== uf)) return;
     if (crMinCat(c.id) > k) return;
-    const pts = crCatPts(c.id)[k];
-    if (pts > 0 || crCatLevel(c) === k) out.push({ id: c.id, pts, ovr: crCharOvr(c), c });
+    if (crCatPts(c.id)[k] > 0 || crCatLevel(c) === k) out.push({ id: c.id, pts: W.get(c.id) || 0, ovr: crCharOvr(c), c });
   });
   return out.sort((x, y) => y.pts - x.pts || y.ovr - x.ovr);
 }

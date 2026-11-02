@@ -16,7 +16,7 @@ function criarJogo() {
   const sb = { THREE, document, window: null, navigator: { getGamepads: () => [] }, performance: { now: () => now }, requestAnimationFrame: f => { raf = f }, setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {}, innerWidth: 1280, innerHeight: 800, devicePixelRatio: 1, matchMedia: () => ({ matches: false }), localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, addEventListener: (t, f) => { (listeners[t] = listeners[t] || []).push(f) }, KeyboardEvent: function () {}, location: { hash: '', search: '' }, console, Math, JSON, Object, Array, Set, Map, Float32Array, Symbol, Number, Date };
   sb.window = sb; vm.createContext(sb); sb.THREE_GLTF = { GLTFLoader: dummy }; sb.THREE_SKEL = dummy;
   vm.runInContext(src, sb);
-  getEl('menu').hidden = false; getEl('menu').dataset.step = 'q3';
+  getEl('menu').hidden = false; getEl('menu').dataset.step = 'q';
   (listeners.keydown || []).forEach(f => f({ key: 'Enter', repeat: false, preventDefault() {}, target: {} }));
   const P = sb.__pdo, AI = sb.__pdoAI;
   P.human.isHuman = false; // os quatro jogadores pela CPU
