@@ -236,7 +236,7 @@ function pressShot(type, c) {
     if (lowLob) sw.lob = { power: .85, word: 'LOB DE RECUPERAÇÃO', kick: false };
     sw.pressT = S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team ? timeToReach(p) : null; // para o timing: quanto faltava a bola chegar
     if (sw.pressT !== null && c.remote) sw.pressT += c.lag; // o convidado apertou vendo a bola um pouco atrasada
-    sw.side = sideOf(p, plan.id === S.hitId && plan.plan ? plan.plan.pt : null);
+    sw.side = sideOf(p, plan.id === S.hitId && plan.plan ? plan.plan.pt : ball.state === 'live' && S.lastTeam !== p.team ? predictPt(p) : null); // sem plano: o ponto previsto do contato (a bola agora ainda está longe e dava o lado trocado)
     const pp = plan.id === S.hitId && plan.plan ? plan.plan.pt : null; // tempo até a bola: bem pouco → bloqueio reflexo
     sw.var = swingVar(type, pp ? pp.y : ball.pos.y, p, undefined, { pt: pp || undefined, tt: sw.pressT !== null ? sw.pressT : S.mode === 'rally' && canHit(p, type) ? 0 : undefined });
   }

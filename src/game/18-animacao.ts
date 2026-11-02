@@ -106,13 +106,25 @@ const READY_FP = P({ rh: [.26, .42, -.46], rp: [.9, -.6, .3], wx: 1.35, wr: 1.0,
 const READY_FP_KEYS = [READY_FP, READY_FP];
 // preparação do smash: corpo de lado (ombro da mão livre para a rede), mão livre apontando a bola
 // 1 enquanto se prepara; no golpe o corpo desenrola até o contato
+// terminação do smash pelo efeito do contato (p.smFin, do doHit): pancada termina cruzando o corpo (a pose normal);
+// slice cruza mais baixo com o punho virando para fora; topspin escova para cima e termina alta do lado da raquete
+const SM_FIN = {
+  slice: { rh: [-.3, -.02, -.2], rp: [.8, .1, -.45], wr: -1.95, tw: .42, lean: .52 },
+  top: { rh: [.3, .52, -.34], rp: [.55, .85, -.15], wr: -.85, wx: .3, tw: .1, lean: .28 },
+};
+const SM_FAM = /^smash(_(salto|avanco|curto|recuo|costas|lateral|gancho))?$/;
+function smFinish(p, ak, au, cu, pose) {
+  const F = SM_FIN[p.smFin === 'mix' ? 'top' : p.smFin]; if (!F || !SM_FAM.test(ak) || au <= cu) return;
+  const B = ACT[ak][4], w0 = au < .72 ? (au - cu) / Math.max(.05, .72 - cu) : (1 - au) / .28, w = smooth(0, 1, w0) * (p.smFin === 'mix' ? .5 : 1);
+  for (const k in F) { if (Array.isArray(F[k])) for (let i = 0; i < 3; i++) pose[k][i] += (F[k][i] - B[k][i]) * w; else pose[k] += (F[k] - (B[k] || 0)) * w; }
+}
 function smashPrep(p, swingU) {
   // lançamento do saque: vai ficando de lado como no smash (no saque por baixo, só meio de lado)
   // saque: quem saca já espera de lado para a quadra (~75°) e segue assim no lançamento (por baixo, só meio de lado)
   if ((S.mode === 'toss' || S.mode === 'serve') && S.serverPlayer === p && !p.pendingServe) return S.mode === 'toss' && S.serveType === 'lob' ? .6 : 1.35;
   // verônica: vira para o outro lado (ombro da raquete para a rede); no golpe o giro vem das próprias poses (yw)
   if (p.charging && (p.mtr || MTR).type === 'smash') return clamp((p.mtr || MTR).t / .2, 0, 1) * (p.chVar === 'veronica' ? -1 : 1);
-  if (swingU >= 0 && p.swing.type === 'smash' && ball.pos.y >= 1.7) return p.swing.var === 'veronica' || p.swing.var === 'gancho' ? 0 : clamp(1 - swingU / .45, 0, 1); // (gancho e verônica: o giro do corpo vem das poses, yw)
+  if (swingU >= 0 && p.swing.type === 'smash' && ball.pos.y >= 1.7) return p.swing.var === 'veronica' ? 0 : clamp(1 - swingU / .45, 0, 1); // (gancho e verônica: o giro do corpo vem das poses, yw)
   if (!p.isHuman && S.mode === 'rally' && ball.state === 'live' && S.lastTeam !== p.team && p.swing.t < 0 && p.ai.planId === S.hitId && p.ai.shot === 'smash' && p.ai.plan && p.ai.plan.pt.y >= 1.9 && assignee(p.team) === p) return provVar(p, 'smash', p.ai.plan.pt) === 'veronica' ? -1 : 1;
   return 0;
 }
@@ -137,14 +149,14 @@ function animateAthlete(p, dt) {
   let mirror = false, swingU = -1, tailOn = false;
   if (p.debug) {
     if (p.debug.type === 'serve' || p.debug.type === 'servelow') { poseAt(p.debug.type === 'servelow' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, p.debug.u, pose); if (p.debug.type === 'serve') srvStyle(p, pose, p.debug.u); }
-    else { swingU = p.debug.u; p.curAk = p.debug.type; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); styleSwing(pose, p.debug.type, swingU, p.debug.st); mirror = mirrorKey(p.debug.type) && p.debug.side < 0; }
+    else { swingU = p.debug.u; p.curAk = p.debug.type; poseAt(ACT[p.debug.type], uOf(p.debug.type), swingU, pose); styleSwing(pose, p.debug.type, swingU, p.debug.st); if (p.debug.fin) { p.smFin = p.debug.fin; smFinish(p, p.debug.type, swingU, .45, pose); } mirror = mirrorKey(p.debug.type) && p.debug.side < 0; }
   } else if (S.mode === 'toss' && S.serverPlayer === p && p.swing.t < 0) { const u = clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1); /* (o golpe do saque, quando começa, já aparece: antes só surgia na batida e a raquete saltava do troféu para o meio do golpe) */ poseAt(S.serveType === 'lob' ? SERVE_KEYS_LOW : SERVE_KEYS, SERVE_U, u, pose);
     // estilo do saque: agacha mais ou menos no troféu (e arqueia junto); o lançamento de lado abre o braço livre
     if (S.serveType !== 'lob') srvStyle(p, pose, u); }
   else if (S.mode === 'replay' && p.rpToss >= 0) poseAt(SERVE_KEYS, SERVE_U, p.rpToss, pose); // replay: lançamento do saque
   else if (p.charging) { const M = p.mtr || MTR, ty = M.type === 'lob' ? 'lob' : 'smash';
     // carregando a barra: a preparação já é a do golpe que a situação pede (gancho, verônica, bandeja…)
-    const v = (p.chVar = ball.state === 'live' && S.lastTeam !== p.team ? provVar(p, ty) : ''), ck = ACT[ty + '_' + v] && !mirrorKey(ty + '_' + v) ? ty + '_' + v : ty;
+    const v = (p.chVar = ball.state === 'live' && S.lastTeam !== p.team ? provVar(p, ty) : ''), ck = ty === 'smash' ? 'smash' : ACT[ty + '_' + v] && !mirrorKey(ty + '_' + v) ? ty + '_' + v : ty; // smash: arma sempre como o smash normal
     poseAt(ACT[ck], uOf(ck), .3 * clamp(M.t / .18, 0, 1), pose); }
   else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); let ak = swingKey(p); mirror = mirrorKey(ak) && p.swing.side < -.15; if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh';
     // terminação no ritmo de cada golpe: depois do contato a pose anda mais devagar nos golpes grandes (rate < 1) e continua
@@ -153,10 +165,11 @@ function animateAthlete(p, dt) {
     const rate = tailRate(ak), cu = p.swing.hit ? (p.swCu ?? .45) : 1, au = swingU > cu ? Math.min(1, cu + (swingU - cu) * rate) : swingU;
     poseAt(ACT[ak], uOf(ak), au, pose);
     if (!p.swSty || swingU < (p.swU0 ?? 1) - .2 || p.swSty.ak !== ak) { p.swSty = pickStyle(ak, p.char) || {}; p.swSty.ak = ak; } p.swU0 = swingU; styleSwing(pose, ak, au, p.swSty);
-    p.tail = au < 1 ? { ak, au, rate, mirror, dur: p.swing.dur, sty: p.swSty } : null; p.curAk = ak;
+    if (p.swing.hit) smFinish(p, ak, au, cu, pose);
+    p.tail = au < 1 ? { ak, au, rate, mirror, dur: p.swing.dur, sty: p.swSty, cu } : null; p.curAk = ak;
     // curta alta de forehand: depois do toque a face da raquete acompanha para onde a curta foi
     if (ak === 'curta_alta_fh' && p.swing.hit && ball.state === 'live' && S.lastTeam === p.team) { const f = p.team === 0 ? 1 : -1; pose.wr += clamp(Math.atan2(ball.vel.x * f * (p.lefty ? -1 : 1), -ball.vel.z * f), -.7, .7); } }
-  else if (p.tail && !p.dive) { const T = p.tail; T.au = Math.min(1, T.au + dt / T.dur * T.rate); poseAt(ACT[T.ak], uOf(T.ak), T.au, pose); styleSwing(pose, T.ak, T.au, T.sty); mirror = T.mirror; tailOn = true; if (T.au >= 1) p.tail = null; }
+  else if (p.tail && !p.dive) { const T = p.tail; T.au = Math.min(1, T.au + dt / T.dur * T.rate); poseAt(ACT[T.ak], uOf(T.ak), T.au, pose); styleSwing(pose, T.ak, T.au, T.sty); smFinish(p, T.ak, T.au, T.cu ?? .45, pose); mirror = T.mirror; tailOn = true; if (T.au >= 1) p.tail = null; }
   else { p.tail = null; poseAt(p === human && fpBodyOn ? READY_FP_KEYS : READY_KEYS, READY_U, 0, pose); }
   if (mirror) mirrorPose(pose);
   // backhand de verdade: na preparação os ombros giram bem (as costas meio viradas para a rede, o ombro da raquete na
@@ -164,7 +177,8 @@ function animateAthlete(p, dt) {
   const bhTw = mirror && swingU >= 0 ? (swingU < .25 ? .48 * swingU / .25 : swingU < .45 ? .48 - .33 * (swingU - .25) / .2 : swingU < .75 ? .15 - .22 * (swingU - .45) / .3 : -.07 * (1 - (swingU - .75) / .25)) : 0;
   p.bhTw = (p.bhTw || 0) + (bhTw - (p.bhTw || 0)) * Math.min(1, dt * 20);
   // backhand baixo com as duas mãos: a mão livre vai junto no cabo
-  p.twoH = mirror && swingU >= 0 && pose.rh[1] < .38 ? Math.min(1, (.38 - pose.rh[1]) / .15) : 0;
+  const defBh = mirror && swingU >= 0 && /^defesa/.test(p.curAk || '') && p.curAk !== 'defesa_reflexo' ? (swingU < .5 ? 1 : clamp(1 - (swingU - .5) / .2, 0, 1)) : 0; // defesa de backhand: a mão livre apoia a raquete até logo depois do contato
+  p.twoH = Math.max(defBh, mirror && swingU >= 0 && pose.rh[1] < .38 ? Math.min(1, (.38 - pose.rh[1]) / .15) : 0);
   // a postura real persegue a postura-alvo: sem estalos ao começar, trocar de lado ou terminar um golpe
   const acting = swingU >= 0 || tailOn || p.charging || (S.mode === 'toss' && S.serverPlayer === p) || (S.mode === 'replay' && p.rpToss >= 0);
   if (p.debug) blendPose(p.pose, pose, 1); else springPose(p.pose, pose, p.poseV || (p.poseV = {}), acting ? 38 : 15, acting ? .72 : .9, dt);
@@ -176,7 +190,7 @@ function animateAthlete(p, dt) {
   // o giro do grupo é no mundo (não espelha): para o canhoto o lado da raquete precisa ser desfeito
   if (ball.state === 'live') yawT += clamp(Math.atan2(-sideOf(p) * (p.lefty ? -1 : 1), Math.abs(ball.pos.z - p.pos.z) + 1.2) * .45, -.45, .45);
   p.yaw += (yawT - p.yaw) * Math.min(1, dt * 6);
-  const prepT = p.debug ? (p.debug.prep === 'auto' ? (p.debug.type === 'smash_veronica' || p.debug.type === 'smash_gancho' ? 0 : /^smash_(?!v|reflexo|spinto|saque)/.test(p.debug.type) || p.debug.type === 'smash' ? clamp(1 - swingU / .45, 0, 1) : 0) : (p.debug.prep || 0)) : smashPrep(p, swingU);
+  const prepT = p.debug ? (p.debug.prep === 'auto' ? (p.debug.type === 'smash_veronica' ? 0 : /^smash_(?!v|reflexo|spinto|saque)/.test(p.debug.type) || p.debug.type === 'smash' ? clamp(1 - swingU / .45, 0, 1) : 0) : (p.debug.prep || 0)) : smashPrep(p, swingU);
   p.prep = (p.prep || 0) + (prepT - (p.prep || 0)) * Math.min(1, dt * (prepT > (p.prep || 0) ? 7 : 12));
   // recuar não é andar de costas: o corpo vira de lado e as pernas cruzam (idem numa corrida lateral longa)
   const fT = p.team === 0 ? 1 : -1, back = p.vel.z * fT, latV = p.vel.x * fT;

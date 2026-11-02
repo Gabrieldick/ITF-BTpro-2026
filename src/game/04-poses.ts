@@ -22,7 +22,7 @@ const ACT = {
   // abre primeiro (hp) e o tronco vem depois; contato com o braço esticado na frente, terminação cruzando o corpo até o
   // lado esquerdo e aterrissagem equilibrada (joelhos cedem)
   smash: [READY,
-    P({ wr: -.8, rh: [.32, .68, .18], rp: [.8, .9, .1], wx: -.5, lh: [-.05, 1.05, -.32], lp: [-.6, 0, .6], tw: -.55, hp: -.38, lean: -.28, bend: -.12, crouch: .2, stag: .25 }),
+    P({ wr: -.8, rh: [.34, .76, .22], rp: [.8, .9, .1], wx: -1.65, lh: [-.05, 1.05, -.32], lp: [-.6, 0, .6], tw: -.55, hp: -.38, lean: -.28, bend: -.12, crouch: .2, stag: .25 }), // troféu: raquete em pé atrás da cabeça (punho dobrado para trás), não deitada do lado
     P({ wr: -1, rh: [.1, .5, .2], rp: [.3, 1.0, .1], wx: .1, lh: [-.12, .85, -.3], lp: [-.6, 0, .6], tw: -.72, hp: -.02, lean: -.3, bend: -.1, crouch: .1, stag: .2 }),
     P({ rh: [.16, 1.02, -.28], rp: [.5, .3, .1], wx: .2, wr: -1.6, lh: [-.24, .38, -.1], lp: [-.8, -.3, .3], tw: -.12, hp: .24, lean: -.02, bend: -.05, crouch: .04 }),
     P({ rh: [-.22, .05, -.28], rp: [.7, .2, -.3], wx: .5, wr: -1.4, lh: [-.25, .22, .08], lp: [-.8, -.5, 0], tw: .3, hp: .42, lean: .5, bend: .05, crouch: .26 }),
@@ -170,6 +170,11 @@ ACT.smash_bandeja = [READY,
 ACT.lob_alto = [READY, ACT.smash_bandeja[1], ACT.smash_bandeja[2], ACT.smash_bandeja[3],
   P({ rh: [.18, .96, -.42], rp: [.7, .1, .2], wx: .4, wr: 1.0, lh: [-.25, .36, -.06], lp: [-.8, -.5, 0], tw: .2, hp: .15, lean: .06, crouch: .08 }),
   READY];
+// todos os smashes por cima armam igual ao smash normal (troféu e raquete caindo nas costas); o que muda entre eles é o
+// contato e a terminação. Gancho: mesmo smash (a terminação vem do efeito: pancada, slice ou topspin). Bandeja: arma como
+// o smash e termina contida
+for (const k of ['smash_avanco', 'smash_recuo', 'smash_lateral', 'smash_bandeja']) { ACT[k][1] = ACT.smash[1]; ACT[k][2] = ACT.smash[2]; }
+ACT.smash_gancho = ACT.smash;
 // voleio de forehand (bola no peito, lado da raquete): curto e compacto, quase só braço e raquete; a raquete sobe um
 // pouco atrás do ombro (sem girar o corpo), o contato é na frente com um passo de leve e a mão livre abre para equilibrar
 ACT.smash_vfh = [READY,
@@ -274,9 +279,8 @@ function swingVar(type, y, p, aimX, ctx) {
   // (gancho, verônica e bandeja só se escolhem na preparação — o corpo já vira para eles; no contato vale a escolha feita)
   if (at) { if (fwd < -.3) return 'costas'; }
   else {
-  if (fwd < -.3) return lat < -.55 ? 'veronica' : lat < .15 ? 'gancho' : 'costas';
-  if (lat < -.55) return 'veronica';
-  if (lat < -.32) return 'gancho';
+  if (fwd < -.3) return lat < .15 ? 'gancho' : 'costas';
+  if (lat < -.32) return 'gancho'; // (a verônica no smash ficava estranha: arma como o smash e só a terminação muda)
   // bandeja: bola alta que não dá para finalizar — longe do ponto ideal (muito para o lado ou muito à frente), atrasado,
   // ou do fundo numa bola não tão alta (fora da zona de finalização)
   if (!fin && (lat > .7 || fwd > .95 || ctx.late || (netD > 5 && y < 2.3))) return 'bandeja';
