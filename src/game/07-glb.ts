@@ -553,7 +553,7 @@ function makeServePreview(c) {
   const look = charLook(c, 0, 0), g = c.fem ? GLB.female : GLB.male;
   if (!g) return null;
   const p = makePlayer(0, 1, look, false, 'prévia'); p.char = c; p.preview = true;
-  attachSkin(p, g); scene.remove(p.skin.holder); scene.remove(p.skin.racket);
+  attachSkin(p, g); scene.remove(p.skin.holder); scene.remove(p.skin.racket); scene.remove(p.model.group); // (o boneco desenhado da prévia não fica na quadra do jogo)
   p.skin.racket.userData.setStyle(look.racket || 'proteo');
   p.height = heightOf(c); applyLefty(p); scaleSkin(p); p.skinOn = true;
   return p;

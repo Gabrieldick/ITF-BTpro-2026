@@ -278,8 +278,9 @@ function doHit(p, type, q, isServe, mod) {
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const farX = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), crossK = clamp((Math.abs(aim - p.pos.x) - 1.5) / 2.5, 0, 1);
     smCross = farX * crossK;
-    if (farX > 0) mod.misBoost = (mod.misBoost || 0) + .015 * farX;
-    if (smCross > 0) { spec.noise *= 1 + .6 * smCross; mod.misBoost = (mod.misBoost || 0) + .1 * smCross; }
+    const skF = lerp(1.7, .4, Math.min(1, attrK(p, 'smash'))); // quem tem smash alto erra bem menos esses
+    if (farX > 0) mod.misBoost = (mod.misBoost || 0) + .015 * farX * skF;
+    if (smCross > 0) { spec.noise *= 1 + .6 * smCross * skF; mod.misBoost = (mod.misBoost || 0) + .1 * smCross * skF; }
   }
   // variação do golpe conforme o contato
   // (a escolha feita na preparação — gancho, verônica, bandeja, voleios… — continua no contato: hitVar)
@@ -341,14 +342,14 @@ function doHit(p, type, q, isServe, mod) {
     const lat = (ball.pos.x - p.pos.x) * f * hand, fwd = -(ball.pos.z - p.pos.z) * f;
     const ts = p.srvSt || {}; // saque: o lançamento decide o efeito (de lado → slice, atrás → topspin, à frente → pancada)
     smStyle = isServe ? (Math.random() < .2 ? ['slice', 'top', 'flat'][Math.floor(Math.random() * 3)] : (ts.tossX ?? .22) > .35 ? 'slice' : (ts.tossZ ?? .62) < .42 ? 'top' : (ts.tossZ ?? .62) > .75 ? 'flat' : Math.random() < .55 ? 'slice' : 'flat') : lat > .3 ? 'slice' : fwd < .08 ? 'top' : fwd > .3 && Math.abs(lat) < .3 ? 'flat' : 'mix';
-    const a = { slice: rand(4.2, 6.2), top: rand(1, 2), flat: rand(0, .6), mix: rand(1.8, 3.2) }[smStyle] * (isServe ? 1.15 : 1) * (mod.perfect ? 1.1 : 1);
+    const a = { slice: rand(2.4, 3.8), top: rand(.6, 1.2), flat: rand(0, .35), mix: rand(1.1, 2) }[smStyle] * (isServe ? 1.15 : 1) * (mod.perfect ? 1.1 : 1); // (curva mais contida: antes chegava a 6 m/s² e parecia demais)
     const ddx = tgt.x - ball.pos.x, ddz = tgt.z - ball.pos.z, dd = Math.hypot(ddx, ddz) || 1;
     spec.cA = [a * hand * ddz / dd, -a * hand * ddx / dd];
     // quem bate não compensa a curva com perfeição: às vezes sobra efeito e a bola abre mais. Quando a curva vai para a
     // lateral para onde a bola já está indo (destro batendo da direita para a esquerda com slice, por exemplo), a sobra
     // tende a jogar a bola para fora; menos com smash alto e barra boa
     if (!isServe) { const out = Math.sign(spec.cA[0]) === Math.sign(tgt.x) && Math.abs(tgt.x) > C.halfW * .4, sk = Math.min(1, attrK(p, 'smash'));
-      const miss = gauss() * (.04 + .07 * (1 - clamp(q, 0, 1))) + (out ? (smStyle === 'slice' ? .06 : .03) * (1 - .5 * sk) * (mod.perfect ? .6 : 1) : 0);
+      const miss = (gauss() * (.04 + .07 * (1 - clamp(q, 0, 1))) + (out ? (smStyle === 'slice' ? .06 : .03) * (mod.perfect ? .6 : 1) : 0)) * lerp(1.6, .5, sk);
       spec.cAk = 1 - clamp(miss, -.15, .45); }
     if (smStyle === 'slice') { spec.gk = (spec.gk || 1.35) * .93; if (spec.speed) spec.speed *= .96; }
     else if (smStyle === 'top') spec.gk = (spec.gk || 1.35) * 1.14;
