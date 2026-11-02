@@ -11,17 +11,16 @@ import { ball } from './07-glb';
 import { $, hideBanner } from './09-interface';
 import { solveShot } from './10-fisica';
 import { MTR } from './12-controles';
-import { assignee, gapX, humanPlan } from './16-ia';
+import { assignee, humanPlan } from './16-ia';
 function humanAim(p = human, edge = false) {
   // direcional todo para o lado: no smash/saque (edge) o alvo chega a 25 cm da linha (arriscado: ver o erro na lateral em doHit)
   const ix = p.inputX, full = edge && Math.abs(ix) > .85, lim = C.halfW - (full ? .25 : .6);
   if (Math.abs(ix) > .25) return clamp(ix, -1, 1) * lim;
-  return aimAutoX(p.team); // sem direção: o maior espaço vazio (fixo por bola, para a mira não tremer)
+  return 0; // sem direção: sempre o centro da quadra (o lado vazio é escolha de quem joga)
 }
 // ---------- mira: seta no chão, alvo e arco da trajetória ----------
 const AIM = { ring: null, dot: null, arrow: null, head: null, shaft: null, arc: null, cache: [] };
 const AIM_COL = { smash: 0xff5a1f, drive: 0xff5a1f, lob: 0x2f9bff, curta: 0xffc21a, defesa: 0x22c76f, preview: 0xffe14d };
-function aimAutoX(team = 0) { const ch = AIM.cache[team] || (AIM.cache[team] = { id: -1, x: 0 }); if (ch.id !== S.hitId) { ch.id = S.hitId; const ta = TAC.aim ? TAC.aim(team) : null; ch.x = ta !== null ? ta : gapX(team, .3) * .8; } return ch.x; }
 // a tática é registrada depois (o módulo da IA vem mais tarde na cadeia)
 const TAC = { aim: null };
 // W = mais curto (perto da rede), S = mais fundo; sem segurar, meio da faixa

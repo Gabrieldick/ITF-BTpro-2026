@@ -34,7 +34,7 @@ const ROT_BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftSho
 const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'];
 // pegada: a mão se orienta pelo cabo (palma no cabo, mão na diagonal), os dedos fecham em volta dele e a raquete encaixa no punho
 const CURL = { sign: 1, ps: 1, sx: 1, ga: .9, grip: [1.25, 1.45, 1.0], thumb: [1.0, .6, .5], relax: .3, pd: .028, fist: .72, q: new THREE.Quaternion() };
-const PALM = { angle: 1.5 }; // giro da mão livre no smash (rad)
+const PALM = { angle: 1.5, walk: 1.4 }; // giro da mão livre no smash (rad) e andando solto (palma para o corpo, não para trás)
 function attachSkin(p, gltf) {
   const root = SkeletonUtils.clone(gltf.scene);
   const holder = new THREE.Group(); holder.add(root); scene.add(holder);
@@ -467,6 +467,11 @@ function driveSkin(p) {
   const R = L ? 'Left' : 'Right', O = L ? 'Right' : 'Left', aR = L ? k.armL : k.arm, aO = L ? k.arm : k.armL;
   limbIK(B[R + 'Arm'], B[R + 'ForeArm'], B[R + 'Hand'], m.armR.sh, m.armR.el, m.armR.wrist, aR[0], aR[1], .555, true, 0, k.lim[R + 'Arm'], k.lim[R + 'ForeArm']);
   limbIK(B[O + 'Arm'], B[O + 'ForeArm'], B[O + 'Hand'], m.armL.sh, m.armL.el, m.armL.wrist, aO[0], aO[1], .555, true, 0, k.lim[O + 'Arm'], k.lim[O + 'ForeArm']);
+  // andando/parado solto (entre pontos): a mão livre vira a palma para o corpo (perna), como numa caminhada normal
+  { const wk = Math.max(p.rlx || 0, p.idl || 0) * (1 - Math.min(1, (p.prep || 0) * 3));
+    if (wk > .02 && B[O + 'Hand']) { const h = B[O + 'Hand']; B[O + 'ForeArm'].getWorldPosition(_ka); h.getWorldPosition(_kb); _kc.subVectors(_kb, _ka).normalize();
+      _kq.setFromAxisAngle(_kc, wk * PALM.walk * (L ? -1 : 1)); h.getWorldQuaternion(_kq2); _kq.multiply(_kq2);
+      h.parent.getWorldQuaternion(_kq3); _kq3.invert().multiply(_kq); h.quaternion.copy(_kq3); h.updateMatrixWorld(true); } }
   // mão livre apontando a bola no smash: gira o punho (palma meio para cima / para o corpo)
   if ((p.prep || 0) > .02 && B[O + 'Hand']) {
     const h = B[O + 'Hand']; B[O + 'ForeArm'].getWorldPosition(_ka); h.getWorldPosition(_kb); _kc.subVectors(_kb, _ka).normalize();
