@@ -278,8 +278,8 @@ function doHit(p, type, q, isServe, mod) {
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const farX = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), crossK = clamp((Math.abs(aim - p.pos.x) - 1.5) / 2.5, 0, 1);
     smCross = farX * crossK;
-    if (farX > 0) mod.misBoost = (mod.misBoost || 0) + .03 * farX;
-    if (smCross > 0) { spec.noise *= 1 + .8 * smCross; mod.misBoost = (mod.misBoost || 0) + .18 * smCross; }
+    if (farX > 0) mod.misBoost = (mod.misBoost || 0) + .015 * farX;
+    if (smCross > 0) { spec.noise *= 1 + .6 * smCross; mod.misBoost = (mod.misBoost || 0) + .1 * smCross; }
   }
   // variação do golpe conforme o contato
   // (a escolha feita na preparação — gancho, verônica, bandeja, voleios… — continua no contato: hitVar)
@@ -348,7 +348,7 @@ function doHit(p, type, q, isServe, mod) {
     // lateral para onde a bola já está indo (destro batendo da direita para a esquerda com slice, por exemplo), a sobra
     // tende a jogar a bola para fora; menos com smash alto e barra boa
     if (!isServe) { const out = Math.sign(spec.cA[0]) === Math.sign(tgt.x) && Math.abs(tgt.x) > C.halfW * .4, sk = Math.min(1, attrK(p, 'smash'));
-      const miss = gauss() * (.06 + .1 * (1 - clamp(q, 0, 1))) + (out ? (smStyle === 'slice' ? .12 : .06) * (1 - .5 * sk) * (mod.perfect ? .6 : 1) : 0);
+      const miss = gauss() * (.04 + .07 * (1 - clamp(q, 0, 1))) + (out ? (smStyle === 'slice' ? .06 : .03) * (1 - .5 * sk) * (mod.perfect ? .6 : 1) : 0);
       spec.cAk = 1 - clamp(miss, -.15, .45); }
     if (smStyle === 'slice') { spec.gk = (spec.gk || 1.35) * .93; if (spec.speed) spec.speed *= .96; }
     else if (smStyle === 'top') spec.gk = (spec.gk || 1.35) * 1.14;
@@ -395,7 +395,7 @@ function doHit(p, type, q, isServe, mod) {
   if (netFin || unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
     // smash errado sai mais para fora do que na rede; o cruzado do fundo espirra pela lateral
-    const netP = (p.isHuman ? .5 : skillOf(p).netK || .5) * (key === 'smash' && !isServe ? .7 : 1);
+    const netP = (p.isHuman ? .5 : skillOf(p).netK || .5) * (key === 'smash' && !isServe ? .85 : 1);
     if (netFin || Math.random() < netP) v.y -= 1.2 + Math.random() * 1.6;
     else if (smCross > .25 && Math.random() < .6) { v.x *= 1.22 + Math.random() * .2; v.z *= 1.04; } else v.multiplyScalar(1.12 + Math.random() * .14);
   }
