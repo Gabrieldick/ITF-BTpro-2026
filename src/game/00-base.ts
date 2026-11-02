@@ -116,7 +116,7 @@ function lookExtras(c) {
   const fem = !!c.fem, L = c.look || {};
   const x = { hairStyle: fem ? HAIR_F[Math.floor(r(1) * HAIR_F.length)] : HAIR_M[Math.floor(r(1) * HAIR_M.length)] };
   if (!fem) x.beard = r(2) < .45 ? ['barba', 'cavanhaque', 'bigode', 'barba'][Math.floor(r(3) * 4)] : '';
-  if (!L.cap && !L.visor && r(4) < .35) x.headband = ['#ff5a1f', '#fbf6ea', '#17324d', '#e2364a', '#0b7a83'][Math.floor(r(5) * 5)];
+  if (!L.cap && !L.visor && r(4) < (fem ? .35 : .25)) x.headband = ['#ff5a1f', '#fbf6ea', '#17324d', '#e2364a', '#0b7a83'][Math.floor(r(5) * 5)];
   if (L.glasses) { x.glassStyle = r(6) < .3 ? 'redondo' : 'sport'; x.lens = LENS[Math.floor(r(7) * LENS.length)]; }
   return x;
 }

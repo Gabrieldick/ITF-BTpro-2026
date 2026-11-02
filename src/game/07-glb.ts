@@ -525,10 +525,15 @@ function rebuildModel(p, look) {
   if (GLB.male && GLB.female) { try { attachSkin(p, look.fem ? GLB.female : GLB.male); } catch (e) { p.skin = null; } }
 }
 // visual do personagem em quadra: extras do id, aparência dele, uniforme do time (ou o uniforme próprio da carreira)
+const HEAD_CAP = new Set(['spot', 'lock']); // usam boné quase sempre
 function charLook(c, team, idx) {
   const look = Object.assign({}, lookExtras(c), c.look, KITS[team][idx], { fem: !!c.fem, build: c.build });
   // jogadoras quase nunca usam boné: vira viseira (a maioria) ou faixa, na mesma cor (a sua jogadora da carreira escolhe)
   if (c.fem && look.cap && c.id !== 'crme') { let h = 0; for (const ch of String(c.id || c.name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; if (h % 10 < 7) look.visor = look.cap; else look.headband = look.cap; look.cap = ''; }
+  // jogadores: a maioria não usa nada na cabeça (ou uma faixa); boné só em ~1 de cada 4 (Spotto e Lock sempre) e viseira
+  // não (o seu jogador da carreira escolhe)
+  if (!c.fem && c.id !== 'crme' && !HEAD_CAP.has(c.id) && (look.cap || look.visor)) { let h = 0; for (const ch of String(c.id || c.name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const col = look.cap || look.visor; look.cap = look.cap && h % 4 === 0 ? look.cap : ''; look.visor = ''; if (!look.cap && !look.headband && h % 10 < 3) look.headband = col; }
   const OF = c.look && c.look.outfit; // blusa, estampa, cores, parte de baixo e logo do patrocinador no lugar do uniforme da equipe
   if (OF) { const T = TOP_KINDS[OF.top] || {}, B = BOT_KINDS[OF.bot] || {};
     Object.assign(look, { shirt: OF.c1, shirt2: OF.c2, pattern: OF.pat, top: T.g || OF.top, fab: T.f || '', bottom: B.g || OF.bot, bfab: B.f || '', shorts: OF.bc, logo: OF.logo || '', logoCol: OF.logoCol || '', logoPos: OF.logoPos || '' }); }
