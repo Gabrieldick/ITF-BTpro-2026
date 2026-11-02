@@ -15,7 +15,7 @@ import { sideOf } from './18-animacao';
 function solveShot(p0, tgt, spec) {
   const dx = tgt.x - p0.x, dz = tgt.z - p0.z; const d = Math.hypot(dx, dz);
   let T = spec.lowArc ? Math.max(.3, d / 14) : (spec.T || Math.max(.28, d / spec.speed));
-  const v = new V3(), g = G * (spec.gk || 1), ax = (spec.cA ? spec.cA[0] : 0) + (spec.wA ? spec.wA[0] : 0), az = (spec.cA ? spec.cA[1] : 0) + (spec.wA ? spec.wA[1] : 0); // cA: curva lateral (m/s²); wA: vento que quem bate compensa
+  const v = new V3(), g = G * (spec.gk || 1), ck = spec.cAk ?? 1, ax = (spec.cA ? spec.cA[0] * ck : 0) + (spec.wA ? spec.wA[0] : 0), az = (spec.cA ? spec.cA[1] * ck : 0) + (spec.wA ? spec.wA[1] : 0); // cA: curva lateral (m/s²), compensada na fração cAk; wA: vento que quem bate compensa
   for (let i = 0; i < 45; i++) {
     v.set((dx - .5 * ax * T * T) / T, (tgt.y - p0.y + .5 * g * T * T) / T, (dz - .5 * az * T * T) / T);
     if (Math.sign(p0.z) === Math.sign(tgt.z) || Math.abs(v.z) < 1e-4) break;
@@ -273,9 +273,13 @@ function doHit(p, type, q, isServe, mod) {
   let aim = pop ? rand(-1, 1) * (C.halfW - 1) : clamp(p.isHuman ? humanAim(p, key === 'smash' || isServe) : aiAim(p), -lim, lim);
   if (mod.aimShift) aim = clamp(aim + mod.aimShift, -lim - .45, lim + .45);
   // smash do fundo cruzado (na diagonal): mais difícil — menos preciso e erra um pouco mais
+  // (um pouco mais de erro: do fundo qualquer smash erra mais um pouco; do fundo e cruzado bem mais, e esse erro sai mais pela lateral)
+  let smCross = 0;
   if (!isServe && key === 'smash' && !finisher && !mod.volley) {
     const farX = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1), crossK = clamp((Math.abs(aim - p.pos.x) - 1.5) / 2.5, 0, 1);
-    if (farX * crossK > 0) { spec.noise *= 1 + .5 * farX * crossK; mod.misBoost = (mod.misBoost || 0) + .12 * farX * crossK; }
+    smCross = farX * crossK;
+    if (farX > 0) mod.misBoost = (mod.misBoost || 0) + .03 * farX;
+    if (smCross > 0) { spec.noise *= 1 + .8 * smCross; mod.misBoost = (mod.misBoost || 0) + .18 * smCross; }
   }
   // variação do golpe conforme o contato
   // (a escolha feita na preparação — gancho, verônica, bandeja, voleios… — continua no contato: hitVar)
@@ -340,6 +344,12 @@ function doHit(p, type, q, isServe, mod) {
     const a = { slice: rand(4.2, 6.2), top: rand(1, 2), flat: rand(0, .6), mix: rand(1.8, 3.2) }[smStyle] * (isServe ? 1.15 : 1) * (mod.perfect ? 1.1 : 1);
     const ddx = tgt.x - ball.pos.x, ddz = tgt.z - ball.pos.z, dd = Math.hypot(ddx, ddz) || 1;
     spec.cA = [a * hand * ddz / dd, -a * hand * ddx / dd];
+    // quem bate não compensa a curva com perfeição: às vezes sobra efeito e a bola abre mais. Quando a curva vai para a
+    // lateral para onde a bola já está indo (destro batendo da direita para a esquerda com slice, por exemplo), a sobra
+    // tende a jogar a bola para fora; menos com smash alto e barra boa
+    if (!isServe) { const out = Math.sign(spec.cA[0]) === Math.sign(tgt.x) && Math.abs(tgt.x) > C.halfW * .4, sk = Math.min(1, attrK(p, 'smash'));
+      const miss = gauss() * (.06 + .1 * (1 - clamp(q, 0, 1))) + (out ? (smStyle === 'slice' ? .12 : .06) * (1 - .5 * sk) * (mod.perfect ? .6 : 1) : 0);
+      spec.cAk = 1 - clamp(miss, -.15, .45); }
     if (smStyle === 'slice') { spec.gk = (spec.gk || 1.35) * .93; if (spec.speed) spec.speed *= .96; }
     else if (smStyle === 'top') spec.gk = (spec.gk || 1.35) * 1.14;
     else if (smStyle === 'flat' && spec.speed) spec.speed *= 1.07;
@@ -384,7 +394,10 @@ function doHit(p, type, q, isServe, mod) {
   const closeFin = !isServe && !!ball.finNear && Math.abs(p.pos.z) < 3.2 && Math.random() < ball.finNear;
   if (netFin || unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
     mis = true;
-    if (netFin || Math.random() < (p.isHuman ? .5 : skillOf(p).netK || .5)) v.y -= 1.2 + Math.random() * 1.6; else v.multiplyScalar(1.12 + Math.random() * .14);
+    // smash errado sai mais para fora do que na rede; o cruzado do fundo espirra pela lateral
+    const netP = (p.isHuman ? .5 : skillOf(p).netK || .5) * (key === 'smash' && !isServe ? .7 : 1);
+    if (netFin || Math.random() < netP) v.y -= 1.2 + Math.random() * 1.6;
+    else if (smCross > .25 && Math.random() < .6) { v.x *= 1.22 + Math.random() * .2; v.z *= 1.04; } else v.multiplyScalar(1.12 + Math.random() * .14);
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado).
   // forcedBy: o golpe do adversário que forçou (smash, curta boa, lob chutado, bola rápida) — ele leva o crédito do ponto
