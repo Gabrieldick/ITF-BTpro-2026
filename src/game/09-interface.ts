@@ -687,6 +687,14 @@ function configureMode() {
   partner.model.group.visible = d; cpuB.model.group.visible = d;
   const mySide = S.settings.side === 'esquerda' ? -1 : 1;
   human.slot = d ? mySide : 0; partner.slot = -mySide; cpuA.slot = d ? 1 : 0; cpuB.slot = -1;
+  // dupla só da CPU: quem tem lado preferido (char.lado, ex.: Spotto na direita) joga nele e o parceiro fica no outro.
+  // (slot +1 é a direita de quem joga no time de baixo e a esquerda de quem joga no de cima)
+  if (d) for (const [a, b] of [[human, partner], [cpuA, cpuB]]) {
+    if (a.isHuman || b.isHuman) continue;
+    const R = a.team === 0 ? 1 : -1, la = a.char && a.char.lado, lb = b.char && b.char.lado;
+    const want = la ? (la === 'direita' ? R : -R) : lb ? (lb === 'direita' ? -R : R) : 0;
+    if (want) { a.slot = want; b.slot = -want; }
+  }
 }
 // arena de cada partida: na carreira depende do nível do torneio e do local; no campeonato, arena média
 const ARENA_PAL = {
