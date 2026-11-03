@@ -22,7 +22,7 @@ const ACT = {
   // abre primeiro (hp) e o tronco vem depois; contato com o braço esticado na frente, terminação cruzando o corpo até o
   // lado esquerdo e aterrissagem equilibrada (joelhos cedem)
   smash: [READY,
-    P({ wr: -.8, rh: [.32, .68, .18], rp: [.8, .9, .1], wx: 1.4, lh: [-.05, 1.05, -.32], lp: [-.6, 0, .6], tw: -.55, hp: -.38, lean: -.28, bend: -.12, crouch: .2, stag: .25 }), // armado: raquete "na mochila" (pendurada atrás das costas, ponta para baixo)
+    P({ wr: -.8, rh: [.32, .68, .18], rp: [.8, .9, .1], wx: .75, lh: [-.05, 1.05, -.32], lp: [-.6, 0, .6], tw: -.55, hp: -.38, lean: -.28, bend: -.12, crouch: .2, stag: .25 }), // armado: raquete "na mochila", inclinada atrás da cabeça (nem em pé, nem reta para baixo)
     P({ wr: -1, rh: [.1, .5, .2], rp: [.3, 1.0, .1], wx: .1, lh: [-.12, .85, -.3], lp: [-.6, 0, .6], tw: -.72, hp: -.02, lean: -.3, bend: -.1, crouch: .1, stag: .2 }),
     P({ rh: [.16, 1.02, -.28], rp: [.5, .3, .1], wx: .2, wr: -1.6, lh: [-.24, .38, -.1], lp: [-.8, -.3, .3], tw: -.12, hp: .24, lean: -.02, bend: -.05, crouch: .04 }),
     P({ rh: [-.22, .05, -.28], rp: [.7, .2, -.3], wx: .5, wr: -1.4, lh: [-.25, .22, .08], lp: [-.8, -.5, 0], tw: .3, hp: .42, lean: .5, bend: .05, crouch: .26 }),
