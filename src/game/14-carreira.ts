@@ -1461,7 +1461,7 @@ function crFinishTour() {
 // PE_K: ganho geral de pontos de evolução (sobravam centenas de pontos: o potencial trava antes de gastar)
 const PE_K = .6;
 // e quanto mais alto o overall, menos pontos cada coisa rende (até ~45% no topo): perto do 90 evoluir é lento de verdade
-const crPeLvK = () => clamp(1 - (overall($s.CR.me.a) - 70) * .035, .45, 1);
+const crPeLvK = () => clamp(1 - (overall($s.CR.me.a) - 70) * .02, .7, 1); // (o corte por nível era até 45%: no fim da carreira quase não vinham pontos)
 const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0) + ($s.CR.coach > 0 ? .3 : 0); return (1 + x / (1 + x * .5)) * PE_K * crPeLvK(); };
 // estoque máximo de pontos de evolução (~2 de overall no seu nível): o que passar disso não acumula
 const crPeMax = () => Math.max(300, 25 * crUpCostBase(overall($s.CR.me.a)));
@@ -1755,7 +1755,7 @@ function crNextDay(note) {
 // 60→70 é rápido, 70→80 bem mais lento, 80→90 o mais difícil
 // a reta final é a mais cara: cada ponto acima de 90 custa bem mais
 // custo de +1 num atributo: começa barato (amador) e fica bem caro perto do topo; um pouco mais lento que antes
-const crUpCostBase = v => v < 45 ? 1 : v < 55 ? 2 : v < 62 ? 3 : v < 68 ? 4 : v < 72 ? 5 : v < 76 ? 7 : v < 80 ? 10 : v < 84 ? 14 : v < 88 ? 24 : v < 90 ? 34 : v < 92 ? 46 : v < 94 ? 62 : v < 96 ? 84 : 110;
+const crUpCostBase = v => v < 45 ? 1 : v < 55 ? 2 : v < 62 ? 3 : v < 68 ? 4 : v < 72 ? 5 : v < 76 ? 7 : v < 80 ? 10 : v < 84 ? 14 : v < 88 ? 24 : v < 90 ? 32 : v < 92 ? 40 : v < 94 ? 52 : v < 96 ? 68 : 88;
 // atributos naturais de cada estilo vão até 99 no custo normal; os outros custam o dobro a partir de 90 (o Completo, 1,4×)
 const STYLE_NAT = { Atacante: ['forca', 'smash', 'saque', 'voleio'], Defensor: ['def', 'vel', 'backhand', 'folego'], 'Tático': ['curta', 'lob', 'backhand'] };
 const crNatural = k => { const n = STYLE_NAT[$s.CR.me.estilo]; return n ? n.includes(k) || k === 'leitura' : null; }; // null: Completo; noção de jogo vale para todos os estilos
