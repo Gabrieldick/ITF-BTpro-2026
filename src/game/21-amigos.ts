@@ -123,11 +123,11 @@ function addMsg(m, live) {
 async function connect() {
   if (!CL.sess || !AM.me || !AM.setup) return;
   const tk = await clToken(); if (!tk) return;
-  if (AM.rt) { AM.rt.setAuth(tk); track(); return; }
+  if (AM.rt) { if (tk !== AM.tok) { AM.tok = tk; AM.rt.setAuth(tk); } track(); return; }
   try {
     const { RealtimeClient } = await import('@supabase/realtime-js');
-    const rt = new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY } });
-    AM.rt = rt; rt.setAuth(tk);
+    const rt = new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY }, worker: true }); // (worker: o sinal de vida continua com a aba em segundo plano; sem ele o navegador atrasa e o servidor te dá como offline)
+    AM.rt = rt; AM.tok = tk; rt.setAuth(tk);
     const ch = rt.channel('amigos-v1', { config: { presence: { key: AM.me } } });
     ch.on('presence', { event: 'sync' }, () => {
       const st = ch.presenceState(); AM.pres = {};
@@ -174,12 +174,17 @@ setInterval(() => {
   const away = !!AM.awaySince && Date.now() - AM.awaySince > 180000;
   if (away !== AM.away) { AM.away = away; render(); }
   track(); // status e atividade (só manda se mudou)
+  // token do tempo real: renova antes de vencer (o servidor derruba a conexão quando ele vence e você aparecia offline)
+  if (AM.rt && CL.sess && Date.now() > CL.sess.exp - 4 * 60000) clToken().then(tk => { if (tk && AM.rt && tk !== AM.tok) { AM.tok = tk; AM.rt.setAuth(tk); AM.tracked = ''; track(); } });
   // sessão mudou (entrou/saiu da conta) ou passou o dia
   const logged = !!CL.sess;
   if (!logged && AM.me) { AM.me = ''; AM.friends = []; AM.msgs = {}; AM.unread = {}; disconnect(); render(); badge(); }
   else if (logged && (!AM.me || Date.now() - AM.lastLoad > 10 * 60000)) loadAll(); // renova o token do tempo real e os dados
   syncBtn();
 }, 3000);
+// saindo da página: avisa já (sem esperar o servidor perceber a conexão caída, uns 30–60 s)
+addEventListener('pagehide', () => { if (AM.ch) { try { AM.ch.untrack(); } catch (e) {} } });
+addEventListener('pageshow', e => { if (e.persisted) { AM.tracked = ''; track(); } });
 addEventListener('focus', () => { if (AM.awaySince) { AM.awaySince = 0; if (AM.away) { AM.away = false; track(); render(); } } });
 
 // ---------- som e aviso ----------

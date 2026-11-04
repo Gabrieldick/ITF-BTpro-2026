@@ -257,10 +257,19 @@ function clSetSess(j, email) { CL.sess = { at: j.access_token, rt: j.refresh_tok
 async function clSignUp(email, pw) { const j = await sbAuth('signup', { email, password: pw }); if (!j.access_token) return 'confirm'; clSetSess(j, email); await clSyncAll(); return 'ok'; }
 async function clSignIn(email, pw) { clSetSess(await sbAuth('token?grant_type=password', { email, password: pw }), email); await clSyncAll(); }
 function clSignOut() { const tk = CL.sess && CL.sess.at; CL.sess = null; CL.dirty.clear(); clStore(); if (tk) fetch(SB_URL + '/auth/v1/logout', { method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tk } }).catch(() => {}); clNote(''); }
+// renova o token uns minutos antes de vencer (o tempo real dos amigos derruba a conexão quando o token vence) e uma vez só
+// mesmo com várias chamadas juntas (o refresh token só vale uma vez: duas renovações seguidas derrubavam a sessão)
+let clRefreshing = null;
 async function clToken() {
   if (!CL.sess) return null;
-  if (Date.now() > CL.sess.exp) { try { clSetSess(await sbAuth('token?grant_type=refresh_token', { refresh_token: CL.sess.rt })); } catch (e) { clSignOut(); clNote('Sessão expirou: entre de novo.'); return null; } }
-  return CL.sess.at;
+  if (Date.now() > CL.sess.exp - 4 * 60000) {
+    if (!clRefreshing) { const rt = CL.sess.rt, expired = Date.now() > CL.sess.exp;
+      clRefreshing = sbAuth('token?grant_type=refresh_token', { refresh_token: rt }).then(j => { clSetSess(j); })
+        .catch(() => { if (expired || Date.now() > (CL.sess && CL.sess.exp || 0)) { clSignOut(); clNote('Sessão expirou: entre de novo.'); } })
+        .finally(() => { clRefreshing = null; }); }
+    await clRefreshing;
+  }
+  return CL.sess ? CL.sess.at : null;
 }
 async function sbRest(path, opt = {}) {
   const tk = await clToken(); if (!tk) throw new Error('entre na sua conta');
