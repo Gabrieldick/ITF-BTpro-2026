@@ -2,7 +2,7 @@
 // elementos da interface e placar
 import './08-audio';
 import { $s } from '../state';
-import { C, HALF_W, ZONE3, clamp, nameOf, rand, shortOf, overall } from './00-base';
+import { C, HALF_W, ZONE3, clamp, lerp, nameOf, rand, shortOf, overall } from './00-base';
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
 import { applyArena, cheerArena, confetti, linesGroup, setNetHeight, setSide, setZoneLine } from './03-cenario';
@@ -278,7 +278,10 @@ const WIN_V = { smash: .42, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .
 const ERR_V = { curta: -.9, lob: -.78, smash: -.8, defesa: -.7, drive: -.65, voleio: -.65, saque: -.6 }; // erros (vermelho) pesam bem mais que acertos
 // (smash é o golpe mais comum de quem ataca: o ponto vencedor de smash vale menos que o de curta/lob)
 const perfOn = p => !!p && p === human && !p.netHuman && !S.spectate && !NET.role && !S.drill && !!S.perf;
-function perfAdd(p, v, key) { if (!perfOn(p)) return; S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; if (S.careerActive && S.mode === 'rally') updateLiveRating(); }
+// a nota leva em conta o nível de quem joga: com overall baixo errar mais e acertar menos perfeitos é o esperado, então cada
+// erro tira menos (até 40% menos com overall ≤ 50) e cada jogada boa vale um pouco mais (até +25%); overall ≥ 85: igual
+const perfLvK = () => { const a = human.char && human.char.a; return a ? clamp((overall(a) - 50) / 35, 0, 1) : 1; };
+function perfAdd(p, v, key) { if (!perfOn(p)) return; const lk = perfLvK(); v *= v < 0 ? lerp(.6, 1, lk) : lerp(1.25, 1, lk); S.perf.sum += v; S.perf.ev[key] = (S.perf.ev[key] || 0) + 1; if (S.careerActive && S.mode === 'rally') updateLiveRating(); }
 // sua defesa e seu lob contam no painel (DEF / LOB) quando passam e ficam dentro: o adversário rebate ou a bola cai do lado dele
 function perfHitHook(p) { const d = S.defPend; if (!d) return; S.defPend = null; if (p.team !== d.team) perfAdd(d.p, 0, d.key); }
 // golpe dado pelo seu jogador (chamado na hora da batida)
@@ -306,7 +309,7 @@ function rateFrom(wonB) {
   // jogo limpo: muitas jogadas boas e (quase) nenhum erro seu ganha um bônus (até +1,2); cada erro seu tira 1/4 dele (forçado, 1/8)
   { const ev = S.perf.ev, cnt = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
     const errs = cnt(/^(e_|furou)/) + cnt(/^erroF$/) * .5, good = cnt(/^(w_|finaliz|ptBola|smashPerf|defBoa|curtaTop|curtaBoa|lobChutado)/);
-    r += Math.max(0, 1 - errs * .25) * clamp(good / 8, 0, 1) * 1.2 * clamp(S.perf.n / 24, 0, 1); } // o bônus só vale de verdade com a partida andando (poucos pontos não dão nota alta)
+    r += Math.max(0, 1 - errs * .25 * lerp(.6, 1, perfLvK())) * clamp(good / 8, 0, 1) * 1.2 * clamp(S.perf.n / 24, 0, 1); } // o bônus só vale de verdade com a partida andando (poucos pontos não dão nota alta)
   if (r > 7.5) r = 7.5 + (r - 7.5) * .55; // acima de 7,5 sobe devagar: 10 só numa partida quase perfeita
   return Math.round(clamp(r, 1, 10) * 10) / 10;
 }
