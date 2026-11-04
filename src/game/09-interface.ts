@@ -461,6 +461,12 @@ function drillNext() {
   if (D.seq.length > 1 && !d.step) { human.pos.set(0, 0, z0[2]); human.vel.set(0, 0, 0); } // combinado: cada sequência começa do lugar do 1º golpe
   else if (d.n === 0 || Math.abs(human.pos.x) > C.halfW + .3 || human.pos.z > C.halfL + .3 || human.pos.z < 1) { human.pos.set(0, 0, zone[2]); human.vel.set(0, 0, 0); }
   const hw = C.halfW - .45, g = 9.8, pick = l => l[Math.floor(Math.random() * l.length)];
+  // lançamento do professor: do ponto de saída até o alvo em T s; se a bola não passaria a rede com folga, sobe um pouco mais
+  // (antes a bola baixa e rápida dos níveis altos às vezes ia na rede)
+  const feedVel = (tx, ty, tz, T, gk = 1) => { let vx = 0, vy = 0, vz = 0;
+    for (let i = 0; i < 30; i++) { vx = (tx - ball.pos.x) / T; vy = (ty - ball.pos.y + .5 * g * gk * T * T) / T; vz = (tz - ball.pos.z) / T;
+      const tn = -ball.pos.z / vz; if (!(tn > 0 && tn < T) || ball.pos.y + vy * tn - .5 * g * gk * tn * tn >= C.netH + .15) break; T *= 1.05; }
+    ball.vel.set(vx, vy, vz); };
   const LV = d.L || DRILL_LVL[1];
   let hx = clamp(human.pos.x + (Math.random() - .5) * 2.2 * LV.wide, -hw, hw), hz = clamp(human.pos.z + (Math.random() - .5) * 1.2, zone[0], zone[1]);
   // bolas variadas: cada treino sorteia um tipo de bola (o nome aparece na hora do lançamento)
@@ -469,7 +475,7 @@ function drillNext() {
     const v = pick([['media', 'media', 'alta'], ['media', 'media', 'funda', 'baixa', 'alta'], ['media', 'funda', 'baixa', 'baixa', 'alta'], ['funda', 'baixa', 'baixa', 'alta', 'media']][d.lvl ?? 1]);
     if (v === 'funda') hz = clamp(rand(5.6, 6.6), zone[0], zone[1] + .2);
     const T = { media: 1.05, funda: 1.15, baixa: .8, alta: 1.45 }[v] * LV.spd, y1 = v === 'baixa' ? .75 : 1.0;
-    ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); ball.vel.set((hx - ball.pos.x) / T, (y1 - 1.2 + .5 * g * T * T) / T, (hz - .3 - ball.pos.z) / T);
+    ball.pos.set((Math.random() - .5) * 3, 1.2, -4.5); feedVel(hx, y1, hz - .3, T);
     vName = { media: '', funda: 'BOLA FUNDA', baixa: 'BOLA BAIXA E RÁPIDA', alta: 'BOLA ALTA' }[v];
   }
   if (st === 'defesa') {
@@ -479,7 +485,7 @@ function drillNext() {
     hz = clamp(v === 'fundo' ? rand(5.2, 6.6) : hz, 3.4, 6.8);
     const from = v === 'fundo' ? [-4.6, 2.5, .78, 1.15] : [-1.6, 2.6, .55, 1.35]; // z de quem bate, altura, tempo, gravidade
     const T = from[2] * LV.spd, gk = from[3];
-    ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); ball.vel.set((hx - ball.pos.x) / T, (.75 - from[1] + .5 * g * gk * T * T) / T, (hz - ball.pos.z) / T); ball.gk = gk; ball.cx = ball.cz = 0; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
+    ball.pos.set((Math.random() - .5) * 2, from[1], from[0]); feedVel(hx, .75, hz, T, gk); ball.gk = gk; ball.cx = ball.cz = 0; ball.finisher = v !== 'fundo'; ball.threat = v === 'fundo' ? .6 : 1;
     vName = { perto: 'SMASH PERTO DA REDE', fundo: 'SMASH DO FUNDO', angulado: 'SMASH ANGULADO', corpo: 'SMASH NO CORPO' }[v];
   }
   if (st === 'smash') {
@@ -487,13 +493,13 @@ function drillNext() {
     if (v === 'curto') hz = rand(2.3, 3.0); if (v === 'fundo') hz = rand(4.6, 5.6);
     if (v === 'lateral') hx = Math.sign(-human.pos.x || rand(-1, 1)) * rand(hw * .6, hw);
     const T = { normal: 2.1, curto: 1.7, fundo: 2.3, alto: 2.7, lateral: 2.1 }[v];
-    ball.pos.set((Math.random() - .5) * 3, 1.2, -5); ball.vel.set((hx - ball.pos.x) / T, (2.4 - 1.2 + .5 * g * T * T) / T, (hz - .4 - ball.pos.z) / T); ball.apex = v === 'alto' ? 7.5 : 6;
+    ball.pos.set((Math.random() - .5) * 3, 1.2, -5); feedVel(hx, 2.4, hz - .4, T); ball.apex = v === 'alto' ? 7.5 : 6;
     vName = { normal: '', curto: 'LOB CURTO', fundo: 'LOB NO FUNDO', alto: 'LOB ALTO', lateral: 'LOB NA LATERAL' }[v];
   }
   if (st === 'buscar') { // curtinha do professor junto da rede: corra e devolva antes de ela cair
     hz = rand(...[[1.8, 2.6], [1.3, 2.4], [1.1, 2.1], [1, 1.8]][d.lvl ?? 1]);
     const T = 1.3 * LV.spd;
-    ball.pos.set((Math.random() - .5) * 2, .9, -1.6); ball.vel.set((hx - ball.pos.x) / T, (.35 - .9 + .5 * g * T * T) / T, (hz - ball.pos.z) / T);
+    ball.pos.set((Math.random() - .5) * 2, .9, -1.6); feedVel(hx, .35, hz, T);
     vName = 'CURTA DO PROFESSOR';
   }
   if (D.seq.length > 1) vName = (d.step ? 'AGORA: ' : '') + STEP_TXT[st] + (vName ? ' · ' + vName : '');
@@ -549,6 +555,8 @@ function drillStepOk(st, w, kind, r, d) {
 }
 function drillResult(w, kind) {
   const d = S.drill, r = d.lastR, D = DRILLS[d.kind], st = D.seq[d.step || 0];
+  // bola do professor que foi na rede ou fora sem você tocar: não conta (ele lança de novo a mesma bola)
+  if (st !== 'saque' && !r && S.lastTeam === 1 && kind !== 'in') { S.mode = 'dead'; S.deadT = .9; banner('Bola do professor não valeu', 'ele lança de novo', 0, false); renderBoard(); return; }
   const [ok, why] = drillStepOk(st, w, kind, r, d);
   // combinado: acertou e ainda tem golpe na sequência → a próxima bola vem logo
   if (ok && d.step < D.seq.length - 1) { d.step++; S.mode = 'dead'; S.deadT = .45; banner('Boa! Agora: ' + STEP_TXT[D.seq[d.step]].toLowerCase(), '', 0, false); renderBoard(); return; }
