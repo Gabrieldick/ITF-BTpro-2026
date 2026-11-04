@@ -368,7 +368,7 @@ function hostState(now) {
       const sw = p.swing, M = p.charging ? (p.mtr || MTR) : null, ct = p.contact;
       return [r3(p.pos.x), r3(p.pos.z), r3(p.vel.x), r3(p.vel.z), r3(sw.t), sw.type, sw.dur, r3(sw.side || 0), sw.var || '', sw.hit ? 1 : 0,
         r3(p.jump || 0), p.jumpDur || 0, p.jumpH || 0, M ? M.type : 0, M ? r3(M.t) : 0, p.dive ? r3(p.dive.t) : -1, p.dive ? p.dive.dur : 0, r3(p.split || 0), r3(p.tossT || 0),
-        ct ? [r3(ct.x), r3(ct.y), r3(ct.z), r3(ct.u), ct.hitId] : 0, r3(p.tossDur || TOSS_T)];
+        ct ? [r3(ct.x), r3(ct.y), r3(ct.z), r3(ct.u), ct.hitId] : 0, r3(p.tossDur || TOSS_T), p.dive ? [r3(p.dive.dx || 0), r3(p.dive.dz || 0), r3(p.dive.sev ?? 1)] : 0];
     }),
     sc: S.score, sv: S.server, si: S.serverIdx, sp: PL.indexOf(S.serverPlayer), lt: S.lastTeam, hid: S.hitId, r: S.rally,
     w: S.wind || { x: 0, z: 0 }, ht: S.heat ? 1 : 0, pr: S.pressure || '', stk: S.streak || null, mt: null,
@@ -690,7 +690,8 @@ function applyState(a, b, k, ex = 0) {
     p.charging = !!pb[13];
     if (p === human && !S.spectate) { if (p.charging) { MTR.type = pb[13]; MTR.t = pb[14]; } }
     else p.mtr = p.charging ? { type: pb[13], t: pb[14] } : null;
-    p.dive = pb[15] >= 0 ? { t: pb[15], dur: pb[16], landed: true } : null;
+    // peixinho: com a direção e a força (sem elas a inclinação do corpo dava NaN e o corpo e a cabeça sumiam no convidado)
+    { const dv = pb[21]; p.dive = pb[15] >= 0 ? { t: pb[15], dur: pb[16], landed: true, dx: dv ? dv[0] * m : 0, dz: dv ? dv[1] * m : 1, sev: dv ? dv[2] : 1 } : null; }
     p.split = pb[17]; p.tossT = pb[18] >= pa[18] ? L(pa[18], pb[18]) : pb[18];
     p.tossDur = pb[20] || TOSS_T; // altura de cada lançamento do saque (o tempo até o contato)
     const ct = pb[19]; p.contact = ct ? { x: ct[0] * m, y: ct[1], z: ct[2] * m, u: ct[3], hitId: ct[4] } : null; // raquete vai até onde bateu

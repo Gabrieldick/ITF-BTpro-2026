@@ -22,7 +22,8 @@ const RP = { list: null, i: 0, t: 0, speed: 1, cam: new THREE.Vector3(10, 4, 0),
 function snap() {
   return { t: REC.t, b: [ball.pos.x, ball.pos.y, ball.pos.z, ball.vel.x, ball.vel.y, ball.vel.z], bs: ball.state,
     p: PL().map(p => [p.pos.x, p.pos.z, p.swing.t, p.swing.type, p.swing.dur, p.swing.side, p.swing.var, p.jump || 0, p.jumpDur || 0, p.jumpH || 0, p.charging ? 1 : 0, p.dive ? p.dive.t : -1, p.dive ? p.dive.dur : 0, p.split || 0,
-      S.mode === 'toss' && S.serverPlayer === p ? clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1) : -1]) };
+      S.mode === 'toss' && S.serverPlayer === p ? clamp(p.tossT / (p.tossDur || TOSS_T), 0, 1) : -1,
+      p.dive ? [p.dive.dx || 0, p.dive.dz || 0, p.dive.sev ?? 1] : 0]) }; // (direção e força do peixinho: sem elas a animação dava NaN e o corpo sumia)
 }
 function recordTick(dt) {
   const m = S.mode;
@@ -53,7 +54,7 @@ function resample(F) {
       p: A.p.map((pa, i) => { const pb = B.p[i], pn = N.p[i];
         const st = pa[2] >= 0 && pb[2] >= 0 && pa[3] === pb[3] ? L(pa[2], pb[2]) : pn[2];
         return { x: L(pa[0], pb[0]), z: L(pa[1], pb[1]), st, ty: pn[3], sd: pn[4], ss: pn[5], sv: pn[6], j: pa[7] > 0 && pb[7] > 0 ? L(pa[7], pb[7]) : pn[7], jd: pn[8], jh: pn[9], ch: pn[10],
-          dt: pa[11] >= 0 && pb[11] >= 0 ? L(pa[11], pb[11]) : pn[11], dd: pn[12], sp: L(pa[13], pb[13]), ts: pa[14] >= 0 && pb[14] >= 0 ? L(pa[14], pb[14]) : pn[14], c: null }; }) });
+          dt: pa[11] >= 0 && pb[11] >= 0 ? L(pa[11], pb[11]) : pn[11], dd: pn[12], dv: pn[15] || 0, sp: L(pa[13], pb[13]), ts: pa[14] >= 0 && pb[14] >= 0 ? L(pa[14], pb[14]) : pn[14], c: null }; }) });
   }
   return out;
 }
@@ -135,7 +136,7 @@ function applyAt(c, t) {
     p.pos.set(L(P.x, Q.x), 0, L(P.z, Q.z)); p.vel.set(L(P.vx, Q.vx), 0, L(P.vz, Q.vz));
     p.swing.t = P.st >= 0 && Q.st >= 0 && P.ty === Q.ty ? L(P.st, Q.st) : M.st; p.swing.type = M.ty; p.swing.dur = M.sd; p.swing.side = M.ss; p.swing.var = M.sv;
     p.swing.hit = !!M.c && !M.c[4]; p.contact = M.c ? { x: M.c[0], y: M.c[1], z: M.c[2], u: M.c[3], hitId: S.hitId, pre: !!M.c[4] } : null;
-    p.jump = M.j; p.jumpDur = M.jd; p.jumpH = M.jh; p.charging = !!M.ch; p.dive = M.dt >= 0 ? { t: M.dt, dur: M.dd } : null; p.split = M.sp;
+    p.jump = M.j; p.jumpDur = M.jd; p.jumpH = M.jh; p.charging = !!M.ch; p.dive = M.dt >= 0 ? { t: M.dt, dur: M.dd, dx: M.dv ? M.dv[0] : 0, dz: M.dv ? M.dv[1] : 1, sev: M.dv ? M.dv[2] : 1, landed: true } : null; p.split = M.sp;
     p.rpToss = P.ts >= 0 && Q.ts >= 0 ? L(P.ts, Q.ts) : M.ts;
   });
 }

@@ -233,6 +233,7 @@ function animateAthlete(p, dt) {
   // peixinho de verdade: o corpo inteiro se lança na direção da bola, fica quase deitado na areia (de lado ou de peito) e
   // depois se levanta; a esticada curta (sev baixo) continua só o afundo. tiltK: 0 em pé → 1 deitado
   let tiltK = 0, tiltA = 0;
+  if (p.dive && !(Number.isFinite(p.dive.dx) && Number.isFinite(p.dive.dz))) { p.dive.dx = 0; p.dive.dz = p.team === 0 ? -1 : 1; } // (sem direção: a inclinação dava NaN e o corpo sumia)
   if (p.dive && !p.debug) { const D = p.dive, sevF = clamp(((D.sev ?? 1) - .35) / .45, 0, 1), up = Math.min(.45, D.dur * .4);
     const tk = D.t < .26 ? smooth(0, .26, D.t) : D.t > D.dur - up ? smooth(0, up, D.dur - D.t) : 1;
     tiltK = tk * sevF; tiltA = tiltK * 1.38;
