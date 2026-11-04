@@ -445,7 +445,7 @@ function doHit(p, type, q, isServe, mod) {
   const hitAt = isServe ? .3 : .45;
   if (p.swing.t < 0 || p.swing.t < p.swing.dur * hitAt) p.swing.t = p.swing.dur * hitAt;
   p.contact = { x: ball.pos.x, y: ball.pos.y, z: ball.pos.z, u: p.swing.t / p.swing.dur, hitId: S.hitId }; // a animação leva a raquete até aqui
-  if (key === 'smash' && ball.pos.y > 2.2) startJump(p, .38, .3);
+  // (o salto do smash sai antes da batida, só na finalização clara ou bem preparado: ver 12-controles e 16-ia)
   if (pressure <= 0 && mod.timing !== undefined) grade = q * .6 + mod.timing * .4;
   if (key === 'curta' && !pop) grade = clamp(.7 + (curtaK - .5) * .6, .05, 1); // cor do anel da curta: verde a partir de uma curta BOA
   return { key, label: spec.label, mis, pop, wild, grade, pressure, backhand: bhSide, contact: contactWord, curtaK };

@@ -209,7 +209,6 @@ function releaseMeter(c = localCtl()) {
   if (M.kind === 'smash') {
     p.charging = false;
     const sw = p.swing; sw.dur = SWING_DUR; sw.t = sw.dur * .3; sw.type = 'smash'; sw.hit = false; sw.meter = { res, amt, word, ideal: M.ideal }; sw.hold = 0; const cp = ball.state === 'live' ? predictPt(p) : ball.pos; sw.var = swingVar('smash', cp.y, p, undefined, { pt: cp, late: res === 'tarde' && amt > .5, prepared: true }); // (golpe pela situação: bola alta atrás → gancho/verônica, atrasado → bandeja)
-    if (res !== 'voleio' && ball.state === 'live' && ball.pos.y > 1.6) startJump(p, .42, .3);
   } else serveRelease(res, amt, word, p);
 }
 // do soltar da barra até a raquete chegar na bola: o golpe do saque sai do troféu (início do golpe) e bate a 45% dele
@@ -278,8 +277,12 @@ function meterStep(c, dt) {
       // o verde é a bola na altura ótima (o contato mais alto), não quando ela entra no alcance de onde você está: chegar
       // atrasado embaixo dela já não dá o perfeito. Bola que não sobe até lá: quando entra no alcance
       let tr = timeToSmashOpt(c.p); const trOpt = tr; if (tr === null) tr = timeToSmash(c.p);
-      // salto antes do golpe: sobe ~0,2 s antes da bola chegar na altura ótima (pico do salto no contato), se estiver embaixo dela
-      if (trOpt !== null && trOpt <= .21 && !(c.p.jump > 0) && Math.hypot(_optPt.x - c.p.pos.x, _optPt.z - c.p.pos.z) < 1.4) startJump(c.p, .42, .3);
+      // salto antes do golpe (pico do salto no contato): só na finalização clara (perto da rede, embaixo da bola) ou quando
+      // está bem preparado — parado embaixo dela e armando há tempo; nos outros smashes bate com os pés no chão
+      if (trOpt !== null && trOpt <= .21 && !(c.p.jump > 0)) {
+        const dOpt = Math.hypot(_optPt.x - c.p.pos.x, _optPt.z - c.p.pos.z), sp = Math.hypot(c.p.vel.x, c.p.vel.z);
+        if ((Math.abs(c.p.pos.z) < 3.2 && dOpt < 1.1) || (dOpt < .7 && M.t > .35 && sp < 2)) startJump(c.p, .42, .3);
+      }
       if (tr === null && M.tr != null && M.tr > dt) tr = M.tr - dt; // alcance some por um instante (correndo): mantém a estimativa
       M.tr = tr;
       if (tr !== null) { M.seen = true; if (M.v < M.center) { const nr = clamp((M.center - M.v) / Math.max(tr - .03, .04), .06, 1 / .25); M.rate = tr < .08 ? Math.max(M.rate, nr) : nr; } } // (no fim não desacelera: chega no verde junto com a bola)

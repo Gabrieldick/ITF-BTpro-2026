@@ -334,7 +334,7 @@ function updateHuman(dt, c = localCtl()) {
     const overhead = sw.type === 'smash' && ball.pos.y >= 1.9;
     let fire = false;
     if (sw.meter && sw.hold > 0 && !sw.hit) {
-      if (overhead ? smashReach(p) : canHit(p, 'smash')) { sw.hold = 0; fire = true; if (overhead) startJump(p, .38, .28); }
+      if (overhead ? smashReach(p) : canHit(p, 'smash')) { sw.hold = 0; fire = true; }
       else {
         sw.hold -= dt; sw.t = sw.dur * .3 - dt;
         const passed = ball.state !== 'live' || (p.team === 0 ? ball.pos.z > p.pos.z + .8 : ball.pos.z < p.pos.z - .8);
@@ -682,8 +682,12 @@ function updateAI(p, dt) {
           const ttc = Math.max(0, Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) - .8) / Math.max(1, Math.hypot(ball.vel.x, ball.vel.z)), go = Math.min(1, D.speed * ttc / Math.max(.01, dd));
           p.swing.var = swingVar(shot, pl ? pl.pt.y : ball.pos.y, p, undefined, { pt: pl ? pl.pt : undefined, ref: pl ? { x: p.pos.x + (tx - p.pos.x) * go, z: p.pos.z + (tz - p.pos.z) * go } : undefined });
         }
-        // smash: pula ~0,2 s antes do contato (a bola descendo a ~1 m acima do ponto de batida), para bater no alto do salto
-        if (shot === 'smash' && !(p.jump > 0) && ball.vel.y < 0 && ball.pos.y > 2.5 && ball.pos.y - 2.5 < -ball.vel.y * .21 && Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z) < 1.4) startJump(p, .42, .3);
+        // smash: pula ~0,2 s antes do contato (a bola descendo a ~1 m acima do ponto de batida), para bater no alto do salto;
+        // só na finalização clara (perto da rede) ou bem posicionado embaixo da bola e sem correr
+        if (shot === 'smash' && !(p.jump > 0) && ball.vel.y < 0 && ball.pos.y > 2.5 && ball.pos.y - 2.5 < -ball.vel.y * .21) {
+          const dB = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z);
+          if ((Math.abs(p.pos.z) < 3.2 && dB < 1.2) || (dB < .7 && Math.hypot(p.vel.x, p.vel.z) < 2)) startJump(p, .42, .3);
+        }
         if ((shot === 'smash' && ball.pos.y >= 1.9 ? canHit(p, 'smash', .66) : canHit(p, 'defesa', .9)) && !(shot !== 'smash' && ball.pos.y > .6 && ball.vel.y > -4 && waitCloser(p, 0, dt) && p.swing.t >= 0 && p.swing.t < p.swing.dur * .7)) { // espera a bola chegar perto do corpo
           // erro: quase sempre a bola vai na rede/fora; furar (raquete passa e a bola segue) só chegando no limite
           // erro quase sempre é bola na rede/fora; furar (raquete passa e a bola segue) só esticando no limite numa bola difícil
