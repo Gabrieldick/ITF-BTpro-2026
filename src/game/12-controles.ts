@@ -468,7 +468,8 @@ function courtPreview(k) {
   if (COURT_PREV[k]) return COURT_PREV[k];
   const a = COURTS[k].a, c = document.createElement('canvas'); c.width = 120; c.height = 80; const x = c.getContext('2d');
   x.fillStyle = a.size ? (a.sand || '#f3e7cf') : '#ead8b4'; x.fillRect(0, 0, 120, 80);
-  if (!a.size) { x.fillStyle = '#5fb3d9'; x.fillRect(0, 0, 120, 10); }
+  if (a.indoor || a.urban) { x.fillStyle = a.indoor ? '#a7abaf' : '#cfc6b6'; x.fillRect(0, 0, 120, 80); x.fillStyle = a.sand || '#ead8b4'; x.fillRect(30, 12, 60, 66); if (a.indoor && a.hall !== 'small') { x.fillRect(2, 12, 24, 66); x.fillRect(94, 12, 24, 66); } }
+  else if (!a.size) { x.fillStyle = '#5fb3d9'; x.fillRect(0, 0, 120, 10); }
   const seat = a.seat || '#2457c5', ppl = n => { for (let i = 0; i < n; i++) { x.fillStyle = ['#ff5a1f', '#fbf6ea', '#17324d', '#ffd23f', '#e2364a'][i % 5]; x.fillRect(Math.random() * 120, Math.random() * 80, 2, 2); } };
   if (a.size >= 1) { x.fillStyle = seat; x.fillRect(4, 14, 16, 56); }
   if (a.size >= 2) { x.fillRect(100, 14, 16, 56); x.fillStyle = (a.board || ['#111'])[0]; x.fillRect(22, 14, 3, 56); x.fillRect(95, 14, 3, 56); }

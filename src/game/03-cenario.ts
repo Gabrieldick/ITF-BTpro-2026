@@ -420,7 +420,7 @@ umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); 
   const roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, .7, 4), red); roof.position.y = 4.7; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
   const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.82, .25, 1.82), red); stripe.position.y = 3.6; g.add(stripe);
   const ramp = new THREE.Mesh(new THREE.BoxGeometry(.7, .06, 3.6), wood); ramp.position.set(0, 1.5, 2.4); ramp.rotation.x = .95; g.add(ramp);
-  g.position.set(-26, 0, -30); g.rotation.y = .4; ENV.add(g);
+  g.position.set(-26, 0, -30); g.rotation.y = .4; g.name = 'salva-vidas'; ENV.add(g);
 }
 // morros ao longe
 {
@@ -656,7 +656,7 @@ function applyArena(a) {
   // arquibancadas
   ARENA.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
   ARENA.group.clear(); ARENA.crowd = [];
-  PROPS.forEach(g => { g.visible = !((a.size > 0 || a.amateur) && Math.abs(g.position.x) < (a.amateur ? 20 : 15) && g.position.z > -22 && g.position.z < 16); });
+  PROPS.forEach(g => { g.visible = !a.indoor && !a.urban && !((a.size > 0 || a.amateur) && Math.abs(g.position.x) < (a.amateur ? 20 : 15) && g.position.z > -22 && g.position.z < 16); });
   SIDE.players = null; SIDE.courts = [];
   const L = C.halfL * 2 + 4, W = 7.8;
   let seats = [];
@@ -668,15 +668,20 @@ function applyArena(a) {
   if (a.amateur) { // público em pé dos dois lados e no fundo, e duas quadras vizinhas com jogo
     const spots = [];
     // não fica perto da câmera (atrás da sua linha de fundo), só da metade da quadra para lá
-    [-1, 1].forEach(sd => { for (let z = -C.halfL + .5; z < 3.5; z += rand(.6, 1.3)) if (Math.random() < .8) spots.push([sd * (HALF_W.dupla + rand(2, 3)), z]); });
-    for (let x = -5; x <= 5; x += rand(.8, 1.5)) if (Math.random() < .6) spots.push([x, -(C.halfL + rand(4.2, 5.2))]);
+    // (no ginásio fica no corredor de cimento, fora da caixa de areia)
+    [-1, 1].forEach(sd => { for (let z = -C.halfL + .5; z < 3.5; z += rand(.6, 1.3)) if (Math.random() < .8) spots.push([sd * (HALF_W.dupla + (a.indoor ? rand(3.4, 4.6) : rand(2, 3))), z]); });
+    for (let x = -5; x <= 5; x += rand(.8, 1.5)) if (Math.random() < .6) spots.push([x, -(C.halfL + (a.indoor ? rand(5.2, 6.2) : rand(4.2, 5.2)))]);
     standingCrowd(spots);
-    sideGames([-(HALF_W.dupla * 2 + 5), HALF_W.dupla * 2 + 5]);
+    if (!a.indoor) sideGames([-(HALF_W.dupla * 2 + 5), HALF_W.dupla * 2 + 5]); // no ginásio quem põe as quadras vizinhas é o indoorHall
   }
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', ...brd(a), brdT(a)); boards(W - .6, -1, L - 2, 'z', ...brd(a), brdT(a)); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', ...brd(a), brdT(a));
   indoorHall(a);
+  if (a.urban) urbanSite(a);
   if (!a.indoor && (a.amateur || a.size >= 1)) beachDecor(a);
+  // praia (areia com dunas, salva-vidas, orla e cidade) só nos eventos de praia
+  const beach = !a.indoor && !a.urban; sand.visible = beach;
+  ENV.children.forEach(g => { if (g.name === 'cidade' || g.name === 'salva-vidas') g.visible = beach; });
   mergeStatic(ARENA.group); ENV.children.forEach(g => { if (g.name === 'cidade') mergeStatic(g); });
   if (!PROPM.parent) ENV.add(PROPM);
   PROPM.children.forEach(m => m.geometry.dispose()); PROPM.clear();
@@ -784,15 +789,71 @@ function beachDecor(a) {
   for (let k = 0; k < 5; k++) spots.push([rand(-1.6, 1.6), -(C.halfL + 10.8) + rand(0, .8)]);
   standingCrowd(spots);
 }
+// pisos em textura (cada uma cobre 4 m): cimento queimado em placas de 2 m com juntas serradas, ou blocos de praça
+const FLOOR_TEX = {};
+function floorTex(kind) {
+  if (FLOOR_TEX[kind]) return FLOOR_TEX[kind];
+  const t = canvasTex(512, 512, (x, w, h) => {
+    if (kind === 'concreto') {
+      x.fillStyle = '#a7abaf'; x.fillRect(0, 0, w, h);
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { x.fillStyle = (Math.random() < .5 ? 'rgba(0,0,0,' : 'rgba(255,255,255,') + rand(.02, .06) + ')'; x.fillRect(i * 256, j * 256, 256, 256); } // cada placa num tom
+      for (let k = 0; k < 18; k++) { const cx = rand(0, w), cy = rand(0, h), r = rand(30, 110), g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, Math.random() < .5 ? 'rgba(60,64,70,.07)' : 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2); } // manchas
+      for (let k = 0; k < 2600; k++) { x.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.07)'; const r = rand(1, 2.5); x.fillRect(rand(0, w), rand(0, h), r, r); } // grão
+      x.strokeStyle = 'rgba(70,74,80,.25)'; x.lineWidth = 1; for (let k = 0; k < 7; k++) { x.beginPath(); let px = rand(0, w), py = rand(0, h); x.moveTo(px, py); for (let i = 0; i < 4; i++) { px += rand(-40, 40); py += rand(-40, 40); x.lineTo(px, py); } x.stroke(); } // marcas de uso
+      x.fillStyle = 'rgba(48,52,56,.6)'; x.fillRect(0, 0, w, 3); x.fillRect(0, 255, w, 3); x.fillRect(0, 0, 3, h); x.fillRect(255, 0, 3, h); // juntas
+    } else {
+      x.fillStyle = '#8c8478'; x.fillRect(0, 0, w, h); // rejunte
+      const cols = ['#d3cabb', '#c7bdab', '#dcd4c6', '#bfb5a3', '#cdc4b2', '#b9ad98'];
+      for (let r = 0; r < 16; r++) for (let c = -1; c < 9; c++) { x.fillStyle = cols[Math.floor(Math.random() * cols.length)]; x.fillRect(c * 64 + (r % 2) * 32 + 2, r * 32 + 2, 60, 28); }
+      x.fillStyle = 'rgba(120,70,40,.35)'; for (let c = 0; c < 8; c++) x.fillRect(c * 64 + 2, 2, 60, 28); // uma fileira de outra cor (desenho da praça)
+      for (let k = 0; k < 1800; k++) { x.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.06)'; x.fillRect(rand(0, w), rand(0, h), 2, 2); }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; FLOOR_TEX[kind] = t; return t;
+}
+// piso em volta das caixas de areia ([x0, x1, z0, z1]), sem passar por cima delas: retângulos com UV do mundo (as juntas continuam)
+function groundAround(boxes, X0, X1, Z0, Z1, m, tile, y) {
+  const cut = (lo, hi, k) => [...new Set([lo, hi, ...boxes.flatMap(b => [b[k], b[k + 1]])].filter(v => v >= lo && v <= hi))].sort((p, q) => p - q);
+  const xs = cut(X0, X1, 0), zs = cut(Z0, Z1, 2);
+  for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < zs.length - 1; j++) {
+    const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
+    if (boxes.some(b => cx > b[0] && cx < b[1] && cz > b[2] && cz < b[3])) continue;
+    const g = new THREE.PlaneGeometry(xs[i + 1] - xs[i], zs[j + 1] - zs[j]); g.rotateX(-Math.PI / 2); g.translate(cx, y, cz);
+    const pa = g.attributes.position, uv = g.attributes.uv; for (let k = 0; k < pa.count; k++) uv.setXY(k, pa.getX(k) / tile, -pa.getZ(k) / tile);
+    const me = new THREE.Mesh(g, m); me.receiveShadow = true; ARENA.group.add(me);
+  }
+}
+// caixa de areia com mureta em volta (a da quadra principal já tem a areia própria)
+function sandBox([x0, x1, z0, z1], curbM, main) {
+  if (!main) {
+    const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0, Math.ceil((x1 - x0) / 1.25), Math.ceil((z1 - z0) / 1.25)); g.rotateX(-Math.PI / 2); g.translate((x0 + x1) / 2, .0015, (z0 + z1) / 2);
+    const pa = g.attributes.position, uv = g.attributes.uv, cl = new Float32Array(pa.count * 3);
+    for (let k = 0; k < pa.count; k++) { const x = pa.getX(k), z = pa.getZ(k); uv.setXY(k, (x + 210) / 420, (90 - z + 160) / 320); cl.set(baseSandCol(x, z).map(v => v * rand(.95, 1)), k * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(cl, 3));
+    const me = new THREE.Mesh(g, courtSandMat); me.receiveShadow = true; ARENA.group.add(me);
+  }
+  const T = .2, Hc = .16, bar = (w, d, x, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, Hc, d), curbM); me.position.set(x, Hc / 2, z); me.receiveShadow = true; ARENA.group.add(me); };
+  bar(x1 - x0 + 2 * T, T, (x0 + x1) / 2, z0 - T / 2); bar(x1 - x0 + 2 * T, T, (x0 + x1) / 2, z1 + T / 2);
+  bar(T, z1 - z0, x0 - T / 2, (z0 + z1) / 2); bar(T, z1 - z0, x1 + T / 2, (z0 + z1) / 2);
+}
+// faixa pintada no chão em volta de uma caixa (corredor de circulação)
+function floorStripe([x0, x1, z0, z1], off, m) {
+  const st = (w, d, x, z) => { const me = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); me.rotation.x = -Math.PI / 2; me.position.set(x, .016, z); ARENA.group.add(me); };
+  const X0 = x0 - off, X1 = x1 + off, Z0 = z0 - off, Z1 = z1 + off, wd = .09;
+  st(X1 - X0, wd, (X0 + X1) / 2, Z0); st(X1 - X0, wd, (X0 + X1) / 2, Z1); st(wd, Z1 - Z0, X0, (Z0 + Z1) / 2); st(wd, Z1 - Z0, X1, (Z0 + Z1) / 2);
+}
+const COURT_BOX = [-7, 7, -12.5, 12.5]; // a mesma área da areia da quadra (CS)
+// ginásio (points e arenas cobertas): grande com duas quadras vizinhas com jogo, ou pequeno só com a quadra do jogo.
+// Areia só nas quadras (caixas com mureta); o resto é piso de cimento
 function indoorHall(a) {
   if (LIGHT0.sun === null) { LIGHT0.sun = sun.intensity; LIGHT0.hemi = hemi.intensity; LIGHT0.hemiC = hemi.color.clone(); LIGHT0.hemiG = hemi.groundColor.clone(); }
   const on = !!a.indoor;
-  sky.visible = !on; sea.visible = !on;
-  if (on) PROPS.forEach(g => { g.visible = false; });
+  sky.visible = !on; sea.visible = !on && !a.urban;
   sun.intensity = on ? LIGHT0.sun * .62 : LIGHT0.sun; hemi.intensity = on ? LIGHT0.hemi * 1.35 : LIGHT0.hemi;
-  hemi.color.copy(on ? col('#f4f1ea') : LIGHT0.hemiC); hemi.groundColor.copy(on ? col('#cdbf9f') : LIGHT0.hemiG);
+  hemi.color.copy(on ? col('#f4f1ea') : LIGHT0.hemiC); hemi.groundColor.copy(on ? col('#b9bcbf') : a.urban ? col('#a8a294') : LIGHT0.hemiG);
   if (!on) return;
-  const HX = 20, Z0 = -26, Z1 = 32, H = 11, len = Z1 - Z0;
+  const small = a.hall === 'small';
+  const HX = small ? 11.5 : 21, Z0 = small ? -20 : -26, Z1 = small ? 25 : 32, H = small ? 8 : 11, len = Z1 - Z0;
   // parede: faixa de baixo com as cores do evento, painéis claros com nervuras e uma fileira de janelas altas
   const wallTex = canvasTex(512, 256, (x, w, h) => {
     x.fillStyle = '#d9dde3'; x.fillRect(0, 0, w, h);
@@ -802,20 +863,21 @@ function indoorHall(a) {
   });
   wallTex.wrapS = THREE.RepeatWrapping;
   const wall = (wd, rx, ry, px, pz, rep) => { const t = wallTex.clone(); t.needsUpdate = true; t.repeat.set(rep, 1); const m = new THREE.Mesh(new THREE.PlaneGeometry(wd, H), new THREE.MeshStandardMaterial({ map: t, roughness: .9 })); m.rotation.set(rx, ry, 0); m.position.set(px, H / 2, pz); ARENA.group.add(m); };
-  wall(len, 0, Math.PI / 2, -HX, (Z0 + Z1) / 2, 6); wall(len, 0, -Math.PI / 2, HX, (Z0 + Z1) / 2, 6);
-  wall(HX * 2, 0, 0, 0, Z0, 4); wall(HX * 2, 0, Math.PI, 0, Z1, 4);
+  wall(len, 0, Math.PI / 2, -HX, (Z0 + Z1) / 2, Math.round(len / 9.5)); wall(len, 0, -Math.PI / 2, HX, (Z0 + Z1) / 2, Math.round(len / 9.5));
+  wall(HX * 2, 0, 0, 0, Z0, Math.round(HX / 5)); wall(HX * 2, 0, Math.PI, 0, Z1, Math.round(HX / 5));
   // telhado (visto de baixo) com estrutura e luminárias
   const roof = new THREE.Mesh(new THREE.PlaneGeometry(HX * 2, len), mat('#5b6470', { roughness: 1 })); roof.rotation.x = Math.PI / 2; roof.position.set(0, H, (Z0 + Z1) / 2); ARENA.group.add(roof);
   const beamM = mat('#3b424c', { roughness: .8 }), lampM = new THREE.MeshBasicMaterial({ color: col('#fffbea') });
   for (let z = Z0 + 4; z < Z1; z += 6) { const bm = new THREE.Mesh(new THREE.BoxGeometry(HX * 2, .35, .25), beamM); bm.position.set(0, H - .2, z); ARENA.group.add(bm); }
-  for (let x = -12; x <= 12; x += 6) for (let z = -18; z <= 20; z += 6) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, .08, .5), lampM); l.position.set(x, H - .45, z); ARENA.group.add(l); }
-  // piso de cimento: corredores entre as quadras, nas laterais e a área de convivência no fundo (bar e mesas)
-  const floorM = new THREE.MeshStandardMaterial({ color: col('#a3a7ab'), roughness: .95, polygonOffset: true, polygonOffsetFactor: -2 });
-  const floor = (x0, x1, z0, z1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), floorM); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, .035, (z0 + z1) / 2); m.receiveShadow = true; ARENA.group.add(m); };
-  const zb = -(C.halfL + 3.2);
-  [-1, 1].forEach(sd => { floor(sd > 0 ? 5.6 : -8.4, sd > 0 ? 8.4 : -5.6, Z0, Z1); floor(sd > 0 ? 17.8 : -HX, sd > 0 ? HX : -17.8, Z0, Z1); });
-  floor(-HX, HX, Z0, zb);
-  // bar no fundo: balcão, prateleira com garrafas, letreiro e banquetas
+  for (const x of small ? [-5, 0, 5] : [-12, -6, 0, 6, 12]) for (let z = Z0 + 8; z <= Z1 - 12; z += 6) { const l = new THREE.Mesh(new THREE.BoxGeometry(2.4, .08, .5), lampM); l.position.set(x, H - .45, z); ARENA.group.add(l); }
+  // areia só nas caixas das quadras; em volta, piso de cimento com faixas amarelas de circulação
+  const curbM = mat('#c4c8cc', { roughness: .85 }), boxes = [COURT_BOX];
+  if (!small) { const sx = 14; boxes.push([-sx - 5, -sx + 5, -12.5, 12.5], [sx - 5, sx + 5, -12.5, 12.5]); sideGames([-sx, sx]); }
+  boxes.forEach((b, i) => sandBox(b, curbM, i === 0));
+  groundAround(boxes, -HX, HX, Z0, Z1, new THREE.MeshStandardMaterial({ color: col('#c2c4c6'), map: floorTex('concreto'), roughness: .78, metalness: .02 }), 4, .012);
+  const stripeM = new THREE.MeshStandardMaterial({ color: col('#e3b92c'), roughness: .7, polygonOffset: true, polygonOffsetFactor: -2 });
+  floorStripe([boxes[0][0], boxes[boxes.length - 1][1], -12.5, 12.5], small ? .9 : .55, stripeM);
+  // bar: balcão, prateleira com garrafas, letreiro e banquetas
   const bar = (bx, bz, ry = 0) => {
     const g = new THREE.Group(); g.position.set(bx, 0, bz); g.rotation.y = ry; ARENA.group.add(g);
     const wood = mat('#6b4a32', { roughness: .7 }), top = mat('#e9e4da', { roughness: .4 });
@@ -828,10 +890,12 @@ function indoorHall(a) {
     sign.position.set(0, 2.75, 0 - 1.4); g.add(sign);
     for (let i = 0; i < 5; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(.2, .14, .75, 10), mat('#2b2f35', { metalness: .4, roughness: .5 })); st.position.set(0 - 1.6 + i * .8, .38, 0 + .75); g.add(st); }
   };
-  bar(-11, -22.5); bar(11, -22.5);
+  const barsF = small ? [-6.5] : [-11, 11], barsN = small ? [-6] : [-12, 12];
+  barsF.forEach(x => bar(x, Z0 + 3.5));
   // paredes com patrocínios, portas, banheiros, vestiário, saída de emergência, máquinas de bebida e placar
-  for (let i = 0, z = -18; z <= 22; z += 7, i++) { [-1, 1].forEach(sd => { const t = adTex(i * 2 + (sd > 0 ? 1 : 0), true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(sd * (HX - .06), 3.4, z); ad.rotation.y = -sd * Math.PI / 2; ARENA.group.add(ad); }); }
-  for (let i = 0, x = -16; x <= 16; x += 8, i++) { const t = adTex(i + 5, true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(x, 4.6, Z0 + .06); ARENA.group.add(ad); }
+  const adY = small ? 3.3 : 4.6, sbY = small ? 5.7 : 7.4, adXs = small ? [-6, 0, 6] : [-16, -8, 0, 8, 16];
+  for (let i = 0, z = Z0 + 8; z <= Z1 - 10; z += 7, i++) { [-1, 1].forEach(sd => { const t = adTex(i * 2 + (sd > 0 ? 1 : 0), true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(sd * (HX - .06), 3.4, z); ad.rotation.y = -sd * Math.PI / 2; ARENA.group.add(ad); }); }
+  adXs.forEach((x, i) => { const t = adTex(i + 5, true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(x, adY, Z0 + .06); ARENA.group.add(ad); });
   const signTex = (txt, bg, fg, ic) => canvasTex(256, 64, (x, w, h) => { x.fillStyle = bg; x.fillRect(0, 0, w, h); x.fillStyle = fg; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((ic ? ic + ' ' : '') + txt, w / 2, h / 2 + 1); });
   const door = (x, z, ry, w, txt, bg, fg, ic) => {
     const g = new THREE.Group();
@@ -847,35 +911,78 @@ function indoorHall(a) {
   door(-HX + .05, -9.5, Math.PI / 2, 1.0, 'BANHEIRO', '#c2185b', '#ffffff', '🚺');
   door(HX - .05, -12, -Math.PI / 2, 1.0, 'VESTIÁRIO', '#3b424c', '#ffffff');
   door(HX - .05, -9.5, -Math.PI / 2, 1.0, 'SAÍDA', '#1b9e4b', '#ffffff', '🏃');
-  for (const [vx, vc] of [[-16.5, '#c62828'], [-15.4, '#1565c0'], [16.5, '#2e7d32']]) { const vm = new THREE.Mesh(new THREE.BoxGeometry(.95, 1.9, .75), [mat('#2b2f35'), mat('#2b2f35'), mat('#2b2f35'), mat('#2b2f35'), mat(vc, { emissive: col(vc), emissiveIntensity: .35 }), mat('#2b2f35')]); vm.position.set(vx, .95, Z0 + .5); ARENA.group.add(vm); }
+  for (const [vx, vc] of [[-(HX - 4.5), '#c62828'], [-(HX - 5.6), '#1565c0'], [HX - 4.5, '#2e7d32']]) { const vm = new THREE.Mesh(new THREE.BoxGeometry(.95, 1.9, .75), [mat('#2b2f35'), mat('#2b2f35'), mat('#2b2f35'), mat('#2b2f35'), mat(vc, { emissive: col(vc), emissiveIntensity: .35 }), mat('#2b2f35')]); vm.position.set(vx, .95, Z0 + .5); ARENA.group.add(vm); }
   const sbT = canvasTex(256, 96, (x, w, h) => { x.fillStyle = '#0b0f14'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffd23f'; x.font = 'bold 26px monospace'; x.textAlign = 'center'; x.fillText(a.text || 'ARENA', w / 2, 34); x.fillStyle = '#ff5a1f'; x.font = 'bold 34px monospace'; x.fillText('BEACH TENNIS', w / 2, 76); });
-  const sb = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.9), new THREE.MeshBasicMaterial({ map: sbT })); sb.position.set(0, 7.4, Z0 + .07); ARENA.group.add(sb);
+  const sb = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.9), new THREE.MeshBasicMaterial({ map: sbT })); sb.position.set(0, sbY, Z0 + .07); ARENA.group.add(sb);
   // mesas altas com gente em volta (convivência), mais gente nos corredores olhando os jogos
-  const tableM = mat('#f4f1ea', { roughness: .5 }), poleM = mat('#2b2f35', { metalness: .5, roughness: .4 }), spots = [];
-  for (const [tx, tz] of [[-5, -16], [0, -17.5], [5, -16], [-4, -20.5], [4, -20.5], [0, -23]]) {
+  const tableM = mat('#f4f1ea', { roughness: .5 }), poleM = mat('#2b2f35', { metalness: .5, roughness: .4 });
+  const tables = (list, out) => list.forEach(([tx, tz]) => {
     const pl = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.05, 8), poleM); pl.position.set(tx, .53, tz); ARENA.group.add(pl);
     const tt = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .05, 18), tableM); tt.position.set(tx, 1.07, tz); ARENA.group.add(tt);
-    const k = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < k; i++) { const an = i / k * Math.PI * 2 + Math.random(); spots.push([tx + Math.cos(an) * .75, tz + Math.sin(an) * .75]); }
-  }
-  for (let i = 0; i < 7; i++) spots.push([-11 + rand(-2, 2), -21 + rand(0, .8)], [11 + rand(-2, 2), -21 + rand(0, .8)]); // fila no bar
-  [-1, 1].forEach(sd => { for (let z = -18; z < 14; z += rand(1.5, 3.2)) if (Math.random() < .6) spots.push([sd * rand(18.3, 19.4), z]); });
+    const k = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < k; i++) { const an = i / k * Math.PI * 2 + Math.random(); out.push([tx + Math.cos(an) * .75, tz + Math.sin(an) * .75]); }
+  });
+  const spots = [];
+  tables(small ? [[-2, -14.5], [2.5, -15.5], [6, -17.5]] : [[-5, -16], [0, -17.5], [5, -16], [-4, -20.5], [4, -20.5], [0, -23]], spots);
+  barsF.forEach(bx => { for (let i = 0; i < (small ? 4 : 7); i++) spots.push([bx + rand(-2, 2), Z0 + 5 + rand(0, .8)]); }); // fila no bar
+  [-1, 1].forEach(sd => { for (let z = Z0 + 8; z < Z1 - 18; z += rand(1.5, 3.2)) if (Math.random() < .6) spots.push([sd * (small ? rand(8.6, 10.8) : rand(19.6, 20.6)), z]); });
   standingCrowd(spots);
-  // fundo do outro lado (aparece depois da troca de lado): piso, arquibancada com torcida, telão e patrocínios na parede
-  floor(-HX, HX, C.halfL + 3.2, Z1);
-  crowd(bleachers(1, 0, C.halfL + 4.6, 14, 3, a.seat || a.board[0], 'x')); // arquibancada pequena atrás do fundo
-  // área de convivência deste lado também: dois bares virados para a quadra, mesas altas e gente em volta
-  bar(-12, Z1 - 4, Math.PI); bar(12, Z1 - 4, Math.PI);
+  // fundo do outro lado (aparece depois da troca de lado): arquibancada com torcida, bares, telão e patrocínios na parede
+  crowd(bleachers(1, 0, C.halfL + 5, 14, 3, a.seat || a.board[0], 'x')); // arquibancada pequena atrás do fundo
+  barsN.forEach(x => bar(x, Z1 - 4, Math.PI));
   const sp2 = [];
-  for (const [tx, tz] of [[-5, 21], [0, 22.5], [5, 21], [-4, 25.5], [4, 25.5]]) {
-    const pl = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.05, 8), poleM); pl.position.set(tx, .53, tz); ARENA.group.add(pl);
-    const tt = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .05, 18), tableM); tt.position.set(tx, 1.07, tz); ARENA.group.add(tt);
-    const k = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < k; i++) { const an = i / k * Math.PI * 2 + Math.random(); sp2.push([tx + Math.cos(an) * .75, tz + Math.sin(an) * .75]); }
-  }
-  for (let i = 0; i < 5; i++) sp2.push([-12 + rand(-2, 2), Z1 - 5.6 - rand(0, .8)], [12 + rand(-2, 2), Z1 - 5.6 - rand(0, .8)]); // fila nos bares
+  tables(small ? [[2, 19.5], [6, 21]] : [[-5, 21], [0, 22.5], [5, 21], [-4, 25.5], [4, 25.5]], sp2);
+  barsN.forEach(bx => { for (let i = 0; i < (small ? 3 : 5); i++) sp2.push([bx + rand(-2, 2), Z1 - 5.6 - rand(0, .8)]); }); // fila nos bares
   standingCrowd(sp2);
-  const sb2 = sb.clone(); sb2.position.set(0, 7.4, Z1 - .07); sb2.rotation.y = Math.PI; ARENA.group.add(sb2);
-  for (let i = 0, x = -16; x <= 16; x += 8, i++) { const t = adTex(i + 2, true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(x, 4.6, Z1 - .06); ad.rotation.y = Math.PI; ARENA.group.add(ad); }
-  door(-HX * .6, Z1 - .05, Math.PI, 2.2, 'ENTRADA', '#17324d', '#ffffff'); door(HX * .6, Z1 - .05, Math.PI, 1.0, 'SAÍDA', '#1b9e4b', '#ffffff', '🏃');
+  const sb2 = sb.clone(); sb2.position.set(0, sbY, Z1 - .07); sb2.rotation.y = Math.PI; ARENA.group.add(sb2);
+  adXs.forEach((x, i) => { const t = adTex(i + 2, true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(x, adY, Z1 - .06); ad.rotation.y = Math.PI; ARENA.group.add(ad); });
+  const dx = small ? HX - 1.6 : 17; door(-dx, Z1 - .05, Math.PI, 2.2, 'ENTRADA', '#17324d', '#ffffff'); door(dx, Z1 - .05, Math.PI, 1.0, 'SAÍDA', '#1b9e4b', '#ffffff', '🏃');
+}
+// evento ao ar livre numa praça de cidade sem praia: quadra numa caixa de areia, piso de blocos, ruas, prédios em volta,
+// árvores e torres de iluminação (sem mar, dunas, palmeiras nem o calçadão da orla)
+const URB_TEX = [];
+function urbanSite(a) {
+  const curbM = mat('#c4c8cc', { roughness: .85 });
+  sandBox(COURT_BOX, curbM, true);
+  groundAround([COURT_BOX], -38, 38, -38, 38, new THREE.MeshStandardMaterial({ color: col('#d6d2cc'), map: floorTex('praca'), roughness: .9 }), 4, .012);
+  // ruas em volta da praça (com faixa) e terreno mais longe
+  const road = mat('#45484d', { roughness: .95 });
+  groundAround([[-38, 38, -38, 38]], -50, 50, -50, 50, road, 4, .012);
+  const lineM = new THREE.MeshStandardMaterial({ color: col('#e8c33a'), roughness: .7, polygonOffset: true, polygonOffsetFactor: -2 });
+  floorStripe([-38, 38, -38, 38], 6, lineM);
+  const kerb = mat('#b9b4aa', { roughness: .9 });
+  [[0, -38.1, 76.4, .25], [0, 38.1, 76.4, .25], [-38.1, 0, .25, 76.4], [38.1, 0, .25, 76.4]].forEach(([x, z, w, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, .14, d), kerb); m.position.set(x, .07, z); ARENA.group.add(m); });
+  groundAround([[-50, 50, -50, 50]], -700, 700, -700, 700, mat('#7d8a5e', { roughness: 1 }), 50, .005);
+  // prédios em volta (texturas de janela reaproveitadas)
+  if (!URB_TEX.length) ['#d9cdb8', '#c4ad88', '#aebcc7', '#d2b8aa', '#a9b3ab', '#bcc6d2', '#b07d62', '#8fa3a8'].forEach(base => {
+    const t = canvasTex(64, 128, (x, w, h) => { x.fillStyle = base; x.fillRect(0, 0, w, h); for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) { x.fillStyle = Math.random() < .08 ? '#f4e7b8' : Math.random() < .5 ? '#2c3e50' : '#3b5268'; x.fillRect(4 + c * 15, 6 + r * 15.5, 10, 9); } });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; URB_TEX.push(t);
+  });
+  const roofM = mat('#9aa1a8'), bmats = URB_TEX.map(t => mat('#ffffff', { map: t, roughness: .8 }));
+  const building = (x, z, w, d, h) => {
+    const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, nr = g.attributes.normal;
+    for (let k = 0; k < uv.count; k++) { const side = Math.abs(nr.getX(k)) > .5 ? d : w; uv.setXY(k, uv.getX(k) * Math.max(1, Math.round(side / 5)), uv.getY(k) * Math.max(1, Math.round(h / 9))); }
+    const m = new THREE.Mesh(g, bmats[Math.floor(Math.random() * bmats.length)]); m.position.set(x, h / 2, z); ARENA.group.add(m);
+    const rf = new THREE.Mesh(new THREE.BoxGeometry(w * .9, .8, d * .9), roofM); rf.position.set(x, h + .4, z); ARENA.group.add(rf);
+  };
+  for (const sd of [-1, 1]) {
+    for (let x = -80; x < 80;) { const w = rand(10, 18); building(x + w / 2, sd * (58 + rand(0, 6)), w, rand(10, 14), rand(9, 40)); x += w + rand(1.5, 4); }
+    for (let z = -50; z < 50;) { const w = rand(10, 18); building(sd * (58 + rand(0, 6)), z + w / 2, rand(10, 14), w, rand(9, 40)); z += w + rand(1.5, 4); }
+  }
+  // árvores na beira da praça
+  const trunkM = mat('#6b4b32', { roughness: .9 }), leafM = [mat('#4e7a3a', { roughness: 1, flatShading: true }), mat('#5f8a43', { roughness: 1, flatShading: true }), mat('#3f6a33', { roughness: 1, flatShading: true })];
+  const tree = (x, z) => {
+    const h = rand(3.2, 4.6), tr = new THREE.Mesh(new THREE.CylinderGeometry(.14, .2, h, 7), trunkM); tr.position.set(x, h / 2, z); tr.castShadow = true; ARENA.group.add(tr);
+    const r = rand(1.8, 2.6), cn = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), leafM[Math.floor(Math.random() * 3)]); cn.position.set(x, h + r * .6, z); cn.scale.y = .8; cn.castShadow = true; ARENA.group.add(cn);
+  };
+  for (let t = -34; t <= 34; t += rand(5.5, 7.5)) { tree(t, -35 + rand(-.6, .6)); tree(t, 35 + rand(-.6, .6)); if (Math.abs(t) > 17) { tree(-35 + rand(-.6, .6), t); tree(35 + rand(-.6, .6), t); } }
+  // torres de luz nos cantos, viradas para a quadra
+  const poleM = mat('#7d848c', { metalness: .5, roughness: .45 }), lampM = new THREE.MeshBasicMaterial({ color: col('#fff6d8') });
+  for (const [x, z] of [[-17, -20], [17, -20], [-17, 20], [17, 20]]) {
+    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z); ARENA.group.add(g);
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(.18, .3, 16, 8), poleM); p.position.y = 8; g.add(p);
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, .25), poleM); fr.position.set(0, 16.4, .2); fr.rotation.x = .35; g.add(fr);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) { const l = new THREE.Mesh(new THREE.BoxGeometry(.6, .5, .1), lampM); l.position.set(-1.1 + i * .73, 16.05 + j * .65, .38 - j * .22); l.rotation.x = .35; g.add(l); }
+  }
 }
 // confete do título: papéis coloridos caindo sobre a quadra
 const CONF = { mesh: null, items: [], t: 0 };

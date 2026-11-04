@@ -714,11 +714,15 @@ function arenaFor() {
     const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
     const indoor = (t.tier <= 2 || t.special === 'estadual') && /\b(arena|point)\b/i.test(t.name || ''); // points e arenas: ambiente fechado
+    // ginásio pequeno (só a quadra do jogo) em parte dos points; sempre o mesmo para o mesmo torneio
+    let hh = 11; for (const ch of t.name || '') hh = (hh * 33 + ch.charCodeAt(0)) >>> 0;
+    const hall = indoor && t.special !== 'estadual' && hh % 5 < 2 ? 'small' : 'big';
+    const urban = !indoor && /cuiab|feira de santana|petrolina|sul special/i.test(n); // etapas no interior: praça da cidade, sem praia
     // patrocinador master do torneio (marcas de raquete): BT200 para cima sempre tem um, BT50/BT100 quase sempre; sempre o mesmo para o mesmo torneio na temporada
     let master = '';
     if (t.tier >= 4 && !t.special) { let h = 7; for (const ch of (t.name || '') + ($s.CR.season || 1)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
       if (t.tier >= 6 || h % 100 < (t.tier >= 5 ? 85 : 65)) master = TOUR_MASTERS[(h >>> 8) % TOUR_MASTERS.length]; }
-    return Object.assign({ size, indoor, master, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
+    return Object.assign({ size, indoor, hall, urban, master, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO', master: TOUR_MASTERS[(S.champSeed || 0) % TOUR_MASTERS.length] }, ARENA_PAL.BRA);
   // partida rápida e online: modelo de quadra escolhido (no online vale o de quem criou a sala)
@@ -735,6 +739,8 @@ const COURTS = {
   portugal: { nome: 'Arena Portugal', a: Object.assign({ size: 2, text: 'BEACH TÉNIS PORTUGAL' }, ARENA_PAL.POR) },
   aruba: { nome: 'Arena Aruba', a: Object.assign({ size: 2, text: 'ARUBA BEACH TENNIS' }, ARENA_PAL.ARU) },
   coberta: { nome: 'Arena coberta (sem vento)', a: Object.assign({ size: 0, amateur: true, indoor: true, text: 'ARENA COBERTA' }, ARENA_PAL.BRA) },
+  ginasio: { nome: 'Point pequeno (coberto, sem vento)', a: Object.assign({ size: 0, indoor: true, hall: 'small', text: 'POINT DO BEACH' }, ARENA_PAL.BRA) },
+  urbana: { nome: 'Arena na praça (cidade, sem praia)', a: Object.assign({ size: 2, urban: true, text: 'BEACH TENNIS NA PRAÇA' }, ARENA_PAL.BRA) },
   estadio: { nome: 'Estádio do Mundial', a: Object.assign({ size: 3, text: 'CAMPEONATO MUNDIAL' }, ARENA_PAL.MUN) },
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
