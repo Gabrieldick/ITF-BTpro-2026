@@ -370,7 +370,11 @@ function crPartnersHTML() {
   const myO = crMeOvr();
   // primeiro quem aceita (do mais forte ao mais fraco), depois os mais próximos que ainda não aceitam
   const all = crWorld().filter(c => c.id !== $s.CR.partner).map(c => ({ c, o: crCharOvr(c), w: crWillPartner(c) })).filter(x => x.o >= myO - 15 && x.o <= myO + 22);
-  const list = all.filter(x => x.w.ok).sort((x, y) => y.o - x.o).slice(0, 36).concat(all.filter(x => !x.w.ok).sort((x, y) => x.o - y.o).slice(0, 10));
+  // categorias baixas (até o BT50): o mercado é quase todo do seu país; estrangeiros aparecem poucos, no fim
+  const low = crMaxTier() <= 4, mine = x => x.c.pais === $s.CR.me.pais, okL = all.filter(x => x.w.ok).sort((x, y) => y.o - x.o);
+  const okList = low ? okL.filter(mine).slice(0, 30).concat(okL.filter(x => !mine(x)).slice(0, 5)) : okL.slice(0, 36);
+  const noL = all.filter(x => !x.w.ok).sort((x, y) => x.o - y.o), noList = low ? noL.filter(mine).slice(0, 8).concat(noL.filter(x => !mine(x)).slice(0, 2)) : noL.slice(0, 10);
+  const list = okList.concat(noList);
   const offers = $s.CR.offers.map(crChar).filter(Boolean);
   const mood = Math.round($s.CR.mood ?? 60), mb = crMoodBonus();
   const acts = cur ? '<div class="cr-energy"><span>Humor</span><span class="bar"><i class="' + (mood < 40 ? 'lo' : mood >= 70 ? 'hi' : '') + '" style="width:' + mood + '%"></i></span><b>' + mood + '</b></div>'

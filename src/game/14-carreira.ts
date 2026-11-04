@@ -791,6 +791,14 @@ function crTopPairs() {
     L.sort((x, y) => y[1] - x[1]).slice(0, 10).forEach(x => set.add(x[0])); });
   TOPP.key = key; TOPP.set = set; return set;
 }
+// país do torneio pelo nome da cidade (amadores e a maioria do circuito: Brasil)
+function tourPais(name) {
+  const n = (name || '').toLowerCase();
+  return /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier|saint-georges/.test(n) ? 'FRA' : /cascais|matosinhos/.test(n) ? 'POR' : 'BRA';
+}
+// nas categorias mais baixas (amadores, BT10 e BT50) quase todo mundo é do país do torneio: estrangeiro só de vez em quando
+// (o quanto um estrangeiro "pesa a mais" na escolha da chave, em pontos de overall de distância)
+const localPen = tier => tier <= 2 ? 22 : tier <= 4 ? 11 : 0;
 function crWillPartner(c) {
   if ($s.CR.offers.includes(c.id)) return { ok: true, why: 'Convite aceito' };
   const me = crMeOvr(), o = crCharOvr(c), beat = Math.min(2, $s.CR.beat[c.id] || 0);
@@ -1093,7 +1101,8 @@ function crEnter(opt) {
   const T = TIERS[opt.tier], cost = opt.special === 'estadual' ? Math.round(T.fee * .5) : (opt.wild ? 0 : T.fee) + crTravel(T);
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Dinheiro insuficiente para a inscrição e a viagem.'; return false; }
   if (!$s.CR.partner) { // parceiro de ocasião: o melhor que aceitar dentro do nível
-    const cand = crWorld().filter(c => crCharOvr(c) <= T.ovr[1] && crWillPartner(c).ok).sort((x, y) => crCharOvr(y) - crCharOvr(x));
+    const tp0 = tourPais(opt.name), pen0 = localPen(opt.tier) ? 8 : 0; // categorias baixas: parceiro do país do torneio (ou do seu)
+    const cand = crWorld().filter(c => crCharOvr(c) <= T.ovr[1] && crWillPartner(c).ok).sort((x, y) => (crCharOvr(y) - (y.pais !== tp0 && y.pais !== $s.CR.me.pais ? pen0 : 0)) - (crCharOvr(x) - (x.pais !== tp0 && x.pais !== $s.CR.me.pais ? pen0 : 0)));
     if (!cand.length) { $s.CR.lastMsg = 'Ninguém aceitou ser seu parceiro neste torneio.'; return false; }
     $s.CR.partner = cand[0].id; $s.CR.partnerTemp = true; $s.CR.mood = 55; // só neste torneio: não desfaz a dupla fixa dele
   }
@@ -1101,8 +1110,9 @@ function crEnter(opt) {
   const rnd = Math.random;
   const busy = new Set(['crme', $s.CR.partner]);
   let lo = T.ovr[0] - (opt.tier >= 3 && opt.tier <= 6 && !opt.special ? 7 : 2), hi = T.ovr[1] + 2, field = []; // profissionais: faixa larga (duplas bem piores e melhores)
-  const need = (T.draw - 1) * 2;
-  while (field.length < need && hi < 120) {
+  const need = (T.draw - 1) * 2, tp = tourPais(opt.name), pen = opt.special ? 0 : localPen(opt.tier);
+  // categorias baixas: a faixa de nível abre até ter gente do país do torneio para ~3/4 da chave
+  while ((field.length < need || (pen && field.filter(c => c.pais === tp).length < need * .75 && lo > T.ovr[0] - 20)) && hi < 120) {
     const localOnly = opt.special === 'estadual' || !!opt.uf;
     field = crWorld().filter(c => !busy.has(c.id) && (!localOnly || crUf(c) === (opt.uf || $s.CR.me.uf || 'SP') || (lo < T.ovr[0] - 6 && c.pais === 'BRA') || (!opt.special && lo < T.ovr[0] - 9))).filter(c => { const o = crCharOvr(c); return o >= lo && o <= hi; });
     lo -= 3; hi += 3;
@@ -1125,7 +1135,7 @@ function crEnter(opt) {
     for (let i = 0; i < Math.min(10, L.length) && inTop.size < 8; i++) if (!inTop.has(i)) { inTop.add(i); pre.splice(0, 0, L[i][0], L[i][1]); if (pre.length > need - 2) pre.length = need - 2; }
   }
   { const inPre = new Set(pre.map(c => c.id)), mid = (T.ovr[0] + T.ovr[1]) / 2 + (opt.tier >= 3 ? 2 : 0) + (rnd() - .5) * 2; // a chave puxa para o meio da faixa do nível (não sorteia igual de 71 a 88)
-    field = field.filter(c => !inPre.has(c.id)).map(c => [c, Math.abs(crCharOvr(c) - mid) + rnd() * 22] /* faixa larga: vêm duplas bem melhores e piores */).sort((x, y) => x[1] - y[1]).map(x => x[0]).slice(0, Math.max(0, need - pre.length)); }
+    field = field.filter(c => !inPre.has(c.id)).map(c => [c, Math.abs(crCharOvr(c) - mid) + rnd() * 22 + (c.pais !== tp ? pen : 0)] /* faixa larga: vêm duplas bem melhores e piores; estrangeiro pesa a mais nas categorias baixas */).sort((x, y) => x[1] - y[1]).map(x => x[0]).slice(0, Math.max(0, need - pre.length)); }
   field = pre.concat(field).sort((x, y) => crCharOvr(y) - crCharOvr(x));
   // do BT100 para cima as duplas fixas do circuito entram completas: quem veio sem o parceiro traz o parceiro, e saem os
   // avulsos mais fracos para caber (jogar separado só acontece no astro de ocasião abaixo, até o BT200)
@@ -1179,6 +1189,7 @@ function crEnter(opt) {
     while (left.length >= 2) {
     const a = left.shift(), oa = crCharOvr(a);
     let k = Math.min(left.length - 1, Math.floor(Math.pow(rnd(), 2.2) * Math.min(7, left.length)));
+    if (pen && rnd() < .85) { const j = left.slice(0, Math.min(7, left.length)).findIndex(c => c.pais === a.pais); if (j >= 0 && Math.abs(oa - crCharOvr(left[j])) <= 7) k = j; } // categorias baixas: dupla do mesmo país
     if (oa - crCharOvr(left[k]) > 6 && rnd() > .15) while (k > 0 && oa - crCharOvr(left[k]) > 4) k--;
     const b = left.splice(k, 1)[0]; teams.push({ a: a.id, b: b.id }); } }
   stars.forEach(([a, b]) => teams.push({ a: a.id, b: b.id, star: true }));
@@ -2091,4 +2102,4 @@ function crResolveEvent(i) {
 
 export { crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), paisOf: id => id === 'crme' ? $s.CR.me.pais : (crChar(id) || {}).pais, charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
