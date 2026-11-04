@@ -428,6 +428,9 @@ const KITS = [
 const ATTR_OF = { smash: 'smash', drive: 'smash', lob: 'lob', curta: 'curta', defesa: 'def' };
 // atributo na escala do jogo: 35 → 0, 65 → .5, 95 → 1 (os atributos vão de ~35 nos amadores a ~95 no topo)
 const attrN = v => clamp((v - 35) / 60, 0, 1.07);
+// faixa verde do smash pelo atributo: do fundo cai rápido com atributo baixo (^1,5); perto da rede (até 2 m, sumindo até
+// 5 m) a finalização é mais fácil e a faixa de quem tem smash fraco não fica minúscula (smash 50: ~4× maior que do fundo)
+const smashZoneK = (v, absZ) => { const n = attrN(v), far = clamp(Math.pow(n, 1.5), .12, 1.1), near = clamp(.3 + .7 * n, .3, 1.1); return lerp(far, Math.max(far, near), 1 - clamp((absZ - 2) / 3, 0, 1)); };
 const attrK = (p, k) => attrN(p.char ? attrOf(p.char.a, k) : 70);
 // fraqueza: 0 com o atributo em 72 ou mais, 1 em 40 — atributo fraco pesa bem mais que a escala linear
 const weakK = (p, k) => clamp((72 - (p.char ? attrOf(p.char.a, k) : 70)) / 32, 0, 1);
@@ -468,4 +471,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { folegoOf, staMul, staErr, SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { smashZoneK, folegoOf, staMul, staErr, SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

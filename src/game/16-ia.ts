@@ -2,7 +2,7 @@
 // inteligência artificial: planejamento, estilos, escolha de golpes
 import './15-carreira-telas';
 import { $s } from '../state';
-import { staMul, bCurve, C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
+import { smashZoneK, staMul, bCurve, C, DIFF, PLAY_STYLES, P_SPEED, SWING_DUR, TOSS_T, ZONE3, attrK, attrN, attrOf, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, gauss, bG, clamp, hScale, lerp, overall, rand, shortK, styleOf, weakK } from './00-base';
 import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
@@ -68,7 +68,7 @@ function aiTiming(p, shot, q) {
   const A = aiP(p);
   if (shot === 'smash' && ball.pos.y >= 1.5) { // barra do smash
     const skN = Math.min(1, attrK(p, 'smash')), aN = Math.pow(attrN(p.char ? p.char.a.smash : 70), 1.5);
-    const half = AI_ZONE * .8 * clamp(1.2 - ((ball.apex || 3.5) - 3.5) * .12, .45, 1.2) * clamp(aN, .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
+    const half = AI_ZONE * .8 * clamp(1.2 - ((ball.apex || 3.5) - 3.5) * .12, .45, 1.2) * smashZoneK(p.char ? p.char.a.smash : 70, Math.abs(p.pos.z)) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1));
     const diff = ((A.tSmash ?? 0) + gauss() * AI_MOTOR) / .75, amt = clamp((Math.abs(diff) - half) / (.2 * lerp(.45, 1.1, aN)), 0, 1);
     let res = Math.abs(diff) <= half ? 'perfeito' : diff < 0 ? 'cedo' : 'tarde';
     if (res === 'cedo' && ball.pos.y < 2.05) res = 'voleio';

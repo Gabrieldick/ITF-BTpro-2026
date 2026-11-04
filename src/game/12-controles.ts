@@ -2,7 +2,7 @@
 // teclado, toque, barras de força e menus
 import './11-mira';
 import { canHit } from './10-fisica';
-import { bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
+import { smashZoneK, bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
 import { S, isMobile, NET } from './01-estado';
 import { camera, camera2 } from './02-render';
 import { swingVar, predictPt } from './04-poses';
@@ -64,7 +64,7 @@ function startMeter(kind, type, c = localCtl()) {
   else { M.fill = .9 * (p.tossMul || 1); M.center = ((p.tossDur || TOSS_T) - SRV_LEAD) / M.fill; // o verde varia com a altura de cada lançamento; −SRV_LEAD: a raquete leva esse tempo da soltura ao contato
     M.half = half * ({ defesa: 1.5, lob: 1.3, curta: 1.2, smash: 1 }[type] || 1); }
   // faixa verde: menor com atributo baixo e, no smash, longe da rede
-  if (kind === 'smash') M.half *= smashZoneScale() * clamp(Math.pow(attrN(p.char.a.smash), 1.5), .12, 1.1) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
+  if (kind === 'smash') M.half *= smashZoneScale() * smashZoneK(p.char.a.smash, Math.abs(p.pos.z)) * (1 - .5 * clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1)); // do fundo a faixa encolhe bem
   if (kind === 'serve') M.half *= type === 'lob'
     ? clamp(Math.pow(attrN((p.char.a.saque + attrOf(p.char.a, 'lob')) / 2), 1.9), .08, 1.1) * .7 // lob por baixo: depende de saque e lob; perfeito difícil com atributo baixo
     : clamp(Math.pow(attrN(p.char.a.saque), 1.5), .12, 1.15) * (type === 'smash' ? .45 : 1); // saque por cima: perfeito bem mais difícil (e mais forte), mesmo com saque bom
