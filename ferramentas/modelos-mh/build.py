@@ -185,6 +185,7 @@ def neckline(p, depthF, depthB):  # altura do decote naquele ponto (redondo, mai
     return top - d * max(0., 1 - (p[0] / .62) ** 2) if abs(p[0]) < .62 else 99.  # longe do pescoço não corta (o alto do ombro ficava furado)
 def top_keep(p, kind, m=0.):
     if p[1] < WAIST0 - P.get('hemDrop', .3) + m: return False  # barra
+    if p[1] > j0('neck01')[1] + .05: return False  # nada da cabeça (orelha, têmpora) conta como coberto: a pele dali sumia com a camiseta
     arm = KW['arm'] > .5 and abs(p[0]) > ARMX - .2
     if kind == 'sbra':  # top esportivo: alças largas e barra logo abaixo do peito
         if p[1] < P.get('braHem', 3.05) + m: return False  # (~1,07 m num corpo de 1,61 m: cobre um palmo abaixo do peito)
@@ -428,6 +429,26 @@ if HAIRON:
             wid = [(.06 + .06 * top) * rng.uniform(.8, 1.25) * (1 - .45 * f) for f in np.linspace(0, 1, nseg)]
             cards.append((pts, wid, sides))
         card_obj('HairCards', cards, CARD_M)
+        # topete: em cima e na frente mechas bem mais compridas, levantadas e jogadas para trás (laterais curtas pela casca)
+        cards = []
+        for root, p0 in scalp_roots(1500, rng, lambda p0: p0[1] > 7.7):
+            s, n, _ = surf(root); top = smooth01(7.7, 8.35, p0[1]); fr = smooth01(.2, 1.0, p0[2])
+            t0 = rot(flow(root, n, BACK), n, rng.normal(0, .12)); L = (.3 + .65 * fr) * (.6 + .4 * top) * rng.uniform(.85, 1.15)
+            lift = (.1 + .5 * fr) * top * rng.uniform(.8, 1.2)
+            hf = lambda q0, f, lift=lift: offS(q0) + .008 + lift * min(1, f * 2.2) * (1 - .35 * f)
+            pts, sides, nrm = grow(root, t0, L, 6, hf, BACK, steer=.2)
+            cards.append((pts, [rng.uniform(.08, .12) * (1 - .35 * f) for f in np.linspace(0, 1, 6)], sides))
+        card_obj('HairQuiff', cards, CARD_M)
+        # volumoso: como o curto, mas toda a parte de cima sobe mais (volume por igual, não só a frente)
+        cards = []
+        for root, p0 in scalp_roots(2200, rng, lambda p0: p0[1] > 7.45):
+            s, n, _ = surf(root); top = smooth01(7.45, 8.2, p0[1]); cr = clump_rng(p0, .17, 7); ang = cr.normal(0, .6) * top + rng.normal(0, .15)
+            t0 = rot(flow(root, n, BACK), n, ang); L = (.2 + .32 * top) * rng.uniform(.85, 1.2)
+            lift = (.05 + (.16 + .1 * cr.random()) * top) * rng.uniform(.8, 1.2)
+            hf = lambda q0, f, lift=lift: offS(q0) + .008 + lift * min(1, f * 2.5)
+            pts, sides, nrm = grow(root, t0, L, 5, hf, BACK, steer=.25)
+            cards.append((pts, [rng.uniform(.08, .12) * (1 - .4 * f) for f in np.linspace(0, 1, 5)], sides))
+        card_obj('HairVol', cards, CARD_M)
         # raspado (máquina): só a casca rente
         shell('HairBuzz', .006, BACK, hair_mat('HairBuzzM', curl_tex('HairBuzzTex', n=14000, seed=21, ln=(8, 16), dirsd=.25), cut=.35, rough=.8))
         # moicano: faixa do meio em pé, para cima e para trás
@@ -439,7 +460,7 @@ if HAIRON:
             cards.append((pts, [rng.uniform(.07, .11) * (1 - .4 * f) for f in np.linspace(0, 1, 6)], sides))
         card_obj('HairMohawk', cards, CARD_M)
         # cacheado: casca alta com cachos (calombos) e textura de fios curvos
-        _, offC = shell('HairCurly', .1, BACK, hair_mat('HairCurlyM', curl_tex('HairCurlyTex', n=6000, seed=9, bg=.55, dirsd=1.5), rough=.75))
+        _, offC = shell('HairCurly', .14, BACK, hair_mat('HairCurlyM', curl_tex('HairCurlyTex', n=6000, seed=9, bg=.55, dirsd=1.5), rough=.75))
         cards = []
         for root, p0 in scalp_roots(1700, rng):
             s, n, _ = surf(root); top = smooth01(7.6, 8.3, p0[1])
@@ -553,6 +574,30 @@ if P.get('ponytail'):
         side = np.array([-math.sin(a_), 0, math.cos(a_)])
         pq.append((ring, [rng.uniform(.16, .26)] * 9, [side] * 9))
     card_obj('PonyCards', pq, bpy.data.materials['HairCards'])
+    # trança: gomos ovais entrelaçados (alternando de lado e inclinação) ao longo de um caminho mais rente às costas
+    LB = L * 1.25; bp = [base + np.array([0, -LB * t * .95, -.38 * math.sin(t * 1.4) - .08 * t]) for t in np.linspace(0, 1, 15)]
+    vs_, fs_, nb = [], [], 0
+    for i in range(1, 15):
+        c = bp[i]; tp = 1 - .45 * i / 14; sd = 1 if i % 2 else -1; rx, ry, rz = .15 * tp, .2 * tp, .12 * tp; tl = .55 * sd
+        for a in range(7):
+            th = a / 6 * math.pi
+            for b in range(8):
+                ph = b / 8 * 2 * math.pi; x, y, z = rx * math.sin(th) * math.cos(ph), ry * math.cos(th), rz * math.sin(th) * math.sin(ph)
+                x, y = x * math.cos(tl) - y * math.sin(tl), x * math.sin(tl) + y * math.cos(tl)
+                vs_.append(cv(c + np.array([x + .045 * sd * tp, y, z])) + OFF)
+        for a in range(6):
+            for b in range(8): fs_.append([nb + a * 8 + b, nb + a * 8 + (b + 1) % 8, nb + (a + 1) * 8 + (b + 1) % 8, nb + (a + 1) * 8 + b])
+        nb += 56
+    me = bpy.data.meshes.new('Braid'); me.from_pydata(vs_, [], fs_); uvb = me.uv_layers.new(name='UVMap')
+    for pg in me.polygons:
+        pg.use_smooth = True
+        for li in pg.loop_indices:
+            vi = me.loops[li].vertex_index; uvb.data[li].uv = (((vi % 8) / 8) * 2, ((vi // 8) % 7) / 7)
+    ob = bpy.data.objects.new('Braid', me); sc.collection.objects.link(ob); ob.data.materials.append(bpy.data.materials['Hair'])
+    for bn in MAP: ob.vertex_groups.new(name=bn)
+    for vi in range(len(vs_)):
+        wn = min(1, (vi // 56) / 13) * .5; ob.vertex_groups['Head'].add([vi], 1 - wn, 'REPLACE'); ob.vertex_groups['Neck'].add([vi], wn, 'REPLACE')
+    ob.parent = arm; md = ob.modifiers.new('Rig', 'ARMATURE'); md.object = arm
 # barba: casca curta sobre o rosto (fios curvos com recorte, bordas pelo próprio recorte dos fios), três desenhos
 if not fem and P.get('beards', ALL):
     BEARD_M = hair_mat('Beard', curl_tex('BeardTex', n=26000, seed=12, ln=(6, 14), bg=.6), cut=.3, rough=.75)
@@ -834,7 +879,7 @@ print('OK', out, 'altura', round(max(v.z for v in VB if True) , 2))
 if RENDER:
     if 'show' in P:  # prévia de um corte/barba: esconde as outras peças de cabelo
         for o in sc.objects:
-            if o.name in ('Hair', 'HairTied', 'HairTiedCards', 'BunM', 'HairCards', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Beard', 'Goatee', 'Mustache', 'HairCurlyCards', 'HairFringe', 'BeardEdge', 'GoateeEdge', 'MustacheEdge', 'Cap', 'CapBrim', 'Visor', 'VisorBrim', 'Headband') and o.name.replace('Edge', '').replace('Brim', '') not in P['show']: o.hide_render = True
+            if o.name in ('Hair', 'HairTied', 'HairTiedCards', 'BunM', 'HairCards', 'HairQuiff', 'HairVol', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Braid', 'Beard', 'Goatee', 'Mustache', 'HairCurlyCards', 'HairFringe', 'BeardEdge', 'GoateeEdge', 'MustacheEdge', 'Cap', 'CapBrim', 'Visor', 'VisorBrim', 'Headband') and o.name.replace('Edge', '').replace('Brim', '') not in P['show']: o.hide_render = True
     for o in sc.objects:
         if o.name in P.get('hideParts', []) or o.name.split('.')[0] in P.get('hideParts', []): o.hide_render = True
     # prévia: Cycles na CPU, luz de sol + preenchimento, câmera frontal 3/4

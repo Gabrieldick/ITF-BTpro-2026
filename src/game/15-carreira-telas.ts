@@ -187,7 +187,7 @@ function crSettingsHTML() {
     + '<p class="section-label">Save</p><p class="cr-note">Apagar a carreira não tem volta (exporte o save antes, no botão do topo).</p><div class="cta-row"><button class="ghost sm" id="crReset">Apagar carreira</button></div></div>';
 }
 // aparência do seu jogador: dá para mudar a qualquer momento da carreira (vale a partir da próxima partida)
-const HAIR_ST = [['', 'Automático'], ['curto', 'Curto'], ['raspado', 'Raspado'], ['careca', 'Careca'], ['cacheado', 'Cacheado'], ['topete', 'Topete'], ['moicano', 'Moicano'], ['longo', 'Longo'], ['rabo', 'Rabo de cavalo'], ['coque', 'Coque (samurai nos homens)'], ['tranca', 'Trança']];
+const HAIR_ST = [['', 'Automático'], ['curto', 'Curto'], ['raspado', 'Raspado'], ['careca', 'Careca'], ['cacheado', 'Cacheado'], ['topete', 'Topete'], ['volumoso', 'Volumoso (sobe mais)'], ['moicano', 'Moicano'], ['longo', 'Longo'], ['rabo', 'Rabo de cavalo'], ['coque', 'Coque (samurai nos homens)'], ['tranca', 'Trança']];
 const BUILDS = [['fino', 'Muito magro'], ['esguio', 'Magro'], ['atletico', 'Atlético'], ['forte', 'Forte (musculoso)'], ['compacto', 'Pesado']]; // só a aparência
 const BEARDS = [['', 'Sem barba'], ['barba', 'Barba'], ['cavanhaque', 'Cavanhaque'], ['bigode', 'Bigode']];
 const ACCS = [['cap', 'Boné'], ['visor', 'Viseira'], ['band', 'Faixa'], ['none', 'Nada']];

@@ -122,9 +122,9 @@ const COUNTRY_W = [['BRA', .42], ['ITA', .2], ['ESP', .1], ['FRA', .06], ['RUS',
 // tons de pele (do mais claro ao mais escuro) e cores de cabelo: naturais (castanhos, loiros, ruivos, grisalhos) e, só para
 // quem escolhe na carreira, as tingidas (platinado, rosa, azul, verde, roxo, laranja)
 const SKINS = ['#f7e1cf', '#f1cfae', '#ebc29d', '#e2b48f', '#d9a882', '#d2a07a', '#c68a5e', '#b97d55', '#a8704a', '#9a6342', '#8d5a3b', '#7a4b30', '#6b4229', '#553422', '#3f2618'];
-const HAIRS_NAT = ['#0d0907', '#120c08', '#2b1d14', '#3a2615', '#4a301c', '#5a3a1e', '#6a3f1d', '#7a5a3a', '#8b5a2b', '#a8743a', '#c99a5a', '#d8b87a', '#e8d3a0', '#b5502a', '#8c2f1a', '#8f8f8f', '#cfcfcf'];
-const HAIRS = HAIRS_NAT.concat(['#f2f0e6', '#e24a8a', '#3a6fd8', '#2fb37a', '#8a4fd8', '#ff6a2a']);
-const HAIRS_NPC = HAIRS_NAT.slice(0, 15); // gerados: sem grisalho nem tingido
+const HAIRS_NAT = ['#0d0907', '#120c08', '#2b1d14', '#3a2615', '#4a301c', '#5a3a1e', '#6a3f1d', '#7a5a3a', '#8b5a2b', '#a8743a', '#c99a5a', '#d8b87a', '#e8d3a0', '#b5502a', '#8c2f1a', '#a8341c', '#8f8f8f', '#cfcfcf'];
+const HAIRS = HAIRS_NAT.concat(['#f2f0e6', '#d62828', '#e24a8a', '#3a6fd8', '#2fb37a', '#8a4fd8', '#ff6a2a']); // (#a8341c ruivo; #d62828 vermelho tingido)
+const HAIRS_NPC = HAIRS_NAT.slice(0, 16); // gerados: sem grisalho nem tingido
 const STYLES = {
   atacante: { nome: 'Atacante', d: { forca: 5, smash: 6, saque: 4, def: -4, curta: -4, lob: -3, backhand: -2, vel: 0 } },
   defensor: { nome: 'Defensor', d: { def: 6, vel: 5, backhand: 3, smash: -4, forca: -4, saque: -3, curta: 0, lob: 0 } },
@@ -421,7 +421,7 @@ async function crRepoSaves() {
 const crSaveErr = () => saveErr;
 async function crImportUrl(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) return { ok: false, msg: 'Não consegui baixar o save (' + r.status + ').' }; return crImportData(await r.text()); }
 function crSyncChars() {
-  if ($s.CR) crSignature();
+  crSignature();
   // o parceiro joga melhor quando está contente e pior quando está insatisfeito
   const mb = $s.CR && $s.CR.partner ? crMoodBonus() + ([0, 0, 1, 2][crChemLv()] || 0) : 0, mbB = {}; if (mb) for (const [k] of ATTRS) mbB[k] = mb; // humor + química
   // na partida cada um joga com a sua fase (e os reais com a evolução da carreira)
@@ -1584,7 +1584,8 @@ function crSigCheck() {
   return 'A ' + $s.CR.master.brand + ' fez a sua raquete própria! Personalize cores e desenho na Loja (Raquetes).';
 }
 function crSignature() {
-  if (!$s.CR.rackets || !$s.CR.rackets.includes('assinatura')) return;
+  // sem raquete própria nesta carreira: tira a de outra carreira (a lista de raquetes é do jogo todo)
+  if (!$s.CR || !$s.CR.rackets || !$s.CR.rackets.includes('assinatura')) { delete RACKET_STATS.assinatura; return; }
   setSignatureArt($s.CR.sigLook, $s.CR.master ? $s.CR.master.brand : shortOf($s.CR.me), $s.CR.master ? shortOf($s.CR.me) : '');
   const b = crSigB();
   const mb = $s.CR.master ? $s.CR.master.brand + ' ' : '';

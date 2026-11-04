@@ -107,7 +107,7 @@ const RACKET_STATS = {
   zenite: { nome: 'Nux NG17 Luxury', preco: 330000, desc: 'A melhor raquete do mundo: tudo no máximo.', b: { forca: 4, smash: 4, saque: 3, def: 3, curta: 2, lob: 2, backhand: 1 } },
 };
 // visual de cada jogador (penteado, barba, faixa, óculos): derivado do id, sempre o mesmo para a mesma pessoa
-const HAIR_M = ['curto', 'curto', 'raspado', 'careca', 'cacheado', 'topete', 'longo', 'moicano'];
+const HAIR_M = ['curto', 'curto', 'raspado', 'careca', 'cacheado', 'topete', 'volumoso', 'longo', 'moicano'];
 const HAIR_F = ['rabo', 'rabo', 'coque', 'longo', 'curto', 'tranca', 'cacheado'];
 const LENS = ['#0b0d10', '#0b0d10', '#1d4fd8', '#e8700a', '#7a1fa2', '#0f8a5f'];
 function lookExtras(c) {

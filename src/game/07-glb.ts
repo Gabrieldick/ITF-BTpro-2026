@@ -43,7 +43,7 @@ function attachSkin(p, gltf) {
     if (o.isMesh) {
       // sombra: detalhes pequenos e as mechas recortadas (olhos, cílios, óculos, barba, cards de cabelo) não aparecem no mapa
       // de sombra (~1,4 cm por pixel) e custavam metade da passada de sombra; a casca do cabelo já faz a silhueta da cabeça
-      o.castShadow = !/^(Eyes|Lashes|Brow|Glasses|Beard|Goatee|Mustache|HairFringe|HairCards|HairCurlyCards|HairTiedCards|HairLong|HairBob|PonyCards|Teeth|Tongue)/.test(o.name); o.receiveShadow = true; o.frustumCulled = false;
+      o.castShadow = !/^(Eyes|Lashes|Brow|Glasses|Beard|Goatee|Mustache|HairFringe|HairCards|HairQuiff|HairVol|HairCurlyCards|HairTiedCards|HairLong|HairBob|PonyCards|Teeth|Tongue)/.test(o.name); o.receiveShadow = true; o.frustumCulled = false;
       if (o.material) {
         o.material = o.material.clone(); o.material.envMapIntensity = .6;
         // barba e raspado ficam a 1–2 mm da pele: puxados para a frente na profundidade (não piscam com a pele de longe)
@@ -171,7 +171,7 @@ function skinShader(m, U) {
 const skinUniforms = () => ({ uHead: { value: new THREE.Vector3(0, 1.6, .045) }, uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 }, uSway: { value: new THREE.Vector3() } });
 const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
-const HAIR_PARTS = ['Hair', 'HairTied', 'HairTiedCards', 'BunM', 'HairCards', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards'];
+const HAIR_PARTS = ['Hair', 'HairTied', 'HairTiedCards', 'BunM', 'HairCards', 'HairQuiff', 'HairVol', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Braid'];
 const BEARDS = ['Beard', 'Goatee', 'Mustache'];
 // estampa da blusa no modelo realista: desenhada no shader pela posição de repouso do tecido (acompanha o tecido no
 // movimento); logo do patrocinador no peito
@@ -325,12 +325,12 @@ function dressSkin(p, root) {
   BOTS_ALL.forEach(n => show(n, BP.includes(n)));
   // cabelo: cada corte é um conjunto de peças do arquivo (casca, mechas, borda, rabo, coque…); barba idem
   const hs = look.hairStyle || '';
-  const cut = fem ? ({ coque: ['Hair', 'HairCards', 'HairFringe', 'Bun'], longo: ['Hair', 'HairLong', 'HairFringe'], cacheado: ['Hair', 'HairLong', 'HairFringe'], curto: ['Hair', 'HairBob', 'HairFringe'] }[hs] || ['Hair', 'HairCards', 'HairFringe', 'Pony', 'PonyCards'])
-    : ({ coque: ['HairTied', 'HairTiedCards', 'HairFringe', 'BunM'], careca: [], raspado: ['HairBuzz'], moicano: ['HairBuzz', 'HairMohawk'], cacheado: ['HairCurly', 'HairCurlyCards'], longo: ['Hair', 'HairLong', 'HairFringe'] }[hs] || ['Hair', 'HairCards', 'HairFringe']);
+  const cut = fem ? ({ coque: ['Hair', 'HairCards', 'HairFringe', 'Bun'], longo: ['Hair', 'HairLong', 'HairFringe'], cacheado: ['Hair', 'HairLong', 'HairFringe'], curto: ['Hair', 'HairBob', 'HairFringe'], tranca: ['Hair', 'HairCards', 'HairFringe', 'Braid'] }[hs] || ['Hair', 'HairCards', 'HairFringe', 'Pony', 'PonyCards'])
+    : ({ coque: ['HairTied', 'HairTiedCards', 'HairFringe', 'BunM'], careca: [], raspado: ['HairBuzz'], moicano: ['HairBuzz', 'HairMohawk'], cacheado: ['HairCurly', 'HairCurlyCards'], topete: ['Hair', 'HairQuiff', 'HairFringe'], volumoso: ['Hair', 'HairVol', 'HairFringe'], longo: ['Hair', 'HairLong', 'HairFringe'] }[hs] || ['Hair', 'HairCards', 'HairFringe']);
   const bd = fem ? '' : ({ barba: 'Beard', cavanhaque: 'Goatee', bigode: 'Mustache' }[look.beard] || '');
   // boné/viseira/faixa: o boné esconde o volume do cabelo (fica a base curta por baixo; o rabo sai por trás)
   const cap = !!look.cap, vis = !cap && !!look.visor, band = !cap && !vis && !!look.headband;
-  const under = cap ? ['HairCards', 'HairFringe', 'HairMohawk', 'HairCurlyCards', 'Bun', 'BunM', 'HairTiedCards'] : vis || band ? ['HairFringe', 'HairMohawk'] : [];
+  const under = cap ? ['HairCards', 'HairQuiff', 'HairVol', 'HairFringe', 'HairMohawk', 'HairCurlyCards', 'Bun', 'BunM', 'HairTiedCards'] : vis || band ? ['HairFringe', 'HairMohawk'] : [];
   HAIR_PARTS.forEach(n => show(n, cut.includes(n) && !under.includes(n)));
   if (cap && hs === 'cacheado' && !fem) show('Hair', true);
   show('Cap', cap); show('CapBrim', cap); show('Visor', vis); show('VisorBrim', vis); show('Headband', band);
