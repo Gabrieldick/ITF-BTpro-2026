@@ -74,7 +74,7 @@ function aiTiming(p, shot, q) {
     if (res === 'cedo' && ball.pos.y < 2.05) res = 'voleio';
     noteTiming(p, res === 'perfeito');
     if (res === 'voleio') return { q: Math.max(q, lerp(.66, .86, skN)), mod: { speedMul: lerp(1, 1.12, skN), noiseMul: lerp(1.15, .85, skN), volley: true } };
-    if (res === 'perfeito') return { q: Math.max(q, lerp(.72, .92, skN)), mod: { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true } };
+    if (res === 'perfeito') return { q: Math.max(q, lerp(.72, .92, skN)), mod: { speedMul: lerp(1.1, 1.24, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true, meterSmash: true } };
     if (res === 'cedo') return { q, mod: { speedMul: lerp(.97, .6, amt), noiseMul: lerp(1.05, 1.8, amt), misBoost: (1 - skN) * .08 + amt * .2, meterSmash: true } };
     return { q, mod: { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt), meterSmash: true } };
   }
@@ -360,7 +360,7 @@ function updateHuman(dt, c = localCtl()) {
         // atributo: com smash baixo, mesmo o perfeito sai mais fraco e às vezes erra
         const skN = Math.min(1, attrK(p, 'smash'));
         if (res === 'voleio') { q = Math.max(q, lerp(.66, .86, skN)); mod = { speedMul: lerp(1, 1.12, skN), noiseMul: lerp(1.15, .85, skN), volley: true }; }
-        else if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.02, 1.22, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true }; }
+        else if (res === 'perfeito') { q = Math.max(q, lerp(.72, .92, skN)); mod = { speedMul: lerp(1.1, 1.24, skN), noiseMul: lerp(1.05, .6, skN), oppMissBoost: lerp(.06, .28, skN), misBoost: (1 - skN) * .1, perfect: true }; }
         // fora do verde: amarelo perde pouco, laranja bastante, vermelho erra muito (cedo = fraco, tarde = erra mais)
         else if (res === 'cedo') mod = { speedMul: lerp(.97, .6, amt), noiseMul: lerp(1.05, 1.8, amt), misBoost: (1 - skN) * .08 + amt * .2 };
         else mod = { speedMul: 1.04, noiseMul: lerp(1.15, 2, amt), misBoost: lerp(.05, .55, amt) };
@@ -486,7 +486,9 @@ function bestPlay(p, y) {
   if (Math.random() < A.fav) return fav;
   const rest = opts.filter(k => k !== fav); return rest[Math.floor(Math.random() * rest.length)];
 }
-function chooseAIShot(p, y) {
+// bola acima da cabeça (~2,2 m) não é defesa (bloqueio na frente do corpo): vira lob, como para quem joga
+function chooseAIShot(p, y) { const sh = chooseAIShot0(p, y); return sh === 'defesa' && y >= 2.2 * hScale(p) ? 'lob' : sh; }
+function chooseAIShot0(p, y) {
   if (aiModeOf(p) !== 'planejadora') return chooseShotRule(p, y);
   // IA Planejadora: a busca só assume quando enxerga uma bola quase vencedora; no resto, as regras treinadas
   // (no simulador, a busca sozinha perdia para as regras treinadas; só nas bolas decisivas ela soma)

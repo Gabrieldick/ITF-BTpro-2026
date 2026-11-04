@@ -52,7 +52,9 @@ function canHit(p, type, scale) {
   if (ball.state !== 'live' || S.lastTeam === p.team) return false;
   if (p.team === 0 ? ball.pos.z < .05 : ball.pos.z > -.05) return false;
   const dh = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z, type === 'smash' ? 0 : Math.max(0, Math.abs(ball.pos.y - 1.05 * hScale(p)) - .55) * .7);
-  const maxY = (type === 'smash' ? 3.0 : 2.6) * hScale(p);
+  // defesa (bloqueio na frente do corpo) não alcança bola acima da cabeça como o lob, a curta ou o smash: até ~2,2 m
+  // (a CPU passa 'defesa' para todo golpe que não é smash, então o limite vale só para quem joga)
+  const maxY = (type === 'smash' ? 3.0 : type === 'defesa' && p.isHuman ? 2.2 : 2.6) * hScale(p);
   if (ball.pos.y < .8) scale = (scale || 1) * (1 + .14 * shortK(p));
   if (p.dive && p.dive.t < .5 && ball.pos.y < 1.3) scale = (scale || 1) * 1.3; // no mergulho o braço vai até o fim
   return dh <= reachOf(type, p) * (scale || 1) && ball.pos.y >= .12 && ball.pos.y <= maxY;
@@ -227,6 +229,9 @@ function doHit(p, type, q, isServe, mod) {
       mod.oppMissBoost = (mod.oppMissBoost || 0) + .14 * k; if (full && pk > .35) spec.label = 'SMASH BOMBA';
     }
   }
+  // smash com timing bom (de qualquer nível) sai batido para baixo, com efeito: rápido e baixo em vez de subir para passar a
+  // rede; o perfeito com mais efeito. Timing ruim (barra bem fora: bola lenta) não tem: pode sair balão ou na rede
+  if (!isServe && key === 'smash' && !finisher && !mod.volley && !pop && ball.pos.y > 1.9 && (mod.speedMul || 1) >= .85) topK = Math.max(topK, mod.perfect ? .4 : .15);
   if (!pop && key === 'lob' && mod.lobPower !== undefined) {
     const lp = clamp(mod.lobPower, 0, 1);
     // lob com pouca força sai chutado: baixo, rápido e caindo forte; só o carregado sobe alto e devagar
