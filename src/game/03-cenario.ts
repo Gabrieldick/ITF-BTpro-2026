@@ -596,18 +596,20 @@ function standingCrowd(spots) {
   });
   ARENA.crowd.push({ body, head, seats, ph: seats.map(() => Math.random() * 6), stand: true });
 }
-function sideCourt(cx) {
+function sideCourt(cx, cz = 0) {
   const g = new THREE.Group(), hw = HALF_W.dupla, tm = mat('#1f4fb8', { roughness: .6 });
+  g.position.z = cz;
   const T = (w, l, x, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, .008, l), tm); m.position.set(cx + x, .004, z); g.add(m); };
   T(hw * 2, .05, 0, C.halfL); T(hw * 2, .05, 0, -C.halfL); T(.05, C.halfL * 2, hw, 0); T(.05, C.halfL * 2, -hw, 0);
   const nt = new THREE.Mesh(new THREE.PlaneGeometry(C.netHalf * 2, 1), netMat); nt.position.set(cx, 1.2, 0); g.add(nt);
   const bd = new THREE.Mesh(new THREE.BoxGeometry(C.netHalf * 2, .06, .012), mat('#f6f4ee')); bd.position.set(cx, 1.68, 0); g.add(bd);
   [-1, 1].forEach(sd => { const po = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, 1.8, 8), mat('#d8dde2', { metalness: .5, roughness: .4 })); po.position.set(cx + sd * (C.netHalf + .1), .9, 0); g.add(po); });
   ARENA.group.add(g);
-  SIDE.courts.push({ cx, ph: Math.random() * 10, rally: 0 });
+  SIDE.courts.push({ cx, cz, ph: Math.random() * 10, rally: 0 });
 }
+// quadras vizinhas com jogo: cada item é o x do centro (no z da quadra principal) ou [x, z]
 function sideGames(xs) {
-  SIDE.courts = []; xs.forEach(sideCourt);
+  SIDE.courts = []; xs.forEach(c => Array.isArray(c) ? sideCourt(c[0], c[1]) : sideCourt(c));
   const n = xs.length * 4; SIDE.n = n;
   const mk = (gm, m, k) => { const im = new THREE.InstancedMesh(gm, m, k); im.frustumCulled = false; ARENA.group.add(im); return im; };
   SIDE.players = [mk(new THREE.CapsuleGeometry(.12, .6, 3, 8), new THREE.MeshStandardMaterial({ color: col('#c68a5e'), roughness: .85 }), n),
@@ -626,7 +628,7 @@ function updateSideGames(dt) {
     const pos = [];
     for (let j = 0; j < 4; j++) {
       const team = j < 2 ? 0 : 1, side = j % 2 ? 1 : -1, zz = (team ? -1 : 1) * (5.2 + Math.sin(t * .7 + j + k) * 1.2);
-      pos.push([ct.cx + side * hw * .5 + Math.sin(t * 1.3 + j * 2 + k) * .6, zz]);
+      pos.push([ct.cx + side * hw * .5 + Math.sin(t * 1.3 + j * 2 + k) * .6, ct.cz + zz]);
     }
     const a = pos[from * 2 + (n % 4 < 2 ? 0 : 1)], b = pos[(1 - from) * 2 + ((n + 1) % 4 < 2 ? 0 : 1)];
     const bx = a[0] + (b[0] - a[0]) * f, bz = a[1] + (b[1] - a[1]) * f, by = 1 + Math.sin(Math.PI * f) * 2.6;
@@ -937,21 +939,40 @@ function indoorHall(a) {
   adXs.forEach((x, i) => { const t = adTex(i + 2, true); const ad = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .15 })); ad.position.set(x, adY, Z1 - .06); ad.rotation.y = Math.PI; ARENA.group.add(ad); });
   const dx = small ? HX - 1.6 : 17; door(-dx, Z1 - .05, Math.PI, 2.2, 'ENTRADA', '#17324d', '#ffffff'); door(dx, Z1 - .05, Math.PI, 1.0, 'SAÍDA', '#1b9e4b', '#ffffff', '🏃');
 }
+// loja/quiosque de marca no evento: vitrine, balcão, toldo, letreiro em cima e gente na frente
+function shopKiosk(x, z, i, ry, spots) {
+  const [, bg, fg] = ADS[i % ADS.length], g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.8, 3), mat('#f4f1ea', { roughness: .7 })); body.position.y = 1.4; g.add(body);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(4.9, .25, 3.3), mat(bg, { roughness: .6 })); roof.position.y = 2.92; g.add(roof);
+  const t = adTex(i, true), sb = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1, .12), mat(bg)); sb.position.set(0, 3.6, 1.2); g.add(sb);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.3, .92), mat('#ffffff', { map: t, emissive: col('#ffffff'), emissiveMap: t, emissiveIntensity: .2 })); sign.position.set(0, 3.6, 1.265); g.add(sign);
+  const awn = new THREE.Mesh(new THREE.BoxGeometry(4.6, .05, 1.3), mat(fg === '#ffffff' || fg === '#f4f1ea' ? bg : fg, { roughness: .8 })); awn.position.set(0, 2.5, 2.05); awn.rotation.x = .3; g.add(awn);
+  const win = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.3, .05), mat('#1b2a36', { roughness: .2, metalness: .4 })); win.position.set(0, 1.55, 1.51); g.add(win);
+  const rk = mat(bg, { roughness: .5 }); for (let k = 0; k < 6; k++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .03, 14), rk); r.rotation.x = Math.PI / 2; r.position.set(-1.5 + k * .6, 1.75, 1.55); g.add(r); } // raquetes na vitrine
+  const ct = new THREE.Mesh(new THREE.BoxGeometry(4.2, .95, .5), mat(bg, { roughness: .6 })); ct.position.set(0, .48, 1.8); g.add(ct);
+  g.position.set(x, 0, z); g.rotation.y = ry; ARENA.group.add(g);
+  const c = Math.cos(ry), sn = Math.sin(ry);
+  for (let k = 0; k < 3; k++) { const lx = rand(-1.8, 1.8), lz = rand(2.6, 4); if (Math.random() < .8) spots.push([x + lx * c + lz * sn, z - lx * sn + lz * c]); }
+}
 // evento ao ar livre numa praça de cidade sem praia: quadra numa caixa de areia, piso de blocos, ruas, prédios em volta,
-// árvores e torres de iluminação (sem mar, dunas, palmeiras nem o calçadão da orla)
+// árvores e torres de iluminação (sem mar, dunas, palmeiras nem o calçadão da orla). Evento grande (BT200 para cima):
+// complexo com várias quadras com jogo e arquibancadas pequenas, rua de lojas das marcas e de comida, telão e pórtico
 const URB_TEX = [];
 function urbanSite(a) {
-  const curbM = mat('#c4c8cc', { roughness: .85 });
-  sandBox(COURT_BOX, curbM, true);
-  groundAround([COURT_BOX], -38, 38, -38, 38, new THREE.MeshStandardMaterial({ color: col('#d6d2cc'), map: floorTex('praca'), roughness: .9 }), 4, .012);
+  const big = a.size >= 2, P = big ? 62 : 38, curbM = mat('#c4c8cc', { roughness: .85 }), boxes = [COURT_BOX];
+  const courts = big ? [[-26, 0], [26, 0], [-44, 0], [44, 0], [-32, -42], [-11, -42], [11, -42], [32, -42], [-16, 42], [16, 42]] : [];
+  courts.forEach(([x, z]) => boxes.push([x - 5, x + 5, z - 12.5, z + 12.5]));
+  boxes.forEach((b, i) => sandBox(b, curbM, i === 0));
+  if (courts.length) sideGames(courts);
+  groundAround(boxes, -P, P, -P, P, new THREE.MeshStandardMaterial({ color: col('#d6d2cc'), map: floorTex('praca'), roughness: .9 }), 4, .012);
   // ruas em volta da praça (com faixa) e terreno mais longe
-  const road = mat('#45484d', { roughness: .95 });
-  groundAround([[-38, 38, -38, 38]], -50, 50, -50, 50, road, 4, .012);
+  const road = mat('#45484d', { roughness: .95 }), R = P + 12;
+  groundAround([[-P, P, -P, P]], -R, R, -R, R, road, 4, .012);
   const lineM = new THREE.MeshStandardMaterial({ color: col('#e8c33a'), roughness: .7, polygonOffset: true, polygonOffsetFactor: -2 });
-  floorStripe([-38, 38, -38, 38], 6, lineM);
+  floorStripe([-P, P, -P, P], 6, lineM);
   const kerb = mat('#b9b4aa', { roughness: .9 });
-  [[0, -38.1, 76.4, .25], [0, 38.1, 76.4, .25], [-38.1, 0, .25, 76.4], [38.1, 0, .25, 76.4]].forEach(([x, z, w, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, .14, d), kerb); m.position.set(x, .07, z); ARENA.group.add(m); });
-  groundAround([[-50, 50, -50, 50]], -700, 700, -700, 700, mat('#7d8a5e', { roughness: 1 }), 50, .005);
+  [[0, -P - .1, 2 * P + .4, .25], [0, P + .1, 2 * P + .4, .25], [-P - .1, 0, .25, 2 * P + .4], [P + .1, 0, .25, 2 * P + .4]].forEach(([x, z, w, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, .14, d), kerb); m.position.set(x, .07, z); ARENA.group.add(m); });
+  groundAround([[-R, R, -R, R]], -700, 700, -700, 700, mat('#7d8a5e', { roughness: 1 }), 50, .005);
   // prédios em volta (texturas de janela reaproveitadas)
   if (!URB_TEX.length) ['#d9cdb8', '#c4ad88', '#aebcc7', '#d2b8aa', '#a9b3ab', '#bcc6d2', '#b07d62', '#8fa3a8'].forEach(base => {
     const t = canvasTex(64, 128, (x, w, h) => { x.fillStyle = base; x.fillRect(0, 0, w, h); for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) { x.fillStyle = Math.random() < .08 ? '#f4e7b8' : Math.random() < .5 ? '#2c3e50' : '#3b5268'; x.fillRect(4 + c * 15, 6 + r * 15.5, 10, 9); } });
@@ -964,9 +985,10 @@ function urbanSite(a) {
     const m = new THREE.Mesh(g, bmats[Math.floor(Math.random() * bmats.length)]); m.position.set(x, h / 2, z); ARENA.group.add(m);
     const rf = new THREE.Mesh(new THREE.BoxGeometry(w * .9, .8, d * .9), roofM); rf.position.set(x, h + .4, z); ARENA.group.add(rf);
   };
+  const B = R + 8;
   for (const sd of [-1, 1]) {
-    for (let x = -80; x < 80;) { const w = rand(10, 18); building(x + w / 2, sd * (58 + rand(0, 6)), w, rand(10, 14), rand(9, 40)); x += w + rand(1.5, 4); }
-    for (let z = -50; z < 50;) { const w = rand(10, 18); building(sd * (58 + rand(0, 6)), z + w / 2, rand(10, 14), w, rand(9, 40)); z += w + rand(1.5, 4); }
+    for (let x = -B - 20; x < B + 20;) { const w = rand(10, 18); building(x + w / 2, sd * (B + rand(0, 6)), w, rand(10, 14), rand(9, 40)); x += w + rand(1.5, 4); }
+    for (let z = -B + 8; z < B - 8;) { const w = rand(10, 18); building(sd * (B + rand(0, 6)), z + w / 2, rand(10, 14), w, rand(9, 40)); z += w + rand(1.5, 4); }
   }
   // árvores na beira da praça
   const trunkM = mat('#6b4b32', { roughness: .9 }), leafM = [mat('#4e7a3a', { roughness: 1, flatShading: true }), mat('#5f8a43', { roughness: 1, flatShading: true }), mat('#3f6a33', { roughness: 1, flatShading: true })];
@@ -974,8 +996,8 @@ function urbanSite(a) {
     const h = rand(3.2, 4.6), tr = new THREE.Mesh(new THREE.CylinderGeometry(.14, .2, h, 7), trunkM); tr.position.set(x, h / 2, z); tr.castShadow = true; ARENA.group.add(tr);
     const r = rand(1.8, 2.6), cn = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), leafM[Math.floor(Math.random() * 3)]); cn.position.set(x, h + r * .6, z); cn.scale.y = .8; cn.castShadow = true; ARENA.group.add(cn);
   };
-  for (let t = -34; t <= 34; t += rand(5.5, 7.5)) { tree(t, -35 + rand(-.6, .6)); tree(t, 35 + rand(-.6, .6)); if (Math.abs(t) > 17) { tree(-35 + rand(-.6, .6), t); tree(35 + rand(-.6, .6), t); } }
-  // torres de luz nos cantos, viradas para a quadra
+  const T = P - 3; for (let t = -T + 1; t <= T - 1; t += rand(5.5, 7.5)) { tree(t, -T + rand(-.6, .6)); tree(t, T + rand(-.6, .6)); if (Math.abs(t) > 17) { tree(-T + rand(-.6, .6), t); tree(T + rand(-.6, .6), t); } }
+  // torres de luz nos cantos da quadra central, viradas para ela
   const poleM = mat('#7d848c', { metalness: .5, roughness: .45 }), lampM = new THREE.MeshBasicMaterial({ color: col('#fff6d8') });
   for (const [x, z] of [[-17, -20], [17, -20], [-17, 20], [17, 20]]) {
     const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z); ARENA.group.add(g);
@@ -983,6 +1005,40 @@ function urbanSite(a) {
     const fr = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, .25), poleM); fr.position.set(0, 16.4, .2); fr.rotation.x = .35; g.add(fr);
     for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) { const l = new THREE.Mesh(new THREE.BoxGeometry(.6, .5, .1), lampM); l.position.set(-1.1 + i * .73, 16.05 + j * .65, .38 - j * .22); l.rotation.x = .35; g.add(l); }
   }
+  if (!big) return;
+  // quadras do complexo: arquibancada pequena de um lado e gente em pé em volta
+  const seats = [], spots = [];
+  courts.forEach(([x, z]) => {
+    const sd = z === 0 ? Math.sign(x) : (x < 0 ? -1 : 1);
+    seats.push(...bleachers(sd, x + sd * 5.4, z, 16, 3, a.seat || a.board[0], 'z'));
+    for (let k = 0; k < 7; k++) spots.push([x - sd * rand(5.6, 6.6), z + rand(-9, 9)]);
+    for (let k = 0; k < 3; k++) spots.push([x + rand(-3.5, 3.5), z + (z > 0 ? 1 : -1) * rand(13.2, 14.2)]);
+  });
+  crowd(seats);
+  // rua de lojas: marcas de raquete atrás do fundo da quadra central (vista de frente) e comida/bebida do outro lado
+  [-24, -18.5, -13, -7.5, 7.5, 13, 18.5, 24].forEach((x, i) => { shopKiosk(x, -24.5, i, 0, spots); shopKiosk(x, 25, 8 + i, Math.PI, spots); });
+  [-3.4, 3.4].forEach((x, i) => { featherFlag(x, -23.5, i * 3 + 2); featherFlag(x, 24, i * 3 + 5); });
+  for (let k = 0; k < 40; k++) spots.push([rand(-26, 26), rand(-21.5, -20)], [rand(-26, 26), rand(21, 22.5)]); // gente andando entre as lojas
+  standingCrowd(spots);
+  // telão na diagonal da quadra central e pórtico de entrada com o nome do evento
+  const scr = canvasTex(512, 288, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, a.board[0]); g.addColorStop(1, '#0b0f14'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#e2364a'; x.fillRect(24, 22, 120, 40); x.fillStyle = '#fff'; x.font = 'bold 28px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('AO VIVO', 84, 43);
+    x.font = 'bold 44px sans-serif'; x.fillText(a.text || 'BEACH TENNIS', w / 2, h / 2 + 4); x.fillStyle = a.board[1]; x.font = 'bold 30px sans-serif'; x.fillText('QUADRA CENTRAL', w / 2, h / 2 + 56);
+  });
+  const truss = mat('#6c737b', { metalness: .6, roughness: .4 });
+  for (const sx of [-1, 1]) {
+    const g = new THREE.Group(); g.position.set(sx * 19, 0, -15); g.rotation.y = sx * -.75; ARENA.group.add(g);
+    [-3.1, 3.1].forEach(px => { const lg = new THREE.Mesh(new THREE.BoxGeometry(.35, 9, .35), truss); lg.position.set(px, 4.5, 0); g.add(lg); });
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(6.6, 3.9, .3), mat('#111418')); fr.position.set(0, 6.6, 0); g.add(fr);
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 3.5), new THREE.MeshBasicMaterial({ map: scr })); sc.position.set(0, 6.6, .16); g.add(sc);
+  }
+  const arch = new THREE.Group(); arch.position.set(0, 0, 33); arch.rotation.y = Math.PI; ARENA.group.add(arch);
+  const am = mat(a.board[0], { roughness: .6 });
+  [-5, 5].forEach(px => { const c = new THREE.Mesh(new THREE.BoxGeometry(.8, 5.5, .8), am); c.position.set(px, 2.75, 0); arch.add(c); });
+  const at = canvasTex(512, 96, (x, w, h) => { x.fillStyle = a.board[0]; x.fillRect(0, 0, w, h); x.fillStyle = a.board[1]; x.fillRect(0, h - 10, w, 10); x.fillStyle = '#fff'; x.font = 'bold 50px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(a.text || 'BEACH TENNIS', w / 2, h / 2 - 4); });
+  const ab = new THREE.Mesh(new THREE.BoxGeometry(11, 1.5, .5), am); ab.position.set(0, 6, 0); arch.add(ab);
+  const atm = mat('#ffffff', { map: at }); [1, -1].forEach(f => { const pl = new THREE.Mesh(new THREE.PlaneGeometry(10.8, 1.4), atm); pl.position.set(0, 6, f * .26); if (f < 0) pl.rotation.y = Math.PI; arch.add(pl); });
 }
 // confete do título: papéis coloridos caindo sobre a quadra
 const CONF = { mesh: null, items: [], t: 0 };
