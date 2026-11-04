@@ -585,7 +585,7 @@ function pointTo(w, reason, kind) {
   if (S.rallyLog) S.rallyLog.push(S.rally);
   const ev = awardPoint(w);
   // fôlego: recupera um tanto fixo por ponto (+10%) e mais no fim de cada game (+15%); nunca acima do teto da partida
-  $s.players.forEach(q => staGain(q, ev === 'point' ? .1 : .25));
+  $s.players.forEach(q => staGain(q, ev === 'point' ? .08 : .25));
   updateLiveRating();
   let isTitle = false;
   if (ev === 'set' || ev === 'stb') S.deadT = 2.6;

@@ -15,15 +15,16 @@ import { localCtl, meterStep } from './12-controles';
 import { chooseAIServe, updateAI, updateHuman } from './16-ia';
 import { startCeremony } from './22-cerimonia';
 // stamina: gasta correndo no ponto (bem mais em arrancada), em cada golpe, salto e mergulho (quem tem mais velocidade/físico
-// cansa menos). A recuperação é por ponto (não pelo tempo parado): +10% a cada ponto, +25% no fim do game e +30% na troca de lado, até o teto que cai com a duração da partida
+// cansa menos). A recuperação é por ponto (não pelo tempo parado): +8% a cada ponto, +25% no fim do game e +30% na troca de lado, até o teto que cai com a duração da partida
 function staminaStep(dt) {
   for (const p of $s.players) {
     if (p.sta === undefined) p.sta = 1;
     if (S.mode === 'rally') {
       // andar e trotar quase não gasta: o custo vem da arrancada (acima de ~2,5 m/s), dos golpes, dos saltos e dos mergulhos
       const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.2 - .45 * Math.min(1, attrK(p, 'folego')); // fôlego alto cansa bem menos
-      // (quem joga no teclado corre sempre no máximo, sem meio-termo como a CPU: a corrida dele pesa 30% menos)
-      let d = dt * (.005 + .05 * Math.pow(clamp((sp - 2.5) / 2.8, 0, 1.2), 1.5) * (p.isHuman ? .7 : 1));
+      // (quem joga no teclado/controle corre sempre no máximo, sem meio-termo como a CPU: a corrida dele pesa 80% menos;
+      // medido no simulador, assim a corrida de quem joga gasta só um pouco mais que a da CPU). Base: o ponto em si cansa
+      let d = dt * (.008 + .05 * Math.pow(clamp((sp - 2.5) / 2.8, 0, 1.2), 1.5) * (p.isHuman ? .2 : 1));
       if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
       if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
       if (p.swing.t >= 0 && !p.staS) { p.staS = true; d += p.swing.type === 'smash' ? .022 : .012; } else if (p.swing.t < 0) p.staS = false; // cada golpe também cansa (o smash mais)
