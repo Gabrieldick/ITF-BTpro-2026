@@ -38,12 +38,15 @@ const LOB_MAX = 1.25;
 const KICK = [.15, .32]; // faixa do lob chutado perfeito, no começo da barra (~75 ms)
 // bola que vem de um lob alto cai mais rápido: a faixa perfeita do smash fica menor
 function smashZoneScale() { return clamp(1.2 - ((ball.apex || 3.5) - 3.5) * .12, .45, 1.2); }
-function smashIdealPoint() {
+const _optPt = new V3();
+// altura ótima do smash: o contato mais alto, com o braço esticado no salto (~2,65 m para 1,87 m de altura)
+const smashOptH = p => 2.65 * hScale(p);
+function smashIdealPoint(p) {
   if (ball.state !== 'live') return null;
-  const pos = ball.pos.clone(), vel = ball.vel.clone(); const dt = .01;
+  const pos = ball.pos.clone(), vel = ball.vel.clone(); const dt = .01, h = p ? smashOptH(p) : 2.45;
   for (let t = 0; t < 3; t += dt) {
     vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
-    if (vel.y < 0 && pos.y <= 2.45) return pos;
+    if (vel.y < 0 && pos.y <= h) return pos;
     if (pos.y < C.ballR) return pos;
   }
   return null;
@@ -56,7 +59,7 @@ function startMeter(kind, type, c = localCtl()) {
   if (kind === 'smash') {
     // a faixa verde fica parada; a velocidade da barra se ajusta para o verde coincidir com a chegada da bola
     // a faixa verde muda de lugar a cada smash (a velocidade da barra se ajusta para ela coincidir com a chegada da bola)
-    M.fill = .75; M.half = half * .8; M.center = c.smC || (.5 + Math.random() * .42); p.charging = true; M.ideal = smashIdealPoint();
+    M.fill = .75; M.half = half * .8; M.center = c.smC || (.5 + Math.random() * .42); p.charging = true; M.ideal = smashIdealPoint(p);
   }
   // lob: a barra sobe um pouco mais rápido que antes (.45 s até o fim da faixa normal) e a zona de erro lá em cima (LONGO) é menor para quem tem lob bom
   // dificuldade de timing: com menos estrelas, faixas do chutado e do alto maiores e a do lob longo (ruim) menor
@@ -100,6 +103,18 @@ function meterResult(c, cls, word, fillPct) {
   el.meter.className = cls; el.mRes.textContent = word; el.mFill.style.height = fillPct + '%';
 }
 const _ts = new V3();
+// segundos até a bola, descendo do lado de quem vai bater, passar pela altura ótima do smash (null se ela não sobe até lá)
+function timeToSmashOpt(p) {
+  if (ball.state !== 'live' || S.lastTeam === p.team) return null;
+  const pos = ball.pos.clone(), vel = ball.vel.clone(), h = smashOptH(p), dt = .01;
+  for (let t = 0; t < 2.5; t += dt) {
+    const side = p.team === 0 ? pos.z > .05 : pos.z < -.05;
+    if (side && vel.y < 0 && pos.y <= h) { _optPt.copy(pos); return pos.y >= h - .3 ? t : null; } // (já estava abaixo: não é bola de smash alto)
+    vel.y -= bG() * dt; bCurve(vel, dt); pos.addScaledVector(vel, dt);
+    if (pos.y < C.ballR) return null;
+  }
+  return null;
+}
 function timeToSmash(p) {
   if (ball.state !== 'live' || S.lastTeam === p.team) return null;
   p.model.armR.sh.getWorldPosition(_ts); _ts.y += Math.max(0, .25 - p.model.group.position.y);
@@ -260,10 +275,14 @@ function meterStep(c, dt) {
     M.t += dt;
     if (M.kind === 'smash') {
       // a barra chega no verde quando a bola chega no ponto de smash; bola alta = barra lenta
-      let tr = timeToSmash(c.p);
+      // o verde é a bola na altura ótima (o contato mais alto), não quando ela entra no alcance de onde você está: chegar
+      // atrasado embaixo dela já não dá o perfeito. Bola que não sobe até lá: quando entra no alcance
+      let tr = timeToSmashOpt(c.p); const trOpt = tr; if (tr === null) tr = timeToSmash(c.p);
+      // salto antes do golpe: sobe ~0,2 s antes da bola chegar na altura ótima (pico do salto no contato), se estiver embaixo dela
+      if (trOpt !== null && trOpt <= .21 && !(c.p.jump > 0) && Math.hypot(_optPt.x - c.p.pos.x, _optPt.z - c.p.pos.z) < 1.4) startJump(c.p, .42, .3);
       if (tr === null && M.tr != null && M.tr > dt) tr = M.tr - dt; // alcance some por um instante (correndo): mantém a estimativa
       M.tr = tr;
-      if (tr !== null) { M.seen = true; if (M.v < M.center) M.rate = clamp((M.center - M.v) / Math.max(tr - .03, .04), .06, 1 / .25); }
+      if (tr !== null) { M.seen = true; if (M.v < M.center) { const nr = clamp((M.center - M.v) / Math.max(tr - .03, .04), .06, 1 / .25); M.rate = tr < .08 ? Math.max(M.rate, nr) : nr; } } // (no fim não desacelera: chega no verde junto com a bola)
       else if (M.seen) M.rate = Math.max(M.rate, 1);
       else M.rate = Math.max(0, M.center * .55 - M.v) * 1.4; // bola ainda fora de alcance: a barra sobe devagar e espera (se a bola já passou, segue até estourar)
       M.v += M.rate * dt;
