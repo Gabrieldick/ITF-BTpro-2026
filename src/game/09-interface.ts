@@ -285,6 +285,8 @@ function perfAdd(p, v, key) { if (!perfOn(p)) return; const lk = perfLvK(); v *=
 // sua defesa e seu lob contam no painel (DEF / LOB) quando passam e ficam dentro: o adversário rebate ou a bola cai do lado dele
 function perfHitHook(p) { const d = S.defPend; if (!d) return; S.defPend = null; if (p.team !== d.team) perfAdd(d.p, 0, d.key); }
 // golpe dado pelo seu jogador (chamado na hora da batida)
+// seu saque também é "a sua bola": se o adversário errar a devolução, o ponto conta para a sua nota (ptBola)
+function perfServe(p, r) { if (perfOn(p) && !r.mis) S.perf.myHit = S.hitId; }
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
   S.perf.myHit = S.hitId; // a sua última bola (para o ponto que ela ganhar mesmo sem ser vencedora)
@@ -326,8 +328,8 @@ function updateLiveRating() {
   const r = rateFrom(0);
   // estilo NBA 2K: a nota no hexágono (cor pela nota, com a subida/descida embaixo) e os números do seu jogo ao lado
   const ev = S.perf.ev, sum = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
-  // PTS: pontos vencedores · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · DEF: defesas que passaram e ficaram dentro · LOB: lobs que passaram e ficaram dentro · ERR: erros
-  const vals = { nota: r, pts: sum(/^w_/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), def: ev.defIn || 0, lob: ev.lobIn || 0, err: sum(/^(e_|furou|erroF)/) };
+  // PTS: pontos vencedores e pontos com a sua bola (erro do adversário nela) · SMASH: smashes perfeitos · CURTA: curtas boas e matadoras · DEF: defesas que passaram e ficaram dentro · LOB: lobs que passaram e ficaram dentro · ERR: erros
+  const vals = { nota: r, pts: sum(/^(w_|ptBola)/), smash: ev.smashPerf || 0, curta: (ev.curtaBoa || 0) + (ev.curtaTop || 0), def: ev.defIn || 0, lob: ev.lobIn || 0, err: sum(/^(e_|furou|erroF)/) };
   e.style.setProperty('--nh', String(Math.round(clamp((r - 4) / 4.5, 0, 1) * 125)));
   for (const [k, v] of Object.entries(vals)) {
     const c = e.querySelector('[data-k="' + k + '"]'); if (!c) continue;
@@ -578,7 +580,7 @@ function pointTo(w, reason, kind) {
   const credit = creditPoint(w, kind);
   // ponto da sua dupla que nasceu da SUA bola (o adversário errou nela ou logo depois dela), mesmo amarela/vermelha:
   // nunca tira nota (antes o ponto só entrava na média e baixava a nota)
-  if (S.perf && w === human.team && S.perf.sum === sum0 && S.perf.myHit && S.hitId - S.perf.myHit <= 1) perfAdd(human, .25, 'ptBola');
+  if (S.perf && w === human.team && S.perf.sum === sum0 && S.perf.myHit && S.hitId - S.perf.myHit <= 1) perfAdd(human, .4, 'ptBola'); // (erro não forçado do adversário na sua bola, inclusive no seu saque)
   if (S.perf) S.perf.myHit = 0;
   if (credit) reason = credit[0].toUpperCase() + credit.slice(1) + '.';
   S.lastPoint = { w, kind, text: reason, cat: S.lastHit && S.lastHit.cat, rally: S.rally, dive: !!S.hadDive };
@@ -853,4 +855,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { sideWalkStep, simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { perfServe, sideWalkStep, simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

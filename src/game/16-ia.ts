@@ -7,7 +7,7 @@ import { NET, S } from './01-estado';
 import { swingVar } from './04-poses';
 import { human } from './06-modelos';
 import { ball, sparkle, greenWave } from './07-glb';
-import { decisive, dupla, feedback, momentum, perfShot, shotFeedback } from './09-interface';
+import { decisive, dupla, feedback, momentum, perfServe, perfShot, shotFeedback } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, ctlFeedback, keys, localCtl, touch, PAD } from './12-controles';
@@ -350,6 +350,7 @@ function updateHuman(dt, c = localCtl()) {
       ball.state = 'live'; S.mode = 'rally';
       const sp = ball.pos.clone();
       const r = doHit(p, ps.type, ps.q, true, ps.mod);
+      perfServe(p, r);
       if (S.drill) S.drill.lastR = Object.assign({}, r, { serveRes: ps.res });
       if (ps.res === 'perfeito' && !r.mis) { sparkle(sp); if (NET.ev) NET.ev('spark', sp); if (p.isHuman) { const wp = { x: p.pos.x, z: p.pos.z }; greenWave(wp); if (NET.ev) NET.ev('wave', wp); } } // saque perfeito: estrelinhas no contato (e a ondinha para quem joga)
       ctlFeedback(c, r.label, r.mis ? 'ERROU' : ps.word || RES_WORD[ps.res], null);
