@@ -217,7 +217,7 @@ function doHit(p, type, q, isServe, mod) {
     const far = clamp((Math.abs(p.pos.z) - 3.5) / 3.5, 0, 1);
     // quem tem força e smash bons perde bem menos do fundo
     const A = p.char && p.char.a, pk = A ? clamp(((A.forca + A.smash) / 2 - 72) / 18, 0, 1) : 0;
-    if (far > 0) { spec.speed *= 1 - far * .18 * (1 - pk * .75); spec.noise *= 1 + far * .8 * (1 - pk * .5); mod.misBoost = (mod.misBoost || 0) + far * (.03 + (1 - attrK(p, 'smash')) * .2); mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .7 * (1 - pk * .6)); }
+    if (far > 0) { spec.speed *= 1 - far * .18 * (1 - pk * .4); spec.noise *= 1 + far * .8 * (1 - pk * .5); mod.misBoost = (mod.misBoost || 0) + far * (.03 + (1 - attrK(p, 'smash')) * .2); mod.oppMissBoost = (mod.oppMissBoost || 0) * (1 - far * .7 * (1 - pk * .6)); }
     // smash do meio para o fundo (além dos 3 m) de quem tem força e smash altos: sai mais forte sempre;
     // com a barra perfeita (ou num golpe bem encaixado da CPU) vira SMASH BOMBA
     if (pk > 0 && Math.abs(p.pos.z) > 3 && ball.pos.y > 1.9) {

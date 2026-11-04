@@ -572,7 +572,8 @@ function homeOf(p) {
   let ph = 0, wideK = 0;
   if (ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally') {
     const l = predictLanding(), lz = Math.abs(l.z), apex = ball.apex || 0;
-    if (apex > 3.4 && lz > 5.2) ph = -clamp((lz - 5.2) / 1.6, 0, 1) * 1.25; // lob fundo: sobe
+    // lob fundo: sobe — mas contra humano pouco (ele smasha do fundo; colado na rede não dá tempo de defender)
+    if (apex > 3.4 && lz > 5.2) ph = -clamp((lz - 5.2) / 1.6, 0, 1) * 1.25 * (($s.teams[1 - p.team] || []).some(o => o.isHuman) ? .3 : 1);
     else if (apex > 2.6 && lz < 4.2) { ph = clamp((apex - 2.6) / 1.2, 0, 1) * 1.05; wideK = .2; } // bola de smash para eles: recua e abre um pouco
     else if (apex < 2.2) ph = -.25; // pancada baixa: aperta
   }
@@ -582,7 +583,10 @@ function homeOf(p) {
   if (mate) { const want = mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * hw * 2; x = lerp(x, want, mate.isHuman ? .55 : .35); }
   // o adversário vai bater: quem está na diagonal de quem bate fecha o meio (a paralela fica com quem está na frente dele);
   // quanto mais estrelas, mais fechado (o meio é o alvo preferido de quem ataca)
-  if (ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally' && Math.abs(fx) > .5 && Math.sign(p.slot) !== Math.sign(fx)) x -= Math.sign(p.slot) * (.3 + .3 * clamp(up * 2.5, 0, 1));
+  // (bola que vai ficar alta para eles = smash: aí quem está na diagonal cobre o cruzado, um pouco para fora, e não o meio)
+  if (ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally' && Math.abs(fx) > .5 && Math.sign(p.slot) !== Math.sign(fx)) {
+    if ((ball.apex || 0) > 2.6) x += Math.sign(p.slot) * (.15 + .25 * clamp(up * 2.5, 0, 1));
+    else x -= Math.sign(p.slot) * (.3 + .3 * clamp(up * 2.5, 0, 1)); }
   // o companheiro vai smashar: adianta um pouco e fecha o meio para pegar a sobra (a devolução de defesa curta/no meio)
   if (mate && ball.state === 'live' && S.lastTeam === 1 - p.team && S.mode === 'rally' && assignee(p.team) === mate && mateSmash(mate)) { ahead += .9 + .5 * clamp(up * 2.5, 0, 1); x = lerp(x, mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * 1.7, .5); }
   if (A.rush && ball.state === 'live' && S.lastTeam === p.team) ahead += A.rush; // depois do próprio golpe: sobe para a rede
