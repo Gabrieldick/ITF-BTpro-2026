@@ -238,19 +238,22 @@ function doHit(p, type, q, isServe, mod) {
     spec.label = lp < .35 ? 'LOB CHUTADO' : lp < .75 ? 'LOB' : 'LOB ALTO';
     // chutado PERFEITO: sobe só o bastante para passar por cima do smash de quem está na rede e despenca no fundo
     if (mod.lobKick) { spec.T = 1; spec.depth = [6.7, 7.5]; spec.margin = .5; spec.kick = true; spec.label = 'LOB CHUTADO'; } // mais rápido e fundo
+    else spec.T *= lerp(.88, 1, Math.min(1, attrK(p, 'lob'))); // lob fraco não consegue subir tanto (sai mais baixo e mais curto)
     lobLong = Math.max(0, mod.lobPower - 1);
   }
   // jogo feminino (só mulheres em quadra): bola mais lenta — smash e saque perdem mais, o resto um pouco —, o que dá mais
   // tempo para defender e alonga as trocas (~1,5 a 2× o masculino)
   const fpK = S.femPace ? 1 - (key === 'smash' ? .24 : isServe ? .16 : .13) : 1;
   if (spec.speed) spec.speed *= (mod.speedMul || 1) * fpK;
-  if (spec.T) spec.T /= (mod.speedMul || 1) * fpK;
+  // bola alta (lob, defesa alta, saque lob): quem bate mais devagar (atributo baixo, jogo feminino) não joga mais alto;
+  // antes o tempo de voo crescia e o lob subia demais (o saque lob perfeito feminino passava de 14 m)
+  if (spec.T) { const sk = (mod.speedMul || 1) * fpK; spec.T /= spec.T > 1.3 ? Math.max(1, sk) : sk; }
   spec.noise *= (mod.noiseMul || 1) * (S.femPace ? .72 : 1); // feminino: mais consistente (menos erro não forçado)
   if (S.femPace && spec.margin !== undefined) spec.margin *= 1.25;
   // saque lob PERFEITO: sobe mais que o lob mais alto do jogo normal, cai devagar e fundo (o recebedor erra mais)
   if (isServe && type === 'lob' && mod.perfect) {
     const lk = Math.min(1, (attrK(p, 'lob') + attrK(p, 'saque')) / 2);
-    spec.T = lerp(2.55, 2.8, lk); spec.depth = [6.6, 7.5]; spec.gk = 1.05; spec.margin = .6; spec.label = 'SAQUE LOB PERFEITO';
+    spec.T = lerp(2.3, 2.5, lk); spec.depth = [6.6, 7.5]; spec.gk = 1.05; spec.margin = .6; spec.label = 'SAQUE LOB PERFEITO';
     mod.oppMissBoost = (mod.oppMissBoost || 0) + .05 + .05 * lk;
   }
   // voleio: bola batida no ar perto da rede (drive, voleio da barra, bloqueio/curta/defesa a menos de 3,2 m da rede)
@@ -357,6 +360,8 @@ function doHit(p, type, q, isServe, mod) {
   }
   // vento: no saque o jogador ajusta a mira contra o vento (perfeito: compensa todo; fora do perfeito, pela metade)
   if (isServe && p.isHuman && !pop && !wild && S.wind) { const ws = (S.sideFlip ? -.07 : .07) * (mod.perfect ? 1 : .5); spec.wA = [S.wind.x * ws, S.wind.z * ws]; }
+  // teto da bola: nenhuma bola passa de ~9 m (lob alto bom fica em ~7–8 m)
+  if (spec.T && !spec.kick) { const tMax = Math.sqrt(8 * Math.max(1, 9 - ball.pos.y) / (G * (spec.gk || 1))); if (spec.T > tMax) spec.T = tMax; }
   let v;
   if (spec.kick && !pop) {
     // lob chutado perfeito: passa acima do alcance do smash de quem está colado na rede, mesmo recuando (≥ 3,3 m de altura
@@ -398,7 +403,7 @@ function doHit(p, type, q, isServe, mod) {
     // smash errado sai mais para fora do que na rede; o cruzado do fundo espirra pela lateral
     const netP = (p.isHuman ? .5 : skillOf(p).netK || .5) * (key === 'smash' && !isServe ? .85 : 1);
     if (netFin || Math.random() < netP) v.y -= 1.2 + Math.random() * 1.6;
-    else if (smCross > .25 && Math.random() < .6) { v.x *= 1.22 + Math.random() * .2; v.z *= 1.04; } else v.multiplyScalar(1.12 + Math.random() * .14);
+    else if (smCross > .25 && Math.random() < .6) { v.x *= 1.22 + Math.random() * .2; v.z *= 1.04; } else { const k = 1.12 + Math.random() * .14; v.x *= k; v.z *= k; v.y *= v.y > 5 ? 1 + (k - 1) * .25 : k; } // bola alta errada sai longa, não mais alta
   }
   // para as estatísticas: quem bateu, que golpe, e se a bola que chegou era difícil (erro forçado).
   // forcedBy: o golpe do adversário que forçou (smash, curta boa, lob chutado, bola rápida) — ele leva o crédito do ponto

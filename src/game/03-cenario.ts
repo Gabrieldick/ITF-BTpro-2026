@@ -855,7 +855,7 @@ function indoorHall(a) {
   hemi.color.copy(on ? col('#f4f1ea') : LIGHT0.hemiC); hemi.groundColor.copy(on ? col('#b9bcbf') : a.urban ? col('#a8a294') : LIGHT0.hemiG);
   if (!on) return;
   const small = a.hall === 'small';
-  const HX = small ? 11.5 : 21, Z0 = small ? -20 : -26, Z1 = small ? 25 : 32, H = small ? 8 : 11, len = Z1 - Z0;
+  const HX = small ? 11.5 : 21, Z0 = small ? -20 : -26, Z1 = small ? 25 : 32, H = small ? 12.5 : 16, len = Z1 - Z0; // teto bem acima do lob mais alto (~9 m)
   // parede: faixa de baixo com as cores do evento, painéis claros com nervuras e uma fileira de janelas altas
   const wallTex = canvasTex(512, 256, (x, w, h) => {
     x.fillStyle = '#d9dde3'; x.fillRect(0, 0, w, h);
