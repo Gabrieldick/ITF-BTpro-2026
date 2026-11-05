@@ -8,11 +8,12 @@ import { ball, ballMesh, sparkle } from './07-glb';
 import { human } from './06-modelos';
 
 const POWERS = {
-  turbo: { nome: 'Turbo', ic: '⚡', desc: 'corre muito mais rápido por 5 s', now: 5 },
-  ima: { nome: 'Ímã', ic: '🧲', desc: 'alcança bolas bem mais longe por 6 s', now: 6 },
-  gelo: { nome: 'Gelo', ic: '❄️', desc: 'congela os adversários por 2 s', now: 2 },
-  gigante: { nome: 'Gigante', ic: '🦒', desc: 'fica gigante por 7 s: alcança bolas muito mais altas e longe', now: 7 },
-  ouro: { nome: 'Mão de ouro', ic: '✨', desc: 'tudo no verde por 8 s: barras perfeitas e curtas no tempo certo', now: 8 },
+  // os de efeito contínuo valem até o fim do ponto
+  turbo: { nome: 'Turbo', ic: '⚡', desc: 'corre muito mais rápido até o fim do ponto', now: 1 },
+  ima: { nome: 'Ímã', ic: '🧲', desc: 'alcança bolas bem mais longe até o fim do ponto', now: 1 },
+  gelo: { nome: 'Gelo', ic: '❄️', desc: 'deixa os adversários lentos até o fim do ponto', now: 1 },
+  gigante: { nome: 'Gigante', ic: '🦒', desc: 'fica gigante até o fim do ponto: alcança bolas muito mais altas e longe', now: 1 },
+  ouro: { nome: 'Mão de ouro', ic: '✨', desc: 'tudo no verde até o fim do ponto: barras perfeitas e curtas no tempo certo', now: 1 },
   bomba: { nome: 'Bomba', ic: '💣', desc: 'o próximo golpe sai fortíssimo' },
   curva: { nome: 'Curva maluca', ic: '🌀', desc: 'a próxima bola faz uma curva enorme' },
   lua: { nome: 'Lob lunar', ic: '🌙', desc: 'o próximo golpe vira um lob altíssimo que despenca no fundo' },
@@ -36,7 +37,7 @@ const slotHTML = (p, key, who) => {
   if (!p) return '';
   const held = p.pw && POWERS[p.pw], armed = p.pwNext && POWERS[p.pwNext], on = p.pwOn && p.pwOn.until > now() && POWERS[p.pwOn.id];
   if (armed) return '<b class="arm">' + armed.ic + ' ' + armed.nome + '</b><small>' + who + 'armado: ' + armed.desc + '</small>';
-  if (on) return '<b class="on">' + on.ic + ' ' + on.nome + '</b><small>' + who + 'ativo · ' + Math.ceil(p.pwOn.until - now()) + ' s</small>';
+  if (on) return '<b class="on">' + on.ic + ' ' + on.nome + '</b><small>' + who + 'ativo até o fim do ponto</small>';
   if (held) return '<b>' + held.ic + ' ' + held.nome + ' <kbd>' + key + '</kbd></b><small>' + who + held.desc + '</small>';
   return '<b class="none">sem poder</b><small>' + who + 'ganha outro no próximo ponto</small>';
 };
@@ -47,8 +48,8 @@ function caosActivate(p) {
   if (!caosOn() || !p || !p.pw || !live()) return false;
   const id = p.pw, P = POWERS[id], t = now(); p.pw = null;
   if (P.now) {
-    p.pwOn = { id, until: t + P.now };
-    if (id === 'gelo') $s.players.forEach(o => { if (o.team !== p.team) o.pwFrozen = t + P.now; });
+    p.pwOn = { id, until: Infinity };
+    if (id === 'gelo') $s.players.forEach(o => { if (o.team !== p.team) o.pwFrozen = Infinity; });
   } else p.pwNext = id;
   sparkle({ x: p.pos.x, y: 1.4, z: p.pos.z });
   toast((p === human ? 'Você usou ' : p.isHuman ? 'Jogador 2 usou ' : p.team === human.team ? 'Parceiro usou ' : 'Adversário usou ') + P.ic + ' ' + P.nome);
@@ -60,7 +61,7 @@ function caosSpeedK(p) {
   if (!caosOn() || !p) return 1;
   const t = now(); let k = 1;
   if (p.pwOn && p.pwOn.id === 'turbo' && p.pwOn.until > t) k *= 1.4;
-  if (p.pwFrozen && p.pwFrozen > t) k *= .25;
+  if (p.pwFrozen && p.pwFrozen > t) k *= .55;
   return k;
 }
 const pwActive = (p, id) => caosOn() && p && p.pwOn && p.pwOn.id === id && p.pwOn.until > now();
@@ -90,6 +91,8 @@ function caosStep(dt) {
   const h = hudEl(), on = caosOn() && S.mode !== 'menu' && S.mode !== 'replay';
   h.hidden = !on;
   if (!on) { if (ballMesh && !ballMesh.visible && ball.ghost) ballMesh.visible = true; ball.ghost = null; return; }
+  // ponto acabou: os poderes de efeito contínuo acabam junto
+  if (S.mode === 'dead' || S.mode === 'over') endTimed();
   // bola fantasma: some entre 0,25 s e 0,85 s depois da batida
   if (ball.ghost && ballMesh) { const a = now() - ball.ghost.t0; ballMesh.visible = !(a > .25 && a < .85 && ball.state === 'live'); if (a >= .85) ball.ghost = null; }
   // gigante: o boneco cresce (e volta ao tamanho normal no fim)
@@ -104,16 +107,22 @@ function caosStep(dt) {
   const e2 = h.querySelector('.cz-p2'); e2.hidden = !p2; if (p2) e2.innerHTML = slotHTML(p2, '9', 'J2 · ');
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) h.querySelector('.cz-toast').classList.remove('show'); }
 }
-// começo de cada ponto: quem está sem poder ganha um; os efeitos de tempo acabam
-function caosPointStart() {
-  const on = caosOn();
+// fim dos efeitos contínuos (fim do ponto): tira o poder ativo, o gelo e o tamanho de gigante
+function endTimed() {
   $s.players.forEach(p => {
     p.pwOn = null; p.pwFrozen = 0;
+    const k = p.caosK || 1; if (k !== 1 && p.model && p.model.group) { p.model.group.scale.multiplyScalar(1 / k); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(1 / k); } p.caosK = 1;
+  });
+}
+// começo de cada ponto: quem está sem poder ganha um
+function caosPointStart() {
+  const on = caosOn();
+  endTimed();
+  $s.players.forEach(p => {
     if (!on) { p.pw = null; p.pwNext = null; return; }
     if (!p.pw && !p.pwNext) p.pw = KEYS[Math.floor(Math.random() * KEYS.length)];
   });
   ball.ghost = null; if (ballMesh) ballMesh.visible = true;
-  $s.players.forEach(p => { const k = p.caosK || 1; if (k !== 1 && p.model && p.model.group) { p.model.group.scale.multiplyScalar(1 / k); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(1 / k); } p.caosK = 1; });
 }
 
 export { POWERS, caosTallM, caosGold, caosOn, caosActivate, caosSpeedK, caosReachK, caosShot, caosAfterHit, caosStep, caosPointStart };
