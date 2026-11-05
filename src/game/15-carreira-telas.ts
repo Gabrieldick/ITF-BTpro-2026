@@ -10,7 +10,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
+import { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
@@ -53,11 +53,15 @@ function renderCareer() {
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
-  const meO = overall($s.CR.me.a), inGame = crMeOvr(), rank = crRank(), pts = crPts();
+  const meO = overall($s.CR.me.a), inGame = crMeOvr();
+  // no amador: posição e pontos do ranking da sua categoria no estado (o mundial só conta o profissional)
+  let rank = crRank(), pts = crPts(), rkLbl = '';
+  { const k = Math.min(3, crMaxTier()), uf = $s.CR.me.pais === 'BRA' ? $s.CR.me.uf || 'SP' : null;
+    if (k < 3 && uf) { const r = crCatRanking(k, uf), i = r.findIndex(x => x.id === 'crme'); rank = i >= 0 ? tieRank(r, i) : '–'; pts = crCatPts('crme')[k]; rkLbl = ' · ' + CAT_NAMES[k] + ' ' + uf; } }
   const st = $s.CR.stars || 3, em = crEnergyMod(), en = $s.CR.energy;
   $('crHead').innerHTML = '<div class="cr-strip">'
     + '<div class="cs-id"><div class="ovr">' + meO + '<small>OVR</small></div><div><b>' + esc($s.CR.me.name) + '</b><small>' + $s.CR.age + ' anos · ' + $s.CR.me.estilo + ' · pot. ' + crCap() + (inGame !== meO ? ' · em jogo ' + inGame : '') + ' · fama ' + Math.round($s.CR.fama || 0) + '</small></div></div>'
-    + '<div class="cs-k"><b>' + rank + 'º</b><small>' + pts + ' pts</small></div>'
+    + '<div class="cs-k"><b>' + rank + 'º</b><small>' + pts + ' pts' + rkLbl + '</small></div>'
     + '<div class="cs-k"><b>' + money($s.CR.money) + '</b><small>dinheiro</small></div>'
     + '<div class="cs-k" title="Pontos de evolução (máx. ' + crPeMax() + ')"><b>' + Math.floor($s.CR.pe) + '</b><small>evolução</small></div>'
     + '<div class="cs-k"><b>' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day, true) + '</b><small>T' + $s.CR.season + ' · sem ' + $s.CR.week + '/' + SEASON_WEEKS + '</small></div>'
@@ -589,15 +593,16 @@ function crSelRankHTML(uf) {
 function crMyPtsHTML() {
   const now = ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
   const hist = $s.CR.history || [];
-  const list = $s.CR.results.filter(r => r.w > now - SEASON_WEEKS && r.pts > 0).map(r => {
+  const list = $s.CR.results.filter(r => r.w > now - SEASON_WEEKS && r.pts > 0 && (r.k ?? 3) === 3).map(r => { // (só o profissional: os amadores contam no ranking da categoria)
     const wk = x => (x.s - 1) * SEASON_WEEKS + x.w === r.w, h = hist.find(x => wk(x) && x.pts === r.pts) || hist.find(wk); // (migrações antigas mudaram o valor de alguns resultados)
     return { pts: r.pts, left: r.w + SEASON_WEEKS - now, name: h ? h.name : 'Torneio', sub: h ? h.tier + ' · ' + h.place : '', when: h ? 'T' + h.s + ' S' + h.w : '' };
   }).sort((x, y) => y.pts - x.pts || x.left - y.left);
-  if (!list.length) return '<p class="section-label">Seus pontos</p><p class="cr-note">Nenhum resultado com pontos nas últimas ' + SEASON_WEEKS + ' semanas.</p>';
+  const cp = crCatPts('crme'), catLine = cp.slice(0, 3).some(v => v > 0) ? '<p class="cr-note">Nas categorias amadoras (cada uma com o seu ranking, não entram no mundial): C ' + cp[0] + ' · B ' + cp[1] + ' · A ' + cp[2] + ' pts.</p>' : '';
+  if (!list.length) return '<p class="section-label">Seus pontos no ranking mundial</p><p class="cr-note">Nenhum resultado no profissional nas últimas ' + SEASON_WEEKS + ' semanas.</p>' + catLine;
   const row = (x, i, on) => '<div class="cr-row' + (on ? ' me' : '') + '"><span class="cr-pos">' + (on ? i + 1 : '–') + '</span><div><b>' + esc(x.name) + '</b><small>' + (x.when ? x.when + ' · ' : '') + esc(x.sub) + ' · sai da conta em ' + x.left + (x.left === 1 ? ' semana' : ' semanas') + '</small></div><b class="cr-pts">' + x.pts + '</b></div>';
   const top = list.slice(0, RANK_BEST), rest = list.slice(RANK_BEST);
   const next = top.slice().sort((x, y) => x.left - y.left)[0];
-  return '<p class="section-label">Seus pontos · ' + crPts() + ' (soma dos ' + RANK_BEST + ' melhores resultados das últimas ' + SEASON_WEEKS + ' semanas)</p>'
+  return '<p class="section-label">Seus pontos no ranking mundial · ' + crPts() + ' (soma dos ' + RANK_BEST + ' melhores resultados do profissional nas últimas ' + SEASON_WEEKS + ' semanas)</p>' + catLine
     + '<p class="cr-note">Cada resultado vale por ' + SEASON_WEEKS + ' semanas. O próximo a sair é ' + esc(next.name) + ' (' + next.pts + ' pts) em ' + next.left + (next.left === 1 ? ' semana' : ' semanas') + (rest.length ? '; quando um sair, entra o melhor dos que estão de fora' : '') + '.</p>'
     + '<div class="cr-list">' + top.map((x, i) => row(x, i, true)).join('') + '</div>'
     + (rest.length ? '<p class="section-label">Fora da conta (só valem se ficarem entre os ' + RANK_BEST + ' melhores)</p><div class="cr-list">' + rest.map(x => row(x, 0, false)).join('') + '</div>' : '');
