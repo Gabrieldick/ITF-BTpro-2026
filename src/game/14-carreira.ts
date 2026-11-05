@@ -185,6 +185,29 @@ function crLocals() {
   LOCALS.key = String($s.CR.seed); LOCALS.list = out; LOCALS.map = new Map(out.map(c => [c.id, c]));
   return out;
 }
+// circuito mundial além de quem aparece nos seus torneios: alguns milhares de jogadores que só ocupam o ranking (pontos do
+// profissional, de 1 a ~140, mudando aos poucos ao longo do ano; a maioria com poucos pontos, como no real), para o ranking ter o tamanho do real (a regra do top 300
+// da CBT só faz sentido assim). Não jogam as suas chaves; têm nome, país e nível coerentes com os pontos
+const CIRC = { key: '', list: [], map: null }, CIRC_N = { m: 2600, f: 1800 };
+function crCircuit() {
+  if (!$s.CR) return [];
+  if (CIRC.key === String($s.CR.seed)) return CIRC.list;
+  const out = [], rnd = mulberry($s.CR.seed + 31337), pick = arr => arr[Math.floor(rnd() * arr.length)];
+  const country = () => { let r = rnd(); for (const [c, w] of COUNTRY_W) { if ((r -= w) <= 0) return c; } return 'BRA'; };
+  for (const g of ['m', 'f']) { const N = CIRC_N[g], fem = g === 'f';
+    for (let i = 0; i < N; i++) {
+      const base = Math.max(1, 120 * Math.exp(-i / (N / 10)) * (.8 + rnd() * .4)), ovr = Math.round(Math.min(81, 60 + 4.2 * Math.log(1 + base))); // (calibrado pelos pontos dos jogadores de verdade do mesmo nível)
+      const pais = country(), bank = NAME_BANK[pais] || NAME_BANK.BRA, style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']);
+      let sur = pick(bank.s); if (fem && pais === 'RUS') sur += 'a';
+      const look = { skin: pick(SKINS), hair: pick(HAIRS_NPC), num: String(10 + Math.floor(rnd() * 89)), racket: pick(ovr < 64 ? ['fibra', 'areia', 'mare'] : ovr < 72 ? ['duna', 'medusa', 'proteo'] : ['vela', 'tufao', 'atol', 'kronos']) };
+      if (fem) look.tank = true;
+      out.push({ id: 'c' + g + '_' + i, name: pick(bank[g]) + ' ' + sur, alt: Math.round(fem ? 170 + (rnd() - .5) * 14 : 184 + (rnd() - .5) * 16), pais, estilo: STYLES[style].nome, build: pick(['atletico', 'esguio', 'compacto', 'forte']), fem, canhoto: rnd() < .12 || undefined, look, a: makeAttrs(ovr, style, rnd), circ: base, ph: rnd() * 6.28 });
+    } }
+  CIRC.key = String($s.CR.seed); CIRC.list = out; CIRC.map = new Map(out.map(c => [c.id, c]));
+  return out;
+}
+// pontos de um jogador do circuito nesta semana (variam ±20% ao longo do ano)
+const circPts = c => Math.max(1, Math.round(c.circ * (1 + .2 * Math.sin(absWeek() / 9 + c.ph))));
 // ---------- estado ----------
 // ---------- saves: várias carreiras no navegador + arquivo .json ----------
 // localStorage: 'pdo-careers' = índice { v: 2, active, ids }; cada carreira na sua chave 'pdo-career-<id>' (comprimida).
@@ -550,7 +573,7 @@ function poolGet(id) {
   if (POOL_IDX.pool !== $s.CR.pool || POOL_IDX.len !== $s.CR.pool.length) { POOL_IDX.pool = $s.CR.pool; POOL_IDX.len = $s.CR.pool.length; POOL_IDX.map = new Map($s.CR.pool.map(c => [c.id, c])); }
   return POOL_IDX.map.get(id);
 }
-const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || (id[0] === 'l' && (crLocals(), LOCALS.map.get(id))) || ROSTER.find(c => c.id === id));
+const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || (id[0] === 'l' && (crLocals(), LOCALS.map.get(id))) || (id[0] === 'c' && id[2] === '_' && (crCircuit(), CIRC.map.get(id))) || ROSTER.find(c => c.id === id));
 const absWeek = () => ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
 // cada pontuação vale só para a sua categoria: o ranking mundial (ITF) soma só o profissional (BT10 em diante); C, B e A
 // têm cada uma o seu ranking (crCatPts). resK: categoria de um resultado seu (os antigos, sem ela, pelo histórico)
@@ -570,6 +593,7 @@ function crRanking() {
   if (RK.key === key && RK.list) return RK.list;
   const list = crWorld().map(c => ({ id: c.id, pts: npcPts(c.id) }));
   list.push({ id: 'crme', pts: crPts() });
+  crCircuit().forEach(c => { if (!!c.fem === !!$s.CR.me.fem) list.push({ id: c.id, pts: circPts(c) }); }); // o resto do circuito mundial
   RK.key = key; RK.list = list.sort((x, y) => y.pts - x.pts || (x.id === 'crme' ? 1 : -1));
   return RK.list;
 }
