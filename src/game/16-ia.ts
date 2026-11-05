@@ -10,7 +10,7 @@ import { ball, sparkle, greenWave } from './07-glb';
 import { decisive, dupla, feedback, momentum, perfServe, perfShot, shotFeedback } from './09-interface';
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
-import { RES_WORD, ctlFeedback, keys, localCtl, touch, PAD } from './12-controles';
+import { RES_WORD, ctlFeedback, keys, localCtl, touch, PAD, p2Keyboard } from './12-controles';
 import { diveMark, puff } from './07-glb';
 import { sideOf } from './18-animacao';
 // estilo de cada personagem: pela descrição real, pelo estilo da carreira ou pelos atributos
@@ -269,8 +269,9 @@ const proMascHold = p => dupla() && C.netH >= 1.79 && (S.mode === 'serve' || S.m
 // direção do teclado/joystick local (-1..1), no referencial de quem olha do próprio fundo de quadra
 function localInput() {
   let ix = 0, iz = 0;
-  if (keys.a || keys.arrowleft) ix -= 1; if (keys.d || keys.arrowright) ix += 1;
-  if (keys.w || keys.arrowup) iz -= 1; if (keys.s || keys.arrowdown) iz += 1;
+  const ar = !p2Keyboard(); // (2 jogadores sem controle: as setas são do jogador 2)
+  if (keys.a || (ar && keys.arrowleft)) ix -= 1; if (keys.d || (ar && keys.arrowright)) ix += 1;
+  if (keys.w || (ar && keys.arrowup)) iz -= 1; if (keys.s || (ar && keys.arrowdown)) iz += 1;
   ix += touch.x + PAD.x; iz += touch.z + PAD.z; // toque e controle (Xbox/PS)
   const len = Math.hypot(ix, iz); if (len > 1) { ix /= len; iz /= len; }
   return [ix, iz];

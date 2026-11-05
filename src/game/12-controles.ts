@@ -319,6 +319,11 @@ addEventListener('keydown', e => {
   if (BINDCAP.on) return;
   const k = bindKey(e.key.toLowerCase());
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (p2Keyboard() && inPlay() && el.pause.hidden) { // jogador 2 no teclado (sem controle)
+    const kk = e.key.toLowerCase();
+    if (kk.startsWith('arrow')) { keys[kk] = true; p2KeyDir(); return; }
+    if (P2_SHOT[kk]) { e.preventDefault(); if (!e.repeat && !keys['p2' + kk]) { keys['p2' + kk] = true; if (!S.paused) pressShot(P2_SHOT[kk], P2.c); } return; }
+  }
   // alguns teclados/programas mandam a repetição automática como aperto novo (sem e.repeat): tecla já segurada não conta de novo
   const held = keys[k];
   keys[k] = true;
@@ -334,7 +339,11 @@ addEventListener('keydown', e => {
   else if (k === 'n') toggleAssist('assistMark');
   else if (k === 'v') { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
 });
-addEventListener('keyup', e => { const k = bindKey(e.key.toLowerCase()); keys[k] = false; if (SHOT_KEYS[k]) releaseShot(SHOT_KEYS[k]); });
+addEventListener('keyup', e => {
+  const kk = e.key.toLowerCase();
+  if (P2.c && (kk.startsWith('arrow') || keys['p2' + kk])) { keys[kk] = false; if (keys['p2' + kk]) { keys['p2' + kk] = false; releaseShot(P2_SHOT[kk], P2.c); return; } if (p2Keyboard()) { p2KeyDir(); return; } }
+  const k = bindKey(kk); keys[k] = false; if (SHOT_KEYS[k]) releaseShot(SHOT_KEYS[k]);
+});
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; if (inPlay() && !NET.role) setPaused(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && inPlay() && !NET.role) setPaused(true); });
 const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
@@ -413,6 +422,11 @@ if (typeof window !== 'undefined' && navigator.getGamepads) { requestAnimationFr
 // contra: o 2 joga do outro lado da rede; juntos (dupla): o 2 é o seu parceiro. Usa o mesmo controle de "humano extra"
 // do online (barra e mensagens saem pela fila "out"), mas desenhado aqui numa segunda barra
 const P2 = { c: null, dom: null, mrT: 0, split: false };
+// sem controle conectado, o jogador 2 joga no mesmo teclado: setas para andar e 1 smash, 2 lob, 3 curta, 0 defesa;
+// o jogador 1 fica com WASD e J/K/L/Espaço
+const P2_SHOT = { '1': 'smash', '2': 'lob', '3': 'curta', '0': 'defesa' };
+const p2Keyboard = () => !!P2.c && !padFirst();
+function p2KeyDir() { const c = P2.c; if (!c || !p2Keyboard()) return; let x = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), z = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); const l = Math.hypot(x, z); if (l > 1) { x /= l; z /= l; } c.ix = x; c.iz = z; }
 function setupLocal2() {
   if (P2.c) { const q = P2.c.p; q.isHuman = false; q.netHuman = false; q.netName = ''; q.mtr = null; q.charging = false; NET.remote = NET.remote.filter(c => c !== P2.c); P2.c = null; }
   if (P2.dom) P2.dom.meter.hidden = true;
@@ -677,7 +691,7 @@ function cyclePick(slot, d) {
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { S.settings.mode = r.value; renderRoster(); }));
 document.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { S.settings.gender = r.value; saveSettings(); renderRoster(); }));
 
-export { setupLocal2, p2MeterFrame, P2, splitOn, startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
+export { p2Keyboard, setupLocal2, p2MeterFrame, P2, splitOn, startMeter, PAD, timingK, timingLv, applyMeterLook, renderCourtPickers, renderBallPickers, renderBinds, ctlFeedback, localCtl, makeRemoteCtl, meterDom, meterStep, pressShot, releaseShot, timeToReach, LOB_MAX, MTR, RES_WORD, applyCam, cancelMeter, inPlay, keys, readMenu, releaseMeter, saveSettings, setPaused, syncMenu, timeToSmash, toggleCam, togglePause, toggleSound, touch };
 
 // pausa: tática e formação da dupla podem mudar no meio do jogo
 { const ts = $('pTacSel'), fs = $('pFormSel');

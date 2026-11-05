@@ -1047,9 +1047,9 @@ document.querySelectorAll('#menu input[name=mode]').forEach(r => r.addEventListe
 function qmLocal2() {
   const v = (document.querySelector('#menu input[name=local2]:checked') || {}).value, n = $('local2Note'); if (!n) return;
   const pad = navigator.getGamepads && [...navigator.getGamepads()].some(g => g && g.connected);
-  n.hidden = !v; n.classList.toggle('warn', !!v && !pad);
+  n.hidden = !v; n.classList.remove('warn');
   { const w = $('split2Wrap'); if (w) w.hidden = v !== 'vs'; }
-  n.textContent = (v === 'coop' ? 'Juntos: o jogador 2 é a sua dupla (na simples, vira um contra o outro).' : 'Contra: o jogador 2 fica do outro lado da rede (na dupla, com a CPU de parceira).') + ' Jogador 1 no teclado, jogador 2 no controle (Xbox/PS).' + (pad ? '' : ' Nenhum controle conectado: conecte um e aperte um botão.');
+  n.textContent = (v === 'coop' ? 'Juntos: o jogador 2 é a sua dupla (na simples, vira um contra o outro).' : 'Contra: o jogador 2 fica do outro lado da rede (na dupla, com a CPU de parceira).') + (pad ? ' Jogador 1 no teclado, jogador 2 no controle (Xbox/PS).' : ' Sem controle conectado: os dois no mesmo teclado — jogador 1 com WASD e J/K/L/Espaço, jogador 2 com as setas e 1 smash, 2 lob, 3 curta, 0 defesa (ou conecte um controle e aperte um botão).');
 }
 document.querySelectorAll('#menu input[name=local2]').forEach(r => r.addEventListener('change', qmLocal2));
 addEventListener('gamepadconnected', qmLocal2); addEventListener('gamepaddisconnected', qmLocal2);
