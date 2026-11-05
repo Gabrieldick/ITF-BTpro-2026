@@ -2071,7 +2071,7 @@ const MASTER = [
 ];
 const rkBrand = k => { const n = (RACKET_STATS[k] || {}).nome || ''; const m = MASTER.find(x => n.startsWith(x.brand + ' ')); return m ? m.brand : ''; };
 // teto de preço das raquetes que a marca te dá (fama 30 → ~$30 mil; 60 → ~$150 mil; 90 → todas)
-const crMasterCap = () => 6000 + Math.pow($s.CR.fama || 0, 2) * 40;
+const crMasterCap = () => Math.round((6000 + Math.pow($s.CR.fama || 0, 2) * 40) / 1000) * 1000; // (redondo: $158.000, não $157.824)
 const crMasterFree = k => !!$s.CR.master && rkBrand(k) === $s.CR.master.brand && RACKET_STATS[k].preco <= crMasterCap();
 // pode usar esta raquete? com patrocínio master, só as da marca (e a assinatura, que ela fabrica)
 const crRacketOk = k => !$s.CR.master || k === 'assinatura' || rkBrand(k) === $s.CR.master.brand;
