@@ -131,7 +131,10 @@ async function connect() {
     const ch = rt.channel('amigos-v1', { config: { presence: { key: AM.me } } });
     ch.on('presence', { event: 'sync' }, () => {
       const st = ch.presenceState(); AM.pres = {};
-      for (const [k, arr] of Object.entries(st)) { const last = arr[arr.length - 1]; if (last && last.st) { AM.pres[k] = last.st; AM.act[k] = last; } }
+      // presença vem de outros clientes: só valores conhecidos (antes o status ia direto para o HTML da lista)
+      AM.act = {};
+      for (const [k, arr] of Object.entries(st)) { const last = arr[arr.length - 1]; if (!last || !ST_TXT[last.st] || last.st === 'off') continue;
+        AM.pres[k] = last.st; AM.act[k] = { act: ['sala', 'carreira', 'partida', 'menu'].includes(last.act) ? last.act : 'menu', room: typeof last.room === 'string' && /^[A-Z0-9]{5}$/.test(last.room) ? last.room : '', pl: last.pl === true }; }
       render();
     });
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'recipient=eq.' + AM.me }, p => { addMsg(p.new, true); render(); badge(); });
@@ -211,14 +214,14 @@ async function saveName(v) {
   try {
     if (AM.name) await sbRest('profiles?user_id=eq.' + AM.me, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ username: u }) });
     else await sbRest('profiles', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: AM.me, username: u }) });
-    AM.name = u; AM.note = 'Nome salvo.'; AM.editName = false;
+    AM.name = u; AM.note = 'Nome salvo.'; AM.editName = false; { const i = $('amName'); if (i) i.value = u; }
     if (!ON.name || ON.name === 'Jogador') ON.name = u;
   } catch (e) { AM.note = /duplicate|unique/i.test(e.message) ? 'Esse nome já está em uso. Escolha outro.' : errMsg(e); }
   render();
 }
 async function addFriend(v) {
   const u = (v || '').trim().toLowerCase().replace(/^@/, '');
-  if (!u) return;
+  if (!u) { AM.note = 'Digite o nome de usuário do amigo.'; render(); return; }
   if (u === AM.name) { AM.note = 'Esse é você.'; render(); return; }
   try {
     const p = await sbRest('profiles?select=user_id,username&username=eq.' + encodeURIComponent(u));
@@ -227,7 +230,7 @@ async function addFriend(v) {
     if (ex && ex.st === 'pending-in') return accept(id);
     if (ex) { AM.note = ex.st === 'ok' ? 'Vocês já são amigos.' : 'Pedido já enviado.'; render(); return; }
     await sbRest('friendships', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ addressee: id }) });
-    AM.note = 'Pedido enviado para ' + u + '.'; await loadAll();
+    AM.note = 'Pedido enviado para ' + u + '.'; { const i = $('amAdd'); if (i) i.value = ''; } await loadAll();
   } catch (e) { AM.note = /duplicate|unique/i.test(e.message) ? 'Já existe um pedido entre vocês.' : errMsg(e); render(); }
 }
 async function accept(id) {
@@ -271,7 +274,7 @@ function render() {
     h = '<p class="am-note">Carregando…</p>';
   } else if (!AM.name || AM.editName) {
     h = '<div class="am-sec"><b>' + (AM.name ? 'Trocar nome de usuário' : 'Escolha seu nome de usuário') + '</b><p class="am-note">É como seus amigos te acham. Único entre todas as contas: 3 a 16 caracteres (letras, números, _ ou ponto).</p>'
-      + '<div class="am-row"><input id="amName" type="text" maxlength="16" placeholder="ex.: gabriel_bt" value="' + esc(AM.name || '') + '" autocomplete="off"><button type="button" class="cta sm" data-am="name">Salvar</button></div>'
+      + '<div class="am-row"><input id="amName" type="text" maxlength="16" placeholder="ex.: gabriel_bt" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="done" value="' + esc(AM.name || '') + '" autocomplete="off"><button type="button" class="cta sm" data-am="name">Salvar</button></div>'
       + (AM.name ? '<button type="button" class="ghost sm" data-am="cancelname">Cancelar</button>' : '') + '</div>';
   } else if (AM.view === 'chat' && AM.chat) {
     const f = AM.friends.find(x => x.id === AM.chat) || { name: '?' }, l = AM.msgs[AM.chat] || [], room = myRoom();
@@ -281,7 +284,7 @@ function render() {
         if (m.kind === 'invite') return '<div class="am-msg inv ' + (mine ? 'me' : '') + '"><span>' + (mine ? 'Você convidou para a sala ' : 'Convite para a sala ') + '<b>' + esc(m.body) + '</b></span>' + (mine ? '' : '<button type="button" class="cta sm" data-am="join" data-code="' + esc(m.body) + '">Entrar</button>') + '<small>' + hhmm(m.created_at) + '</small></div>';
         return '<div class="am-msg ' + (mine ? 'me' : '') + '"><span>' + esc(m.body) + '</span><small>' + hhmm(m.created_at) + '</small></div>';
       }).join('') : '<p class="am-note">Nenhuma mensagem hoje. As conversas somem no dia seguinte.</p>') + '</div>'
-      + '<div class="am-row"><input id="amText" type="text" maxlength="500" placeholder="Mensagem" autocomplete="off"><button type="button" class="cta sm" data-am="send">Enviar</button></div>'
+      + '<div class="am-row"><input id="amText" type="text" maxlength="500" placeholder="Mensagem" autocomplete="off" enterkeyhint="send"><button type="button" class="cta sm" data-am="send">Enviar</button></div>'
       + (room ? '<button type="button" class="ghost sm" data-am="invite">🎾 Convidar para a sala ' + room + '</button>' : '');
   } else {
     const inc = AM.friends.filter(f => f.st === 'pending-in'), out = AM.friends.filter(f => f.st === 'pending-out'), ok = AM.friends.filter(f => f.st === 'ok'), room = myRoom();
@@ -289,7 +292,7 @@ function render() {
     ok.sort((a, b) => (order[AM.pres[a.id] || 'off'] - order[AM.pres[b.id] || 'off']) || a.name.localeCompare(b.name));
     h = '<div class="am-me"><span>Você: <b>@' + esc(AM.name) + '</b></span><button type="button" class="ghost xs" data-am="editname">trocar</button>' + wlTxt() + lvBar(LV.xp, true)
       + '<select id="amSt"><option value="auto">🟢 Online (ausente após 3 min fora)</option><option value="dnd">⛔ Não perturbe (sem som)</option><option value="invis">⚪ Aparecer offline</option></select></div>'
-      + '<div class="am-row"><input id="amAdd" type="text" maxlength="17" placeholder="Adicionar amigo pelo nome de usuário" autocomplete="off"><button type="button" class="cta sm" data-am="add">Adicionar</button></div>'
+      + '<div class="am-row"><input id="amAdd" type="text" maxlength="17" placeholder="Adicionar amigo pelo nome de usuário" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"><button type="button" class="cta sm" data-am="add">Adicionar</button></div>'
       + (inc.length ? '<div class="am-sec"><b>Pedidos de amizade</b>' + inc.map(f => '<div class="am-fr"><span>@' + esc(f.name) + '</span><span class="am-act"><button type="button" class="cta xs" data-am="accept" data-id="' + f.id + '">Aceitar</button><button type="button" class="ghost xs" data-am="decline" data-id="' + f.id + '">Recusar</button></span></div>').join('') + '</div>' : '')
       + '<div class="am-sec"><b>Amigos (' + ok.length + ')</b>' + (ok.length ? ok.map(f => {
         const n = AM.unread[f.id] || 0;
@@ -302,7 +305,10 @@ function render() {
       + (out.length ? '<div class="am-sec"><b>Pedidos enviados</b>' + out.map(f => '<div class="am-fr"><span>@' + esc(f.name) + ' <small>aguardando</small></span><span class="am-act"><button type="button" class="ghost xs" data-am="decline" data-id="' + f.id + '">Cancelar</button></span></div>').join('') + '</div>' : '');
   }
   if (AM.note) h += '<p class="am-note am-flash">' + esc(AM.note) + '</p>';
+  // o painel é redesenhado inteiro (amigo entrou, mensagem chegou…): guarda o que estava sendo digitado, o foco e o cursor
+  const keep = ['amText', 'amAdd', 'amName'].map(id => { const i = $(id); return i ? { id, v: i.value, f: document.activeElement === i, a: i.selectionStart, b: i.selectionEnd } : null; }).filter(Boolean);
   box.innerHTML = h;
+  keep.forEach(k => { const i = $(k.id); if (!i) return; i.value = k.v; if (k.f) { i.focus(); try { i.setSelectionRange(k.a, k.b); } catch (e) {} } });
   const st = $('amSt'); if (st) { st.value = AM.mode; st.onchange = () => { AM.mode = st.value; try { localStorage.setItem('pdo-amigos-st', AM.mode); } catch (e) {} track(); render(); }; }
   const ms = $('amMsgs'); if (ms) ms.scrollTop = ms.scrollHeight;
   const enter = (id, act) => { const i = $(id); if (i) i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); act(); } }; };
@@ -311,7 +317,7 @@ function render() {
   enter('amText', () => sendText());
   if (AM.view === 'chat' && AM.chat) { const n = AM.unread[AM.chat]; const l = AM.msgs[AM.chat] || []; if (n || l.length) { AM.unread[AM.chat] = 0; if (l.length) { lastRead[AM.chat] = l[l.length - 1].created_at; saveRead(); } badge(); } }
 }
-async function sendText() { const i = $('amText'); if (!i) return; const v = i.value; i.value = ''; if (!(await send(AM.chat, v))) i.value = v; const j = $('amText'); if (j) j.focus(); }
+async function sendText() { const i = $('amText'); if (!i) return; const v = i.value; i.value = ''; const ok = await send(AM.chat, v); const j = $('amText'); if (j) { if (!ok && !j.value) j.value = v; j.focus(); } } // (não enviou: a mensagem volta para o campo novo, não para o antigo)
 function badge() {
   const lv = $('amLvl'); if (lv) lv.textContent = 'Nv ' + lvOf(LV.xp).L;
   const n = Object.values(AM.unread).reduce((t, v) => t + v, 0) + AM.friends.filter(f => f.st === 'pending-in').length;

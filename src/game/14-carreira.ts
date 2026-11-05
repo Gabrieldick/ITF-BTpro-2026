@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, folegoOf, attrOf, NAMES, HEIGHTS } from './00-base';
+import { gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, folegoOf, attrOf, NAMES, HEIGHTS, cleanNames } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -323,7 +323,7 @@ async function clFetch(id) { const r = await sbRest('careers?select=data&id=eq.'
 const clRemove = id => sbRest('careers?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
 // baixa da nuvem para este navegador (substitui a versão local)
 async function clPull(id) {
-  const c = await clFetch(id); c.id = c.id || id; SAVES.slots[c.id] = c; DIRTY.add(c.id); CL_PEND.delete(c.id); pendStore();
+  const c = crSanitize(await clFetch(id)); c.id = c.id || id; SAVES.slots[c.id] = c; DIRTY.add(c.id); CL_PEND.delete(c.id); pendStore();
   if (SAVES.active === c.id) { $s.CR = c; crMigrate(); crSyncChars(); crSnapBase(); if (CL.onPulled) CL.onPulled(); } // era a carreira aberta: passa a ser a da nuvem
   flushSaves(); return c.id;
 }
@@ -377,7 +377,7 @@ async function clSyncPrefs() {
       const before = JSON.stringify([S.settings, NAMES, HEIGHTS]);
       const gfx = S.settings.gfx; Object.assign(S.settings, remote.s || {}); if (gfx) S.settings.gfx = gfx;
       Object.keys(NAMES).forEach(k => delete NAMES[k]); Object.assign(NAMES, remote.names || {});
-      Object.keys(HEIGHTS).forEach(k => delete HEIGHTS[k]); Object.assign(HEIGHTS, remote.heights || {});
+      Object.keys(HEIGHTS).forEach(k => delete HEIGHTS[k]); Object.assign(HEIGHTS, remote.heights || {}); cleanNames(NAMES, HEIGHTS); // (vem da nuvem: só texto e números válidos)
       try { localStorage.setItem('pdo-settings', JSON.stringify(S.settings)); localStorage.setItem('pdo-names', JSON.stringify(NAMES)); localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); localStorage.setItem('pdo-prefs-at', String(remote.at)); } catch (e) {}
       if (CL.onPrefs && JSON.stringify([S.settings, NAMES, HEIGHTS]) !== before) CL.onPrefs();
     } else await clPushPrefs();
@@ -429,10 +429,27 @@ function crExportData(id) {
   return { file: 'carreira-' + slug + '.json', text: JSON.stringify({ formato: SAVE_FMT, versao: 1, salvoEm: c.savedAt || new Date().toISOString(), carreira: c }) };
 }
 // lê um arquivo exportado; devolve { ok, msg, id }
+// save de carreira que veio de fora (arquivo, GitHub, nuvem): tipos certos nos campos que vão para a tela (antes um save
+// montado podia levar HTML em idade, estilo, temporada… e ele rodava toda vez que a carreira aparecia)
+function crSanitize(c) {
+  if (!c || typeof c !== 'object') return c;
+  const num = (v, a, b, d) => { v = +v; return Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
+  const txt = (v, n, d) => { const t = Array.from(String(v ?? '').replace(/[<>\u0000-\u001f\u007f]/g, '').trim()).slice(0, n).join(''); return t || d; };
+  c.season = Math.round(num(c.season, 1, 999, 1)); c.week = Math.round(num(c.week, 1, 52, 1)); c.age = Math.round(num(c.age, 14, 70, 20));
+  c.money = num(c.money, -1e9, 1e12, 0); c.fama = num(c.fama, 0, 100, 0); c.pe = num(c.pe, 0, 1e6, 0); c.games = +c.games === 6 ? 6 : 4;
+  if (c.id !== undefined) c.id = String(c.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'c' + Math.round(num(c.seed, 0, 1e12, 1));
+  const m = c.me; if (m && typeof m === 'object') {
+    m.name = txt(m.name, 28, 'Você'); m.estilo = txt(m.estilo, 30, 'Completo'); m.pais = String(m.pais || 'BRA').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || 'BRA';
+    if (m.uf !== undefined) m.uf = String(m.uf).replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || undefined; m.alt = Math.round(num(m.alt, 150, 215, 182));
+    if (m.a && typeof m.a === 'object') for (const k of Object.keys(m.a)) m.a[k] = num(m.a[k], 1, 120, 50);
+  }
+  return c;
+}
 function crImportData(text) {
   let o; try { o = JSON.parse(text); } catch (e) { return { ok: false, msg: 'O arquivo não é um JSON válido.' }; }
   const c = o && o.formato === SAVE_FMT ? o.carreira : o;
   if (!c || !c.me || !c.me.a || !c.seed || !c.pool || !c.season) return { ok: false, msg: 'Esse arquivo não é um save de carreira do ITF-BT Pro 2026.' };
+  crSanitize(c);
   c.id = c.id || 'c' + c.seed;
   const cur = SAVES.slots[c.id];
   const replaced = !!cur;
@@ -1919,6 +1936,7 @@ function careerMatchEnded(won, rating) {
 // ---------- saves antigos ----------
 function crMigrate() {
   if (!$s.CR) return;
+  crSanitize($s.CR);
   $s.CR.wardrobe = $s.CR.wardrobe || { tops: ['tee'], bots: ['short'], pats: ['liso'] }; // roupas compradas
   $s.CR.wardrobe.acc = $s.CR.wardrobe.acc || []; if ($s.CR.me && $s.CR.me.look && !$s.CR.me.look.acc) $s.CR.me.look.acc = {}; // acessórios (o seu jogador não sorteia munhequeira/manguito)
   $s.CR.fama = $s.CR.fama || 0; $s.CR.mOffers = $s.CR.mOffers || []; $s.CR.sponsors = $s.CR.sponsors || []; $s.CR.spOffers = $s.CR.spOffers || []; $s.CR.mentor = $s.CR.mentor || 0; $s.CR.discount = $s.CR.discount || 0; $s.CR.wildcard = $s.CR.wildcard || 0; $s.CR.wcFree = $s.CR.wcFree || 0;

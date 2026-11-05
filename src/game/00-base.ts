@@ -462,12 +462,20 @@ ROSTER.forEach(c => {
 });
 let NAMES = {};
 try { NAMES = JSON.parse(localStorage.getItem('pdo-names') || '{}') || {}; } catch (e) { NAMES = {}; }
+// nomes editados: só texto (sem < > nem caracteres de controle), até 28 caracteres; alturas: número de 150 a 215 cm
+const cleanName = v => Array.from(String(v ?? '').replace(/[<>\u0000-\u001f\u007f]/g, '')).slice(0, 28).join('');
+function cleanNames(N, H) {
+  if (N) for (const k of Object.keys(N)) { if (typeof N[k] !== 'string') delete N[k]; else N[k] = cleanName(N[k]); }
+  if (H) for (const k of Object.keys(H)) { const v = +H[k]; if (!Number.isFinite(v)) delete H[k]; else H[k] = Math.min(215, Math.max(150, Math.round(v))); }
+}
+cleanNames(NAMES);
 $s.CAREER_CHARS = []; // jogador da carreira e personagens fictícios
 // na carreira vale a versão da carreira (com fase e evolução); fora dela, a base
 // online: personagens da carreira trazidos por quem está na sala
 const charById = id => ($s.ONLINE_CHARS && $s.ONLINE_CHARS.find(c => c.id === id)) || ($s.CAREER_CHARS && $s.CAREER_CHARS.find(c => c.id === id)) || ROSTER.find(c => c.id === id) || ROSTER[0];
 let HEIGHTS = {};
 try { HEIGHTS = JSON.parse(localStorage.getItem('pdo-heights') || '{}') || {}; } catch (e) { HEIGHTS = {}; }
+cleanNames(null, HEIGHTS);
 const heightOf = c => clamp(+(HEIGHTS[c.id] || c.alt || (c.fem ? 170 : 183)), 150, 215) / 100;
 // fator de altura: >0 baixo (mais ágil em bola baixa), <0 alto (alcança mais em cima)
 const shortK = p => clamp((1.82 - (p.height || 1.85)) / .2, -1, 1);
@@ -524,4 +532,4 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
-export { smashZoneK, folegoOf, staMul, staErr, SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };
+export { cleanName, cleanNames, smashZoneK, folegoOf, staMul, staErr, SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

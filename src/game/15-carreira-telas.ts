@@ -285,7 +285,7 @@ function bindLook(done) {
   on('crAcHead', v => { A().headFab = v; });
   { const bt = $('crSrvPrev'); if (bt) bt.addEventListener('click', () => { ED.srv = !ED.srv; ED.st = 0; bt.textContent = ED.srv ? 'Ver aparência' : '▶ Ver saque'; srvPreviewShow(); }); }
   { const pre = $('crSrvPre'); if (pre) pre.addEventListener('change', () => { ED.srv = true; ED.st = 0; if (pre.value) { const v = SERVE_STYLES[pre.value]; $s.CR.serveStyle = { preset: pre.value, crouch: v.crouch, jump: v.jump, drive: v.drive, tossX: v.tossX, tossZ: v.tossZ }; } done(); }); }
-  SRV_SL.forEach(([k, , , , , fmt]) => { const r = $('crSrv_' + k); if (r) r.addEventListener('input', () => { if (!ED.srv) { ED.srv = true; ED.st = 0; const bt = $('crSrvPrev'); if (bt) bt.textContent = 'Ver aparência'; srvPreviewShow(); } const st = $s.CR.serveStyle = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || {}); st[k] = +r.value; st.preset = ''; const o = $('crSrvV_' + k); if (o) o.textContent = fmt(+r.value); if (pre0()) pre0().value = ''; }); });
+  SRV_SL.forEach(([k, , , , , fmt]) => { const r = $('crSrv_' + k); if (r) r.addEventListener('input', () => { if (!ED.srv) { ED.srv = true; ED.st = 0; const bt = $('crSrvPrev'); if (bt) bt.textContent = 'Ver aparência'; srvPreviewShow(); } const st = $s.CR.serveStyle = Object.assign({}, SERVE_STYLES.classico, $s.CR.serveStyle || {}); st[k] = +r.value; st.preset = ''; const o = $('crSrvV_' + k); if (o) o.textContent = fmt(+r.value); if (pre0()) pre0().value = ''; }); r.addEventListener('change', () => saveCareer()); }); // (soltou o controle: salva o estilo de saque)
   const OF = () => L().outfit || {};
   on('crOfTop', v => { OF().top = v; }); on('crOfPat', v => { OF().pat = v; }); on('crOfBot', v => { OF().bot = v; }); on('crOfLogo', v => { OF().logo = $s.CR.master ? $s.CR.master.brand : v; }); on('crOfLogoPos', v => { OF().logoPos = v; });
   ['c1', 'c2', 'bc', 'lc'].forEach(k => document.querySelectorAll('[data-of-' + k + ']').forEach(b => b.addEventListener('click', () => { if (L().outfit) { L().outfit[k === 'lc' ? 'logoCol' : k] = b.getAttribute('data-of-' + k); done(); } })));
@@ -844,11 +844,15 @@ function renderCloud() {
   const box = $('crCloud'), list = $('crCloudList'); if (!box) return;
   const note = t => '<p class="cr-note cr-wrap">' + esc(t) + '</p>';
   if (!CL.sess) {
+    // redesenha com mensagem nova (erro, "Entrando…"): mantém o e-mail e a senha digitados e o foco
+    const keepE = $('clEmail') ? $('clEmail').value : '', keepP = $('clPw') ? $('clPw').value : '', keepF = document.activeElement && document.activeElement.id;
     box.innerHTML = '<div class="cr-cloud-in"><b>Entrar ou criar conta</b><span>Com uma conta, as carreiras vão para a nuvem sozinhas e abrem em qualquer aparelho.</span>'
       + '<div class="cr-login"><input id="clEmail" class="cr-sel" type="email" placeholder="e-mail" autocomplete="email"><input id="clPw" class="cr-sel" type="password" placeholder="senha (mín. 6)" autocomplete="current-password"></div>'
       + '<div class="cta-row"><button class="cta sm" id="clIn" type="button">Entrar</button><button class="ghost sm" id="clUp" type="button">Criar conta</button><button class="ghost sm" id="clForgot" type="button">Esqueci a senha</button></div>'
       + (CL.msg ? note(CL.msg) : '') + '</div>';
     if (list) list.innerHTML = note('Entre na sua conta (aba Conta) para ver e baixar as carreiras salvas na nuvem.');
+    $('clEmail').value = keepE; $('clPw').value = keepP; if (keepF === 'clEmail' || keepF === 'clPw') $(keepF).focus();
+    [$('clEmail'), $('clPw')].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(clSignIn); } })); // Enter entra
     const go = async (fn, up) => {
       const em = $('clEmail').value.trim(), pw = $('clPw').value;
       if (!em || pw.length < 6) { CL.msg = 'Preencha o e-mail e uma senha de pelo menos 6 caracteres.'; renderCloud(); return; }
@@ -900,6 +904,28 @@ $('acctClose').addEventListener('click', () => { $('acctOv').hidden = true; $('c
 if (CL.sess) CL.syncP = clSyncAll().then(() => acctBtnTxt());
 CL.onPulled = () => { if (!$('career').hidden) renderCareer(); }; // a carreira aberta foi trocada pela da nuvem
 acctBtnTxt();
+// voltou de um link do e-mail: recuperação abre a tela de nova senha; confirmação de conta já entra
+// (este bloco tinha sido apagado sem querer: o link do "Esqueci a senha" caía no jogo e nada acontecia)
+{
+  const onLink = () => {
+    const kind = clFromLink();
+    if (kind === 'recovery') { $('clResetWho').textContent = 'Conta: ' + ((CL.sess && CL.sess.email) || ''); $('clResetPw').value = ''; $('clResetPw2').value = ''; $('clResetMsg').hidden = true; $('clReset').hidden = false; }
+    else if (kind) { CL.msg = 'E-mail confirmado: você já está conectado.'; clSyncAll(); }
+  };
+  onLink(); addEventListener('hashchange', onLink);
+  $('clResetClose').addEventListener('click', () => { $('clReset').hidden = true; });
+  const resetOk = async () => {
+    const a = $('clResetPw').value, b = $('clResetPw2').value, m = $('clResetMsg'); m.hidden = false;
+    if (a.length < 6) { m.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+    if (a !== b) { m.textContent = 'As duas senhas não são iguais.'; return; }
+    $('clResetOk').disabled = true;
+    try { await clNewPassword(a); m.textContent = 'Senha trocada! Você já está conectado.'; clSyncAll(); setTimeout(() => { $('clReset').hidden = true; }, 1500); }
+    catch (e) { m.textContent = 'Não consegui trocar: ' + e.message; }
+    finally { $('clResetOk').disabled = false; }
+  };
+  $('clResetOk').addEventListener('click', resetOk);
+  [$('clResetPw'), $('clResetPw2')].forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') resetOk(); }));
+}
 CL.onChange = () => { acctBtnTxt(); if (!$('crSaves').hidden || !$('crAccount').hidden || !$('acctOv').hidden) { renderCloud(); if (CL.sess && /^Salvo/.test(CL.msg)) clRefresh(); } };
 function renderSaves() {
   renderCloud(); if (CL.sess && clRows === null) clRefresh();

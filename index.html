@@ -408,9 +408,9 @@
       </div>
       <div data-onmainp="sala" hidden style="display:grid;gap:12px">
       <p class="cr-note" style="margin:0">Crie a sala e passe o código (até 8 pessoas). Lá dentro cada um escolhe personagem e lugar: 2×2, dupla contra a CPU, 1×1 ou campeonato.</p>
-      <label class="cr-field">Seu nome na sala <input id="onName" maxlength="16" placeholder="Seu nome" autocomplete="off"></label>
+      <label class="cr-field">Seu nome na sala <input id="onName" maxlength="16" placeholder="Seu nome" autocomplete="nickname" enterkeyhint="done"></label>
       <div class="cta-row"><button class="cta" id="onCreate">Criar sala</button><label class="chk"><input type="checkbox" id="onPublic" checked> Mostrar a minha sala na lista</label></div>
-      <div class="on-join"><p class="section-label">Entrar com código</p><div class="on-join-row"><input id="onCode" class="on-code-in" maxlength="5" placeholder="ABCDE" autocomplete="off" spellcheck="false" aria-label="Código da sala"><button class="cta" id="onJoin">Entrar na sala</button></div></div>
+      <div class="on-join"><p class="section-label">Entrar com código</p><div class="on-join-row"><input id="onCode" class="on-code-in" maxlength="200" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="Código da sala ou link de convite"><button class="cta" id="onJoin">Entrar na sala</button></div></div>
       <p class="section-label">Salas abertas</p>
       <div id="onRooms" class="cr-slots"></div>
       </div>

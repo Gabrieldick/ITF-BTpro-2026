@@ -2,7 +2,7 @@
 // teclado, toque, barras de força e menus
 import './11-mira';
 import { canHit } from './10-fisica';
-import { smashZoneK, bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf } from './00-base';
+import { smashZoneK, bCurve, ATTRS, C, HEIGHTS, NAMES, PLAY_STYLES, RACKET_STATS, ROSTER, SWING_DUR, TOSS_T, V3, bG, charById, clamp, hScale, heightOf, lerp, nameOf, overall, attrN, attrK, attrOf, cleanName } from './00-base';
 import { S, isMobile, NET } from './01-estado';
 import { camera, camera2 } from './02-render';
 import { swingVar, predictPt } from './04-poses';
@@ -312,7 +312,10 @@ function bindKey(k) {
 }
 const keyName = k => k === ' ' ? 'Espaço' : k.length === 1 ? k.toUpperCase() : k.replace(/^arrow/, 'seta ').replace(/^./, c => c.toUpperCase());
 addEventListener('keydown', e => {
-  if (e.target && e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'number')) return;
+  // digitando ou mexendo num campo visível (texto, senha, e-mail, controle deslizante, lista, opção): as teclas são do campo
+  // (antes só texto/número eram respeitados: no login o 'b'/'c'/'m'/'v' mudavam ajustes, o espaço não entrava na senha e as
+  // setas não mexiam nos controles deslizantes); o Esc continua valendo
+  { const t = e.target; if (t && t.closest && t.closest('input,select,textarea,[contenteditable]') && t.offsetParent !== null && e.key !== 'Escape') return; }
   if (BINDCAP.on) return;
   const k = bindKey(e.key.toLowerCase());
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
@@ -558,6 +561,8 @@ function enableTouch() { document.body.classList.add('touch'); el.stick.hidden =
 if (isMobile) enableTouch();
 addEventListener('touchstart', () => { if (!isTouch()) enableTouch(); }, { passive: true, once: true });
 function applyCam() {
+  // valores salvos (aparelho/nuvem) dentro das faixas dos controles: um número fora delas (ou inválido) estragava a câmera
+  { const c = (k, a, b, d) => { const v = +S.settings[k]; S.settings[k] = Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d; }; c('camDist', 60, 170, 120); c('camHeight', 40, 250, 75); c('fovFp', 55, 110, 72); }
   const fp = S.settings.cam === '1p';
   el.btnCam.firstChild.textContent = fp ? '1ª pessoa' : '3ª · ' + (CAM3[S.settings.cam3] || CAM3.padrao).nome;
   camera.fov = fp ? (S.settings.fovFp || 72) : (dupla() ? 58 : 55); camera.updateProjectionMatrix();
@@ -609,7 +614,7 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
       const o = JSON.parse(old) || {}; real = !S.quietSave || Object.keys(S.settings).some(k => o[k] !== undefined && JSON.stringify(o[k]) !== JSON.stringify(S.settings[k])); } else changed = false; } } catch (e) {} // a 1ª gravação (aparelho novo) não conta como mudança
   if (changed && real && S.onPrefsSaved) S.onPrefsSaved(); } // conta na nuvem: as configurações sobem junto
 function readMenu() {
-  const v = n => document.querySelector(`input[name=${n}]:checked`).value;
+  const v = n => { const i = document.querySelector(`input[name=${n}]:checked`); return i ? i.value : ''; }; // (nenhuma marcada: vale o padrão de cada um)
   // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil)
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.local2 = v('local2') || ''; { const sp = $('split2'); if (sp) S.settings.split2 = sp.checked; } S.settings.uniforms = 'simples';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal'; S.settings.formation = ($('formSel') && $('formSel').value) || 'normal';
@@ -645,13 +650,19 @@ function renderPick(slot) {
   const bars = ATTRS.map(([k, lbl]) => { const v = attrOf(c.a, k); return '<span>' + lbl + '</span><span class="bar"><i class="' + (v >= 85 ? 'hi' : v <= 65 ? 'lo' : '') + '" style="width:' + v + '%"></i></span><b>' + v + '</b>'; }).join('');
   box.innerHTML = '<div class="pick-h"><span class="who">' + SLOT_LABEL[slot] + '</span><button type="button" class="arw" data-d="-1" aria-label="Anterior">‹</button><button type="button" class="arw" data-d="1" aria-label="Próximo">›</button></div>'
     + '<select class="psel" id="sel-' + slot + '" aria-label="Escolher jogador da lista">' + opts + '</select>'
-    + '<div class="pick-top"><div style="min-width:0"><input class="pnm" type="text" id="nm-' + slot + '" maxlength="28" aria-label="Nome do jogador"><div class="meta"><span>' + c.pais + ' · ' + c.estilo + ' · joga ' + PLAY_STYLES[playStyleOf(c)].nome.toLowerCase() + ' · ' + ({ compacto: 'compacto', forte: 'forte', esguio: 'esguio', atletico: 'atlético' }[c.build] || 'atlético') + (c.canhoto ? ' · canhoto' : ' · destro') + (c.fem ? ' · feminino' : ' · masculino') + '</span><label>Altura <input class="palt" type="number" min="150" max="215" id="alt-' + slot + '" value="' + Math.round(heightOf(c) * 100) + '"> cm</label></div></div>'
+    + '<div class="pick-top"><div style="min-width:0"><input class="pnm" type="text" id="nm-' + slot + '" maxlength="28" aria-label="Nome do jogador"><div class="meta"><span>' + c.pais + ' · ' + c.estilo + ' · joga ' + PLAY_STYLES[playStyleOf(c)].nome.toLowerCase() + ' · ' + ({ compacto: 'compacto', forte: 'forte', esguio: 'esguio', atletico: 'atlético' }[c.build] || 'atlético') + (c.canhoto ? ' · canhoto' : ' · destro') + (c.fem ? ' · feminino' : ' · masculino') + '</span><span class="palt-box">Altura <button type="button" class="palt-d" data-d="-1" aria-label="Diminuir altura" tabindex="-1">−</button><input class="palt" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Altura em centímetros (150 a 215)" id="alt-' + slot + '" value="' + Math.round(heightOf(c) * 100) + '"><button type="button" class="palt-d" data-d="1" aria-label="Aumentar altura" tabindex="-1">+</button> cm</span></div></div>'
     + '<div class="ovr">' + overall(c.a) + '<small>OVR</small></div></div><div class="bars">' + bars + '</div>';
   const inp = box.querySelector('.pnm'); inp.value = nameOf(c);
-  inp.addEventListener('input', () => { NAMES[c.id] = inp.value; try { localStorage.setItem('pdo-names', JSON.stringify(NAMES)); localStorage.setItem('pdo-prefs-at', String(Date.now())); if (S.onPrefsSaved) S.onPrefsSaved(); } catch (e) {} });
+  inp.addEventListener('input', () => { NAMES[c.id] = cleanName(inp.value); try { localStorage.setItem('pdo-names', JSON.stringify(NAMES)); localStorage.setItem('pdo-prefs-at', String(Date.now())); if (S.onPrefsSaved) S.onPrefsSaved(); } catch (e) {} });
   inp.addEventListener('change', renderRoster);
   const ai = box.querySelector('.palt');
-  ai.addEventListener('change', () => { const v = clamp(Math.round(+ai.value || 0), 150, 215); ai.value = v; HEIGHTS[c.id] = v; try { localStorage.setItem('pdo-prefs-at', String(Date.now())); if (S.onPrefsSaved) S.onPrefsSaved(); } catch (e) {} try { localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); } catch (e) {} });
+  // altura: só números (150–215 cm), − / + e as setas do teclado mudam de 1 em 1; apagou e saiu do campo: volta ao valor anterior
+  const setAlt = v => { v = clamp(Math.round(v), 150, 215); ai.value = v; if (HEIGHTS[c.id] === v) return; HEIGHTS[c.id] = v; try { localStorage.setItem('pdo-prefs-at', String(Date.now())); if (S.onPrefsSaved) S.onPrefsSaved(); } catch (e) {} try { localStorage.setItem('pdo-heights', JSON.stringify(HEIGHTS)); } catch (e) {} };
+  const curAlt = () => Math.round(heightOf(c) * 100);
+  ai.addEventListener('input', () => { const d = ai.value.replace(/\D/g, '').slice(0, 3); if (d !== ai.value) ai.value = d; });
+  ai.addEventListener('change', () => { const v = parseInt(ai.value, 10); if (Number.isFinite(v)) setAlt(v); else ai.value = curAlt(); });
+  ai.addEventListener('keydown', e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setAlt((parseInt(ai.value, 10) || curAlt()) + (e.key === 'ArrowUp' ? 1 : -1)); } else if (e.key === 'Enter') ai.blur(); });
+  box.querySelectorAll('.palt-d').forEach(b => b.addEventListener('click', () => setAlt((parseInt(ai.value, 10) || curAlt()) + +b.dataset.d)));
   box.querySelector('.psel').addEventListener('change', e => { S.settings.pick[slot] = e.target.value; saveSettings(); renderRoster(); });
   box.querySelectorAll('.arw').forEach(b => b.addEventListener('click', () => cyclePick(slot, +b.dataset.d)));
 }

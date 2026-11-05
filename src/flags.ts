@@ -58,7 +58,7 @@ const COUNTRIES: { code: string, nome: string }[] = [
 
 function flagSVG(code: string, cls = 'flag'): string {
   const d = DRAW[code];
-  if (!d) return `<span class="${cls} flag-txt">${code || ''}</span>`;
+  if (!d) return `<span class="${cls} flag-txt">${String(code || '').replace(/[^A-Za-z]/g, '').slice(0, 3)}</span>`; // código desconhecido (pode vir de fora): só letras
   return `<svg class="${cls}" viewBox="0 0 30 20" preserveAspectRatio="none" role="img" aria-label="${code}"><title>${code}</title>${d}</svg>`;
 }
 const countryName = (code: string) => (COUNTRIES.find(c => c.code === code) || { nome: code }).nome;

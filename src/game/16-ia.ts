@@ -384,7 +384,7 @@ function updateHuman(dt, c = localCtl()) {
       // timing: o miolo do movimento (15%–60%) é perfeito; cedo/tarde demais perde, mas não zera
       // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
       if (sw.meter && !mod.volley) mod.meterSmash = true;
-      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp((p.netHuman ? p.pdRemote : S.tutorial ? 1 : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3, 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
+      if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp(Math.round((p.netHuman ? p.pdRemote : S.tutorial ? 1 : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3), 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
       if (!r.mis) noteTend(p, sw.type);

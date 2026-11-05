@@ -67,7 +67,12 @@ async function rlChannel() {
   const { RealtimeClient } = await import('@supabase/realtime-js');
   RL.client = new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY } });
   const ch = RL.client.channel('salas-v1', { config: { presence: { key: 'p' + Math.random().toString(36).slice(2, 9) } } });
-  ch.on('presence', { event: 'sync' }, () => { RL.rooms = Object.values(ch.presenceState()).flat().filter(x => x && x.code); renderRoomList(); });
+  // a lista vem de qualquer um que conheça a chave pública: só aceita salas bem formadas (código de 5 letras/números,
+  // nome cortado, número de jogadores 1–4); o resto é descartado (antes um campo podia levar HTML para a tela de todos)
+  ch.on('presence', { event: 'sync' }, () => {
+    RL.rooms = Object.values(ch.presenceState()).flat().filter(x => x && typeof x.code === 'string' && /^[A-Z0-9]{5}$/.test(x.code))
+      .map(x => ({ code: x.code, host: cutName(x.host, 16) || 'Jogador', mode: x.mode === 'simples' ? 'simples' : 'dupla', n: clamp(Math.round(+x.n) || 1, 1, 4), playing: x.playing === true, at: Number.isFinite(+x.at) ? +x.at : 0 }));
+    renderRoomList(); });
   RL.ch = ch; RL.state = 'conectando'; renderRoomList();
   try { await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('tempo esgotado')), 12000); ch.subscribe(st => { if (st === 'SUBSCRIBED') { clearTimeout(t); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') { clearTimeout(t); rej(new Error(st)); } }); }); }
   catch (e) { try { RL.client.disconnect(); } catch (e2) {} RL.client = null; RL.ch = null; RL.tracked = false; throw e; } // sem servidor: para de tentar (tenta de novo ao reabrir o online)
@@ -102,8 +107,10 @@ function openOnline() {
   if (!NET.role) { renderRoomList(); rlChannel().catch(() => { RL.state = 'erro'; renderRoomList(); }); }
 }
 function closeOnline() { if (QQ.on) queueStop(); $('online').hidden = true; el.menu.hidden = false; syncMenu(); }
+// nome: corta por caractere (não parte um emoji ao meio), tira espaços e caracteres de controle
+const cutName = (v, n) => Array.from(String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim()).slice(0, n).join('').trim();
 function myName() {
-  const n = ($('onName').value || '').trim().slice(0, 16) || 'Jogador';
+  const n = cutName($('onName').value, 16) || 'Jogador';
   ON.name = n; try { localStorage.setItem('pdo-online-name', n); } catch (e) {}
   return n;
 }
@@ -205,9 +212,33 @@ function sanitizeCC(c, mid) {
   const L = c.look || {}, look = {};
   for (const k of ['skin', 'hair', 'hairStyle', 'beard', 'cap', 'visor', 'headband', 'glasses', 'band', 'tank', 'num', 'glassStyle', 'lens']) if (L[k] !== undefined && typeof L[k] !== 'object') look[k] = typeof L[k] === 'string' ? L[k].slice(0, 24) : L[k];
   look.racket = RACKET_STATS[L.racket] ? L.racket : 'proteo';
-  return { id: 'cc_' + mid, name: String(c.name || 'Jogador').slice(0, 24), alt: clamp(+c.alt || 182, 150, 215), pais: String(c.pais || 'BRA').slice(0, 3).toUpperCase(), fem: !!c.fem,
+  return { id: 'cc_' + mid, name: String(c.name || 'Jogador').slice(0, 24), alt: clamp(+c.alt || 182, 150, 215), pais: String(c.pais || 'BRA').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || 'BRA', fem: !!c.fem,
     build: ['atletico', 'esguio', 'fino', 'compacto', 'forte'].includes(c.build) ? c.build : 'atletico', estilo: String(c.estilo || 'Carreira').slice(0, 30), canhoto: !!c.canhoto || undefined, a, look, career: true };
 }
+// --- convidado: o que vem do anfitrião passa por aqui antes de ir para a tela (um anfitrião mal-intencionado podia mandar
+// HTML em campos de texto/número e ele rodava na página de quem entrou na sala) ---
+const sId = v => String(v ?? '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+const nI = (v, a, b) => clamp(Math.round(+v) || 0, a, b);
+const pair2 = v => [nI(v && v[0], 0, 99), nI(v && v[1], 0, 99)];
+const SEAT_KEYS = ['A1', 'A2', 'B1', 'B2'];
+function sanL(L) {
+  if (!L || typeof L !== 'object') return null;
+  const members = (Array.isArray(L.members) ? L.members : []).slice(0, 16).filter(m => m && typeof m === 'object').map(m => {
+    const id = sId(m.id), cc = m.cc ? sanitizeCC(m.cc, id) : null;
+    return { id, name: cutName(m.name, 16) || 'Jogador', pick: sId(m.pick), rtt: nI(m.rtt, 0, 9999), cc, rk: RACKET_STATS[m.rk] && m.rk !== 'assinatura' ? m.rk : '' };
+  });
+  const seats = {}, cpu = {};
+  for (const k of SEAT_KEYS) { seats[k] = L.seats && L.seats[k] ? sId(L.seats[k]) : null; cpu[k] = L.cpu && L.cpu[k] ? sId(L.cpu[k]) : null; }
+  return { code: typeof L.code === 'string' && /^[A-Z0-9]{5}$/.test(L.code) ? L.code : '', kind: L.kind === 'champ' ? 'champ' : 'match', mode: L.mode === 'simples' ? 'simples' : 'dupla',
+    games: nI(L.games, 1, 9) || 4, diff: typeof L.diff === 'string' ? L.diff.slice(0, 12) : 'medio', court: COURTS[L.court] ? L.court : 'praia', members, seats, cpu,
+    champ: L.champ && typeof L.champ === 'object' && Array.isArray(L.champ.entries) && Array.isArray(L.champ.rounds) ? L.champ : null, playing: !!L.playing, cpuLv: nI(L.cpuLv, 1, 6) || 3 };
+}
+// placar e estatísticas vindos do anfitrião: só números
+const scoreSan = sc => { sc = sc && typeof sc === 'object' ? sc : {};
+  return { pts: pair2(sc.pts), games: pair2(sc.games), tb: !!sc.tb, stb: !!sc.stb, sets: pair2(sc.sets), stbDone: !!sc.stbDone, fb: nI(sc.fb, 0, 1),
+    hist: (Array.isArray(sc.hist) ? sc.hist.slice(0, 5) : []).map(h => [nI(h && h[0], 0, 99), nI(h && h[1], 0, 99), h && h[2] === 'stb' ? 'stb' : undefined]) }; };
+const PSTAT_KEYS = ['voleio', 'saque', 'smash', 'drive', 'curta', 'lob', 'defesa', 'fe', 'ue'];
+const pstatSan = x => { const o = {}; PSTAT_KEYS.forEach(k => { o[k] = nI(x && x[k], 0, 9999); }); return o; };
 const regOnlineChars = list => { $s.ONLINE_CHARS = (list || members()).filter(m => m.cc).map(m => m.cc); };
 function fixCpu() {
   const used = new Set(members().map(m => m.pick).filter(Boolean));
@@ -259,11 +290,11 @@ function hostData(g, d) {
   if (!Array.isArray(d)) return;
   const k = d[0], c = g.ctl;
   if (k === 'ping') { sendTo(g.conn, ['pong', d[1]]); return; }
-  if (k === 'pong') { const r = performance.now() - d[1]; g.rtt = g.rtt ? g.rtt * .7 + r * .3 : r; if (g.ctl) g.ctl.lag = lagOf(g); return; }
+  if (k === 'pong') { const r = performance.now() - (+d[1]); if (!Number.isFinite(r) || r < 0 || r > 10000) return; g.rtt = g.rtt ? g.rtt * .7 + r * .3 : r; if (g.ctl) g.ctl.lag = lagOf(g); return; }
   if (k === 'bye') { guestLost(g, g.name + ' saiu da sala.'); return; }
   if (k === 'hello') {
     if (!d[1] || d[1].v !== PROTO) { sendTo(g.conn, ['old']); return; }
-    g.name = String(d[1].name || 'Jogador').slice(0, 16);
+    g.name = cutName(d[1].name, 16) || 'Jogador';
     const want = d[1].pick, used = new Set(members().filter(x => x !== g).map(x => x.pick));
     g.pick = ROSTER.some(c => c.id === want) && !used.has(want) ? want : byOvr().find(ch => !used.has(ch.id)).id;
     if (!ON.guests.includes(g)) ON.guests.push(g);
@@ -274,12 +305,13 @@ function hostData(g, d) {
   if (k === 'seat' || k === 'pick' || k === 'cchar' || k === 'racket' || k === 'pd') { act(g.id, d); return; } // ações da sala vindas de quem entrou
   if (!c) return;
   if (k === 'i') {
-    if (d[4] <= g.inSeq) return; g.inSeq = d[4]; // chegou fora de ordem: já há uma mais nova
-    if (d[5] > 0) { g.interp = d[5]; c.lag = lagOf(g); }
-    const s = c.p.team === 0 ? 1 : -1; c.ix = (+d[1] || 0) * s; c.iz = (+d[2] || 0) * s; c.assistMove = !!d[3]; return; // time de cima: a tela dele é espelhada
+    if (!Number.isFinite(+d[4]) || d[4] <= g.inSeq) return; g.inSeq = +d[4]; // chegou fora de ordem: já há uma mais nova
+    if (d[5] > 0 && d[5] < 2000) { g.interp = +d[5]; c.lag = lagOf(g); }
+    // direção do controle: só de −1 a 1 (um valor maior era uma corrida mais rápida que a de qualquer jogador; infinito travava a partida)
+    const s = c.p.team === 0 ? 1 : -1, ax = clamp(+d[1] || 0, -1, 1), az = clamp(+d[2] || 0, -1, 1); c.ix = ax * s; c.iz = az * s; c.assistMove = !!d[3]; return; // time de cima: a tela dele é espelhada
   }
   // o convidado sorteia a altura do lançamento e o lugar do verde do smash e manda junto: os dois usam o mesmo valor
-  if (k === 's' && inPlay()) { if (d[2]) { c.tossF = d[3] || 0; c.smC = d[4] || 0; pressShot(d[1], c); } else releaseShot(d[1], c); }
+  if (k === 's' && inPlay() && ['smash', 'lob', 'curta', 'defesa'].includes(d[1])) { if (d[2]) { c.tossF = clamp(+d[3] || 1, .82, 1.2); c.smC = clamp(+d[4] || .7, .5, .92); pressShot(d[1], c); } else releaseShot(d[1], c); } // (só golpes conhecidos e o sorteio do convidado dentro da faixa normal)
 }
 // quanto o convidado vê a bola atrasada: ida e volta + o atraso de desenho dele (para descontar no tempo do golpe)
 const lagOf = g => Math.min(.3, (g.rtt + (g.interp || INTERP_START)) / 1000);
@@ -476,7 +508,7 @@ function champResult() {
 
 // ---------- convidado ----------
 async function joinRoom() {
-  if (NET.role) return;
+  if (NET.role || $('onJoin').disabled) return; // já conectando (Enter de novo abria uma segunda conexão)
   const code = ($('onCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 5) { msg('O código tem 5 letras/números.'); return; }
   const name = myName();
@@ -587,8 +619,8 @@ function guestData(d) {
   if (k === 'st') { onState(d[1]); return; }
   if (k === 'e') { for (const e of d[2]) ON.evq.push({ t: d[1], e }); return; }
   if (k === 'ping') { send(['pong', d[1]]); return; }
-  if (k === 'pong') { const r = now - d[1]; ON.rtt = ON.rtt ? ON.rtt * .7 + r * .3 : r; return; }
-  if (k === 'L') { ON.L = d[1]; regOnlineChars(d[1].members || []); if (!$('online').hidden && !ON.inMatch) renderRoom(); return; }
+  if (k === 'pong') { const r = now - (+d[1]); if (!Number.isFinite(r) || r < 0 || r > 10000) return; ON.rtt = ON.rtt ? ON.rtt * .7 + r * .3 : r; return; }
+  if (k === 'L') { const L = sanL(d[1]); if (!L) return; ON.L = L; regOnlineChars(L.members); if (!$('online').hidden && !ON.inMatch) renderRoom(); return; }
   if (k === 'welcome') { ON.myId = d[1].id; return; }
   if (k === 'bye') { leave('Quem criou a sala fechou a sala.'); return; }
   if (k === 'full') { leave('Essa sala já está cheia (8 pessoas).'); return; }
@@ -605,20 +637,24 @@ function restoreNames() {
 const VIEW = [[human, partner, cpuA, cpuB], [partner, human, cpuA, cpuB], [cpuA, cpuB, human, partner], [cpuB, cpuA, partner, human]];
 const SLOT = new Map([[human, 'me'], [partner, 'mate'], [cpuA, 'o1'], [cpuB, 'o2']]);
 function guestStart(cfg) {
-  const me = cfg.me;
+  const me = clamp(Math.round(+cfg.me), -1, 3); // (índice do anfitrião: -1 assiste, 0–3 joga)
   ON.myIdx = me; ON.mirror = me >= 2; ON.G = VIEW[Math.max(0, me)];
   S.spectate = me < 0; document.body.classList.toggle('spectate', S.spectate);
-  Object.assign(S.settings, cfg.settings); S.netCourt = cfg.court || 'praia';
+  // só os ajustes da partida, validados (antes qualquer chave do anfitrião entrava nos seus ajustes e ficava salva)
+  { const st = cfg.settings || {}; if (st.mode === 'simples' || st.mode === 'dupla') S.settings.mode = st.mode; if (+st.games === 4 || +st.games === 6) S.settings.games = +st.games;
+    if (typeof st.diff === 'string' && /^[a-z]{3,12}$/.test(st.diff)) S.settings.diff = st.diff; if (st.format === 'set' || st.format === 'pro') S.settings.format = st.format; }
+  S.netCourt = COURTS[cfg.court] ? cfg.court : 'praia';
+  cfg.picks = (Array.isArray(cfg.picks) ? cfg.picks : []).slice(0, 4).map(sId); cfg.names = cfg.names && typeof cfg.names === 'object' ? cfg.names : {}; cfg.heights = cfg.heights && typeof cfg.heights === 'object' ? cfg.heights : {};
   const pick = {}, rk = {}; ON.G.forEach((p, i) => { pick[SLOT.get(p)] = cfg.picks[i]; rk[SLOT.get(p)] = (cfg.rackets || [])[i] || ''; }); S.settings.pick = pick; S.rkPick = rk;
   const mine = charById(pick.me); S.settings.racket = (mine.look && mine.look.racket) || S.settings.racket;
   // nomes e alturas personalizados do anfitrião (só na memória; voltam ao sair)
   restoreNames(); ON.nameBak = {};
   for (const id of cfg.picks) {
     if (!(id in ON.nameBak)) ON.nameBak[id] = [NAMES[id], HEIGHTS[id]];
-    if (cfg.names[id] !== undefined) NAMES[id] = cfg.names[id]; else delete NAMES[id];
-    if (cfg.heights[id] !== undefined) HEIGHTS[id] = cfg.heights[id]; else delete HEIGHTS[id];
+    if (cfg.names[id] !== undefined) NAMES[id] = cutName(cfg.names[id], 28); else delete NAMES[id];
+    if (cfg.heights[id] !== undefined && Number.isFinite(+cfg.heights[id])) HEIGHTS[id] = clamp(Math.round(+cfg.heights[id]), 150, 215); else delete HEIGHTS[id];
   }
-  ON.G.forEach((p, i) => { p.isHuman = i === me; p.netHuman = cfg.humans[i] && i !== me; p.netName = (cfg.players || [])[i] || ''; p.mtr = null; });
+  ON.G.forEach((p, i) => { p.isHuman = i === me; p.netHuman = cfg.humans[i] && i !== me; p.netName = cutName((cfg.players || [])[i], 16); p.mtr = null; });
   human.mtr = MTR;
   S.careerActive = false; S.champActive = false;
   $('online').hidden = true; document.body.classList.remove('in-replay'); $('replayBar').hidden = true;
@@ -636,9 +672,10 @@ function guestSetupPoint(i) {
 }
 function guestOver(d) {
   S.matchWinner = mT(d.w);
-  S.stats = { pts: swap2(d.st.pts), maxRally: d.st.maxRally, smashes: ON.mySmashes };
+  const st = d && d.st || {};
+  S.stats = { pts: swap2(pair2(st.pts)), maxRally: nI(st.maxRally, 0, 999), smashes: ON.mySmashes };
   S.pstats = [];
-  d.ps.forEach((x, i) => { const k = $s.players.indexOf(ON.G[i]); if (k >= 0 && x) S.pstats[k] = x; });
+  (Array.isArray(d && d.ps) ? d.ps : []).slice(0, 4).forEach((x, i) => { const k = $s.players.indexOf(ON.G[i]); if (k >= 0 && x) S.pstats[k] = pstatSan(x); });
   el.pause.hidden = true; el.meter.hidden = true;
   showOver();
   $('btnAgain').hidden = true; // quem recomeça é o anfitrião
@@ -700,7 +737,7 @@ function applyState(a, b, k, ex = 0) {
   if (b.mt) { MTR.active = true; MTR.kind = b.mt[0]; MTR.type = b.mt[1]; MTR.t = b.mt[2]; MTR.v = a.mt ? L(a.mt[3], b.mt[3]) : b.mt[3]; MTR.center = b.mt[4]; MTR.half = b.mt[5]; }
   else if (MTR.active) MTR.active = false;
   // placar e estado do ponto
-  const sc = b.sc;
+  const sc = scoreSan(b.sc);
   S.score = ON.mirror ? { pts: swap2(sc.pts), games: swap2(sc.games), tb: sc.tb, stb: sc.stb, sets: swap2(sc.sets || [0, 0]), hist: (sc.hist || []).map(h => [h[1], h[0], h[2]]), stbDone: sc.stbDone, fb: sc.fb } : sc;
   S.server = mT(b.sv); S.serverIdx = swap2(b.si); S.serverPlayer = b.sp >= 0 ? ON.G[b.sp] : null;
   S.lastTeam = mT(b.lt); S.hitId = b.hid; S.rally = b.r;
@@ -839,7 +876,7 @@ function renderRoom(force) {
   { const rs = $('onRk'); if (rs && document.activeElement !== rs) { const want = (mine && mine.rk) || ''; if (!rs.options.length) rs.innerHTML = '<option value="">A do personagem</option>' + Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([k, r]) => '<option value="' + k + '">' + esc(r.nome) + ' (' + rkSummary(k) + ')</option>').join(''); rs.value = want; } }
   if ((force || pk !== ON.pickKey) && document.activeElement !== $('onPick')) {
     ON.pickKey = pk;
-    $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + mine.cc.id + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + (mine.cc.canhoto ? 'L' : 'R') + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + (c.canhoto ? 'L' : 'R') + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
+    $('onPick').innerHTML = (mine && mine.cc ? '<option value="' + esc(mine.cc.id) + '"' + (mine.pick === mine.cc.id ? ' selected' : '') + '>★ ' + overall(mine.cc.a) + ' · ' + (mine.cc.canhoto ? 'L' : 'R') + ' · ' + esc(mine.cc.name) + ' (sua carreira)</option>' : '') + byOvr().map(c => '<option value="' + c.id + '"' + (mine && c.id === mine.pick ? ' selected' : '') + (taken.has(c.id) ? ' disabled' : '') + '>' + overall(c.a) + ' · ' + (c.canhoto ? 'L' : 'R') + ' · ' + esc(nameOf(c)) + ' (' + c.pais + ')' + (taken.has(c.id) ? ' · em uso' : '') + '</option>').join('');
     $('onPick').disabled = L.playing;
   }
   document.querySelectorAll('input[name=onKind]').forEach(r => { r.checked = r.value === L.kind; r.disabled = !host || L.playing; });
@@ -904,7 +941,11 @@ $('onBack').addEventListener('click', closeOnline);
 $('onCreate').addEventListener('click', createRoom);
 $('onJoin').addEventListener('click', joinRoom);
 $('onCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
-$('onCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
+$('onCode').addEventListener('input', e => {
+  const t = e.target, raw = t.value, link = raw.match(/sala=([A-Za-z0-9]{5})/); // colou o link de convite: pega o código dele
+  const v = (link ? link[1] : raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+  if (v !== raw) { const c = link ? v.length : Math.min(v.length, t.selectionStart || 0); t.value = v; try { t.setSelectionRange(c, c); } catch (err) {} } // (o cursor não pula para o fim)
+});
 $('onPick').addEventListener('change', e => doAct(['pick', e.target.value]));
 $('onRk').addEventListener('change', e => doAct(['racket', e.target.value]));
 // configurações dentro do online (bolinha, nome do golpe, marcações e teclas)
@@ -988,7 +1029,14 @@ async function queueStart() {
     QQ.client = new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY } });
     const ch = QQ.client.channel('fila-v1', { config: { presence: { key: QQ.id }, broadcast: { self: false } } });
     ch.on('presence', { event: 'sync' }, () => queueSync());
-    ch.on('broadcast', { event: 'go' }, ({ payload }) => { if (QQ.on && payload && Array.isArray(payload.ids) && payload.ids.includes(QQ.id) && payload.code) queueGo(payload.code); });
+    // convite para a sala: só vale do primeiro da fila do seu grupo, e com você no grupo (antes qualquer um mandava todos da
+    // fila para a sala dele)
+    ch.on('broadcast', { event: 'go' }, ({ payload }) => {
+      if (!QQ.on || !payload || !Array.isArray(payload.ids) || !payload.ids.includes(QQ.id) || typeof payload.code !== 'string' || !/^[A-Z0-9]{5}$/.test(payload.code)) return;
+      const { list } = queueGroup(), lead = list.find(x => x.k === payload.from);
+      const mine = list.find(x => x.k === QQ.id); if (!lead || !mine || lead.at > mine.at || payload.ids.length > 3) return; // (quem chama entrou na fila antes de você, na mesma modalidade)
+      queueGo(payload.code);
+    });
     QQ.ch = ch;
     await new Promise((res, rej) => { const to = setTimeout(() => rej(new Error('tempo esgotado')), 9000); ch.subscribe(st => { if (st === 'SUBSCRIBED') { clearTimeout(to); res(); } else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') { clearTimeout(to); rej(new Error(st)); } }); });
     await ch.track({ mode: QQ.mode, cat: QQ.cat, fem: QQ.fem, cpu: !!QPREF.cpu, at: QQ.at, name: myName() });
@@ -1000,6 +1048,11 @@ function queueStop(keepMsg) {
   try { if (QQ.ch) QQ.ch.untrack(); } catch (e) {}
   setTimeout(() => { try { if (QQ.client) QQ.client.disconnect(); } catch (e) {} QQ.client = null; QQ.ch = null; }, 600);
   queueUi(); if (!keepMsg) qStatus('');
+}
+// quem está na fila na sua modalidade, do mais antigo para o mais novo (o mesmo cálculo em todos)
+function queueGroup() {
+  const st = QQ.ch.presenceState();
+  return { list: Object.entries(st).map(([k, a]) => Object.assign({ k }, a[a.length - 1])).filter(x => x && x.mode === QQ.mode && (x.cat || 'masc') === QQ.cat).sort((a, b) => (a.at - b.at) || (a.k < b.k ? -1 : 1)) };
 }
 function queueSync() {
   if (!QQ.on || !QQ.ch || QQ.leading) return;
@@ -1023,7 +1076,7 @@ async function queueLead(ids) {
   if (!ON.code || NET.role !== 'host') { QQ.leading = false; qStatus('Não consegui criar a sala; tentando de novo…'); return; }
   ON.room.mode = QQ.mode; if (QQ.cc) act('host', ['cchar', QQ.cc]); if (QPREF.rk) act('host', ['racket', QPREF.rk]); broadcast();
   QQ.auto = { n: ids.length, until: Date.now() + 25000, cat: QQ.cat };
-  try { await QQ.ch.send({ type: 'broadcast', event: 'go', payload: { ids: ids.filter(i => i !== QQ.id), code: ON.code } }); } catch (e) {}
+  try { await QQ.ch.send({ type: 'broadcast', event: 'go', payload: { ids: ids.filter(i => i !== QQ.id), code: ON.code, from: QQ.id } }); } catch (e) {}
   queueStop(true); qStatus('');
 }
 function queueGo(code) {

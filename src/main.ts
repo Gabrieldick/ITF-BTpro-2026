@@ -6,6 +6,21 @@ import { preloadAssets } from './assets';
 // desliga a conversão automática das versões novas para manter as mesmas cores.
 THREE.ColorManagement.enabled = false;
 
+// campos que não são de login: os gerenciadores de senha (1Password, LastPass, Bitwarden, Proton Pass…) não devem oferecer
+// preencher nem criar alias de e-mail neles (ex.: o campo de altura do jogador). Vale também para os criados depois
+{
+  const LOGIN = new Set(['clEmail', 'clPw', 'clResetPw', 'clResetPw2']);
+  const mark = (i: Element) => {
+    if (!(i instanceof HTMLInputElement) || LOGIN.has(i.id) || i.type === 'password' || i.type === 'email' || i.dataset.formType) return;
+    if (!['text', 'search', 'number', 'tel', ''].includes(i.type)) return;
+    i.setAttribute('autocomplete', 'off'); i.setAttribute('data-1p-ignore', ''); i.setAttribute('data-lpignore', 'true');
+    i.setAttribute('data-bwignore', 'true'); i.setAttribute('data-protonpass-ignore', 'true'); i.setAttribute('data-form-type', 'other');
+  };
+  const scan = (root: ParentNode) => root.querySelectorAll('input').forEach(mark);
+  const start = () => { scan(document); new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n instanceof HTMLInputElement) mark(n); else if (n instanceof Element) scan(n); }))).observe(document.body, { childList: true, subtree: true }); };
+  if (document.body) start(); else addEventListener('DOMContentLoaded', start);
+}
+
 // versão do jogo no menu principal (definida no build pelo vite.config.ts)
 declare const __APP_VER__: string, __APP_BUILD__: string, __APP_DATE__: string, __APP_LOG__: string[][];
 {
