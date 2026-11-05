@@ -6,6 +6,8 @@ import { $s } from '../state';
 import { S, NET } from './01-estado';
 import { ball, ballMesh, sparkle } from './07-glb';
 import { human } from './06-modelos';
+import { ROOF } from './03-cenario';
+import { G } from './00-base';
 
 const POWERS = {
   // os de efeito contínuo valem até o fim do ponto
@@ -13,10 +15,11 @@ const POWERS = {
   ima: { nome: 'Ímã', ic: '🧲', desc: 'alcança bolas bem mais longe até o fim do ponto', now: 1 },
   gelo: { nome: 'Gelo', ic: '❄️', desc: 'deixa os adversários lentos até o fim do ponto', now: 1 },
   gigante: { nome: 'Gigante', ic: '🦒', desc: 'fica gigante até o fim do ponto: alcança bolas muito mais altas e longe', now: 1 },
+  curupira: { nome: 'Curupira', ic: '👣', desc: 'vira os pés dos adversários: controles de movimento invertidos até o fim do ponto (a CPU fica perdida e lenta)', now: 1 },
   ouro: { nome: 'Mão de ouro', ic: '✨', desc: 'tudo no verde até o fim do ponto: barras perfeitas e curtas no tempo certo', now: 1 },
   bomba: { nome: 'Bomba', ic: '💣', desc: 'o próximo golpe sai fortíssimo' },
-  curva: { nome: 'Curva maluca', ic: '🌀', desc: 'a próxima bola faz uma curva enorme' },
-  lua: { nome: 'Lob lunar', ic: '🌙', desc: 'o próximo golpe vira um lob altíssimo que despenca no fundo' },
+  curva: { nome: 'Curva maluca', ic: '🌀', desc: 'a próxima bola vai serpenteando: para os lados, para frente e para trás' },
+  lua: { nome: 'Lob lunar', ic: '🌙', desc: 'o próximo golpe vira um lob que vai às alturas e despenca no fundo' },
   fantasma: { nome: 'Bola fantasma', ic: '👻', desc: 'a próxima bola some no meio do caminho' },
   muralha: { nome: 'Muralha', ic: '🛡️', desc: 'a próxima devolução nunca erra' },
 };
@@ -37,6 +40,9 @@ function hudEl() {
 }
 const slotHTML = (p, key, who) => {
   if (!p) return '';
+  return slotMain(p, key, who) + (caosInvert(p) ? '<small class="inv">👣 Curupira: controles invertidos!</small>' : p.pwFrozen > now() ? '<small class="inv">❄️ congelado</small>' : '');
+};
+const slotMain = (p, key, who) => {
   const held = p.pw && POWERS[p.pw], armed = p.pwNext && POWERS[p.pwNext], on = p.pwOn && p.pwOn.until > now() && POWERS[p.pwOn.id];
   if (armed) return '<b class="arm">' + armed.ic + ' ' + armed.nome + '</b><small>' + who + 'armado: ' + armed.desc + '</small>';
   if (on) return '<b class="on">' + on.ic + ' ' + on.nome + '</b><small>' + who + 'ativo até o fim do ponto</small>';
@@ -53,6 +59,7 @@ function caosActivate(p) {
   if (P.now) {
     p.pwOn = { id, until: Infinity };
     if (id === 'gelo') $s.players.forEach(o => { if (o.team !== p.team) o.pwFrozen = Infinity; });
+    if (id === 'curupira') $s.players.forEach(o => { if (o.team !== p.team) o.pwInv = Infinity; });
   } else p.pwNext = id;
   sparkle({ x: p.pos.x, y: 1.4, z: p.pos.z });
   toast((p === human ? 'Você usou ' : p.isHuman ? 'Jogador 2 usou ' : p.team === human.team ? 'Parceiro usou ' : 'Adversário usou ') + P.ic + ' ' + P.nome);
@@ -65,8 +72,11 @@ function caosSpeedK(p) {
   const t = now(); let k = 1;
   if (p.pwOn && p.pwOn.id === 'turbo' && p.pwOn.until > t) k *= 1.4;
   if (p.pwFrozen && p.pwFrozen > t) k *= .55;
+  if (!p.isHuman && !p.netHuman && caosInvert(p)) k *= .6; // CPU com os pés virados: perdida e lenta
   return k;
 }
+// curupira: o movimento de quem foi atingido sai invertido
+const caosInvert = p => caosOn() && p && p.pwInv && p.pwInv > now();
 const pwActive = (p, id) => caosOn() && p && p.pwOn && p.pwOn.id === id && p.pwOn.until > now();
 const caosReachK = p => pwActive(p, 'ima') ? 1.5 : pwActive(p, 'gigante') ? 1.3 : 1;
 // gigante: alcança ~2 m mais alto (para cima); mão de ouro: golpes sempre no tempo certo
@@ -78,8 +88,10 @@ function caosShot(p, key, spec, mod, isServe) {
   const id = p.pwNext; p.pwNext = null; p.pwReady = hits + 1 + CD; // esta batida não conta na espera
   const P = POWERS[id], out = { id };
   if (id === 'bomba') { if (spec.speed) spec.speed *= 1.45; if (spec.T) spec.T *= .72; mod.oppMissBoost = (mod.oppMissBoost || 0) + .3; }
-  else if (id === 'curva') { spec.cA = [(Math.random() < .5 ? -1 : 1) * 7.5, 0]; spec.cAk = 1; }
-  else if (id === 'lua') { spec.T = 3.1; spec.gk = .62; spec.depth = [6.8, 7.6]; spec.margin = 1; delete spec.speed; spec.lowArc = false; spec.lunar = true; mod.oppMissBoost = (mod.oppMissBoost || 0) + .15; }
+  else if (id === 'curva') out.crazy = true;
+  else if (id === 'lua') { // ~14 m de altura (no ginásio, até um pouco abaixo do teto)
+    const top = ROOF.h ? Math.min(14, ROOF.h - 1.2) : 14, gk = .62;
+    spec.T = Math.sqrt(8 * Math.max(4, top - ball.pos.y) / (G * gk)); spec.gk = gk; spec.depth = [6.8, 7.6]; spec.margin = 1; delete spec.speed; spec.lowArc = false; spec.lunar = true; mod.oppMissBoost = (mod.oppMissBoost || 0) + .15; }
   else if (id === 'muralha') out.shield = true;
   else if (id === 'fantasma') out.ghost = true;
   spec.label = P.ic + ' ' + P.nome.toUpperCase();
@@ -88,6 +100,7 @@ function caosShot(p, key, spec, mod, isServe) {
 // depois da batida: a bola fantasma some um pouco depois de sair da raquete e reaparece perto de quem vai receber
 function caosAfterHit(fx) {
   ball.ghost = fx && fx.ghost ? { t0: now() } : null;
+  ball.crazy = fx && fx.crazy ? { t: 0 } : null;
   if (!caosOn()) return;
   hits++;
   // espera acabou: ganha um poder novo na hora
@@ -96,6 +109,26 @@ function caosAfterHit(fx) {
 function give(p) {
   p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0;
   if (p.isHuman) toast((p === human ? 'Novo poder: ' : 'J2 · novo poder: ') + POWERS[p.pw].ic + ' ' + POWERS[p.pw].nome);
+}
+
+// ---------- curva maluca ----------
+// desvio do trajeto: x = Ax·sen(π·kx·t/T), z = Az·sen(π·kz·t/T) (com kx, kz inteiros os dois voltam a zero no quique)
+function crazyStep(dt) {
+  const c = ball.crazy;
+  if (ball.state !== 'live') { ball.crazy = null; return; }
+  if (!c.T) { // primeiro passo depois da batida: tempo até o quique e o desenho da curva
+    const g = G * (ball.gk || 1), y = ball.pos.y, vy = ball.vel.y;
+    c.T = Math.max(.6, (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * y))) / g);
+    c.kx = 2 + Math.floor(Math.random() * 2); c.kz = 1 + Math.floor(Math.random() * 2);
+    c.ax = (Math.random() < .5 ? -1 : 1) * (1.6 + Math.random() * 1.2);
+    // para frente/trás: sem fazer a bola voltar para trás (velocidade do desvio < 60% da velocidade para a frente)
+    const vz = Math.abs(ball.vel.z) || 1; c.az = (Math.random() < .5 ? -1 : 1) * Math.min(2.2, .6 * vz * c.T / (Math.PI * c.kz));
+    c.ox = c.oz = 0;
+  }
+  c.t += dt;
+  if (c.t >= c.T) { ball.pos.x -= c.ox; ball.pos.z -= c.oz; ball.crazy = null; return; }
+  const u = Math.PI * c.t / c.T, ox = c.ax * Math.sin(u * c.kx), oz = c.az * Math.sin(u * c.kz);
+  ball.pos.x += ox - c.ox; ball.pos.z += oz - c.oz; c.ox = ox; c.oz = oz;
 }
 
 // ---------- a cada passo ----------
@@ -108,6 +141,8 @@ function caosStep(dt) {
   if (S.mode === 'dead' || S.mode === 'over') endTimed();
   // bola fantasma: some entre 0,25 s e 0,85 s depois da batida
   if (ball.ghost && ballMesh) { const a = now() - ball.ghost.t0; ballMesh.visible = !(a > .25 && a < .85 && ball.state === 'live'); if (a >= .85) ball.ghost = null; }
+  // curva maluca: a bola serpenteia (para os lados e para frente/trás) e volta ao trajeto no quique, no lugar mirado
+  if (ball.crazy) crazyStep(dt);
   // gigante: o boneco cresce (e volta ao tamanho normal no fim)
   $s.players.forEach(p => { const big = pwActive(p, 'gigante') ? 1.45 : 1, g = p.model && p.model.group; if (!g) return;
     const k = (p.caosK || 1); if (Math.abs(k - big) > .001) { const r = big / k; g.scale.multiplyScalar(r); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(r); p.caosK = big; } });
@@ -124,7 +159,7 @@ function caosStep(dt) {
 function endTimed() {
   $s.players.forEach(p => {
     if (p.pwOn) p.pwReady = hits + CD; // a espera começa quando o poder acaba
-    p.pwOn = null; p.pwFrozen = 0;
+    p.pwOn = null; p.pwFrozen = 0; p.pwInv = 0;
     const k = p.caosK || 1; if (k !== 1 && p.model && p.model.group) { p.model.group.scale.multiplyScalar(1 / k); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(1 / k); } p.caosK = 1;
   });
 }
@@ -136,7 +171,7 @@ function caosPointStart() {
     if (!on) { p.pw = null; p.pwNext = null; p.pwReady = 0; return; }
     if (!p.pw && !p.pwNext && !(p.pwReady && hits < p.pwReady)) { p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0; }
   });
-  ball.ghost = null; if (ballMesh) ballMesh.visible = true;
+  ball.ghost = null; ball.crazy = null; if (ballMesh) ballMesh.visible = true;
 }
 
-export { POWERS, caosTallM, caosGold, caosOn, caosActivate, caosSpeedK, caosReachK, caosShot, caosAfterHit, caosStep, caosPointStart };
+export { POWERS, caosInvert, caosTallM, caosGold, caosOn, caosActivate, caosSpeedK, caosReachK, caosShot, caosAfterHit, caosStep, caosPointStart };

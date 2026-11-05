@@ -857,15 +857,19 @@ function floorStripe([x0, x1, z0, z1], off, m) {
 const COURT_BOX = [-7, 7, -12.5, 12.5]; // a mesma área da areia da quadra (CS)
 // ginásio (points e arenas cobertas): grande com duas quadras vizinhas com jogo, ou pequeno só com a quadra do jogo.
 // Areia só nas quadras (caixas com mureta); o resto é piso de cimento
+// altura do teto do ginásio (0 = céu aberto); usada pelo lob lunar do modo Caos
+const ROOF = { h: 0 };
 function indoorHall(a) {
   if (LIGHT0.sun === null) { LIGHT0.sun = sun.intensity; LIGHT0.hemi = hemi.intensity; LIGHT0.hemiC = hemi.color.clone(); LIGHT0.hemiG = hemi.groundColor.clone(); }
   const on = !!a.indoor;
   sky.visible = !on; sea.visible = !on && !a.urban;
   sun.intensity = on ? LIGHT0.sun * .62 : LIGHT0.sun; hemi.intensity = on ? LIGHT0.hemi * 1.35 : LIGHT0.hemi;
   hemi.color.copy(on ? col('#f4f1ea') : LIGHT0.hemiC); hemi.groundColor.copy(on ? col('#b9bcbf') : a.urban ? col('#a8a294') : LIGHT0.hemiG);
+  ROOF.h = 0;
   if (!on) return;
   const small = a.hall === 'small';
   const HX = small ? 11.5 : 21, Z0 = small ? -20 : -26, Z1 = small ? 25 : 32, H = small ? 12.5 : 16, len = Z1 - Z0; // teto bem acima do lob mais alto (~9 m)
+  ROOF.h = H;
   // parede: faixa de baixo com as cores do evento, painéis claros com nervuras e uma fileira de janelas altas
   const wallTex = canvasTex(512, 256, (x, w, h) => {
     x.fillStyle = '#d9dde3'; x.fillRect(0, 0, w, h);
@@ -1108,4 +1112,4 @@ function setSide(flip) {
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky };
+export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF };

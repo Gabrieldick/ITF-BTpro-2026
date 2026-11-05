@@ -1154,3 +1154,4 @@ body.split2 #tags, body.split2 #reach, body.split2 #landArrow, body.split2 #shot
 #caosHud .cz-toast.show { opacity: 1; }
 body.in-replay #caosHud, body.spectate #caosHud { display: none !important; }
 @media (max-width: 700px) { #caosHud { bottom: 120px; } #caosHud .cz-me, #caosHud .cz-p2 { min-width: 0; max-width: 46vw; } }
+#caosHud small.inv { color: #ffb4a8; font-weight: 700; }

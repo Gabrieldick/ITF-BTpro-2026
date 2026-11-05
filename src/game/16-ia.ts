@@ -11,7 +11,7 @@ import { decisive, dupla, feedback, momentum, perfServe, perfShot, shotFeedback 
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, ctlFeedback, keys, localCtl, touch, PAD, p2Keyboard } from './12-controles';
-import { caosSpeedK, caosGold } from './23-caos';
+import { caosSpeedK, caosGold, caosInvert } from './23-caos';
 import { diveMark, puff } from './07-glb';
 import { sideOf } from './18-animacao';
 // estilo de cada personagem: pela descrição real, pelo estilo da carreira ou pelos atributos
@@ -282,7 +282,8 @@ function updateHuman(dt, c = localCtl()) {
   if (S.sideWalk && S.mode === 'dead') return; // trocando de lado: a caminhada conduz
   const p = c.p, humanPlan = c.plan, s = p.team === 0 ? 1 : -1, opp = 1 - p.team;
   if (p.forceVel) { p.vel.copy(p.forceVel); p.pos.addScaledVector(p.vel, dt); return; } // (teste de animação: anda reto numa velocidade fixa)
-  const [ix, iz] = c.remote ? [c.ix, c.iz] : localInput();
+  let [ix, iz] = c.remote ? [c.ix, c.iz] : localInput();
+  if (caosInvert(p)) { ix = -ix; iz = -iz; } // modo Caos: curupira (pés virados)
   const len = Math.hypot(ix, iz);
   p.inputX = ix; p.inputZ = iz;
   const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
