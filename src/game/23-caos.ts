@@ -1,6 +1,6 @@
 // @ts-nocheck
 // ---------- Modo Caos (partida rápida): poderes ----------
-// No começo de cada ponto, quem está sem poder ganha um sorteado. Usa quando quiser (E no teclado, LB no controle; jogador 2
+// Quem está sem poder ganha um sorteado (no começo do ponto ou, depois de usar um, 3 rebatidas depois que ele acabar). Usa quando quiser (E no teclado, LB no controle; jogador 2
 // sem controle: 9). Alguns valem na hora por alguns segundos, outros "armam" o próximo golpe. A CPU usa os dela também.
 import { $s } from '../state';
 import { S, NET } from './01-estado';
@@ -23,6 +23,8 @@ const POWERS = {
 const KEYS = Object.keys(POWERS);
 const caosOn = () => S.settings.gm === 'caos' && !S.careerActive && !S.champActive && !S.drill && !S.tutorial && !NET.role;
 const now = () => performance.now() / 1000;
+const CD = 3; // rebatidas de espera depois que o poder acaba
+let hits = 0; // rebatidas contadas no modo Caos
 const live = () => S.mode === 'serve' || S.mode === 'toss' || S.mode === 'rally';
 
 // ---------- painel: o seu poder (e o do jogador 2 no mesmo PC) ----------
@@ -39,7 +41,8 @@ const slotHTML = (p, key, who) => {
   if (armed) return '<b class="arm">' + armed.ic + ' ' + armed.nome + '</b><small>' + who + 'armado: ' + armed.desc + '</small>';
   if (on) return '<b class="on">' + on.ic + ' ' + on.nome + '</b><small>' + who + 'ativo até o fim do ponto</small>';
   if (held) return '<b>' + held.ic + ' ' + held.nome + ' <kbd>' + key + '</kbd></b><small>' + who + held.desc + '</small>';
-  return '<b class="none">sem poder</b><small>' + who + 'ganha outro no próximo ponto</small>';
+  const w = p.pwReady ? p.pwReady - hits : 0;
+  return '<b class="none">sem poder</b><small>' + who + (w > 0 ? 'novo poder em ' + w + (w === 1 ? ' rebatida' : ' rebatidas') : 'ganha outro no próximo ponto') + '</small>';
 };
 function toast(txt) { const h = hudEl(), t = h.querySelector('.cz-toast'); t.textContent = txt; t.classList.add('show'); toastT = 1.6; }
 
@@ -72,7 +75,7 @@ const caosGold = p => pwActive(p, 'ouro');
 // golpe de quem armou um poder: muda o golpe (chamado no doHit); devolve o que o doHit ainda precisa fazer
 function caosShot(p, key, spec, mod, isServe) {
   if (!caosOn() || !p || !p.pwNext) return null;
-  const id = p.pwNext; p.pwNext = null;
+  const id = p.pwNext; p.pwNext = null; p.pwReady = hits + 1 + CD; // esta batida não conta na espera
   const P = POWERS[id], out = { id };
   if (id === 'bomba') { if (spec.speed) spec.speed *= 1.45; if (spec.T) spec.T *= .72; mod.oppMissBoost = (mod.oppMissBoost || 0) + .3; }
   else if (id === 'curva') { spec.cA = [(Math.random() < .5 ? -1 : 1) * 7.5, 0]; spec.cAk = 1; }
@@ -83,7 +86,17 @@ function caosShot(p, key, spec, mod, isServe) {
   return out;
 }
 // depois da batida: a bola fantasma some um pouco depois de sair da raquete e reaparece perto de quem vai receber
-function caosAfterHit(fx) { ball.ghost = fx && fx.ghost ? { t0: now() } : null; }
+function caosAfterHit(fx) {
+  ball.ghost = fx && fx.ghost ? { t0: now() } : null;
+  if (!caosOn()) return;
+  hits++;
+  // espera acabou: ganha um poder novo na hora
+  $s.players.forEach(p => { if (p.pwReady && hits >= p.pwReady && !p.pw && !p.pwNext && !p.pwOn) give(p); });
+}
+function give(p) {
+  p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0;
+  if (p.isHuman) toast((p === human ? 'Novo poder: ' : 'J2 · novo poder: ') + POWERS[p.pw].ic + ' ' + POWERS[p.pw].nome);
+}
 
 // ---------- a cada passo ----------
 let aiT = 0;
@@ -110,6 +123,7 @@ function caosStep(dt) {
 // fim dos efeitos contínuos (fim do ponto): tira o poder ativo, o gelo e o tamanho de gigante
 function endTimed() {
   $s.players.forEach(p => {
+    if (p.pwOn) p.pwReady = hits + CD; // a espera começa quando o poder acaba
     p.pwOn = null; p.pwFrozen = 0;
     const k = p.caosK || 1; if (k !== 1 && p.model && p.model.group) { p.model.group.scale.multiplyScalar(1 / k); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(1 / k); } p.caosK = 1;
   });
@@ -119,8 +133,8 @@ function caosPointStart() {
   const on = caosOn();
   endTimed();
   $s.players.forEach(p => {
-    if (!on) { p.pw = null; p.pwNext = null; return; }
-    if (!p.pw && !p.pwNext) p.pw = KEYS[Math.floor(Math.random() * KEYS.length)];
+    if (!on) { p.pw = null; p.pwNext = null; p.pwReady = 0; return; }
+    if (!p.pw && !p.pwNext && !(p.pwReady && hits < p.pwReady)) { p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0; }
   });
   ball.ghost = null; if (ballMesh) ballMesh.visible = true;
 }
