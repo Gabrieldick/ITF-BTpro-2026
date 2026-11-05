@@ -6,6 +6,7 @@ import { C, HALF_W, ZONE3, clamp, lerp, nameOf, rand, shortOf, overall } from '.
 import { flagSVG } from '../flags';
 import { S, NET } from './01-estado';
 import { applyArena, cheerArena, confetti, linesGroup, setNetHeight, setSide, setZoneLine } from './03-cenario';
+import { caosPointStart } from './23-caos';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { applyPlayerStyle, applyRackets, assignCharacters, ball, clearPrints, landRing, resetTrail, setBallStyle } from './07-glb';
 import { swingVar } from './04-poses';
@@ -650,6 +651,7 @@ function pointShow(w, ev, reason, isTitle) {
   banner(title, sub, 0, ev === 'match' || ev === 'game');
 }
 function setupPoint() {
+  caosPointStart(); // modo Caos: quem está sem poder ganha um
   S.defPend = null;
   S.celebrate = null; S.ptCel = null; S.pressure = decisive(); S.hadDive = false;
   S.mode = 'serve'; S.lastTeam = -1; S.rally = 0; ball.state = 'held'; ball.vel.set(0, 0, 0);

@@ -9,6 +9,7 @@ import { VAR_FX, swingVar, hitVar } from './04-poses';
 import { ball } from './07-glb';
 import { sndHit } from './08-audio';
 import { humanAim, humanDepthT, skillOf, startJump } from './11-mira';
+import { caosShot, caosAfterHit, caosReachK, caosTallM } from './23-caos';
 import { aiAim, expectK, lobSurprise } from './16-ia';
 import { sideOf } from './18-animacao';
 // ---------- Física ----------
@@ -40,7 +41,7 @@ function smashReach(p) {
   if (ball.pos.y < 1.75) return false;
   p.model.armR.sh.getWorldPosition(_sh);
   _sh.y += Math.max(0, .25 - p.model.group.position.y);
-  return _sh.distanceTo(ball.pos) <= 1.08 * hScale(p);
+  return _sh.distanceTo(ball.pos) <= (1.08 * hScale(p) + caosTallM(p) * .7) * caosReachK(p);
 }
 function racketNearBall(p, r) {
   if (ball.state !== 'live' || S.lastTeam === p.team) return false;
@@ -54,10 +55,10 @@ function canHit(p, type, scale) {
   const dh = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z, type === 'smash' ? 0 : Math.max(0, Math.abs(ball.pos.y - 1.05 * hScale(p)) - .55) * .7);
   // defesa (bloqueio na frente do corpo) não alcança bola acima da cabeça como o lob, a curta ou o smash: até ~2,2 m
   // (a CPU passa 'defesa' para todo golpe que não é smash, então o limite vale só para quem joga)
-  const maxY = (type === 'smash' ? 3.0 : type === 'defesa' && p.isHuman ? 2.2 : 2.6) * hScale(p);
+  const maxY = (type === 'smash' ? 3.0 : type === 'defesa' && p.isHuman ? 2.2 : 2.6) * hScale(p) + caosTallM(p); // (gigante do modo Caos: +2 m)
   if (ball.pos.y < .8) scale = (scale || 1) * (1 + .14 * shortK(p));
   if (p.dive && p.dive.t < .5 && ball.pos.y < 1.3) scale = (scale || 1) * 1.3; // no mergulho o braço vai até o fim
-  return dh <= reachOf(type, p) * (scale || 1) && ball.pos.y >= .12 && ball.pos.y <= maxY;
+  return dh <= reachOf(type, p) * (scale || 1) * caosReachK(p) && ball.pos.y >= .12 && ball.pos.y <= maxY;
 }
 function hitQuality(p, type) {
   const dh = Math.hypot(ball.pos.x - p.pos.x, ball.pos.z - p.pos.z);
@@ -308,6 +309,9 @@ function doHit(p, type, q, isServe, mod) {
   }
   if (!isServe) p.swing.var = vr;
   if (!spec.gk) spec.gk = pop ? 1 : isServe ? (type === 'smash' ? 1.12 : 1) : ({ smash: 1.35, drive: 1.18, lob: 1.1, curta: 1, defesa: 1 }[key] || 1);
+  // modo Caos: poder armado muda este golpe (bomba, curva, lob lunar, fantasma, muralha)
+  const cx = caosShot(p, key, spec, mod, isServe);
+  if (cx && cx.shield) { pop = false; wild = false; netFin = false; finOut = false; }
   // curta: só sai rápida e rente à rede com bom timing/qualidade e atributo de curta alto; as comuns são mais lentas e alcançáveis
   let curtaK = 0;
   if (key === 'curta' && !pop && !isServe) {
@@ -366,7 +370,7 @@ function doHit(p, type, q, isServe, mod) {
   // vento: no saque o jogador ajusta a mira contra o vento (perfeito: compensa todo; fora do perfeito, pela metade)
   if (isServe && p.isHuman && !pop && !wild && S.wind) { const ws = (S.sideFlip ? -.07 : .07) * (mod.perfect ? 1 : .5); spec.wA = [S.wind.x * ws, S.wind.z * ws]; }
   // teto da bola: nenhuma bola passa de ~9 m (lob alto bom fica em ~7–8 m)
-  if (spec.T && !spec.kick) { const tMax = Math.sqrt(8 * Math.max(1, 9 - ball.pos.y) / (G * (spec.gk || 1))); if (spec.T > tMax) spec.T = tMax; }
+  if (spec.T && !spec.kick && !spec.lunar) { const tMax = Math.sqrt(8 * Math.max(1, 9 - ball.pos.y) / (G * (spec.gk || 1))); if (spec.T > tMax) spec.T = tMax; }
   let v;
   if (spec.kick && !pop) {
     // lob chutado perfeito: passa acima do alcance do smash de quem está colado na rede, mesmo recuando (≥ 3,3 m de altura
@@ -403,7 +407,7 @@ function doHit(p, type, q, isServe, mod) {
   // finalização de perto (menos de 2 m da rede) em cima de quem está colado na rede: com a barra perfeita, mesmo a defesa
   // perfeita volta para dentro no máximo 1 em 5; sem o perfeito, metade (o reflexo salva a bola, mas sem controle)
   const closeFin = !isServe && !!ball.finNear && Math.abs(p.pos.z) < 3.2 && Math.random() < ball.finNear;
-  if (netFin || unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2)) {
+  if (!(cx && cx.shield) && (netFin || unforced || closeFin || (mod.misBoost && Math.random() < mod.misBoost) || (q < .4 && Math.random() < (.4 - q) * 2.2))) {
     mis = true;
     // smash errado sai mais para fora do que na rede; o cruzado do fundo espirra pela lateral
     const netP = (p.isHuman ? .5 : skillOf(p).netK || .5) * (key === 'smash' && !isServe ? .85 : 1);
@@ -428,6 +432,7 @@ function doHit(p, type, q, isServe, mod) {
     if (isServe) threat *= mod.perfect ? .6 : .4; // devolução: o recebedor já está esperando a bola (e o saque não perfeito é mais fácil)
   }
   ball.threat = threat;
+  caosAfterHit(cx);
   ball.vel.copy(v); ball.gk = spec.gk || 1; ball.cx = spec.cA ? spec.cA[0] : 0; ball.cz = spec.cA ? spec.cA[1] : 0; ball.smStyle = smStyle; p.smFin = smStyle; // (a terminação do smash muda com o efeito: ver 18-animacao) ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? (vfx && vfx.calm ? .5 : 1) * Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o

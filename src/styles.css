@@ -1142,3 +1142,15 @@ body.cer > :not(#game):not(#ceremony):not(script) { visibility: hidden !importan
 body.split2:not(.in-menu):not(.in-replay) #splitLine { display: block; position: fixed; top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; background: linear-gradient(180deg, var(--ui-acc), #1e6bff); z-index: 3; pointer-events: none; box-shadow: 0 0 12px rgba(0,0,0,.5); }
 body.split2 #tags, body.split2 #reach, body.split2 #landArrow, body.split2 #shots, body.split2 #hint { display: none !important; }
 .qm-split { grid-column: 1 / -1; margin-top: 6px; font-size: 13px; }
+/* modo Caos: painel do poder (o seu e o do jogador 2) e o aviso de quem usou */
+#caosHud { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 8; display: flex; gap: 8px; align-items: flex-end; pointer-events: none; font-family: var(--f-body); }
+#caosHud .cz-me, #caosHud .cz-p2 { background: rgba(10,18,34,.82); border: 1px solid rgba(255,210,63,.55); border-radius: 10px; padding: 6px 12px; color: #fff; min-width: 190px; max-width: 280px; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+#caosHud .cz-p2 { border-color: rgba(127,214,219,.6); }
+#caosHud b { display: block; font-size: 15px; letter-spacing: .02em; }
+#caosHud b.arm { color: #ffd23f; } #caosHud b.on { color: #7cf0ae; } #caosHud b.none { color: #8a97ab; font-weight: 600; }
+#caosHud kbd { font: 700 11px var(--f-num); background: #ffd23f; color: #111; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: 2px; }
+#caosHud small { display: block; font-size: 11.5px; color: #c8d2e0; line-height: 1.25; margin-top: 2px; }
+#caosHud .cz-toast { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; font: 800 16px var(--f-display); color: #ffd23f; text-shadow: 0 2px 0 #111, 0 0 10px rgba(0,0,0,.6); opacity: 0; transition: opacity .2s; }
+#caosHud .cz-toast.show { opacity: 1; }
+body.in-replay #caosHud, body.spectate #caosHud { display: none !important; }
+@media (max-width: 700px) { #caosHud { bottom: 120px; } #caosHud .cz-me, #caosHud .cz-p2 { min-width: 0; max-width: 46vw; } }

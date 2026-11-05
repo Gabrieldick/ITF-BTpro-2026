@@ -11,6 +11,7 @@ import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
 import { ac, surf, applyGfx } from './08-audio';
 import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback, COURTS } from './09-interface';
 import { startJump, startToss } from './11-mira';
+import { caosActivate, caosGold } from './23-caos';
 import { adjustFov, rkInfo, startFromMenu, syncAssistButtons, toggleAssist } from './15-carreira-telas';
 import { humanPlan, playStyleOf } from './16-ia';
 import { CAM3, sideOf } from './18-animacao';
@@ -183,7 +184,7 @@ function releaseMeter(c = localCtl()) {
   // online: a barra do smash depende da bola, que o convidado vê atrasada; desconta esse atraso.
   // (lob e saque só dependem do tempo: o convidado desenha a barra pelo relógio dele e o tempo entre apertar e soltar chega igual)
   if (c.remote && c.lag > 0 && M.kind === 'smash') M.v = Math.max(0, M.v - M.rate * c.lag);
-  const v = M.v, diff = v - M.center;
+  const gold = caosGold(p), v = gold ? (M.kind === 'lob' ? Math.min(M.v, 1) : M.center) : M.v, diff = v - M.center; // (mão de ouro do modo Caos: no verde)
   if (M.kind === 'lob') {
     const LM = M.lmax || LOB_MAX, lv = Math.min(v, LM);
     // começo da barra: lob chutado (perfeito só na faixa verde de baixo); meio: médio; fim: alto; passou: longo
@@ -322,6 +323,7 @@ addEventListener('keydown', e => {
   if (p2Keyboard() && inPlay() && el.pause.hidden) { // jogador 2 no teclado (sem controle)
     const kk = e.key.toLowerCase();
     if (kk.startsWith('arrow')) { keys[kk] = true; p2KeyDir(); return; }
+    if (kk === '9') { caosActivate(P2.c.p); return; } // poder do jogador 2 (modo Caos)
     if (P2_SHOT[kk]) { e.preventDefault(); if (!e.repeat && !keys['p2' + kk]) { keys['p2' + kk] = true; if (!S.paused) pressShot(P2_SHOT[kk], P2.c); } return; }
   }
   // alguns teclados/programas mandam a repetição automática como aperto novo (sem e.repeat): tecla já segurada não conta de novo
@@ -330,6 +332,7 @@ addEventListener('keydown', e => {
   if (e.repeat || held) return;
   if (!el.menu.hidden || !el.over.hidden) { if (k === 'enter' && !el.menu.hidden && el.menu.dataset.step === 'q' && !(document.activeElement && document.activeElement.tagName === 'BUTTON')) startFromMenu(); return; }
   if (SHOT_KEYS[k]) pressShot(SHOT_KEYS[k]);
+  else if (k === 'e') caosActivate(human); // modo Caos: usa o seu poder
   else if (k === 'c') toggleCam();
   else if (k === 'p' || k === 'escape') togglePause();
   else if (k === 'm') toggleSound();
@@ -353,7 +356,7 @@ const inPlay = () => ['serve', 'toss', 'rally', 'dead'].includes(S.mode);
 const PADB = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
 // ações do controle e o botão padrão de cada uma (trocáveis em Teclas/Controle: S.settings.padBinds)
 const PAD_ACTIONS = [['defesa', 'Defesa', PADB.lt], ['curta', 'Curta', PADB.b], ['lob', 'Lob', PADB.y], ['smash', 'Smash', PADB.x], ['smash2', 'Smash (2º botão)', PADB.rt], ['lob2', 'Lob (2º botão)', PADB.a],
-  ['pause', 'Pausa', PADB.start], ['cam', 'Trocar câmera', PADB.back], ['aim', 'Flecha de mira', PADB.rb]];
+  ['pause', 'Pausa', PADB.start], ['cam', 'Trocar câmera', PADB.back], ['aim', 'Flecha de mira', PADB.rb], ['poder', 'Poder (modo Caos)', PADB.lb]];
 const PAD_NAMES = { 0: 'A / ✕', 1: 'B / ○', 2: 'X / □', 3: 'Y / △', 4: 'LB / L1', 5: 'RB / R1', 6: 'LT / L2', 7: 'RT / R2', 8: 'Back / Share', 9: 'Start / Options', 10: 'L3', 11: 'R3', 12: '↑', 13: '↓', 14: '←', 15: '→', 16: 'Xbox / PS' };
 const padBtn = id => { const b = S.settings.padBinds || {}, a = PAD_ACTIONS.find(x => x[0] === id); return b[id] !== undefined ? +b[id] : a ? a[2] : -1; };
 const PADCAP = { on: null };
@@ -401,6 +404,7 @@ function padStep() {
     const c2 = P2.c; // 2 jogadores no mesmo PC: o controle é do jogador 2 (o teclado continua com o 1)
     if (c2) { PAD.x = PAD.z = 0; c2.ix = x; c2.iz = z; } else { PAD.x = x; PAD.z = z; }
     for (const id of ['defesa', 'curta', 'lob', 'smash', 'smash2', 'lob2']) { const e = edge(padBtn(id)), t = id.replace('2', ''); if (e === 1) { if (c2) { if (!S.paused) pressShot(t, c2); } else pressShot(t); } else if (e === -1) { if (c2) releaseShot(t, c2); else releaseShot(t); } }
+    if (edge(padBtn('poder')) === 1) caosActivate(c2 ? c2.p : human); // modo Caos
     if (edge(padBtn('pause')) === 1) togglePause();
     if (edge(padBtn('cam')) === 1) toggleCam();
     if (edge(padBtn('aim')) === 1) { S.settings.aimArrow = S.settings.aimArrow === false; saveSettings(); feedback('MIRA', S.settings.aimArrow ? 'LIGADA' : 'DESLIGADA', null); }
@@ -630,13 +634,14 @@ function saveSettings() { if (NET.role) return; // online: as escolhas da sala n
 function readMenu() {
   const v = n => { const i = document.querySelector(`input[name=${n}]:checked`); return i ? i.value : ''; }; // (nenhuma marcada: vale o padrão de cada um)
   // IA Treinada/Planejadora: só no jogo rápido (por baixo, nível difícil)
+  S.settings.gm = v('gm') === 'caos' ? 'caos' : ''; // modo de jogo: normal ou Caos (poderes)
   S.settings.mode = v('mode'); S.settings.cam = v('cam'); S.settings.cam3 = v('cam3') || 'padrao'; { const d = v('diff') || 'medio'; S.settings.aiMode = /^ia_/.test(d) ? d.slice(3) : ''; S.settings.diff = S.settings.aiMode ? 'dificil' : d; } S.settings.games = +v('len'); S.settings.gfx = v('gfx'); S.settings.res = v('res') || 'auto'; S.settings.racket = $('rkSel').value || 'proteo'; S.settings.players = v('players'); S.settings.side = v('side') || 'direita'; S.settings.local2 = v('local2') || ''; { const sp = $('split2'); if (sp) S.settings.split2 = sp.checked; } S.settings.uniforms = 'simples';
   S.settings.assistMove = $('assistMove').checked; S.settings.assistMark = $('assistMark').checked; S.settings.aimArrow = $('aimArrow').checked; S.settings.shotText = $('shotTextSel').value || 'completo'; S.settings.tactic = $('tacticSel').value || 'normal'; S.settings.formation = ($('formSel') && $('formSel').value) || 'normal';
   S.quietSave = true; saveSettings(); S.quietSave = false;
 }
 function syncMenu() {
   const set = (name, v) => { const i = document.querySelector(`input[name=${name}][value="${v}"]`); if (i) i.checked = true; };
-  set('mode', S.settings.mode); set('local2', S.settings.local2 || ''); { const sp = $('split2'); if (sp) sp.checked = S.settings.split2 !== false; } set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('gender', S.settings.gender);
+  set('gm', S.settings.gm || ''); set('mode', S.settings.mode); set('local2', S.settings.local2 || ''); { const sp = $('split2'); if (sp) sp.checked = S.settings.split2 !== false; } set('cam', S.settings.cam); set('cam3', S.settings.cam3 || 'padrao'); set('diff', S.settings.aiMode ? 'ia_' + S.settings.aiMode : S.settings.diff); set('len', S.settings.games); set('gfx', S.settings.gfx); set('res', S.settings.res || 'auto'); $('rkSel').value = RACKET_STATS[S.settings.racket] ? S.settings.racket : 'proteo'; rkInfo(); set('players', S.settings.players); set('side', S.settings.side || 'direita'); set('gender', S.settings.gender);
   $('assistMove').checked = !!S.settings.assistMove; $('assistMark').checked = !!S.settings.assistMark; $('aimArrow').checked = S.settings.aimArrow !== false; $('shotTextSel').value = S.settings.shotText || 'discreto'; fillLooks(); $('tacticSel').value = S.settings.tactic || 'normal'; if ($('formSel')) $('formSel').value = S.settings.formation || 'normal';
   renderRoster();
 }

@@ -11,6 +11,7 @@ import { decisive, dupla, feedback, momentum, perfServe, perfShot, shotFeedback 
 import { canHit, doHit, hitQuality, predictLanding, racketNearBall, smashReach } from './10-fisica';
 import { TAC, defenseFeedback, qualityWord, skillOf, startJump, whoKind, whoTag } from './11-mira';
 import { RES_WORD, ctlFeedback, keys, localCtl, touch, PAD, p2Keyboard } from './12-controles';
+import { caosSpeedK, caosGold } from './23-caos';
 import { diveMark, puff } from './07-glb';
 import { sideOf } from './18-animacao';
 // estilo de cada personagem: pela descrição real, pelo estilo da carreira ou pelos atributos
@@ -286,7 +287,7 @@ function updateHuman(dt, c = localCtl()) {
   p.inputX = ix; p.inputZ = iz;
   const lowBall = ball.state === 'live' && S.lastTeam === opp && humanPlan.plan && humanPlan.id === S.hitId && humanPlan.plan.pt.y < 1;
   if (p.diveRec > 0) p.diveRec = Math.max(0, p.diveRec - dt);
-  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8) * staMul(p); // depois do mergulho: começa a 55% e volta ao normal
+  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (1 + shortK(p) * (lowBall ? .1 : .03)) * (p.charging ? .75 : 1) * (1 - .45 * (p.diveRec || 0) / .8) * staMul(p) * caosSpeedK(p); // depois do mergulho: começa a 55% e volta ao normal
   let tvx = ix * spd, tvz = iz * spd;
   if (p.dive) {
     p.dive.t += dt;
@@ -386,6 +387,7 @@ function updateHuman(dt, c = localCtl()) {
       // timing: o seu aperto comparado com a chegada da bola (o mesmo que o anel/sinal verde mostra)
       if (sw.meter && !mod.volley) mod.meterSmash = true;
       if (!sw.meter) mod.timing = p.isHuman && sw.pressT != null ? pressTiming(sw.pressT, TIMING_K[clamp(Math.round((p.netHuman ? p.pdRemote : S.tutorial ? 1 : S.careerActive ? S.careerStars : S.settings.playerDiff) || 3), 1, 6) - 1]) : su < .15 ? lerp(.4, 1, su / .15) : su > .6 ? lerp(1, .4, clamp((su - .6) / .2, 0, 1)) : 1;
+      if (caosGold(p)) mod.timing = 1; // mão de ouro (modo Caos): curta, defesa e lob no tempo certo
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
       if (!r.mis) noteTend(p, sw.type);
@@ -732,7 +734,7 @@ function updateAI(p, dt) {
     }
   }
   const lowB = p.ai.plan && p.ai.planId === S.hitId && p.ai.plan.pt.y < 1;
-  moveToward(p, tx, tz, D.speed * (1 + shortK(p) * (lowB ? .1 : .03)) * staMul(p), dt); // cansado (stamina baixa): mais lento
+  moveToward(p, tx, tz, D.speed * (1 + shortK(p) * (lowB ? .1 : .03)) * staMul(p) * caosSpeedK(p), dt); // cansado (stamina baixa): mais lento
   p.pos.addScaledVector(p.vel, dt);
   clampPos(p);
   if (p.swing.t >= 0) {
