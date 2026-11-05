@@ -19,6 +19,7 @@ const DRAW: Record<string, string> = {
   POR: `<rect width="30" height="20" fill="#da291c"/><rect width="12" height="20" fill="#046a38"/><circle cx="12" cy="10" r="3.6" fill="#ffe900"/><circle cx="12" cy="10" r="2" fill="#da291c"/>`,
   ARG: h3('#74acdf', '#fff', '#74acdf') + `<circle cx="15" cy="10" r="2" fill="#f6b40e"/>`,
   LAT: h3('#9e3039', '#fff', '#9e3039', .5),
+  LTU: h3('#fdb913', '#006a44', '#c1272d'),
   VEN: h3('#ffcc00', '#00247d', '#cf142b') + [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = Math.PI * (.2 + .6 * i / 7); return `<circle cx="${(15 - Math.cos(a) * 4.2).toFixed(2)}" cy="${(11.6 - Math.sin(a) * 3.2).toFixed(2)}" r=".45" fill="#fff"/>`; }).join(''),
   USA: Array.from({ length: 13 }, (_, i) => `<rect y="${(i * 20 / 13).toFixed(2)}" width="30" height="${(20 / 13 + .02).toFixed(2)}" fill="${i % 2 ? '#fff' : '#b22234'}"/>`).join('') + `<rect width="12" height="10.8" fill="#3c3b6e"/>`,
   GER: h3('#000', '#dd0000', '#ffce00'),
@@ -49,7 +50,7 @@ const DRAW: Record<string, string> = {
 
 const COUNTRIES: { code: string, nome: string }[] = [
   ['BRA', 'Brasil'], ['ITA', 'Itália'], ['ESP', 'Espanha'], ['FRA', 'França'], ['POR', 'Portugal'], ['ARG', 'Argentina'],
-  ['RUS', 'Rússia'], ['LAT', 'Letônia'], ['VEN', 'Venezuela'], ['URU', 'Uruguai'], ['CHI', 'Chile'], ['PAR', 'Paraguai'],
+  ['RUS', 'Rússia'], ['LAT', 'Letônia'], ['LTU', 'Lituânia'], ['VEN', 'Venezuela'], ['URU', 'Uruguai'], ['CHI', 'Chile'], ['PAR', 'Paraguai'],
   ['COL', 'Colômbia'], ['PER', 'Peru'], ['MEX', 'México'], ['ARU', 'Aruba'], ['USA', 'Estados Unidos'], ['CAN', 'Canadá'],
   ['GER', 'Alemanha'], ['NED', 'Holanda'], ['BEL', 'Bélgica'], ['SUI', 'Suíça'], ['AUT', 'Áustria'], ['GBR', 'Reino Unido'],
   ['POL', 'Polônia'], ['CZE', 'Chéquia'], ['HUN', 'Hungria'], ['UKR', 'Ucrânia'], ['GRE', 'Grécia'], ['ISR', 'Israel'],
