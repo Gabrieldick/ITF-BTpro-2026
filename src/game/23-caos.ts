@@ -207,6 +207,7 @@ function endTimed() {
 function caosPointStart() {
   const on = caosOn();
   endTimed();
+  if (NET.role === 'guest') return; // no online quem sorteia é o anfitrião (o convidado recebe o poder de cada um)
   $s.players.forEach(p => {
     if (!on) { p.pw = null; p.pwNext = null; p.pwReady = 0; return; }
     if (!p.pw && !p.pwNext && !(p.pwReady && hits < p.pwReady)) { p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0; }
