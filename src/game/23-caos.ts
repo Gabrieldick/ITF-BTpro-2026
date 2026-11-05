@@ -10,13 +10,13 @@ import { ROOF } from './03-cenario';
 import { G } from './00-base';
 
 const POWERS = {
-  // os de efeito contínuo valem até o fim do ponto
-  turbo: { nome: 'Turbo', ic: '⚡', desc: 'corre muito mais rápido até o fim do ponto', now: 1 },
-  ima: { nome: 'Ímã', ic: '🧲', desc: 'alcança bolas bem mais longe até o fim do ponto', now: 1 },
-  gelo: { nome: 'Gelo', ic: '❄️', desc: 'deixa os adversários lentos até o fim do ponto', now: 1 },
-  gigante: { nome: 'Gigante', ic: '🦒', desc: 'fica gigante até o fim do ponto: alcança bolas muito mais altas e longe', now: 1 },
-  curupira: { nome: 'Curupira', ic: '👣', desc: 'vira os pés dos adversários: controles de movimento invertidos até o fim do ponto (a CPU fica perdida e lenta)', now: 1 },
-  ouro: { nome: 'Mão de ouro', ic: '✨', desc: 'tudo no verde até o fim do ponto: barras perfeitas e curtas no tempo certo', now: 1 },
+  // os de tempo (now = segundos) também acabam quando o ponto acaba
+  turbo: { nome: 'Turbo', ic: '⚡', desc: 'corre muito mais rápido por 5 s', now: 5 },
+  ima: { nome: 'Ímã', ic: '🧲', desc: 'alcança bolas bem mais longe por 6 s', now: 6 },
+  gelo: { nome: 'Gelo', ic: '❄️', desc: 'congela os adversários por 2 s', now: 2 },
+  gigante: { nome: 'Gigante', ic: '🦒', desc: 'fica gigante por 7 s: alcança bolas muito mais altas e longe', now: 7 },
+  curupira: { nome: 'Curupira', ic: '👣', desc: 'vira os pés dos adversários por 5 s: controles de movimento invertidos (a CPU fica perdida e lenta)', now: 5 },
+  ouro: { nome: 'Mão de ouro', ic: '✨', desc: 'tudo no verde por 8 s: barras perfeitas e curtas no tempo certo', now: 8 },
   bomba: { nome: 'Bomba', ic: '💣', desc: 'o próximo golpe sai fortíssimo' },
   curva: { nome: 'Curva maluca', ic: '🌀', desc: 'a próxima bola vai serpenteando: para os lados, para frente e para trás' },
   lua: { nome: 'Lob lunar', ic: '🌙', desc: 'o próximo golpe vira um lob que vai às alturas e despenca no fundo' },
@@ -45,7 +45,7 @@ const slotHTML = (p, key, who) => {
 const slotMain = (p, key, who) => {
   const held = p.pw && POWERS[p.pw], armed = p.pwNext && POWERS[p.pwNext], on = p.pwOn && p.pwOn.until > now() && POWERS[p.pwOn.id];
   if (armed) return '<b class="arm">' + armed.ic + ' ' + armed.nome + '</b><small>' + who + 'armado: ' + armed.desc + '</small>';
-  if (on) return '<b class="on">' + on.ic + ' ' + on.nome + '</b><small>' + who + 'ativo até o fim do ponto</small>';
+  if (on) return '<b class="on">' + on.ic + ' ' + on.nome + '</b><small>' + who + 'ativo · ' + Math.ceil(p.pwOn.until - now()) + ' s</small>';
   if (held) return '<b>' + held.ic + ' ' + held.nome + ' <kbd>' + key + '</kbd></b><small>' + who + held.desc + '</small>';
   const w = p.pwReady ? p.pwReady - hits : 0;
   return '<b class="none">sem poder</b><small>' + who + (w > 0 ? 'novo poder em ' + w + (w === 1 ? ' rebatida' : ' rebatidas') : 'ganha outro no próximo ponto') + '</small>';
@@ -57,9 +57,9 @@ function caosActivate(p) {
   if (!caosOn() || !p || !p.pw || !live()) return false;
   const id = p.pw, P = POWERS[id], t = now(); p.pw = null;
   if (P.now) {
-    p.pwOn = { id, until: Infinity };
-    if (id === 'gelo') $s.players.forEach(o => { if (o.team !== p.team) o.pwFrozen = Infinity; });
-    if (id === 'curupira') $s.players.forEach(o => { if (o.team !== p.team) o.pwInv = Infinity; });
+    p.pwOn = { id, until: t + P.now };
+    if (id === 'gelo') $s.players.forEach(o => { if (o.team !== p.team) o.pwFrozen = t + P.now; });
+    if (id === 'curupira') $s.players.forEach(o => { if (o.team !== p.team) o.pwInv = t + P.now; });
   } else p.pwNext = id;
   sparkle({ x: p.pos.x, y: 1.4, z: p.pos.z });
   toast((p === human ? 'Você usou ' : p.isHuman ? 'Jogador 2 usou ' : p.team === human.team ? 'Parceiro usou ' : 'Adversário usou ') + P.ic + ' ' + P.nome);
@@ -71,7 +71,7 @@ function caosSpeedK(p) {
   if (!caosOn() || !p) return 1;
   const t = now(); let k = 1;
   if (p.pwOn && p.pwOn.id === 'turbo' && p.pwOn.until > t) k *= 1.4;
-  if (p.pwFrozen && p.pwFrozen > t) k *= .55;
+  if (p.pwFrozen && p.pwFrozen > t) k *= .25;
   if (!p.isHuman && !p.netHuman && caosInvert(p)) k *= .6; // CPU com os pés virados: perdida e lenta
   return k;
 }
@@ -90,7 +90,7 @@ function caosShot(p, key, spec, mod, isServe) {
   if (id === 'bomba') { if (spec.speed) spec.speed *= 1.45; if (spec.T) spec.T *= .72; mod.oppMissBoost = (mod.oppMissBoost || 0) + .3; }
   else if (id === 'curva') out.crazy = true;
   else if (id === 'lua') { // ~14 m de altura (no ginásio, até um pouco abaixo do teto)
-    const top = ROOF.h ? Math.min(14, ROOF.h - 1.2) : 14, gk = .62;
+    const top = ROOF.h ? Math.min(14, ROOF.h - 1.2) : 14, gk = 1.2; // gravidade forte: despenca rápido
     spec.T = Math.sqrt(8 * Math.max(4, top - ball.pos.y) / (G * gk)); spec.gk = gk; spec.depth = [6.8, 7.6]; spec.margin = 1; delete spec.speed; spec.lowArc = false; spec.lunar = true; mod.oppMissBoost = (mod.oppMissBoost || 0) + .15; }
   else if (id === 'muralha') out.shield = true;
   else if (id === 'fantasma') out.ghost = true;
@@ -137,8 +137,10 @@ function caosStep(dt) {
   const h = hudEl(), on = caosOn() && S.mode !== 'menu' && S.mode !== 'replay';
   h.hidden = !on;
   if (!on) { if (ballMesh && !ballMesh.visible && ball.ghost) ballMesh.visible = true; ball.ghost = null; return; }
-  // ponto acabou: os poderes de efeito contínuo acabam junto
+  // ponto acabou: os poderes de tempo acabam junto, mesmo com tempo sobrando
   if (S.mode === 'dead' || S.mode === 'over') endTimed();
+  // acabou o tempo do poder: começa a espera pelo próximo
+  else $s.players.forEach(p => { if (p.pwOn && p.pwOn.until <= now()) { p.pwOn = null; p.pwReady = hits + CD; } });
   // bola fantasma: some entre 0,25 s e 0,85 s depois da batida
   if (ball.ghost && ballMesh) { const a = now() - ball.ghost.t0; ballMesh.visible = !(a > .25 && a < .85 && ball.state === 'live'); if (a >= .85) ball.ghost = null; }
   // curva maluca: a bola serpenteia (para os lados e para frente/trás) e volta ao trajeto no quique, no lugar mirado
