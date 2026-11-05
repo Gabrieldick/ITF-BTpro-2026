@@ -780,8 +780,11 @@ function newMatch(guest) {
     // circuito; feminino, misto e amador: 3 m. Quem recebe fica sempre atrás dos 3 m
     S.zoneR = pro && allMale ? 6 : ZONE3; setZoneLine(S.zoneR);
   }
-  S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
+  S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false, fb: 0 };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
+  // partida nova começa do lado normal: uma troca de lado que ficou pela metade (partida simulada até o fim, saída para o
+  // menu durante a caminhada) continuava e virava o lado no 1º ponto da partida seguinte
+  S.sideWalk = null; S.sideNote = false; clearTimeout(wipeT); S.sideFlip = false; setSide(false);
   S.highlights = []; S.clips = [];
   S.stats = { pts: [0, 0], maxRally: 0, smashes: 0 }; S.pstats = []; S.posHeat = new Array(64).fill(0); S.rallyLog = []; S.perf = { sum: 0, n: 0, ev: {} }; S.lastHit = null; S.attempt = null; S.streak = null;
   updateLiveRating();
