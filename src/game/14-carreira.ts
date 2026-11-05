@@ -574,11 +574,20 @@ const npcTier = o => { let t = 0; for (let i = 0; i < 9; i++) if (TIERS[i].ovr[0
 // catN[id] = [torneios na C, na B, na A, no profissional, pontos acumulados no profissional] (a carreira toda)
 // catR[id] = resultados das últimas 52 semanas por categoria ((semana + 1000) * 100000 + categoria * 10000 + pontos;
 // o +1000 mantém positivo o ano simulado antes da semana 1)
-// quem jogou 3 torneios numa categoria sai do ranking das de baixo e não joga mais nelas; da A só sai com 70 pontos no profissional
+// quem jogou 3 torneios numa categoria sai do ranking das de baixo e não joga mais nelas; da A só sai quem entra no top 300 mundial
 const CAT_NAMES = ['C', 'B', 'A', 'Profissional'];
 const catOfTier = t => Math.min(3, t);
 const crCatN = id => (($s.CR.catN || {})[id]) || [0, 0, 0, 0, 0];
-function crMinCat(id) { const n = crCatN(id); return n[4] >= 70 ? 3 : n[2] >= 3 || n[3] >= 3 ? 2 : n[1] >= 3 ? 1 : 0; }
+// regra da CBT (regulamento de beach tennis): quem está entre os 300 primeiros do ranking mundial (ITF) é profissional e não
+// joga as categorias amadoras; acima da 300ª posição pode jogar a A (mesmo já tendo jogado o profissional). E quem jogou
+// 3 torneios numa categoria não volta para as de baixo
+const PRO_TOP = 300, RKPOS = { list: null, map: null };
+function crWorldPos(id) {
+  const l = crRanking();
+  if (RKPOS.list !== l) { RKPOS.list = l; RKPOS.map = new Map(); l.forEach((x, i) => { if (x.pts > 0) RKPOS.map.set(x.id, i + 1); }); }
+  return RKPOS.map.get(id) || 0;
+}
+function crMinCat(id) { const n = crCatN(id), pos = crWorldPos(id); return pos && pos <= PRO_TOP ? 3 : n[2] >= 3 || n[3] >= 3 ? 2 : n[1] >= 3 ? 1 : 0; }
 const crMinTier = id => crMinCat(id); // categoria mínima = nível mínimo de torneio (C=0, B=1, A=2, profissional=3)
 function crCatAdd(id, tier, pts, aw, noR) { // noR: estrangeiro, não entra nos rankings estaduais
   const N = $s.CR.catN = $s.CR.catN || {}, R = $s.CR.catR = $s.CR.catR || {}, k = catOfTier(tier);

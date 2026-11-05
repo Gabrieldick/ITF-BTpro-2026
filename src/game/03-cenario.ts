@@ -543,8 +543,18 @@ function crowd(seats) {
   seats.forEach(([x, y, z, side, along], i) => { const sc = SKIN_C[Math.floor(Math.random() * SKIN_C.length)]; arms.setColorAt(i * 2, c.set(sc).convertSRGBToLinear()); arms.setColorAt(i * 2 + 1, c.set(sc).convertSRGBToLinear()); });
   const flagIdx = seats.map((_, i) => i).filter(() => Math.random() < .07);
   if (flagIdx.length) {
-    const FL = [['#009c3b', '#ffdf00', '#002776'], ['#009246', '#ffffff', '#ce2b37'], ['#0055a4', '#ffffff', '#ef4135'], ['#aa151b', '#f1bf00', '#aa151b']];
-    const tex = canvasTex(256, 64, (x, w, h) => FL.forEach((f, k) => { const x0 = k * 64; f.forEach((cc, j) => { x.fillStyle = cc; x.fillRect(x0 + j * 21.3, 0, 22, h); }); if (k === 0) { x.fillStyle = '#ffdf00'; x.beginPath(); x.moveTo(x0 + 32, 10); x.lineTo(x0 + 56, 32); x.lineTo(x0 + 32, 54); x.lineTo(x0 + 8, 32); x.fill(); x.fillStyle = '#002776'; x.beginPath(); x.arc(x0 + 32, 32, 11, 0, 7); x.fill(); } }));
+    // bandeiras (4 lado a lado, cada uma 96×64): Brasil (verde, losango amarelo, círculo azul com a faixa branca), Itália e
+    // França (listras verticais) e Espanha (listras horizontais vermelho-amarelo-vermelho, 1:2:1)
+    const tex = canvasTex(384, 64, (x, w, h) => {
+      const W = 96;
+      x.fillStyle = '#009c3b'; x.fillRect(0, 0, W, h);
+      x.fillStyle = '#ffdf00'; x.beginPath(); x.moveTo(W / 2, 6); x.lineTo(W - 8, h / 2); x.lineTo(W / 2, h - 6); x.lineTo(8, h / 2); x.closePath(); x.fill();
+      x.fillStyle = '#002776'; x.beginPath(); x.arc(W / 2, h / 2, 15, 0, Math.PI * 2); x.fill();
+      x.save(); x.beginPath(); x.arc(W / 2, h / 2, 15, 0, Math.PI * 2); x.clip(); x.strokeStyle = '#ffffff'; x.lineWidth = 3; x.beginPath(); x.arc(W / 2 + 4, h / 2 + 30, 32, Math.PI * 1.17, Math.PI * 1.83); x.stroke();
+      x.fillStyle = '#ffffff'; for (const [sx, sy] of [[40, 38], [46, 41], [52, 39], [55, 43], [44, 44], [50, 45]]) x.fillRect(sx, sy, 1.4, 1.4); x.restore();
+      [['#009246', '#ffffff', '#ce2b37'], ['#0055a4', '#ffffff', '#ef4135']].forEach((f, k) => f.forEach((cc, j) => { x.fillStyle = cc; x.fillRect(W * (k + 1) + j * W / 3, 0, W / 3 + .5, h); }));
+      x.fillStyle = '#aa151b'; x.fillRect(W * 3, 0, W, h); x.fillStyle = '#f1bf00'; x.fillRect(W * 3, h / 4, W, h / 2);
+    });
     flagIdx.forEach(i => { const [x, y, z, side, along] = seats[i], k = Math.floor(Math.random() * 4), g = new THREE.PlaneGeometry(.6, .4), uv = g.attributes.uv; for (let n = 0; n < uv.count; n++) uv.setX(n, (k + uv.getX(n)) / 4);
       const f = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: .9 })); f.position.set(x, y + 1.35, z); f.rotation.y = along === 'z' ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0); ARENA.group.add(f);
       const st = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .9, 5), new THREE.MeshStandardMaterial({ color: 0x8a6a45 })); st.position.set(x, y + 1.0, z); ARENA.group.add(st); });

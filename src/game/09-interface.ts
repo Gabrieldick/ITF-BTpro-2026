@@ -769,9 +769,9 @@ function newMatch(guest) {
     const allMale = $s.players.every(p => !p.char || !p.char.fem);
     const pro = S.careerActive && $s.CR && $s.CR.tour ? $s.CR.tour.tier >= 3 && !($s.CR.tour.special === 'estadual' && $s.CR.tour.tier < 3) : true;
     setNetHeight(allMale && pro ? 1.8 : 1.7);
-    // linha do parceiro de quem saca (não passa dela até o saque ser batido): 6 m no profissional, como no circuito; 3 m no
-    // amador. Quem recebe fica sempre atrás dos 3 m
-    S.zoneR = pro ? 6 : ZONE3; setZoneLine(S.zoneR);
+    // linha do parceiro de quem saca (não passa dela até o saque ser batido): 6 m só no profissional masculino, como no
+    // circuito; feminino, misto e amador: 3 m. Quem recebe fica sempre atrás dos 3 m
+    S.zoneR = pro && allMale ? 6 : ZONE3; setZoneLine(S.zoneR);
   }
   S.score = { pts: [0, 0], games: [0, 0], tb: false, sets: [0, 0], hist: [], stb: false };
   S.server = Math.random() < .5 ? 0 : 1; S.serverIdx = [0, 0]; S.tbPlayed = 0; S.matchWinner = null;
