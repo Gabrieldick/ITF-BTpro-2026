@@ -194,7 +194,7 @@ body.touch #shots kbd, body.touch .chip kbd { display: none; }
 :is(#meter, #meter2) .zone { position: absolute; left: 0; right: 0; background: #4FD18B; }
 :is(#meter, #meter2) .zone { opacity: .9; }
 /* a barra é translúcida com a ponta branca, para enxergar as cores da faixa embaixo */
-:is(#meter, #meter2) .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 0; border-radius: 7px; background: rgba(255,255,255,.28); border-top: 4px solid #fff; box-shadow: 0 -2px 6px rgba(0,0,0,.45); }
+:is(#meter, #meter2) .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 0; border-radius: 0 0 7px 7px; background: rgba(255,255,255,.28); border-top: 4px solid #fff; box-shadow: 0 -2px 6px rgba(0,0,0,.45); }
 :is(#meter, #meter2).in .fill { background: rgba(255,255,255,.4); box-shadow: 0 0 12px #4FD18B, 0 -2px 6px rgba(0,0,0,.35); }
 :is(#meter, #meter2).lobm .zone { background: #E5484D; }
 :is(#meter, #meter2).lobm .fill { background: linear-gradient(0deg, #FFD23F, #5FB8FF); }
