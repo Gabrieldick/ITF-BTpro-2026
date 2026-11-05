@@ -25,9 +25,10 @@ function staminaStep(dt) {
       const sp = Math.hypot(p.vel.x, p.vel.z), k = 1.2 - .45 * Math.min(1, attrK(p, 'folego')); // fôlego alto cansa bem menos
       // (quem joga no teclado/controle corre sempre no máximo, sem meio-termo como a CPU: a corrida dele pesa 80% menos;
       // medido no simulador, assim a corrida de quem joga gasta só um pouco mais que a da CPU). Base: o ponto em si cansa
-      let d = dt * (.008 + .05 * Math.pow(clamp((sp - 2.5) / 2.8, 0, 1.2), 1.5) * (p.isHuman ? .2 : 1));
-      if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .2 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
-      if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .09; }
+      // (corrida, saltos e mergulhos com ~40% menos gasto que antes)
+      let d = dt * (.008 + .03 * Math.pow(clamp((sp - 2.5) / 2.8, 0, 1.2), 1.5) * (p.isHuman ? .2 : 1));
+      if (p.jump > 0 && !p.staJ) { p.staJ = true; d += .11 * (p.jumpH || .3); } else if (!(p.jump > 0)) p.staJ = false;
+      if (p.dive && !p.dive.staT) { p.dive.staT = true; d += .055; }
       if (p.swing.t >= 0 && !p.staS) { p.staS = true; d += p.swing.type === 'smash' ? .022 : .012; } else if (p.swing.t < 0) p.staS = false; // cada golpe também cansa (o smash mais)
       p.sta = Math.max(0, p.sta - d * k);
       p.staTired = (p.staTired || 0) + dt * .002 * k; // cansaço acumulado: ~3 min de bola em jogo (um set de 6 games) baixam o teto ~25%; até −45% (menos com fôlego)
