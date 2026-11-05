@@ -18,6 +18,7 @@ import { startCeremony } from './22-cerimonia';
 // cansa menos). A recuperação é por ponto (não pelo tempo parado): +8% a cada ponto, +25% no fim do game e +30% na troca de lado, até o teto que cai com a duração da partida
 function staminaStep(dt) {
   for (const p of $s.players) {
+    if (S.drill) { p.sta = 1; p.staTired = 0; continue; } // treino: energia sempre cheia
     if (p.sta === undefined) p.sta = 1;
     if (S.mode === 'rally') {
       // andar e trotar quase não gasta: o custo vem da arrancada (acima de ~2,5 m/s), dos golpes, dos saltos e dos mergulhos
