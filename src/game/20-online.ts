@@ -701,7 +701,7 @@ function applyState(a, b, k, ex = 0) {
   else if (MTR.active) MTR.active = false;
   // placar e estado do ponto
   const sc = b.sc;
-  S.score = ON.mirror ? { pts: swap2(sc.pts), games: swap2(sc.games), tb: sc.tb, stb: sc.stb, sets: swap2(sc.sets || [0, 0]), hist: (sc.hist || []).map(h => [h[1], h[0], h[2]]), stbDone: sc.stbDone } : sc;
+  S.score = ON.mirror ? { pts: swap2(sc.pts), games: swap2(sc.games), tb: sc.tb, stb: sc.stb, sets: swap2(sc.sets || [0, 0]), hist: (sc.hist || []).map(h => [h[1], h[0], h[2]]), stbDone: sc.stbDone, fb: sc.fb } : sc;
   S.server = mT(b.sv); S.serverIdx = swap2(b.si); S.serverPlayer = b.sp >= 0 ? ON.G[b.sp] : null;
   S.lastTeam = mT(b.lt); S.hitId = b.hid; S.rally = b.r;
   S.wind = { x: b.w.x * m, z: b.w.z * m }; S.heat = !!b.ht; S.pressure = b.pr;

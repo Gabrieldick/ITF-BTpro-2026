@@ -96,11 +96,17 @@ function feedback(main, small, kind, soft) {
 // ---------- Placar ----------
 const PT = ['0', '15', '30', '40'];
 // troca de lado: depois dos games 1, 3, 5…; no tie-break a cada 4 pontos (depois do 1º, 5º, 9º…)
-function sidesFlipped(sc) {
-  if (!sc || !sc.games) return false;
+// trocas dentro do set atual (games e, no tie-break, os pontos dele)
+function setChanges(sc) {
   let n = Math.floor((sc.games[0] + sc.games[1] + 1) / 2);
   if (sc.tb) { const p = sc.pts[0] + sc.pts[1]; if (p >= 1) n += Math.floor((p - 1) / 4) + 1; }
-  return n % 2 === 1;
+  return n;
+}
+// fb: trocas dos sets que já acabaram (a conta segue de um set para o outro: no fim do set só troca se o total de games
+// for ímpar). Antes a conta recomeçava do zero no 2º set e no super tie-break, e havia uma troca a mais logo no começo
+function sidesFlipped(sc) {
+  if (!sc || !sc.games) return false;
+  return ((sc.fb || 0) + setChanges(sc)) % 2 === 1;
 }
 if (typeof window !== 'undefined') window.__pdoSide = { sidesFlipped: sc => sidesFlipped(sc), update: () => updateSides() };
 function updateSides() {
@@ -236,6 +242,7 @@ function endSet(w) {
   if (S.settings.format !== 'pro') { S.matchWinner = w; return 'match'; }
   sc.sets[w]++; sc.hist.push([sc.games[0], sc.games[1]]);
   if (sc.sets[w] >= 2) { S.matchWinner = w; return 'match'; }
+  sc.fb = ((sc.fb || 0) + setChanges(sc)) % 2; // o lado com que o set terminou é o lado com que o próximo começa
   sc.games = [0, 0]; sc.pts = [0, 0]; sc.tb = false;
   if (sc.sets[0] === 1 && sc.sets[1] === 1) { sc.tb = true; sc.stb = true; S.tbPlayed = 0; return 'stb'; }
   return 'set';
