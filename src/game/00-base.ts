@@ -56,7 +56,7 @@ const DIFF = {
   medio:   { speed: 4.1, react: .18, miss: .07, err: .055, q: [.60, .90], smart: .6, letGo: .6 },
   dificil: { speed: 4.8, react: .10, miss: .03, err: .025, q: [.75, 1.0], smart: .9, letGo: .9 },
 };
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const clamp = (v, a, b) => v !== v ? a : Math.max(a, Math.min(b, v)); // NaN vira o mínimo (não se espalha pela física)
 // elenco com nomes que lembram jogadores do circuito; atributos são estimativas do jogo e os nomes podem ser trocados no menu
 const ATTRS = [['forca', 'Força'], ['vel', 'Velocidade'], ['def', 'Defesa'], ['backhand', 'Backhand'], ['curta', 'Curta'], ['lob', 'Lob'], ['smash', 'Smash'], ['saque', 'Saque'], ['leitura', 'Noção de jogo'], ['voleio', 'Voleio'], ['folego', 'Fôlego']];
 const ATTR_W0 = { forca: .13, vel: .15, def: .15, backhand: .08, curta: .11, lob: .11, smash: .15, saque: .12 };
