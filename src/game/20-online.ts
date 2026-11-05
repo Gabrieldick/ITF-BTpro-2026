@@ -11,7 +11,8 @@ import { $s } from '../state';
 import { staMul, C, HEIGHTS, NAMES, P_SPEED, ROSTER, SWING_DUR, TOSS_T, ZONE3, attrK, velMul, accOf, accelStep, backZ, backAcc, bG, charById, clamp, lerp, nameOf, overall, shortOf, RACKET_STATS, leituraOf, folegoOf, voleioOf, ATTRS, attrOf, effA, racketBonus, rkSummary } from './00-base';
 import { S, NET } from './01-estado';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, puff, resetTrail, sparkle, greenWave } from './07-glb';
+import { caosOn, caosActivate, caosPack, caosUnpack, caosNotify, caosGuestStep, caosSpeedK, caosInvert } from './23-caos';
+import { applyPlayerStyle, applyRackets, assignCharacters, ball, ballMesh, ballMark, puff, resetTrail, sparkle, greenWave } from './07-glb';
 import { ac, sndHit, sndSand } from './08-audio';
 import { crSlots, crSlotChar, crCharFromJSON, clCareerChars, CL, SB_URL, SB_KEY } from './14-carreira';
 import { $, configureMode, el, feedback, hideBanner, newMatch, pointShow, renderBoard, serveBanner, showOver, shotFeedback, showReview, COURTS } from './09-interface';
@@ -22,7 +23,7 @@ import { sideOf } from './18-animacao';
 
 const PREFIX = 'ponto-de-ouro-sala-';            // prefixo do id no servidor público do PeerJS
 const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O e 1/I, que confundem ao ditar o código
-const PROTO = 2;                                 // versão das mensagens: todos precisam da mesma
+const PROTO = 3;                                 // versão das mensagens: todos precisam da mesma
 const sendMs = () => ON.guests.length <= 3 ? 16 : 33; // estado do anfitrião 60 vezes por segundo (30 com sala cheia)
 const INTERP_START = 50;                         // atraso de desenho inicial do convidado; depois se ajusta à rede (ms)
 const TIMEOUT_MS = 8000;                         // sem nenhuma mensagem por esse tempo = conexão perdida
@@ -231,7 +232,7 @@ function sanL(L) {
   for (const k of SEAT_KEYS) { seats[k] = L.seats && L.seats[k] ? sId(L.seats[k]) : null; cpu[k] = L.cpu && L.cpu[k] ? sId(L.cpu[k]) : null; }
   return { code: typeof L.code === 'string' && /^[A-Z0-9]{5}$/.test(L.code) ? L.code : '', kind: L.kind === 'champ' ? 'champ' : 'match', mode: L.mode === 'simples' ? 'simples' : 'dupla',
     games: nI(L.games, 1, 9) || 4, diff: typeof L.diff === 'string' ? L.diff.slice(0, 12) : 'medio', court: COURTS[L.court] ? L.court : 'praia', members, seats, cpu,
-    champ: L.champ && typeof L.champ === 'object' && Array.isArray(L.champ.entries) && Array.isArray(L.champ.rounds) ? L.champ : null, playing: !!L.playing, cpuLv: nI(L.cpuLv, 1, 6) || 3 };
+    champ: L.champ && typeof L.champ === 'object' && Array.isArray(L.champ.entries) && Array.isArray(L.champ.rounds) ? L.champ : null, playing: !!L.playing, cpuLv: nI(L.cpuLv, 1, 6) || 3, gm: L.gm === 'caos' ? 'caos' : '' };
 }
 // placar e estatísticas vindos do anfitrião: só números
 const scoreSan = sc => { sc = sc && typeof sc === 'object' ? sc : {};
@@ -249,7 +250,7 @@ function lobbyState() {
   return {
     code: ON.code, kind: ON.room.kind, mode: ON.room.mode, games: S.settings.games, diff: S.settings.diff, court: S.settings.court || 'praia',
     members: members().map(m => ({ id: m.id, name: m.name, pick: m.pick, rtt: m.id === 'host' ? 0 : Math.round(m.rtt), cc: m.cc || null, rk: m.rk || '' })),
-    seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing, cpuLv: ON.room.cpuLv || 3,
+    seats: ON.room.seats, cpu: ON.room.cpu, champ: ON.room.champ, playing: ON.room.playing, cpuLv: ON.room.cpuLv || 3, gm: ON.room.gm === 'caos' ? 'caos' : '',
   };
 }
 function broadcast() {
@@ -281,6 +282,7 @@ function act(mid, m) {
     room.cpu[m[1]] = m[2];
   }
   if (mid === 'host' && m[0] === 'cpulv' && !room.playing) { room.cpuLv = clamp(Math.round(+m[1] || 3), 1, 6); S.cpuLv = room.cpuLv; } // nível da CPU (estrelas)
+  if (mid === 'host' && m[0] === 'gm' && !room.playing) room.gm = m[1] === 'caos' ? 'caos' : ''; // modo de jogo: normal ou Caos (poderes)
   if (mid === 'host' && m[0] === 'kind' && !room.playing) room.kind = m[1] === 'champ' ? 'champ' : 'match';
   if (mid === 'host' && m[0] === 'games' && !room.playing) { S.settings.games = +m[1] === 6 ? 6 : 4; const r = document.querySelector('input[name=len][value="' + S.settings.games + '"]'); if (r) r.checked = true; } // duração escolhida na sala (o menu em passos não passa pela escolha de games)
   if (mid === 'host' && m[0] === 'mode' && !room.playing && !(room.champ && room.champ.champion === null)) room.mode = m[1] === 'simples' ? 'simples' : 'dupla';
@@ -304,6 +306,7 @@ function hostData(g, d) {
   }
   if (k === 'seat' || k === 'pick' || k === 'cchar' || k === 'racket' || k === 'pd') { act(g.id, d); return; } // ações da sala vindas de quem entrou
   if (!c) return;
+  if (k === 'pw') { if (inPlay()) caosActivate(c.p); return; } // modo Caos: usou o poder
   if (k === 'i') {
     if (!Number.isFinite(+d[4]) || d[4] <= g.inSeq) return; g.inSeq = +d[4]; // chegou fora de ordem: já há uma mais nova
     if (d[5] > 0 && d[5] < 2000) { g.interp = +d[5]; c.lag = lagOf(g); }
@@ -358,7 +361,7 @@ function startMatch(owners, picks, mode, champM) {
   });
   if (!human.netHuman) human.mtr = MTR;
   S.spectate = !hostSeat; document.body.classList.toggle('spectate', S.spectate);
-  S.settings.mode = mode; S.settings.format = 'set';
+  S.settings.mode = mode; S.settings.format = 'set'; S.settings.gm = ON.room.gm === 'caos' ? 'caos' : '';
   S.settings.pick = { me: pickByPl[0], mate: pickByPl[1], o1: pickByPl[2], o2: pickByPl[3] };
   const c0 = charById(pickByPl[0]); S.settings.racket = (c0.look && c0.look.racket) || S.settings.racket;
   S.careerActive = false; S.champActive = false;
@@ -389,7 +392,7 @@ function hostPlay() {
 function hostCfg(g) {
   const M = ON.match, names = {}, heights = {};
   M.pickByPl.forEach(id => { if (NAMES[id]) names[id] = NAMES[id]; if (HEIGHTS[id]) heights[id] = HEIGHTS[id]; });
-  return { me: g.plIdx, picks: M.pickByPl, rackets: M.rkByPl || [], humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), court: S.settings.court || 'praia', settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format }, names, heights };
+  return { me: g.plIdx, picks: M.pickByPl, rackets: M.rkByPl || [], humans: M.ownerByPl.map(o => !!o), players: PL.map(p => p.netName || ''), court: S.settings.court || 'praia', settings: { mode: S.settings.mode, games: S.settings.games, diff: S.settings.diff, format: S.settings.format, gm: S.settings.gm === 'caos' ? 'caos' : '' }, names, heights };
 }
 function meterOf(c) { const m = c && c.m; return m && m.active ? [m.kind, m.type, r3(m.t), r3(m.v), m.center, m.half] : null; }
 function hostState(now) {
@@ -404,6 +407,7 @@ function hostState(now) {
     }),
     sc: S.score, sv: S.server, si: S.serverIdx, sp: PL.indexOf(S.serverPlayer), lt: S.lastTeam, hid: S.hitId, r: S.rally,
     w: S.wind || { x: 0, z: 0 }, ht: S.heat ? 1 : 0, pr: S.pressure || '', stk: S.streak || null, mt: null,
+    cz: caosOn() ? PL.map(caosPack) : 0, gh: ballMesh && !ballMesh.visible ? 1 : 0, // modo Caos: poder de cada um e bola fantasma sumida
   };
 }
 function hostTick(now) {
@@ -433,6 +437,7 @@ NET.ev = (k, a, b) => {
   else if (k === 'sand') ON.outq.push(['sand', r3(a), r3(b)]);
   else if (k === 'spark') ON.outq.push(['spark', r3(a.x), r3(a.y), r3(a.z)]);
   else if (k === 'wave') ON.outq.push(['wave', r3(a.x), r3(a.z)]);
+  else if (k === 'caos') ON.outq.push(['cz', PL.indexOf(a), b[0], b[1]]);
   else if (k === 'review') ON.outq.push(['rev', a.x, a.z, a.axis, a.inB ? 1 : 0, a.mg]);
 };
 NET.onNewMatch = () => { if (NET.role !== 'host') return; ON.inMatch = true; ON.outq.push(['cfg']); };
@@ -642,7 +647,7 @@ function guestStart(cfg) {
   S.spectate = me < 0; document.body.classList.toggle('spectate', S.spectate);
   // só os ajustes da partida, validados (antes qualquer chave do anfitrião entrava nos seus ajustes e ficava salva)
   { const st = cfg.settings || {}; if (st.mode === 'simples' || st.mode === 'dupla') S.settings.mode = st.mode; if (+st.games === 4 || +st.games === 6) S.settings.games = +st.games;
-    if (typeof st.diff === 'string' && /^[a-z]{3,12}$/.test(st.diff)) S.settings.diff = st.diff; if (st.format === 'set' || st.format === 'pro') S.settings.format = st.format; }
+    if (typeof st.diff === 'string' && /^[a-z]{3,12}$/.test(st.diff)) S.settings.diff = st.diff; if (st.format === 'set' || st.format === 'pro') S.settings.format = st.format; S.settings.gm = st.gm === 'caos' ? 'caos' : ''; }
   S.netCourt = COURTS[cfg.court] ? cfg.court : 'praia';
   cfg.picks = (Array.isArray(cfg.picks) ? cfg.picks : []).slice(0, 4).map(sId); cfg.names = cfg.names && typeof cfg.names === 'object' ? cfg.names : {}; cfg.heights = cfg.heights && typeof cfg.heights === 'object' ? cfg.heights : {};
   const pick = {}, rk = {}; ON.G.forEach((p, i) => { pick[SLOT.get(p)] = cfg.picks[i]; rk[SLOT.get(p)] = (cfg.rackets || [])[i] || ''; }); S.settings.pick = pick; S.rkPick = rk;
@@ -706,6 +711,7 @@ function guestEvent(e) {
     el.meter.className = e[1]; el.mRes.textContent = e[2]; el.mFill.style.height = e[3] + '%'; el.meter.hidden = false;
     clearTimeout(ON.mrTimer); ON.mrTimer = setTimeout(() => { if (!MTR.active) el.meter.hidden = true; }, 900);
   } else if (k === 'mh') { MTR.active = false; el.meter.hidden = true; LS.meter = null; LS.charge = null; }
+  else if (k === 'cz') caosNotify(ON.G[nI(e[1], 0, 3)], e[2], !!e[3]); // modo Caos: alguém usou um poder (ou ganhou um novo)
   else if (k === 'over') guestOver(e[1]);
 }
 // aplica o estado entre dois quadros do anfitrião (a = anterior, b = seguinte, k de 0 a 1)
@@ -733,6 +739,8 @@ function applyState(a, b, k, ex = 0) {
     p.tossDur = pb[20] || TOSS_T; // altura de cada lançamento do saque (o tempo até o contato)
     const ct = pb[19]; p.contact = ct ? { x: ct[0] * m, y: ct[1], z: ct[2] * m, u: ct[3], hitId: ct[4] } : null; // raquete vai até onde bateu
   });
+  // modo Caos: poder de cada jogador (painel, gigante, curupira) e a bola fantasma
+  if (caosOn()) { PL.forEach((_, i) => caosUnpack(ON.G[i], Array.isArray(b.cz) ? b.cz[i] : null)); if (ballMesh) ballMesh.visible = !b.gh; }
   // barra de força de quem está jogando aqui
   if (b.mt) { MTR.active = true; MTR.kind = b.mt[0]; MTR.type = b.mt[1]; MTR.t = b.mt[2]; MTR.v = a.mt ? L(a.mt[3], b.mt[3]) : b.mt[3]; MTR.center = b.mt[4]; MTR.half = b.mt[5]; }
   else if (MTR.active) MTR.active = false;
@@ -759,7 +767,8 @@ function predictOwn(dt, now, newest, ix, iz) {
   const free = (S.mode === 'rally' || S.mode === 'serve' || S.mode === 'toss') && !serving && hp[15] < 0 && !(S.settings.assistMove && len < .1);
   if (!free) { PR.on = false; return; } // saque, mergulho, "seguir a bola" e intervalo: fica com a posição do anfitrião
   if (!PR.on) { Object.assign(PR, { on: true, x: p.pos.x, z: p.pos.z, vx: p.vel.x, vz: p.vel.z, hist: [] }); }
-  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (p.charging ? .75 : 1) * staMul(p);
+  if (caosInvert(p)) { ix = -ix; iz = -iz; } // modo Caos: curupira (o anfitrião inverte igual)
+  const spd = P_SPEED * velMul(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .88 : 1) * (p.charging ? .75 : 1) * staMul(p) * caosSpeedK(p);
   const tvx = ix * spd, tvz = backZ(PR.z > 0 ? 0 : 1, iz * spd); // mesma aceleração (e para trás mais lento) do anfitrião; lado pela posição (a tela do convidado pode estar espelhada)
   [PR.vx, PR.vz] = accelStep(PR.vx, PR.vz, tvx, tvz, dt, backAcc(PR.z > 0 ? 0 : 1, tvz, (accOf(p.char ? attrOf(p.char.a, 'vel') : 70) * (S.femPace ? .85 : 1)) * (p.burst > 0 && len > .1 ? 1.6 : 1)));
   PR.x += PR.vx * dt; PR.z += PR.vz * dt;
@@ -802,9 +811,11 @@ function guestTick() {
     }
   } else if (buf.length > 3) buf.splice(0, buf.length - 3);
   while (ON.evq.length && ON.evq[0].t <= rt) guestEvent(ON.evq.shift().e);
+  if (ON.inMatch) caosGuestStep(dt);
   if (inPlay() === $('netChip').hidden) chipStatus();
 }
 NET.guestTick = guestTick;
+NET.caosUse = () => { if (NET.role === 'guest' && ON.inMatch) send(['pw']); }; // modo Caos: pede ao anfitrião para usar o seu poder
 
 // ---------- sair ----------
 // sai do online de vez (fecha a sala ou sai dela) e volta à tela inicial do online com o aviso
@@ -883,6 +894,7 @@ function renderRoom(force) {
   const champRunning = L.champ && L.champ.champion === null;
   document.querySelectorAll('input[name=onMode]').forEach(r => { r.checked = r.value === L.mode; r.disabled = !host || L.playing || (L.kind === 'champ' && champRunning); });
   document.querySelectorAll('input[name=onGames]').forEach(r => { r.checked = +r.value === L.games; r.disabled = !host || L.playing; });
+  document.querySelectorAll('input[name=onGm]').forEach(r => { r.checked = r.value === (L.gm || ''); r.disabled = !host || L.playing; });
   { const cl = $('onCpuLv'); cl.value = String(L.cpuLv || 3); cl.disabled = !host || L.playing; }
   $('onMatch').hidden = L.kind !== 'match'; $('onChamp').hidden = L.kind !== 'champ';
   if (L.kind === 'match') renderSeats(L, me, host, force); else renderChamp(L, me, host, force);
@@ -974,6 +986,7 @@ $('onCcFile').addEventListener('change', e => { const f = e.target.files && e.ta
 document.querySelectorAll('input[name=onKind]').forEach(r => r.addEventListener('change', () => doAct(['kind', r.value])));
 document.querySelectorAll('input[name=onMode]').forEach(r => r.addEventListener('change', () => doAct(['mode', r.value])));
 document.querySelectorAll('input[name=onGames]').forEach(r => r.addEventListener('change', () => doAct(['games', r.value])));
+document.querySelectorAll('input[name=onGm]').forEach(r => r.addEventListener('change', () => doAct(['gm', r.value])));
 $('onCpuLv').addEventListener('change', e => doAct(['cpulv', e.target.value]));
 $('onPlay').addEventListener('click', () => { ac(); if (NET.role === 'host') hostPlay(); });
 $('onLeave').addEventListener('click', () => { leave(''); closeOnline(); });

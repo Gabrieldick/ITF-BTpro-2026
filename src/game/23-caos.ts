@@ -24,7 +24,8 @@ const POWERS = {
   muralha: { nome: 'Muralha', ic: '🛡️', desc: 'a próxima devolução nunca erra' },
 };
 const KEYS = Object.keys(POWERS);
-const caosOn = () => S.settings.gm === 'caos' && !S.careerActive && !S.champActive && !S.drill && !S.tutorial && !NET.role;
+// (no online quem roda os poderes é o anfitrião; o convidado manda o "usar" e recebe o estado de cada um)
+const caosOn = () => S.settings.gm === 'caos' && !S.careerActive && !S.champActive && !S.drill && !S.tutorial;
 const now = () => performance.now() / 1000;
 const CD = 3; // rebatidas de espera depois que o poder acaba
 let hits = 0; // rebatidas contadas no modo Caos
@@ -39,7 +40,7 @@ function hudEl() {
   document.body.append(hud); return hud;
 }
 const slotHTML = (p, key, who) => {
-  if (!p) return '';
+  if (!p || (p === human && S.spectate)) return '';
   return slotMain(p, key, who) + (caosInvert(p) ? '<small class="inv">👣 Curupira: controles invertidos!</small>' : p.pwFrozen > now() ? '<small class="inv">❄️ congelado</small>' : '');
 };
 const slotMain = (p, key, who) => {
@@ -50,19 +51,28 @@ const slotMain = (p, key, who) => {
   const w = p.pwReady ? p.pwReady - hits : 0;
   return '<b class="none">sem poder</b><small>' + who + (w > 0 ? 'novo poder em ' + w + (w === 1 ? ' rebatida' : ' rebatidas') : 'ganha outro no próximo ponto') + '</small>';
 };
+// quem usou, do ponto de vista de quem está nesta tela
+const whoOf = p => p === human ? 'Você' : p.isHuman && !p.netHuman ? 'Jogador 2' : p.team === human.team ? 'Parceiro' : 'Adversário';
+function caosNotify(p, id, isNew) {
+  const P = pwId(id) && POWERS[id]; if (!p || !P) return;
+  if (isNew) { if (p === human && !S.spectate) toast('Novo poder: ' + P.ic + ' ' + P.nome); else if (p.isHuman && !p.netHuman) toast('J2 · novo poder: ' + P.ic + ' ' + P.nome); return; }
+  sparkle({ x: p.pos.x, y: 1.4, z: p.pos.z });
+  toast(whoOf(p) + ' usou ' + P.ic + ' ' + P.nome);
+}
 function toast(txt) { const h = hudEl(), t = h.querySelector('.cz-toast'); t.textContent = txt; t.classList.add('show'); toastT = 1.6; }
 
 // ---------- usar ----------
 function caosActivate(p) {
   if (!caosOn() || !p || !p.pw || !live()) return false;
+  if (NET.role === 'guest') { if (p === human && !S.spectate && NET.caosUse) NET.caosUse(); return false; } // convidado: pede ao anfitrião
   const id = p.pw, P = POWERS[id], t = now(); p.pw = null;
   if (P.now) {
     p.pwOn = { id, until: t + P.now };
     if (id === 'gelo') $s.players.forEach(o => { if (o.team !== p.team) o.pwFrozen = t + P.now; });
     if (id === 'curupira') $s.players.forEach(o => { if (o.team !== p.team) o.pwInv = t + P.now; });
   } else p.pwNext = id;
-  sparkle({ x: p.pos.x, y: 1.4, z: p.pos.z });
-  toast((p === human ? 'Você usou ' : p.isHuman ? 'Jogador 2 usou ' : p.team === human.team ? 'Parceiro usou ' : 'Adversário usou ') + P.ic + ' ' + P.nome);
+  caosNotify(p, id, false);
+  if (NET.role === 'host' && NET.ev) NET.ev('caos', p, [id, 0]);
   return true;
 }
 
@@ -108,7 +118,8 @@ function caosAfterHit(fx) {
 }
 function give(p) {
   p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0;
-  if (p.isHuman) toast((p === human ? 'Novo poder: ' : 'J2 · novo poder: ') + POWERS[p.pw].ic + ' ' + POWERS[p.pw].nome);
+  caosNotify(p, p.pw, true);
+  if (NET.role === 'host' && NET.ev) NET.ev('caos', p, [p.pw, 1]);
 }
 
 // ---------- curva maluca ----------
@@ -145,17 +156,44 @@ function caosStep(dt) {
   if (ball.ghost && ballMesh) { const a = now() - ball.ghost.t0; ballMesh.visible = !(a > .25 && a < .85 && ball.state === 'live'); if (a >= .85) ball.ghost = null; }
   // curva maluca: a bola serpenteia (para os lados e para frente/trás) e volta ao trajeto no quique, no lugar mirado
   if (ball.crazy) crazyStep(dt);
-  // gigante: o boneco cresce (e volta ao tamanho normal no fim)
-  $s.players.forEach(p => { const big = pwActive(p, 'gigante') ? 1.45 : 1, g = p.model && p.model.group; if (!g) return;
-    const k = (p.caosK || 1); if (Math.abs(k - big) > .001) { const r = big / k; g.scale.multiplyScalar(r); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(r); p.caosK = big; } });
   // CPU: usa o poder em algum momento do ponto
   aiT -= dt;
   if (aiT <= 0) { aiT = .5; if (S.mode === 'rally') $s.players.forEach(p => { if (!p.isHuman && !p.netHuman && p.pw && Math.random() < .18) caosActivate(p); }); }
+  caosVisual(h, dt);
+}
+// gigante (tamanho do boneco) e painel: no anfitrião/offline e no convidado
+function caosVisual(h, dt) {
+  // gigante: o boneco cresce (e volta ao tamanho normal no fim)
+  $s.players.forEach(p => { const big = pwActive(p, 'gigante') ? 1.45 : 1, g = p.model && p.model.group; if (!g) return;
+    const k = (p.caosK || 1); if (Math.abs(k - big) > .001) { const r = big / k; g.scale.multiplyScalar(r); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(r); p.caosK = big; } });
   // painel
   h.querySelector('.cz-me').innerHTML = slotHTML(human, 'E', '');
-  const p2 = $s.players.find(p => p !== human && p.isHuman);
+  const p2 = $s.players.find(p => p !== human && p.isHuman && !p.netHuman);
   const e2 = h.querySelector('.cz-p2'); e2.hidden = !p2; if (p2) e2.innerHTML = slotHTML(p2, '9', 'J2 · ');
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) h.querySelector('.cz-toast').classList.remove('show'); }
+}
+// ---------- online ----------
+// anfitrião → convidado: o poder de cada jogador [na mão, armado, ativo, s restantes, gelo s, curupira s, rebatidas de espera]
+const r1 = x => Math.round(x * 10) / 10;
+const left = u => (u && u > now() ? r1(Math.min(99, u - now())) : 0);
+function caosPack(p) {
+  return [p.pw || '', p.pwNext || '', p.pwOn ? p.pwOn.id : '', p.pwOn ? left(p.pwOn.until) : 0, left(p.pwFrozen), left(p.pwInv), p.pwReady ? Math.max(0, p.pwReady - hits) : 0];
+}
+const pwId = x => (typeof x === 'string' && Object.prototype.hasOwnProperty.call(POWERS, x) ? x : null);
+const sec = x => Math.min(99, Math.max(0, +x || 0));
+function caosUnpack(p, a) {
+  if (!p) return;
+  if (!Array.isArray(a)) { p.pw = p.pwNext = p.pwOn = null; p.pwFrozen = p.pwInv = p.pwReady = 0; return; }
+  const t = now(), on = pwId(a[2]);
+  p.pw = pwId(a[0]); p.pwNext = pwId(a[1]); p.pwOn = on ? { id: on, until: t + sec(a[3]) } : null;
+  p.pwFrozen = sec(a[4]) ? t + sec(a[4]) : 0; p.pwInv = sec(a[5]) ? t + sec(a[5]) : 0;
+  p.pwReady = Math.min(9, Math.max(0, Math.round(+a[6] || 0))); // (no convidado as rebatidas não contam: é o que falta)
+}
+// convidado: só painel e visual (quem roda os poderes é o anfitrião)
+function caosGuestStep(dt) {
+  const h = hudEl(), on = caosOn() && S.mode !== 'menu' && S.mode !== 'replay';
+  h.hidden = !on; if (!on) return;
+  caosVisual(h, dt);
 }
 // fim dos efeitos contínuos (fim do ponto): tira o poder ativo, o gelo e o tamanho de gigante
 function endTimed() {
@@ -176,4 +214,4 @@ function caosPointStart() {
   ball.ghost = null; ball.crazy = null; if (ballMesh) ballMesh.visible = true;
 }
 
-export { POWERS, caosInvert, caosTallM, caosGold, caosOn, caosActivate, caosSpeedK, caosReachK, caosShot, caosAfterHit, caosStep, caosPointStart };
+export { caosPack, caosUnpack, caosNotify, caosGuestStep, POWERS, caosInvert, caosTallM, caosGold, caosOn, caosActivate, caosSpeedK, caosReachK, caosShot, caosAfterHit, caosStep, caosPointStart };
