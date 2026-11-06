@@ -158,7 +158,7 @@ function animateAthlete(p, dt) {
     // carregando a barra: a preparação já é a do golpe que a situação pede (gancho, verônica, bandeja…)
     const v = (p.chVar = ball.state === 'live' && S.lastTeam !== p.team ? provVar(p, ty) : ''), ck = ty === 'smash' ? 'smash' : ACT[ty + '_' + v] && !mirrorKey(ty + '_' + v) ? ty + '_' + v : ty; // smash: arma sempre como o smash normal
     poseAt(ACT[ck], uOf(ck), .3 * clamp(M.t / .18, 0, 1), pose); }
-  else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); let ak = swingKey(p); mirror = mirrorKey(ak) && p.swing.side < -.15; if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh';
+  else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); let ak = swingKey(p); mirror = mirrorKey(ak) && p.swing.side < -.15; if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh'; else if ((ak === 'defesa' || ak === 'defesa_alta') && !mirror) ak += '_fh'; // defesa de forehand: no jeito da curta de forehand
     // terminação no ritmo de cada golpe: depois do contato a pose anda mais devagar nos golpes grandes (rate < 1) e continua
     // depois do fim do golpe no jogo (p.tail, abaixo) — nada de voltar de uma vez para a espera
     if (p.swing.hit && p.contact && p.swCuId !== p.contact.hitId) { p.swCuId = p.contact.hitId; p.swCu = p.contact.u; }
@@ -253,7 +253,7 @@ function animateAthlete(p, dt) {
   if (p.burst > 0) p.burst = Math.max(0, p.burst - dt);
   // split step: pulinho com os dois pés quando o adversário bate, aterrissando abaixado e com as pernas abertas
   const spU = p.split > 0 ? 1 - p.split / .26 : -1;
-  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .1 : 0);
+  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .15 : 0); // (pulinho de ~15 cm: com 10 cm quase não se via)
   m.group.position.set(p.pos.x, jy + (p.liftY || 0), p.pos.z); // liftY: em cima do pódio
   if (tiltK > 0) { const D = p.dive, la = D.t < .26 ? Math.sin(Math.PI * D.t / .26) * .14 : 0, sh = Math.sin(tiltA) * .5; m.group.position.x -= D.dx * sh; m.group.position.z -= D.dz * sh; m.group.position.y += la + Math.sin(tiltA) * .05; } // voo curto na saída; o corpo deitado fica centrado onde o jogador está
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
@@ -275,7 +275,7 @@ function animateAthlete(p, dt) {
   p.reachK = (p.reachK || 0) + (reachK - (p.reachK || 0)) * Math.min(1, dt * 14);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
-  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .1 + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
   const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
@@ -346,7 +346,7 @@ function animateAthlete(p, dt) {
   const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1;
-    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + spLand * .1 + (spU >= 0 && spU < .45 ? .05 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
+    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + spLand * .15 + (spU >= 0 && spU < .45 ? .1 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     loc.push([fx + lvx / spn * mx * leadD / hs, fz + lvz / spn * leadD / hs]); // onde o pé deveria estar (local)
   }
@@ -367,7 +367,8 @@ function animateAthlete(p, dt) {
           if (tk) { fz += .12 + .24 * e; fy += .04 + .15 * e; } else { fz += -.05 - .14 * jp; fy += .02 + .06 * Math.sin(Math.PI * jp); } }
         else if (tk) { fz += .26 - .5 * Math.sin(Math.PI * jp) + .02; fy += .1 + .2 * Math.sin(Math.PI * jp) + .1 * jp; }
         else { fz += -.22 * Math.sin(Math.PI * Math.min(1, jp * 1.25)); fy += .26 * Math.sin(Math.PI * Math.min(1, jp * 1.2)) * (1 - jp * .6); }
-      } else if (air) { const sw = jp < .45 ? 1 : -1; fy += .1 + ((s > 0) === (sw > 0) ? .12 : .02); fz += (s > 0 ? .2 : -.12) * sw; }
+      } else if (air && spU >= 0) { fy += .03 + .05 * Math.sin(Math.PI * Math.min(1, spU / .6)); } // split step: os dois pés saem juntos do chão, abertos
+      else if (air) { const sw = jp < .45 ? 1 : -1; fy += .1 + ((s > 0) === (sw > 0) ? .12 : .02); fz += (s > 0 ? .2 : -.12) * sw; }
       F.w = null;
       F.st = { from: toW(fx, fz), y0: fy - .07, t: 0, dur: air && p.jumpMode && i === p.jumpMode.tk ? .16 : .06, h: .02 };
     } else if (F.st) {
@@ -544,6 +545,8 @@ const FPKF = {
   defesa: { sh: [.5, 1.0, 1.1, 1.5, .5],  ph: [.2, 1.0, 1.0, .5, .2],  tw: [0, -.8, -.8, .2, 0],   fw: [0, 1.1, 1.2, 1.3, 0] },
   // curta alta de forehand: braço à frente e alto, raquete em pé com a face para a rede
   curta_alta_fh: { sh: [.5, 1.6, 1.75, 1.55, .5], ph: [.2, .25, .25, .2, .2], tw: [0, -.1, .1, .15, 0], fw: [0, 1.45, 1.57, 1.5, 0] },
+  // defesa de forehand: como a curta de forehand, um pouco mais alta (a de backhand continua a 'defesa')
+  defesa_fh: { sh: [.5, .8, .9, 1.15, .5], ph: [.2, .45, .45, .3, .2], tw: [0, -.3, -.3, .1, 0], fw: [0, .15, -.1, .2, 0] },
   // ventaglio: começa cruzado do lado do backhand com a raquete baixa, sobe pela frente girando o punho e termina
   // com a mão na frente do corpo e a raquete apontando para a frente
   smash_ventaglio: { sh: [.5, 1.25, 1.85, 1.6, .5], ph: [.2, .3, .3, .15, .2], tw: [0, .75, .7, .35, 0], fw: [0, .1, 1.57, .2, 0] },
@@ -562,6 +565,7 @@ function kf(arr, u, rest) {
 // variação do golpe na 1ª pessoa (a mesma escolha da animação do corpo)
 function fpKey(p) {
   const ak = swingKey(p), bh = (p.swing.type === 'defesa' || p.swing.type === 'curta' || p.swing.type === 'lob') && p.swing.side < -.15;
+  if (!bh && (ak === 'defesa' || ak === 'defesa_alta')) return ak === 'defesa' ? 'defesa_fh' : 'curta_alta_fh';
   return ak === 'curta_alta' && !bh ? 'curta_alta_fh' : ak;
 }
 function animateFP() {

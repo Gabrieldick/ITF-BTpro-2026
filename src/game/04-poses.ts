@@ -71,6 +71,19 @@ Object.assign(ACT, {
     READY],
   // defesa baixa: joelhos bem dobrados (afundo), raquete perto dos joelhos com a face aberta e o golpe subindo; a mão
   // livre abre longe do corpo para equilibrar
+  // defesa de forehand: o mesmo jeito da curta de forehand (braço aberto para o lado, face da raquete aberta para a frente),
+  // só que mais alta (bola de smash na altura da cintura/peito), base mais baixa e bloqueio curto; a de backhand continua
+  // sendo a defesa espelhada (com as duas mãos)
+  defesa_fh: [READY,
+    P({ rh: [.32, .4, -.26], rp: [.4, -.5, .3], wx: -.2, wr: 1.5, lh: [-.1, .32, -.3], lp: [-.9, -.5, 0], tw: -.25, lean: .36, bend: .08, crouch: .27, lunge: .6 }),
+    P({ rh: [.3, .4, -.48], rp: [.9, 0, .2], wx: -.45, wr: 1.5, lh: [-.16, .32, -.24], lp: [-.9, -.5, 0], tw: -.05, lean: .42, bend: .1, crouch: .3, lunge: .75 }),
+    P({ rh: [.27, .44, -.55], rp: [.9, 0, .2], wx: -.45, wr: 1.45, lh: [-.17, .32, -.22], lp: [-.9, -.5, 0], tw: .04, lean: .4, bend: .08, crouch: .28, lunge: .7 }),
+    READY],
+  defesa_alta_fh: [READY,
+    P({ rh: [.32, .7, -.3], rp: [0, -1, 0], wx: 1.0, wr: .15, lh: [-.1, .45, -.3], lp: [-.9, -.4, 0], tw: -.2, lean: .15, bend: .08, crouch: .14, lunge: .35 }),
+    P({ rh: [.3, .72, -.48], rp: [0, -1, 0], wx: 1.2, wr: 0, lh: [-.16, .45, -.24], lp: [-.9, -.4, 0], tw: -.05, lean: .18, bend: .1, crouch: .16, lunge: .45 }),
+    P({ rh: [.28, .68, -.52], rp: [0, -1, 0], wx: 1.2, wr: 0, lh: [-.16, .42, -.24], lp: [-.9, -.4, 0], tw: .02, lean: .18, bend: .08, crouch: .16, lunge: .4 }),
+    READY],
   defesa_baixa: [READY,
     P({ rh: [.36, .02, -.2], rp: [.8, -.7, -.3], wx: -.9, wr: 1.55, lh: [-.4, .22, -.14], lp: [-.9, -.5, 0], tw: -.25, hp: -.1, lean: .5, bend: .15, crouch: .4, lunge: .82 }),
     P({ rh: [.33, -.07, -.46], rp: [.8, -.1, .2], wx: -1.1, wr: 1.55, lh: [-.48, .2, -.06], lp: [-.9, -.5, 0], tw: -.05, lean: .56, bend: .18, crouch: .42, lunge: .92 }),
