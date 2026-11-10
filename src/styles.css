@@ -1155,3 +1155,13 @@ body.split2 #tags, body.split2 #reach, body.split2 #landArrow, body.split2 #shot
 body.in-replay #caosHud, body.spectate #caosHud { display: none !important; }
 @media (max-width: 700px) { #caosHud { bottom: 120px; } #caosHud .cz-me, #caosHud .cz-p2 { min-width: 0; max-width: 46vw; } }
 #caosHud small.inv { color: #ffb4a8; font-weight: 700; }
+/* modo Caos: aviso grande de curupira (controles invertidos) ou gelo, no meio da tela */
+#caosAlert { position: fixed; left: 50%; top: 36%; transform: translateX(-50%); z-index: 9; pointer-events: none; text-align: center; font: 900 clamp(20px, 3.4vw, 34px) var(--f-display); letter-spacing: .03em; color: #fff; padding: 10px 22px; border-radius: 14px; white-space: nowrap; animation: czPulse .7s ease-in-out infinite alternate; }
+#caosAlert.inv { background: rgba(122, 32, 168, .88); box-shadow: 0 0 0 3px #e7b6ff, 0 0 34px rgba(190, 90, 255, .8); text-shadow: 0 2px 0 #3a0a52; }
+#caosAlert.ice { background: rgba(28, 110, 170, .86); box-shadow: 0 0 0 3px #bfe9ff, 0 0 30px rgba(120, 210, 255, .8); text-shadow: 0 2px 0 #0b3550; }
+#caosAlert div + div { margin-top: 6px; font-size: .8em; }
+@keyframes czPulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.07); } }
+body.caos-inv::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 7; box-shadow: inset 0 0 120px 30px rgba(160, 60, 230, .55); animation: czPulse2 .7s ease-in-out infinite alternate; }
+@keyframes czPulse2 { from { opacity: .6; } to { opacity: 1; } }
+body.in-replay #caosAlert, body.spectate #caosAlert, body.in-replay.caos-inv::after { display: none !important; }
+@media (max-width: 700px) { #caosAlert { top: 18%; white-space: normal; max-width: 92vw; } }

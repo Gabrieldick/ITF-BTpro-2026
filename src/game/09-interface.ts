@@ -709,12 +709,14 @@ function configureMode() {
   partner.model.group.visible = d; cpuB.model.group.visible = d;
   const mySide = S.settings.side === 'esquerda' ? -1 : 1;
   human.slot = d ? mySide : 0; partner.slot = -mySide; cpuA.slot = d ? 1 : 0; cpuB.slot = -1;
-  // dupla só da CPU: quem tem lado preferido (char.lado, ex.: Spotto na direita) joga nele e o parceiro fica no outro.
+  // dupla só da CPU: quem tem lado preferido (char.lado, ex.: Spotto na direita) joga nele e o parceiro fica no outro;
+  // sem preferência, o canhoto vai para a direita.
   // (slot +1 é a direita de quem joga no time de baixo e a esquerda de quem joga no de cima)
   if (d) for (const [a, b] of [[human, partner], [cpuA, cpuB]]) {
     if (a.isHuman || b.isHuman) continue;
-    const R = a.team === 0 ? 1 : -1, la = a.char && a.char.lado, lb = b.char && b.char.lado;
-    const want = la ? (la === 'direita' ? R : -R) : lb ? (lb === 'direita' ? -R : R) : 0;
+    // sem lado preferido: o canhoto joga na direita (o forehand fica no meio), a não ser que os dois sejam canhotos
+    const R = a.team === 0 ? 1 : -1, la = a.char && a.char.lado, lb = b.char && b.char.lado, ca = !!(a.char && a.char.canhoto), cb = !!(b.char && b.char.canhoto);
+    const want = la ? (la === 'direita' ? R : -R) : lb ? (lb === 'direita' ? -R : R) : ca && !cb ? R : cb && !ca ? -R : 0;
     if (want) { a.slot = want; b.slot = -want; }
   }
 }

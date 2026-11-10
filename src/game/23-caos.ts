@@ -26,7 +26,9 @@ const POWERS = {
 const KEYS = Object.keys(POWERS);
 // (no online quem roda os poderes é o anfitrião; o convidado manda o "usar" e recebe o estado de cada um)
 const caosOn = () => S.settings.gm === 'caos' && !S.careerActive && !S.champActive && !S.drill && !S.tutorial;
-const now = () => performance.now() / 1000;
+// relógio do jogo (só anda com a partida rodando: a pausa não gasta o tempo dos poderes)
+let gt = 0;
+const now = () => gt;
 const CD = 3; // rebatidas de espera depois que o poder acaba
 let hits = 0; // rebatidas contadas no modo Caos
 const live = () => S.mode === 'serve' || S.mode === 'toss' || S.mode === 'rally';
@@ -37,7 +39,25 @@ function hudEl() {
   if (hud) return hud;
   hud = document.createElement('div'); hud.id = 'caosHud'; hud.hidden = true;
   hud.innerHTML = '<div class="cz-me"></div><div class="cz-p2"></div><div class="cz-toast"></div>';
-  document.body.append(hud); return hud;
+  document.body.append(hud);
+  // aviso grande no meio da tela quando o seu jogador está com os pés virados (curupira) ou congelado
+  alertEl = document.createElement('div'); alertEl.id = 'caosAlert'; alertEl.hidden = true; document.body.append(alertEl);
+  return hud;
+}
+let alertEl = null, alertKey = '';
+function alertStep(on) {
+  if (!alertEl) return;
+  const t = now(), msgs = [];
+  const add = (p, who) => { if (!p || (p === human && S.spectate)) return;
+    if (caosInvert(p)) msgs.push(['inv', '👣 ' + who + 'CURUPIRA! Controles invertidos · ' + Math.ceil(p.pwInv - t) + ' s']);
+    else if (p.pwFrozen > t) msgs.push(['ice', '❄️ ' + who + 'CONGELADO · ' + Math.ceil(p.pwFrozen - t) + ' s']); };
+  if (on) { add(human, ''); const p2 = $s.players.find(p => p !== human && p.isHuman && !p.netHuman); add(p2, 'J2: '); }
+  const key = msgs.map(m => m.join(':')).join('|');
+  if (key === alertKey) return; alertKey = key;
+  alertEl.hidden = !msgs.length;
+  alertEl.className = msgs.some(m => m[0] === 'inv') ? 'inv' : 'ice';
+  alertEl.innerHTML = msgs.map(m => '<div>' + m[1] + '</div>').join('');
+  document.body.classList.toggle('caos-inv', msgs.some(m => m[0] === 'inv'));
 }
 const slotHTML = (p, key, who) => {
   if (!p || (p === human && S.spectate)) return '';
@@ -130,10 +150,12 @@ function crazyStep(dt) {
   if (!c.T) { // primeiro passo depois da batida: tempo até o quique e o desenho da curva
     const g = G * (ball.gk || 1), y = ball.pos.y, vy = ball.vel.y;
     c.T = Math.max(.6, (vy + Math.sqrt(Math.max(0, vy * vy + 2 * g * y))) / g);
-    c.kx = 2 + Math.floor(Math.random() * 2); c.kz = 1 + Math.floor(Math.random() * 2);
+    c.kx = 2 + Math.floor(Math.random() * 2); c.kz = 1;
     c.ax = (Math.random() < .5 ? -1 : 1) * (1.6 + Math.random() * 1.2);
-    // para frente/trás: sem fazer a bola voltar para trás (velocidade do desvio < 60% da velocidade para a frente)
-    const vz = Math.abs(ball.vel.z) || 1; c.az = (Math.random() < .5 ? -1 : 1) * Math.min(2.2, .6 * vz * c.T / (Math.PI * c.kz));
+    // para frente e de volta: a bola dispara à frente e depois "volta" para o trajeto. Sempre para a frente (nunca puxada
+    // para trás): assim ela cruza a rede antes e mais alta — puxada para trás cruzava mais tarde, mais baixa, e o saque
+    // (que passa rente) ia na rede. Velocidade do desvio < 60% da velocidade para a frente
+    const vz = ball.vel.z || 1; c.az = Math.sign(vz) * Math.min(2.2, .6 * Math.abs(vz) * c.T / Math.PI);
     c.ox = c.oz = 0;
   }
   c.t += dt;
@@ -145,15 +167,17 @@ function crazyStep(dt) {
 // ---------- a cada passo ----------
 let aiT = 0;
 function caosStep(dt) {
+  gt += dt;
   const h = hudEl(), on = caosOn() && S.mode !== 'menu' && S.mode !== 'replay';
   h.hidden = !on;
-  if (!on) { if (ballMesh && !ballMesh.visible && ball.ghost) ballMesh.visible = true; ball.ghost = null; return; }
+  if (!on) { ball.ghost = null; ball.ghostHide = false; alertStep(false); return; }
   // ponto acabou: os poderes de tempo acabam junto, mesmo com tempo sobrando
   if (S.mode === 'dead' || S.mode === 'over') endTimed();
   // acabou o tempo do poder: começa a espera pelo próximo
   else $s.players.forEach(p => { if (p.pwOn && p.pwOn.until <= now()) { p.pwOn = null; p.pwReady = hits + CD; } });
   // bola fantasma: some entre 0,25 s e 0,85 s depois da batida
-  if (ball.ghost && ballMesh) { const a = now() - ball.ghost.t0; ballMesh.visible = !(a > .25 && a < .85 && ball.state === 'live'); if (a >= .85) ball.ghost = null; }
+  // (quem esconde é o updateVisuals, por ball.ghostHide: ele acende a bola de novo a cada quadro)
+  if (ball.ghost) { const a = now() - ball.ghost.t0; ball.ghostHide = a > .25 && a < .85 && ball.state === 'live'; if (a >= .85) ball.ghost = null; } else ball.ghostHide = false;
   // curva maluca: a bola serpenteia (para os lados e para frente/trás) e volta ao trajeto no quique, no lugar mirado
   if (ball.crazy) crazyStep(dt);
   // CPU: usa o poder em algum momento do ponto
@@ -166,6 +190,7 @@ function caosVisual(h, dt) {
   // gigante: o boneco cresce (e volta ao tamanho normal no fim)
   $s.players.forEach(p => { const big = pwActive(p, 'gigante') ? 1.45 : 1, g = p.model && p.model.group; if (!g) return;
     const k = (p.caosK || 1); if (Math.abs(k - big) > .001) { const r = big / k; g.scale.multiplyScalar(r); if (p.skin && p.skin.holder) p.skin.holder.scale.multiplyScalar(r); p.caosK = big; } });
+  alertStep(true);
   // painel
   h.querySelector('.cz-me').innerHTML = slotHTML(human, 'E', '');
   const p2 = $s.players.find(p => p !== human && p.isHuman && !p.netHuman);
@@ -191,8 +216,9 @@ function caosUnpack(p, a) {
 }
 // convidado: só painel e visual (quem roda os poderes é o anfitrião)
 function caosGuestStep(dt) {
+  gt += dt;
   const h = hudEl(), on = caosOn() && S.mode !== 'menu' && S.mode !== 'replay';
-  h.hidden = !on; if (!on) return;
+  h.hidden = !on; if (!on) { alertStep(false); return; }
   caosVisual(h, dt);
 }
 // fim dos efeitos contínuos (fim do ponto): tira o poder ativo, o gelo e o tamanho de gigante
@@ -210,9 +236,10 @@ function caosPointStart() {
   if (NET.role === 'guest') return; // no online quem sorteia é o anfitrião (o convidado recebe o poder de cada um)
   $s.players.forEach(p => {
     if (!on) { p.pw = null; p.pwNext = null; p.pwReady = 0; return; }
-    if (!p.pw && !p.pwNext && !(p.pwReady && hits < p.pwReady)) { p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; p.pwReady = 0; }
+    if (!p.pw && !p.pwNext) p.pw = KEYS[Math.floor(Math.random() * KEYS.length)]; // ponto novo: quem está sem poder ganha um (a espera de 3 rebatidas zera)
+    p.pwReady = 0;
   });
-  ball.ghost = null; ball.crazy = null; if (ballMesh) ballMesh.visible = true;
+  ball.ghost = null; ball.ghostHide = false; ball.crazy = null;
 }
 
 export { caosPack, caosUnpack, caosNotify, caosGuestStep, POWERS, caosInvert, caosTallM, caosGold, caosOn, caosActivate, caosSpeedK, caosReachK, caosShot, caosAfterHit, caosStep, caosPointStart };

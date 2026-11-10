@@ -699,7 +699,7 @@ function updateTags(fp) {
     t.hidden = false;
     const me = p === human && !S.spectate;
     const nn = !me && NET.role && p.netName ? p.netName : ''; // online: nome de quem joga com o boneco
-    const key = (p.char ? p.char.id + nameOf(p.char) : p.name) + me + nn;
+    const key = (p.char ? p.char.id + nameOf(p.char) + overall(p.char.a) : p.name) + me + nn; // (com o overall: na carreira o mesmo 'crme' muda de uma partida para outra — energia, equipamento — e a etiqueta ficava com o número velho)
     if (t.dataset.k !== key) {
       t.dataset.k = key;
       t.className = 'tag t' + p.team + (me ? ' me' : nn ? ' net' : '');
@@ -724,14 +724,14 @@ function updateVisuals(dt) {
   updateParticles(dt);
   ballMesh.position.copy(ball.pos);
   ballMesh.rotation.x += dt * ball.vel.length() * 2; ballMesh.rotation.y += dt * 3;
-  ballMesh.visible = S.mode !== 'menu';
+  ballMesh.visible = S.mode !== 'menu' && !ball.ghostHide; // (bola fantasma do modo Caos: some no meio do caminho)
   ballShadow.visible = ballMesh.visible;
   ballShadow.position.set(ball.pos.x, .014, ball.pos.z);
   const sh = clamp(1 - ball.pos.y / 8, .35, 1); ballShadow.scale.set(sh, sh, 1); ballShadow.material.opacity = sh * .8;
   if (ball.state === 'live' || ball.state === 'toss') {
     trailPos.copyWithin(3, 0, (TRAIL_N - 1) * 3);
     trailPos[0] = ball.pos.x; trailPos[1] = ball.pos.y; trailPos[2] = ball.pos.z;
-    trailGeo.attributes.position.needsUpdate = true; trail.visible = true;
+    trailGeo.attributes.position.needsUpdate = true; trail.visible = !ball.ghostHide;
   } else trail.visible = false;
   const incoming = ball.state === 'live' && S.lastTeam === 1 && S.mode === 'rally';
   const mine = incoming && assignee(0) === human;
@@ -740,7 +740,7 @@ function updateVisuals(dt) {
     const lv = human.char ? attrOf(human.char.a, 'leitura') : 87, rk = lv >= 87 ? lerp(1, .85, (lv - 87) / 12) : 1 + (87 - lv) / 47;
     // a bola cai em qualquer ponto dentro do anel (não só no meio): o anel é a área de incerteza; quanto maior, menos você sabe
     if (RING_ERR.id !== S.hitId) { const an = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * .2 * rk; RING_ERR.id = S.hitId; RING_ERR.x = Math.cos(an) * d; RING_ERR.z = Math.sin(an) * d; }
-    const l = predictLanding(); landRing.position.set(l.x + RING_ERR.x, .02, l.z + RING_ERR.z); landRing.visible = true;
+    const l = predictLanding(); landRing.position.set(l.x + RING_ERR.x, .02, l.z + RING_ERR.z); landRing.visible = !ball.ghostHide;
     landRing.material.color.copy(mine ? RING_MINE : RING_MATE); landRing.material.opacity = mine ? .8 : 1; // o do parceiro mais forte
     const pulse = (1 + Math.sin(performance.now() / 90) * .12) * rk * (mine ? 1 : 1.12); landRing.scale.set(pulse, pulse, 1);
   } else landRing.visible = false;

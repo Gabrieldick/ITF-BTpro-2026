@@ -115,7 +115,7 @@ function doHit(p, type, q, isServe, mod) {
     const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5 + (key === 'defesa' ? .06 : 0), 0, 1);
     grade = qq;
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
-    const fpE = S.femPace ? .6 : 1; // feminino: a pancada força menos o erro (mais trocas)
+    const fpE = S.femPace ? lerp(.9, .6, qq) : 1; // feminino: a pancada força menos o erro (mais trocas) — só com defesa boa; no tempo errado quase como no masculino
     let pOut = pressure * (1 - qq) * .45 * risk * wDef * fpE, pPop = pressure * (.06 + (1 - qq) * .85) * risk * wDef * fpE; // (defesa boa levanta bem menos: a que flutua na rede é exceção)
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
@@ -134,7 +134,9 @@ function doHit(p, type, q, isServe, mod) {
       if (fc.team !== p.team) { fc.team = p.team; fc.n = 0; }
       const dk = clamp((attrK(p, 'def') - .4) / .55, 0, 1), kf = { defesa: 1, lob: 1.04, drive: 1.06, curta: 1.1, smash: 1.1 }[key] || 1.05;
       const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5;
-      const pf = Math.min(.97, ((ball.finPerf ? lerp(.95, .85, dk) : lerp(.9, .7, dk)) * lerp(1.08, .92, tq) + fc.n * .06) * kf) * (S.femPace ? .6 : 1), r1 = Math.random(); // feminino: a finalização define menos
+      // feminino: a finalização define menos, mas só para quem defende no tempo certo (no tempo errado quase como no
+      // masculino); cansado (stamina no vermelho), segura bem menos
+      const pf = Math.min(.97, ((ball.finPerf ? lerp(.95, .85, dk) : lerp(.9, .7, dk)) * lerp(1.08, .92, tq) + fc.n * .06) * kf * (S.femPace ? lerp(.92, .62, tq) : 1) * (1 + (staErr(p) - 1) * .5)), r1 = Math.random();
       fc.n++;
       if (r1 < pf) {
         wild = pop = false; const u = r1 / pf;
@@ -152,7 +154,7 @@ function doHit(p, type, q, isServe, mod) {
   if (!isServe && !ball.finisher && ball.smashPow > 0 && !netFin && Math.abs(p.pos.z) < 3.4) {
     const close = clamp((3.4 - Math.abs(p.pos.z)) / 1.8, 0, 1), dk = lerp(1.15, .65, Math.min(1, attrK(p, 'def')));
     if (wild && close > .3) finOut = true; // a que espirrou aqui sai de verdade
-    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)) * (S.femPace ? .55 : 1), r2 = Math.random();
+    const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)) * (S.femPace ? lerp(.85, .55, tq) : 1), r2 = Math.random();
     if (!wild && !pop && r2 < pl) { const u = r2 / pl; if (u < .45) netFin = true; else if (u < .85) finOut = wild = true; else { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } }
   }
   // curta contra bola rápida (smash, saque forte): o toque é uma aposta — vai na rede, levanta ou sai bem mais que a defesa;

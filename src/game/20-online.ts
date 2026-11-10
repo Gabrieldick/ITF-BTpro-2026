@@ -407,7 +407,7 @@ function hostState(now) {
     }),
     sc: S.score, sv: S.server, si: S.serverIdx, sp: PL.indexOf(S.serverPlayer), lt: S.lastTeam, hid: S.hitId, r: S.rally,
     w: S.wind || { x: 0, z: 0 }, ht: S.heat ? 1 : 0, pr: S.pressure || '', stk: S.streak || null, mt: null,
-    cz: caosOn() ? PL.map(caosPack) : 0, gh: ballMesh && !ballMesh.visible ? 1 : 0, // modo Caos: poder de cada um e bola fantasma sumida
+    cz: caosOn() ? PL.map(caosPack) : 0, gh: ball.ghostHide ? 1 : 0, // modo Caos: poder de cada um e bola fantasma sumida
   };
 }
 function hostTick(now) {
@@ -740,7 +740,7 @@ function applyState(a, b, k, ex = 0) {
     const ct = pb[19]; p.contact = ct ? { x: ct[0] * m, y: ct[1], z: ct[2] * m, u: ct[3], hitId: ct[4] } : null; // raquete vai até onde bateu
   });
   // modo Caos: poder de cada jogador (painel, gigante, curupira) e a bola fantasma
-  if (caosOn()) { PL.forEach((_, i) => caosUnpack(ON.G[i], Array.isArray(b.cz) ? b.cz[i] : null)); if (ballMesh) ballMesh.visible = !b.gh; }
+  if (caosOn()) { PL.forEach((_, i) => caosUnpack(ON.G[i], Array.isArray(b.cz) ? b.cz[i] : null)); ball.ghostHide = !!b.gh; } else ball.ghostHide = false;
   // barra de força de quem está jogando aqui
   if (b.mt) { MTR.active = true; MTR.kind = b.mt[0]; MTR.type = b.mt[1]; MTR.t = b.mt[2]; MTR.v = a.mt ? L(a.mt[3], b.mt[3]) : b.mt[3]; MTR.center = b.mt[4]; MTR.half = b.mt[5]; }
   else if (MTR.active) MTR.active = false;
