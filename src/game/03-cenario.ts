@@ -6,13 +6,21 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { C, HALF_W, SHORE_Z, V3, WATERLINE, ZONE3, clamp, fbm, rand, smooth } from './00-base';
 import { HORIZON, MAX_ANISO, SUN_DIR, canvasTex, col, hemi, mat, renderer, scene, sun } from './02-render';
 import { brandMark } from './marcas';
+import { S } from './01-estado';
 // juntar o cenário parado: centenas de peças pequenas (palmeiras, quiosques, prédios, arquibancadas, placas) viravam uma
 // chamada de desenho cada (e outra na sombra). Junta, dentro de cada grupo, as peças visíveis com o mesmo material numa
 // malha só; o que se mexe é InstancedMesh (fica de fora), e quem precisa ficar separado marca userData.dyn
 const _mInv = new THREE.Matrix4(), _mRel = new THREE.Matrix4();
 // material igual por propriedades (as peças do cenário criam um material novo a cada uma, mesmo com a mesma cor)
-const matKey = m => m.map || m.emissiveMap || m.normalMap || m.alphaMap || m.onBeforeCompile.toString() !== THREE.Material.prototype.onBeforeCompile.toString() || !m.isMeshStandardMaterial ? m.uuid
-  : [m.type, m.color.getHexString(), m.emissive.getHexString(), m.emissiveIntensity, m.roughness, m.metalness, m.flatShading, m.side, m.transparent, m.opacity, m.vertexColors, m.envMapIntensity, m.depthWrite, m.visible].join('|');
+const plainMat = m => !(m.map || m.emissiveMap || m.normalMap || m.alphaMap || m.onBeforeCompile.toString() !== THREE.Material.prototype.onBeforeCompile.toString() || !m.isMeshStandardMaterial);
+// a cor (sem textura e sem cor por vértice) não separa mais as peças: vira cor por vértice e todas as cores do mesmo tipo de
+// material saem num desenho só (guarda-sóis, prédios, cadeiras de cada cor eram um desenho cada)
+const byColor = m => plainMat(m) && !m.vertexColors && !m.transparent;
+// com textura: peças que usam a mesma textura (e as mesmas propriedades) também se juntam (troncos das palmeiras, prédios)
+const texKey = t => (t ? t.uuid + t.repeat.x + 'x' + t.repeat.y + t.offset.x + t.offset.y : '');
+const matKey = m => m.onBeforeCompile.toString() !== THREE.Material.prototype.onBeforeCompile.toString() || !m.isMeshStandardMaterial ? m.uuid
+  : [m.type, texKey(m.map), texKey(m.emissiveMap), texKey(m.normalMap), texKey(m.alphaMap), m.normalMap ? m.normalScale.x + ',' + m.normalScale.y : '', byColor(m) ? 'vc' : m.color.getHexString(), m.emissive.getHexString(), m.emissiveIntensity, m.roughness, m.metalness, m.flatShading, m.side, m.transparent, m.opacity, m.vertexColors, m.envMapIntensity, m.depthWrite, m.visible].join('|');
+const VC_MATS = new Map(); // material branco com cor por vértice, um por chave (reaproveitado entre arenas)
 // keep: as peças originais ficam (o chamador esconde o grupo de origem); cada material vira uma malha, mesmo que seja uma peça só
 function mergeStatic(root, target, keep) {
   const roots = Array.isArray(root) ? root : [root]; target = target || roots[0];
@@ -28,9 +36,14 @@ function mergeStatic(root, target, keep) {
   }));
   buckets.forEach(list => {
     if (list.length < 2 && !keep) return;
-    const geos = list.map(([o, m]) => { const gg = o.geometry.clone(); for (const n in gg.morphAttributes) delete gg.morphAttributes[n]; gg.applyMatrix4(m); return gg; });
+    const o0 = list[0][0], vc = byColor(o0.material);
+    const geos = list.map(([o, m]) => { const gg = o.geometry.clone(); for (const n in gg.morphAttributes) delete gg.morphAttributes[n]; gg.applyMatrix4(m);
+      if (vc) { const c = o.material.color, n = gg.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } gg.setAttribute('color', new THREE.BufferAttribute(a, 3)); }
+      return gg; });
     const merged = mergeGeometries(geos, false); geos.forEach(g => g.dispose()); if (!merged) return;
-    const o0 = list[0][0], mesh = new THREE.Mesh(merged, o0.material);
+    let mt = o0.material;
+    if (vc) { const k = matKey(mt); mt = VC_MATS.get(k); if (!mt) { mt = o0.material.clone(); mt.color.set(0xffffff); mt.vertexColors = true; VC_MATS.set(k, mt); } }
+    const mesh = new THREE.Mesh(merged, mt);
     mesh.castShadow = o0.castShadow; mesh.receiveShadow = o0.receiveShadow; mesh.renderOrder = o0.renderOrder; mesh.name = 'merged';
     target.add(mesh); if (!keep) list.forEach(([o]) => o.parent.remove(o));
   });
@@ -265,8 +278,10 @@ function baseSandCol(x, wz) {
 }
 const courtSandMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sandTex.ta, normalMap: sandTex.tn, normalScale: new THREE.Vector2(.9, .9), roughness: .97, metalness: 0, vertexColors: true, envMapIntensity: .6 });
 courtSandMat.onBeforeCompile = sandMat.onBeforeCompile; // mesmo shader da areia de fora
-{
-  const nx = Math.round(CS.hx * 2 / CS.step), nz = Math.round(CS.hz * 2 / CS.step);
+// areia da quadra: um vértice a cada 8 cm no Alto (relevos e marcas); no Leve a cada 16 cm (~4× menos triângulos)
+let courtSandMesh = null, courtSandStep = 0;
+function courtSandGeo(step) {
+  const nx = Math.round(CS.hx * 2 / step), nz = Math.round(CS.hz * 2 / step);
   const g = new THREE.PlaneGeometry(CS.hx * 2, CS.hz * 2, nx, nz); g.rotateX(-Math.PI / 2);
   const pa = g.attributes.position, uv = g.attributes.uv, colors = new Float32Array(pa.count * 3);
   for (let i = 0; i < pa.count; i++) {
@@ -277,8 +292,15 @@ courtSandMat.onBeforeCompile = sandMat.onBeforeCompile; // mesmo shader da areia
     colors[i * 3] = c[0] * dk; colors[i * 3 + 1] = c[1] * dk; colors[i * 3 + 2] = c[2] * dk;
   }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3)); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, courtSandMat); m.receiveShadow = true; ENV.add(m);
+  return g;
 }
+function setCourtSandDetail(hi) {
+  const step = hi ? CS.step : CS.step * 2; if (step === courtSandStep) return; courtSandStep = step;
+  const g = courtSandGeo(step);
+  if (!courtSandMesh) { courtSandMesh = new THREE.Mesh(g, courtSandMat); courtSandMesh.receiveShadow = true; ENV.add(courtSandMesh); }
+  else { courtSandMesh.geometry.dispose(); courtSandMesh.geometry = g; }
+}
+setCourtSandDetail(S.settings.gfx !== 'leve');
 // ---------- Quadra ----------
 const tapeMat = mat('#1f4fb8', { roughness: .55 });
 const linesGroup = { simples: new THREE.Group(), dupla: new THREE.Group() };
@@ -363,6 +385,7 @@ const frondGeo = (() => {
   }
   g.computeVertexNormals(); return g;
 })();
+let BARK_M = null; // (um material para todos os troncos)
 function palm(x, z, h, lean) {
   const g = new THREE.Group();
   const pts = []; for (let i = 0; i <= 6; i++) { const t = i / 6; pts.push(new V3(lean * t * t * h, t * h, Math.sin(t * 2.4) * .25)); }
@@ -376,7 +399,7 @@ function palm(x, z, h, lean) {
     }
     tg.computeVertexNormals();
   }
-  const trunk = new THREE.Mesh(tg, mat('#ffffff', { map: barkTex, roughness: .95 })); trunk.castShadow = true; g.add(trunk);
+  const trunk = new THREE.Mesh(tg, BARK_M || (BARK_M = mat('#ffffff', { map: barkTex, roughness: .95 }))); trunk.castShadow = true; g.add(trunk);
   const top = curve.getPointAt(1);
   const n = 11;
   for (let i = 0; i < n; i++) {
@@ -491,10 +514,15 @@ umbrella(9, 12, '#0b7a83', '#fbf6ea'); umbrella(-18, 10, '#e2364a', '#fbf6ea'); 
     for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) { x.fillStyle = Math.random() < lit ? '#f4e7b8' : Math.random() < .5 ? '#2c3e50' : '#3b5268'; x.fillRect(4 + c * 15, 6 + r * 15.5, 10, 9); }
   });
   const FAC = ['#d9cdb8', '#c4ad88', '#aebcc7', '#d2b8aa', '#a9b3ab', '#ddd5c6', '#bcc6d2', '#cdbf96', '#b07d62', '#8fa3a8'];
+  // uma textura (e um material) por cor de fachada: a repetição das janelas vai na geometria (UV), não na textura — assim os
+  // prédios da mesma cor viram um desenho só (antes cada um tinha a sua textura: ~40 desenhos). Sem sombra: estão a 80 m,
+  // fora do mapa de sombra
+  const FMAT = new Map(), facMat = c => { if (!FMAT.has(c)) { const t = winTex(c, .08); t.wrapS = t.wrapT = THREE.RepeatWrapping; FMAT.set(c, mat('#ffffff', { map: t, roughness: .8 })); } return FMAT.get(c); };
   const building = (x, z, w, d, h, far) => {
-    const t = winTex(far ? '#9fb0c2' : FAC[Math.floor(rand(0, FAC.length))], .08); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(Math.max(1, Math.round(w / 5)), Math.max(1, Math.round(h / 9)));
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat('#ffffff', { map: t, roughness: .8 }));
-    m.position.set(x, h / 2, z); if (!far) m.castShadow = true; L.add(m);
+    const bg = new THREE.BoxGeometry(w, h, d), uv = bg.attributes.uv, rx = Math.max(1, Math.round(w / 5)), ry = Math.max(1, Math.round(h / 9));
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * rx, uv.getY(i) * ry);
+    const m = new THREE.Mesh(bg, facMat(far ? '#9fb0c2' : FAC[Math.floor(rand(0, FAC.length))]));
+    m.position.set(x, h / 2, z); L.add(m);
     const roof = new THREE.Mesh(new THREE.BoxGeometry(w * .9, .8, d * .9), mat(far ? '#8e9cab' : '#9aa1a8')); roof.position.set(x, h + .4, z); L.add(roof);
   };
   for (let x = -170; x < 170;) { const w = rand(11, 20), h = rand(12, 38); building(x + w / 2, 80 + rand(0, 4), w, rand(12, 16), h, false); x += w + rand(1.5, 4); }
@@ -1112,4 +1140,4 @@ function setSide(flip) {
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF };
+export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail };

@@ -2,6 +2,7 @@
 // uniformes baixados, Carol e jogador masculino escaneado
 import './05-atletas';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { $s } from '../state';
 import { assetUrl } from '../assets';
 import { SWING_DUR, V3, clamp, lerp, smooth } from './00-base';
@@ -378,6 +379,31 @@ function buildBodySkin(root, R, o, fem, BF, torsoProf, M) {
   hide.push(add(parts.up, o.tank ? skinS : skinS, 18), add(parts.sleeve, shirtS, 18), add(parts.shirt, shirtS, 30), add(parts.neck, skinS, 16));
   return hide.filter(Boolean);
 }
+// peças rígidas presas no mesmo osso e com o mesmo material viram uma malha só (cabeça, olhos, braços…): o boneco
+// desenhado tinha ~37 peças, cada uma um desenho por quadro (e outro na sombra). Ficam de fora: a raquete, as partes que
+// somem na 1ª pessoa, peças escondidas, espelhadas e com filhos
+const _mpM = new THREE.Matrix4();
+function mergeParts(root, skip, racket) {
+  root.updateMatrixWorld(true);
+  const nodes = []; root.traverse(n => { if (n !== racket && !n.isMesh) nodes.push(n); });
+  for (const n of nodes) {
+    let inR = false; for (let a = n; a; a = a.parent) if (a === racket) { inR = true; break; } if (inR) continue;
+    const B = new Map();
+    for (const c of n.children) {
+      if (!c.isMesh || c.isSkinnedMesh || skip.has(c) || c.userData.off || !c.visible || c.children.length || Array.isArray(c.material) || !c.geometry || c.geometry.groups.length || c.customDepthMaterial) continue;
+      c.updateMatrix(); if (c.matrix.determinant() <= 0) continue;
+      const g = c.geometry, k = c.material.uuid + '|' + Object.keys(g.attributes).sort().join(',') + (g.index ? 'i' : 'n') + c.castShadow + c.receiveShadow + c.renderOrder;
+      if (!B.has(k)) B.set(k, []); B.get(k).push(c);
+    }
+    for (const list of B.values()) {
+      if (list.length < 2) continue;
+      const geos = list.map(c => { const g = c.geometry.clone(); for (const m in g.morphAttributes) delete g.morphAttributes[m]; g.applyMatrix4(_mpM.copy(c.matrix)); return g; });
+      const mg = mergeGeometries(geos, false); geos.forEach(g => g.dispose()); if (!mg) continue;
+      const c0 = list[0], m = new THREE.Mesh(mg, c0.material); m.castShadow = c0.castShadow; m.receiveShadow = c0.receiveShadow; m.renderOrder = c0.renderOrder; m.name = 'juntas';
+      list.forEach(c => n.remove(c)); n.add(m);
+    }
+  }
+}
 function makeAthlete(o) {
   const fem = !!o.fem;
   const skinM = mat(o.skin, { roughness: .5, envMapIntensity: .45 });
@@ -474,6 +500,7 @@ function makeAthlete(o) {
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(.9, .9), new THREE.MeshBasicMaterial({ map: SHADOW_TEX, transparent: true, depthWrite: false, opacity: .45 }));
   blob.rotation.x = -Math.PI / 2; blob.position.y = .012; root.add(blob);
   const fpHide = buildBodySkin(root, { hips, spine, headG, legs, arms }, o, fem, BF, torsoProf, { skinM, shirtM, shortM });
+  mergeParts(root, new Set([blob, ...(fpHide || [])]), racket);
   scene.add(root);
   return { group: root, hips, spine, headG, legs, armR: arms[1], armL: arms[-1], blob, tail, racket, fpHide };
 }

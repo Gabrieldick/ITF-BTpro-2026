@@ -56,14 +56,19 @@ addEventListener('keydown', e => { if (e.key && e.key.toLowerCase() === 'f' && !
 document.querySelectorAll('input[name=fps]').forEach(r => r.addEventListener('change', () => { setFpsShow(r.value === '1'); saveSettings(); }));
 { const c = document.getElementById('pFps'); if (c) c.addEventListener('change', () => { setFpsShow(c.checked); saveSettings(); }); }
 setFpsShow(S.settings.showFps);
-let menuMode = false, menuN = 0;
+let menuMode = false, menuN = 0, shN = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   // com um menu aberto (menu, carreira, campeonato) a quadra vira fundo: resolução baixa e a sombra fica parada (o sol não
   // anda e os jogadores estão parados; a câmera girando não muda o mapa de sombra),
   // assim o fundo segue fluido e a página responde na hora (o hover dos botões demorava com o 3D pesado atrás)
   const inMenu = !NET.role && document.body.classList.contains('in-menu');
-  if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu); renderer.shadowMap.autoUpdate = !inMenu; renderer.shadowMap.needsUpdate = true; }
+  if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu); renderer.shadowMap.needsUpdate = true; }
+  // sombra: no Alto é refeita todo quadro; no Leve, um quadro sim, outro não (a passada de sombra redesenha os quatro
+  // jogadores e metade do cenário; a 30 por segundo a sombra quase não "atrasa"); no menu fica parada
+  { const lite = S.settings.gfx === 'leve'; shN++;
+    renderer.shadowMap.autoUpdate = !inMenu && !lite;
+    if (!inMenu && lite && shN % 2 === 0) renderer.shadowMap.needsUpdate = true; }
   perfTick(now, now - last);
   const t0 = performance.now();
   const dt = Math.min(.05, (now - last) / 1000); last = now;

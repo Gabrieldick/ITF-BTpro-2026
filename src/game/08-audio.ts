@@ -4,8 +4,9 @@ import './07-glb';
 import { assetBuf } from '../assets';
 import { rand } from './00-base';
 import { S } from './01-estado';
-import { renderer, sun } from './02-render';
-import { sky } from './03-cenario';
+import * as THREE from 'three';
+import { renderer, sun, scene } from './02-render';
+import { sky, setCourtSandDetail } from './03-cenario';
 import { particles } from './07-glb';
 // ---------- Qualidade gráfica ----------
 // resolução: base pela qualidade x escala dinâmica (cai quando o jogo não segura 60 fps)
@@ -32,6 +33,10 @@ function applyGfx() {
   }
   sky.material.uniforms.cloudsOn.value = hi ? 1 : 0;
   particles.visible = hi;
+  // Leve: sombra com filtro simples (PCF) e areia da quadra com menos vértices
+  const st = hi ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse(o => { const m = o.material; if (m) (Array.isArray(m) ? m : [m]).forEach(x => { x.needsUpdate = true; }); }); }
+  setCourtSandDetail(hi);
 }
 // ---------- Áudio ----------
 let actx = null;

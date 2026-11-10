@@ -1,17 +1,18 @@
 // @ts-nocheck
 // renderizador, cena, luzes e texturas
-import './01-estado';
+import { S } from './01-estado';
 import * as THREE from 'three';
 import { V3 } from './00-base';
 // ---------- Renderer & scene ----------
 const host = document.getElementById('game');
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+// Leve: sem antisserrilhado (MSAA pesa bastante em celular e placa integrada); vale a partir da próxima abertura do jogo
+const renderer = new THREE.WebGLRenderer({ antialias: S.settings.gfx !== 'leve', powerPreference: 'high-performance' });
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = S.settings.gfx !== 'leve' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap; // Leve: sombra com filtro simples (bem mais barato em cada pixel)
 host.appendChild(renderer.domElement);
 const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
 const col = h => new THREE.Color(h).convertSRGBToLinear();
