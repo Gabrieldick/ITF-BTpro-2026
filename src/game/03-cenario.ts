@@ -224,11 +224,14 @@ const sandGeo = new THREE.PlaneGeometry(420, 320, 168, 128);
 const sandMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: sandTex.ta, normalMap: sandTex.tn, normalScale: new THREE.Vector2(.9, .9), roughness: .97, metalness: 0, vertexColors: true, envMapIntensity: .6 });
 // no shader: duas escalas da mesma textura (some a repetição) e, na quadra e em volta, a areia revirada no lugar da de praia
 const churnTex = makeSandTextures(512, true);
+// modo Ultrarrealista (24-ultra): relevo e detalhe fotografados por cima da areia desenhada
+const ULTRA_U = { uUltra: { value: 0 }, tUN: { value: null }, tUD: { value: null }, tUB: { value: null } };
 sandMat.onBeforeCompile = sh => {
   sh.uniforms.tChurn = { value: churnTex.ta }; sh.uniforms.tChurnN = { value: churnTex.tn }; sh.uniforms.uCourt = { value: new THREE.Vector2(6.2, 11) };
+  Object.assign(sh.uniforms, ULTRA_U);
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;')
     .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvSandW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;\nuniform sampler2D tChurn, tChurnN;\nuniform vec2 uCourt;\nfloat sandCourt() { return 1.0 - smoothstep(0.0, 4.0, max(abs(vSandW.x) - uCourt.x, abs(vSandW.z) - uCourt.y)); }')
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSandW;\nuniform sampler2D tChurn, tChurnN, tUN, tUD, tUB;\nuniform float uUltra;\nuniform vec2 uCourt;\nfloat sandCourt() { return 1.0 - smoothstep(0.0, 4.0, max(abs(vSandW.x) - uCourt.x, abs(vSandW.z) - uCourt.y)); }')
     // areia de fora e areia revirada da quadra: só lê as texturas do lado que aparece (na transição, as duas); as derivadas
     // vêm de fora do if (dentro dele o mipmap automático não vale)
     .replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', `vec2 uvB = vMapUv * 0.371 + vec2(0.13, 0.57), sdx = dFdx(vMapUv), sdy = dFdy(vMapUv);
@@ -236,12 +239,25 @@ sandMat.onBeforeCompile = sh => {
     vec4 sBase = vec4(0.), sChurn = vec4(0.);
     if (ct < 0.999) sBase = mix(textureGrad(map, vMapUv, sdx, sdy), textureGrad(map, uvB, sdx * 0.371, sdy * 0.371), 0.45);
     if (ct > 0.001) sChurn = mix(textureGrad(tChurn, vMapUv, sdx, sdy), textureGrad(tChurn, uvB * 1.7, sdx * 0.63, sdy * 0.63), 0.4);
-    vec4 sampledDiffuseColor = mix(sBase, sChurn, ct);`)
+    vec4 sampledDiffuseColor = mix(sBase, sChurn, ct);
+    if (uUltra > 0.5) { // detalhe de cor fotografado (0,5 = neutro), em duas escalas para a repetição não aparecer
+      vec2 wu = vSandW.xz / 1.5;
+      float dt = mix(texture2D(tUD, wu).g, texture2D(tUD, wu * 0.283 + vec2(0.37, 0.11)).g, 0.4) * 2.0;
+      float lum = dot(sampledDiffuseColor.rgb, vec3(0.3333));
+      sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(lum), 0.35) * mix(1.0, dt, 0.85);
+    }`)
     .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `vec2 nuvB = vNormalMapUv * 0.371 + vec2(0.13, 0.57), ndx = dFdx(vNormalMapUv), ndy = dFdy(vNormalMapUv);
     float nct = sandCourt(); vec3 nBase = vec3(0.), nChurn = vec3(0.);
     if (nct < 0.999) nBase = mix(textureGrad(normalMap, vNormalMapUv, ndx, ndy).xyz, textureGrad(normalMap, nuvB, ndx * 0.371, ndy * 0.371).xyz, 0.45);
     if (nct > 0.001) nChurn = mix(textureGrad(tChurnN, vNormalMapUv, ndx, ndy).xyz, textureGrad(tChurnN, nuvB * 1.7, ndx * 0.63, ndy * 0.63).xyz, 0.4);
-    vec3 mapN = mix(nBase, nChurn, nct) * 2.0 - 1.0;`);
+    vec3 mapN = mix(nBase, nChurn, nct) * 2.0 - 1.0;
+    if (uUltra > 0.5) { // relevo fotografado: areia revolvida (1,5 m) e, fora da quadra, as ondulações largas da praia (30 m)
+      vec2 wu = vSandW.xz / 1.5;
+      vec3 pn = mix(texture2D(tUN, wu).xyz, texture2D(tUN, wu * 0.283 + vec2(0.37, 0.11)).xyz, 0.4) * 2.0 - 1.0;
+      vec3 bn = texture2D(tUB, vSandW.xz / 30.0).xyz * 2.0 - 1.0;
+      pn.xy *= mix(0.55, 1.0, nct); pn.xy += bn.xy * (1.0 - nct) * 0.9;
+      mapN = normalize(mix(mapN, pn, 0.8));
+    }`);
 };
 const sand = new THREE.Mesh(sandGeo, sandMat);
 sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0, 90);
@@ -1134,10 +1150,16 @@ function updateArena(dt) {
 }
 
 // troca de lado: o ambiente gira em volta da quadra e o sol vai para o outro lado (o jogo continua com o seu time embaixo)
-const SUN_BASE = SUN_DIR.clone();
+const SUN_BASE = SUN_DIR.clone(), SUN_BASE0 = SUN_DIR.clone();
+// elevação do sol (rad; null = a do jogo): o modo Ultrarrealista usa a do céu fotografado
+function setSunElev(e) {
+  if (e == null) SUN_BASE.copy(SUN_BASE0);
+  else { const az = Math.atan2(SUN_BASE0.z, SUN_BASE0.x), c = Math.cos(e); SUN_BASE.set(c * Math.cos(az), Math.sin(e), c * Math.sin(az)); }
+  const k = ENV.rotation.y ? -1 : 1; SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
+}
 function setSide(flip) {
   const k = flip ? -1 : 1; ENV.rotation.y = flip ? Math.PI : 0;
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail };
+export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail, ULTRA_U, sea, setSunElev };

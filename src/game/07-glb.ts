@@ -512,7 +512,7 @@ function applyLefty(p) {
 }
 const _kFace = new THREE.Quaternion(), _kY = new THREE.Vector3(0, 1, 0);
 function applyPlayerStyle() {
-  const on = S.settings.players === '3d';
+  const on = S.settings.players === '3d' || S.settings.players === 'ultra';
   for (const p of ALL) {
     if (!p.skin) continue;
     p.skinOn = on;

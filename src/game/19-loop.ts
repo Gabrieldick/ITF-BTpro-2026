@@ -19,6 +19,7 @@ import { doHit } from './10-fisica';
 import { READY_FP, updateCamera, updateVisuals } from './18-animacao';
 import { RP, recordTick, replayCamera, replayTick, startReplay } from './21-replay';
 import { ceremonyTick, ceremonyCam } from './22-cerimonia';
+import { ultraSync, ultraRender } from './24-ultra';
 // ---------- Loop ----------
 let last = performance.now();
 // medição de fps a cada segundo: 2 s seguidos abaixo de 54 reduz a resolução; com folga, volta aos poucos
@@ -94,7 +95,8 @@ function frame(now) {
   if (S.mode === 'replay') replayCamera(dt);
   if (S.mode === 'ceremony') ceremonyCam(dt);
   const t3 = performance.now(); FPS.ms[2] += t3 - t2;
-  if (splitOn()) renderSplit(); else { if (camera.aspect !== innerWidth / innerHeight) { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); } renderer.render(scene, camera); }
+  const split = splitOn(), ultra = ultraSync(split);
+  if (split) renderSplit(); else { if (camera.aspect !== innerWidth / innerHeight) { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); } if (ultra) ultraRender(dt); else renderer.render(scene, camera); }
   FPS.ms[3] += performance.now() - t3;
 }
 // tela dividida lado a lado: jogador 1 à esquerda, jogador 2 à direita (a sombra é calculada só uma vez por quadro)

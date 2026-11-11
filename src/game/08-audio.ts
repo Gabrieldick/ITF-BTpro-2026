@@ -26,7 +26,7 @@ const getResScale = () => resScale;
 function applyGfx() {
   const hi = S.settings.gfx !== 'leve';
   applyPR();
-  const size = hi ? 2048 : 1024;
+  const size = S.settings.players === 'ultra' && hi ? 4096 : hi ? 2048 : 1024;
   if (sun.shadow.mapSize.x !== size) {
     sun.shadow.mapSize.set(size, size);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
