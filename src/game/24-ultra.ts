@@ -19,6 +19,7 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { S } from './01-estado';
 import { HORIZON, MAX_ANISO, SUN_DIR, camera, hemi, renderer, scene, sun } from './02-render';
 import { ULTRA_U, sea, seaMat, setSunElev, sky } from './03-cenario';
+import { mocapLoad } from './25-mocap';
 
 const BASE = import.meta.env.BASE_URL + 'assets/ultra/';
 const U = { want: false, on: false, loading: null, ok: false, meta: null, tex: {}, env: null, composer: null, passes: {}, saved: null, w: 0, h: 0, pr: 0, focus: 8, dof: 0 };
@@ -219,6 +220,7 @@ function apply(on) {
 // chamado a cada quadro pelo laço: decide se o modo está valendo (opção ligada, recursos carregados, sem tela dividida)
 function ultraSync(split) {
   const want = ultraWanted() && !split;
+  if (ultraWanted()) mocapLoad(); // capturas de movimento (valem também com tela dividida)
   if (want && !U.ok) { if (!U.loading) loadAssets(); if (U.on) apply(false); return false; }
   apply(want);
   return U.on;
