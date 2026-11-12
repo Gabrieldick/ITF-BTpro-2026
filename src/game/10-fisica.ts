@@ -127,6 +127,10 @@ function doHit(p, type, q, isServe, mod) {
   // rede, sai (de verdade, além da linha) ou fura. Defesa muito boa e o tempo certo seguram um pouco mais, e a que volta vem
   // quase sempre levantada; a finalização perfeita, menos ainda; cada uma seguida que a dupla segura deixa a próxima pior
   let netFin = false, finOut = false;
+  // tempo de reação de quem defende: da batida do adversário até aqui (distância ÷ velocidade da bola). Abaixo de ~0,55 s
+  // começa a aparecer a bola furada (a raquete nem encosta); abaixo de ~0,25 s é o erro mais comum
+  const hitter = S.lastHit && S.lastHit.p && S.lastHit.p !== p ? S.lastHit.p : null;
+  const tReact = hitter ? Math.hypot(hitter.pos.x - p.pos.x, hitter.pos.z - p.pos.z) / Math.max(8, inSpeed) : 9, whiffK = clamp((.55 - tReact) / .3, 0, 1);
   if (!isServe) {
     const fc = S.finChain || (S.finChain = { team: -1, n: 0 });
     if (S.rally <= 1 || !ball.finisher) { if (fc.team === p.team || S.rally <= 1) { fc.team = p.team; fc.n = 0; } }
@@ -137,15 +141,16 @@ function doHit(p, type, q, isServe, mod) {
       // feminino: a finalização define menos, mas só para quem defende no tempo certo (no tempo errado quase como no
       // masculino); cansado (stamina no vermelho), segura bem menos
       const pf = Math.min(.97, ((ball.finPerf ? lerp(.95, .85, dk) : lerp(.9, .7, dk)) * lerp(1.08, .92, tq) + fc.n * .06) * kf * (S.femPace ? lerp(1, .8, tq) : 1) * (1 + (staErr(p) - 1) * .5)), r1 = Math.random();
-      fc.n++;
+      fc.n++; if (S.dbg) { S.dbg.fin = (S.dbg.fin || 0) + 1; if (r1 < pf) S.dbg.finFail = (S.dbg.finFail || 0) + 1; S.dbg.wk = (S.dbg.wk || 0) + whiffK; } // (S.dbg: contadores só para testes)
       if (r1 < pf) {
         wild = pop = false; const u = r1 / pf;
-        if (u < .2) { // furou: a raquete passa e a bola segue (cai na quadra de quem defendia)
+        if (u < lerp(.2, .5, whiffK)) { // furou: a raquete passa e a bola segue (cai na quadra de quem defendia) — quanto menos tempo de reação (finalização de cima da rede, de perto), mais comum
           p.swing.hit = true; if (p.swing.t < p.swing.dur * .45) p.swing.t = p.swing.dur * .45; if (!p.isHuman && p.ai) p.ai.letGo = true;
           S.attempt = { p, hitId: S.hitId, hard: true }; // o ponto conta como erro forçado pela finalização
+          if (S.dbg) S.dbg.whiff = (S.dbg.whiff || 0) + 1;
           return { key, label: 'FUROU', mis: true, pop: false, wild: false, grade: 0, pressure, backhand: bhSide, contact: '', curtaK: 0, whiff: true };
         }
-        if (u < .6) netFin = true; else finOut = wild = true;
+        if (u < lerp(.6, .75, whiffK)) netFin = true; else finOut = wild = true;
       } else if (!pop && Math.random() < lerp(.7, .3, dk) * (ball.finPerf ? 1.2 : 1)) pop = true; // a que volta: quase sempre levantada (quem defende muito bem segura mais baixa)
     }
   }
@@ -155,7 +160,13 @@ function doHit(p, type, q, isServe, mod) {
     const close = clamp((3.4 - Math.abs(p.pos.z)) / 1.8, 0, 1), dk = lerp(1.15, .65, Math.min(1, attrK(p, 'def')));
     if (wild && close > .3) finOut = true; // a que espirrou aqui sai de verdade
     const tq = mod.timing === undefined ? q : q * .5 + mod.timing * .5, pl = Math.min(.88, ball.smashPow * close * dk * lerp(1.25, .9, tq)) * (S.femPace ? lerp(.95, .75, tq) : 1), r2 = Math.random();
-    if (!wild && !pop && r2 < pl) { const u = r2 / pl; if (u < .45) netFin = true; else if (u < .85) finOut = wild = true; else { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } }
+    if (!wild && !pop && r2 < pl) { const u = r2 / pl;
+      if (u < .3 * whiffK) { // smash forte de perto: também dá para furar
+        p.swing.hit = true; if (p.swing.t < p.swing.dur * .45) p.swing.t = p.swing.dur * .45; if (!p.isHuman && p.ai) p.ai.letGo = true;
+        S.attempt = { p, hitId: S.hitId, hard: true }; if (S.dbg) S.dbg.whiff2 = (S.dbg.whiff2 || 0) + 1;
+        return { key, label: 'FUROU', mis: true, pop: false, wild: false, grade: 0, pressure, backhand: bhSide, contact: '', curtaK: 0, whiff: true };
+      }
+      if (u < .45) netFin = true; else if (u < .85) finOut = wild = true; else { pop = true; spec = { label: spec.label, T: rand(1.5, 1.9), depth: [2.2, 4.2], margin: .4, noise: .4 }; } }
   }
   // curta contra bola rápida (smash, saque forte): o toque é uma aposta — vai na rede, levanta ou sai bem mais que a defesa;
   // a defesa padrão contra pancada é o botão de defesa
@@ -435,7 +446,9 @@ function doHit(p, type, q, isServe, mod) {
   }
   ball.threat = threat;
   caosAfterHit(cx);
-  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.cx = spec.cA ? spec.cA[0] : 0; ball.cz = spec.cA ? spec.cA[1] : 0; ball.smStyle = smStyle; p.smFin = smStyle; // (a terminação do smash muda com o efeito: ver 18-animacao) ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; // saque perfeito: a devolução sai bem pior // finalização perfeita: bem mais decisiva ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0;
+  ball.vel.copy(v); ball.gk = spec.gk || 1; ball.cx = spec.cA ? spec.cA[0] : 0; ball.cz = spec.cA ? spec.cA[1] : 0; ball.smStyle = smStyle; p.smFin = smStyle; /* (a terminação do smash muda com o efeito: ver 18-animacao) */ ball.state = 'live'; ball.oppMiss = ((mod.oppMissBoost || 0) + (finisher ? (mod.perfect ? .25 : .15) : 0)) * (S.femPace ? .55 : 1); ball.finisher = finisher; ball.finPerf = finisher && !!mod.perfect; ball.servePerf = isServe && !!mod.perfect; ball.finNear = finisher && netD < 2 ? (mod.perfect || !p.isHuman ? .84 : .5) : 0; // saque perfeito: a devolução sai bem pior · finalização perfeita: bem mais decisiva · finNear: finalização de perto em quem está colado na rede
+  // (ATENÇÃO: nada de comentário // no meio desta linha — de 2/11 a 12/11 um deles desligou sem querer tudo o que vinha depois: a
+  // bola nunca era marcada como finalização, o saque perfeito não pesava na devolução e o erro forçado do adversário não contava)
   { const A2 = p.char && p.char.a; ball.smashPow = key === 'smash' && !isServe && !pop && !wild && !mis && A2 ? (vfx && vfx.calm ? .5 : 1) * Math.pow(Math.min(1, attrN((A2.forca + A2.smash) / 2)), 1.2) * (mod.perfect || (!p.isHuman && Math.random() < attrK(p, 'smash') * .3) ? 1 : .55) : 0; } ball.kick = !!spec.kick && !pop;
   // lob por cima de quem está colado na rede: quem estava lá (na frente dos 2,4 m; nos 3 m ainda dá para voltar e smashar) e o
   // peso de ter sido encoberto

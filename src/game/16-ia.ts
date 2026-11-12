@@ -101,7 +101,7 @@ function charSkill(p) {
   const a = p.char.a, tech = (a.curta + a.lob + a.smash + a.def) / 400;
   // carreira: as estrelas mudam o nível dos adversários e do seu parceiro (todos jogam no nível escolhido)
   // estrelas: carreira (as da carreira) e online (o nível que o anfitrião escolheu para a CPU)
-  const stars = S.tutorial ? 1 : S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0;
+  const stars = S.dbgStars || (S.tutorial ? 1 : S.careerActive ? (S.careerStars || 3) : NET.role ? (S.cpuLv || 3) : 0); // (S.dbgStars: só para testes)
   let adj = stars ? [-.04, -.03, 0, .18, .38, .85][stars - 1] : p.team === 1 ? { facil: -.18, medio: 0, dificil: .1 }[S.settings.diff] || 0 : 0;
   if (aiModeOf(p)) adj = S.simAI && (S.simAI[p.team] || {}).adj != null ? S.simAI[p.team].adj : .5; // IA Treinada/Planejadora: leitura de jogo do Lendário
   else if (S.simAI) adj = 0;
@@ -391,7 +391,7 @@ function updateHuman(dt, c = localCtl()) {
       if (caosGold(p)) mod.timing = 1; // mão de ouro (modo Caos): curta, defesa e lob no tempo certo
       if (sw.lob) { mod.lobPower = sw.lob.power; if (sw.lob.kick) mod.lobKick = true; }
       const r = doHit(p, sw.type, q, false, mod);
-      if (!r.mis) noteTend(p, sw.type);
+      if (!r.mis) { noteTend(p, sw.type); if (sw.var !== 'saque') { const H = (S.aiHist || (S.aiHist = [[], []]))[p.team]; H.push(sw.type); if (H.length > 5) H.shift(); } } // (últimos golpes de cada time: a CPU varia)
       perfShot(p, sw, r);
       if (p.isHuman && !r.mis && sw.var === 'ventaglio' && S.perf) S.perf.ev.ventaglio = (S.perf.ev.ventaglio || 0) + 1; // conta para as conquistas
       // perfeito (mesmo com a barra invisível): ondinha verde no chão de quem bateu
@@ -476,6 +476,16 @@ function bestPlay(p, y) {
     smash: A.smashW * (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
     defesa: A.defBase + defK * .1
   };
+  // variedade: quem acabou de dar vários lobs seguidos passa a valorizar menos o lob (o adversário já está esperando), e contra
+  // quem está na rede a acelerada no corpo e a bola rasante competem com ele — antes, contra um jogador que fica na frente,
+  // o Lendário respondia quase só com lob
+  { const H = (S.aiHist && S.aiHist[p.team]) || [], n = Math.max(1, H.length), lobSh = H.filter(k => k === 'lob').length / n, softSh = H.filter(k => k === 'lob' || k === 'defesa').length / n;
+    sc.lob *= (1 - .6 * lobSh) * (H[H.length - 1] === 'lob' ? .8 : 1);
+    if (tr < .4) {
+      if (y >= .85 && y < 1.9) sc.smash += .26 * anyNet * (1 - tr);      // acelerada em cima de quem está na rede
+      if (y < .85) sc.defesa += .16 * anyNet * (1 - tr);                 // bola baixa: rasante no pé em vez de levantar
+      sc.smash += .12 * softSh * (y >= .85 ? 1 : .3); sc.curta += .1 * softSh;
+    } }
   // adversário nos 3 m, bola na meia altura e você bem posicionado: acelerada no pé (o drive) vale mais que o lob
   if (y >= .85 && y < 1.45 && tr < .4) sc.smash += .38 * dMid * (1 - tr);
   if (tr < .3 && y < 1.8) sc.curta *= 1.2; // confortável e bola baixa/média: curta (cruzada) é opção forte
