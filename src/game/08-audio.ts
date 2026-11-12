@@ -142,7 +142,7 @@ function sndCheer(k, crowd) {
   if (!crowd && k < 2) return;
   const kind = !crowd ? 'aplauso' : k >= 4 ? 'titulo' : k >= 2 ? 'forte' : 'ponto';
   const list = CROWD_FILES[kind], file = list[Math.floor(Math.random() * list.length)];
-  const vol = !crowd ? .5 : (kind === 'ponto' ? .45 : kind === 'forte' ? .75 : .95) * Math.min(1, .55 + crowd / 400);
+  const vol = !crowd ? .3 : (kind === 'ponto' ? .2 : kind === 'forte' ? .38 : .55) * Math.min(1, .55 + crowd / 400);
   const mark = (crowdLast = { t: now, k, g: null, src: null });
   crowdBuf(file, buf => {
     if (S.muted || crowdLast !== mark || a.currentTime - now > 1.2) return; // (chegou tarde demais: melhor nada que fora de hora)
@@ -150,15 +150,17 @@ function sndCheer(k, crowd) {
     src.connect(g).connect(a.destination); src.start(); mark.g = g; mark.src = src;
   });
 }
-// burburinho da arquibancada durante a partida (só com torcida)
-function sndCrowdAmb(on) {
-  if (typeof window === 'undefined') return;
-  on = on && !S.muted;
-  if (!on) { if (crowdAmb && crowdAmb.g) crowdAmb.g.gain.value = 0; return; }
-  if (crowdAmb) { if (crowdAmb.g) crowdAmb.g.gain.value = .16; return; }
-  if (!actx) return; // (o áudio só nasce depois de um toque do jogador)
-  const amb = (crowdAmb = { g: null });
-  crowdBuf(CROWD_FILES.fundo[0], buf => { const a = actx, src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.loop = true; g.gain.value = .16; src.connect(g).connect(a.destination); src.start(); amb.g = g; });
+// burburinho da arquibancada: só entre os pontos e baixo; no saque e durante o ponto a torcida fica em silêncio (e a
+// vibração do ponto anterior some)
+function sndCrowdAmb(on, inPoint) {
+  if (typeof window === 'undefined' || !actx) return; // (o áudio só nasce depois de um toque do jogador)
+  const now = actx.currentTime;
+  if (crowdLast && crowdLast.g && (inPoint || S.muted) && !crowdLast.cut) { crowdLast.cut = true; try { crowdLast.g.gain.setTargetAtTime(0, now, S.muted ? .05 : .35); crowdLast.src.stop(now + 2); } catch (e) {} }
+  const v = on && !S.muted && !inPoint ? .05 : 0;
+  if (crowdAmb) { if (crowdAmb.g && crowdAmb.v !== v) { crowdAmb.v = v; crowdAmb.g.gain.setTargetAtTime(v, now, v ? .8 : .3); } return; }
+  if (!v) return;
+  const amb = (crowdAmb = { g: null, v });
+  crowdBuf(CROWD_FILES.fundo[0], buf => { const a = actx, src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(amb.v, a.currentTime, .8); src.connect(g).connect(a.destination); src.start(); amb.g = g; });
 }
 CROWD_SND.cheer = sndCheer; CROWD_SND.amb = sndCrowdAmb;
 // som do mar ao fundo

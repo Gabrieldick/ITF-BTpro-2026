@@ -294,8 +294,15 @@ function animateAthlete(p, dt) {
     hgtT = (y < .6 ? clamp((.6 - y) / .4, 0, 1) : y > 1.25 ? -clamp((y - 1.25) / .6, 0, 1) : 0) * w; }
   p.hgtK = (p.hgtK || 0) + (hgtT - (p.hgtK || 0)) * Math.min(1, dt * 12);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
+  // salto com peso: as pernas empurram na saída (o quadril ainda baixo enquanto os pés estão na areia) e amortecem na queda
+  // (afunda e volta), mais quanto mais alto foi o pulo
+  const jH = Math.min(1, (p.jumpH || .3) / .34), jp0 = p.jump > 0 && p.jumpDur ? 1 - p.jump / p.jumpDur : -1;
+  if (p.airPrev && !(jy > .02) && !(p.split > 0)) p.landT = .3;
+  p.airPrev = jy > .02 && p.jump > 0;
+  if (p.landT > 0) p.landT = Math.max(0, p.landT - dt);
+  const jumpCr = (jp0 >= 0 && jp0 < .14 ? (1 - jp0 / .14) * .16 : 0) * jH + (p.landT > 0 ? Math.sin(Math.PI * Math.min(1, (1 - p.landT / .3) * 1.15)) * .2 * jH : 0);
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
-  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + (p.hgtK > 0 ? p.hgtK * .15 : p.hgtK * .1) + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + jumpCr + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + (p.hgtK > 0 ? p.hgtK * .15 : p.hgtK * .1) + p.lowK * .11 * (1 - run * .5) + defLow;
   const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);

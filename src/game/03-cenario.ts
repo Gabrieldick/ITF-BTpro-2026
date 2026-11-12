@@ -1160,7 +1160,7 @@ const CROWD_SND = { cheer: null, amb: null };
 function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); if (CROWD_SND.cheer) CROWD_SND.cheer(k || 1.4, ARENA.crowd.length); }
 const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cq2 = new THREE.Quaternion(), _cs = new V3(1, 1, 1), _upC = new V3(0, 1, 0), _fw = new V3();
 function updateArena(dt) {
-  if (CROWD_SND.amb) CROWD_SND.amb(ARENA.crowd.length > 0 && S.mode !== 'menu');
+  if (CROWD_SND.amb) CROWD_SND.amb(ARENA.crowd.length > 0 && S.mode !== 'menu', S.mode === 'rally' || S.mode === 'toss' || S.mode === 'serve');
   updateConfetti(dt);
   updateSideGames(dt);
   if (!ARENA.crowd.length || ARENA.cheerT <= 0) return;
