@@ -148,14 +148,35 @@ function skinShader(m, U) {
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRest;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPore; uniform float uPoreK, uSweat; uniform vec3 uHead; varying vec3 vRest; float skEar = 0.;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPore; uniform float uPoreK, uSweat, uFk, uStub; uniform vec3 uHead, uFaceO, uHairC; uniform vec4 uMole; varying vec3 vRest; float skEar = 0.;')
       .replace('#include <map_fragment>', `#include <map_fragment>
       { vec3 q = vRest - uHead; float ax = abs(q.x); // (relativo ao osso da cabeça, na pose de repouso)
         float nose = (1. - smoothstep(.012, .03, ax)) * smoothstep(.1, .12, q.z) * smoothstep(-.03, -.01, q.y) * (1. - smoothstep(.035, .05, q.y));
         float cheek = smoothstep(.022, .035, ax) * (1. - smoothstep(.055, .065, ax)) * smoothstep(.07, .09, q.z) * smoothstep(-.035, -.02, q.y) * (1. - smoothstep(.02, .03, q.y));
         float shoulder = smoothstep(.08, .12, ax) * (1. - smoothstep(.2, .24, ax)) * smoothstep(-.19, -.16, q.y) * (1. - smoothstep(-.12, -.1, q.y));
         diffuseColor.rgb *= mix(vec3(1.), vec3(1.05, .84, .8), clamp(nose * .8 + cheek * .45 + shoulder * .4, 0., 1.)); // marca de sol
-        skEar = smoothstep(.055, .065, ax) * (1. - smoothstep(.088, .1, ax)) * smoothstep(-.02, -.005, q.y) * (1. - smoothstep(.06, .075, q.y)) * (1. - smoothstep(.025, .05, abs(q.z))); }`)
+        skEar = smoothstep(.055, .065, ax) * (1. - smoothstep(.088, .1, ax)) * smoothstep(-.02, -.005, q.y) * (1. - smoothstep(.06, .075, q.y)) * (1. - smoothstep(.025, .05, abs(q.z)));
+        // detalhes de cada rosto (qf: relativo à origem do rosto, igual para homem e mulher)
+        vec3 qf = vRest - uFaceO; float fx = abs(qf.x), faceM = smoothstep(.04, .07, qf.z) * smoothstep(-.1, -.085, qf.y);
+        float lipM = (1. - smoothstep(.02, .032, fx)) * smoothstep(-.058, -.05, qf.y) * (1. - smoothstep(-.032, -.024, qf.y)) * smoothstep(.095, .105, qf.z);
+        { // sobrancelha na cor do cabelo de cada um (no arquivo é sempre castanha): só onde a textura já é escura
+          float bM = faceM * smoothstep(.006, .014, fx) * (1. - smoothstep(.056, .066, fx)) * smoothstep(.044, .052, qf.y) * (1. - smoothstep(.07, .08, qf.y));
+          #ifdef USE_MAP
+          float bl = dot(sampledDiffuseColor.rgb, vec3(.3, .59, .11)), dk = clamp((.34 - bl) * 5., 0., 1.);
+          diffuseColor.rgb = mix(diffuseColor.rgb, uHairC * .75, bM * dk * .85);
+          #endif
+        }
+        if (uFk > 0.) { // sardas: pontinhos no nariz e nas maçãs
+          vec2 fu = vMapUv * 520.; vec2 fc = floor(fu), ff = fract(fu); float fh = fract(sin(dot(fc, vec2(127.1, 311.7))) * 43758.5453);
+          float fd = (1. - smoothstep(.16, .36, length(ff - .5 - (vec2(fract(fh * 7.3), fract(fh * 13.7)) - .5) * .5))) * step(1. - uFk * .6, fh);
+          float fr = faceM * (1. - smoothstep(.055, .075, fx)) * smoothstep(-.035, -.015, qf.y) * (1. - smoothstep(.03, .05, qf.y)) * (1. - lipM);
+          diffuseColor.rgb *= mix(vec3(1.), vec3(.74, .56, .45), fd * fr * (.45 + .4 * fract(fh * 31.))); }
+        if (uStub > 0.) { // barba por fazer: sombra da cor do cabelo no queixo, na mandíbula e no buço
+          float st = faceM * (smoothstep(-.018, -.04, qf.y) * (1. - smoothstep(.062, .08, fx) * smoothstep(-.03, .0, qf.y)) + (1. - smoothstep(.02, .034, fx)) * smoothstep(-.03, -.022, qf.y) * (1. - smoothstep(-.014, -.006, qf.y)) * smoothstep(.1, .11, qf.z));
+          float gr = .75 + .5 * texture2D(uPore, vMapUv * 60.).a;
+          diffuseColor.rgb = mix(diffuseColor.rgb, uHairC * .6 + diffuseColor.rgb * .25, clamp(st, 0., 1.) * (1. - lipM) * uStub * .42 * gr); }
+        { float ml = max(1. - smoothstep(.0011, .0021, length(qf.xy - uMole.xy)), 1. - smoothstep(.0008, .0017, length(qf.xy - uMole.zw))) * step(.04, qf.z); // pintas
+          diffuseColor.rgb *= mix(vec3(1.), vec3(.42, .3, .26), ml); } }`)
       .replace('#include <lights_physical_pars_fragment>', SKIN_LIGHT)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       #if defined( USE_NORMALMAP_TANGENTSPACE ) && defined( USE_MAP )
@@ -168,7 +189,60 @@ function skinShader(m, U) {
   };
   m.customProgramCacheKey = () => 'skinPore'; m.needsUpdate = true;
 }
-const skinUniforms = () => ({ uHead: { value: new THREE.Vector3(0, 1.6, .045) }, uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 }, uSway: { value: new THREE.Vector3() } });
+// Rosto próprio: a mesma cabeça do arquivo muda de forma por jogador (mandíbula, queixo, comprimento, maçãs, nariz, testa,
+// lábios, largura, orelhas). A deformação é feita no shader, na posição de repouso, e vale para TODAS as peças da cabeça
+// (pele, olhos, cílios, barba, cabelo, boné, óculos…), que assim continuam encaixadas. Medidas de −1 a 1
+const FACE_GLSL = `uniform float uFace[12]; uniform vec3 uFaceO;
+vec3 faceWarp(vec3 p) {
+  vec3 q = p - uFaceO; float hm = smoothstep(-.17, -.105, q.y); if (hm <= 0.) return vec3(0.);
+  float ax = abs(q.x), sx = sign(q.x), front = smoothstep(-.03, .04, q.z); vec3 d = vec3(0.);
+  d.x += q.x * .055 * uFace[8];                                                                   // largura da cabeça
+  d.x += q.x * .17 * uFace[0] * smoothstep(.015, -.035, q.y) * front;                             // mandíbula
+  d.y -= .011 * uFace[2] * smoothstep(.03, -.085, q.y) * smoothstep(-.06, .02, q.z);              // comprimento do rosto
+  float cm = exp(-pow((q.y + .078) / .028, 2.)) * smoothstep(.03, .085, q.z) * (1. - smoothstep(.015, .05, ax));
+  d.z += .008 * uFace[1] * cm; d.y -= .005 * uFace[1] * cm;                                       // queixo
+  float km = exp(-pow((q.y - .005) / .028, 2.)) * smoothstep(.03, .055, ax) * (1. - smoothstep(.075, .09, ax)) * smoothstep(0., .05, q.z);
+  d.x += sx * .0065 * uFace[3] * km; d.z += .003 * uFace[3] * km;                                 // maçãs do rosto
+  float nm = (1. - smoothstep(.014, .03, ax)) * smoothstep(.095, .112, q.z) * smoothstep(-.03, -.012, q.y) * (1. - smoothstep(.02, .04, q.y));
+  d.x += q.x * .4 * uFace[4] * nm; d.z += .009 * uFace[5] * nm * smoothstep(.105, .125, q.z); d.y -= .004 * uFace[10] * nm; // nariz: largura, projeção, ponta
+  d.z += .0045 * uFace[6] * exp(-pow((q.y - .062) / .016, 2.)) * smoothstep(.07, .1, q.z);        // arco da sobrancelha
+  d.z += .0045 * uFace[7] * exp(-pow((q.y + .04) / .014, 2.)) * (1. - smoothstep(.02, .034, ax)) * smoothstep(.095, .108, q.z); // lábios
+  d.x += sx * .007 * uFace[9] * smoothstep(.076, .09, ax) * smoothstep(-.03, -.01, q.y) * (1. - smoothstep(.06, .08, q.y)); // orelhas
+  d.y += .008 * uFace[11] * smoothstep(.06, .13, q.y);                                            // altura da testa/crânio
+  return d * hm;
+}`;
+function faceShader(o, U) {
+  const m = o.material; if (!m || Array.isArray(m) || m.userData.faceOn) return; m.userData.faceOn = true;
+  const prev = m.onBeforeCompile, pk = m.customProgramCacheKey ? m.customProgramCacheKey() : '', eye = /^Eyes/.test(o.name);
+  m.onBeforeCompile = (sh, rd) => { if (prev) prev.call(m, sh, rd); Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + FACE_GLSL).replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += faceWarp(position);');
+    // olhos: a íris (marrom no arquivo, pintada por vértice) ganha a cor de cada jogador
+    if (eye) sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uEye;').replace('#include <color_fragment>', '#include <color_fragment>\n#ifdef USE_COLOR\n{ float im = step(.035, vColor.r) * step(vColor.r, .3) * step(vColor.b * 2.5, vColor.r); diffuseColor.rgb = mix(diffuseColor.rgb, uEye * (vColor.r / .07), im); }\n#endif'); };
+  m.customProgramCacheKey = () => pk + '|face' + (eye ? 'E' : ''); m.needsUpdate = true;
+}
+const HEAD_RE = /^(Body|Eyes|Lashes|Brow|Teeth|Tongue|Beard|Goatee|Mustache|Hair|Bun|Pony|Braid|Cap|Visor|Headband|Glasses)/;
+const EYE_COLS = { castanho: '#4a2f1b', escuro: '#2b1a10', mel: '#7a5524', verde: '#4f6b3a', azul: '#3f6f9c', cinza: '#6f7f86' };
+// medidas do rosto de um jogador: sempre as mesmas para o mesmo jogador (pelo id); look.face pode fixar qualquer uma
+function faceOf(c, look, fem, bearded) {
+  let h = 2166136261; for (const ch of String(c.id || c.name || '') + '#rosto') { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const rnd = () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const g = k => clamp(((rnd() + rnd() + rnd()) / 1.5 - 1) * (k || 1.3), -1, 1); // perto do meio na maioria, alguns bem marcados
+  const f = [g(), g(), g(), g(), g(), g(), g(), g(), g(), g(), g(), g()];
+  if (fem) { f[0] = f[0] * .75 - .15; f[6] *= .5; f[5] *= .8; f[1] *= .8; f[7] = f[7] * .7 + .25; } // feminino: mandíbula mais fina, sobrancelha suave, lábios mais cheios
+  const sk = col(look.skin || '#c68a62'), lum = sk.r * .3 + sk.g * .59 + sk.b * .11, hc = col(look.hair || '#2a1a0e'), hl = hc.r * .3 + hc.g * .59 + hc.b * .11;
+  const light = lum > .42, dark = lum < .2, e = rnd();
+  const eye = dark ? (e < .9 ? 'escuro' : 'castanho') : light ? (e < .56 ? 'castanho' : e < .71 ? 'azul' : e < .81 ? 'verde' : e < .96 ? 'mel' : 'cinza') : (e < .62 ? 'castanho' : e < .8 ? 'escuro' : e < .92 ? 'mel' : e < .97 ? 'verde' : 'azul');
+  const fk = light && rnd() < (hl > .12 ? .34 : .14) ? .45 + rnd() * .55 : (rnd(), 0);
+  const stub = !fem && !bearded && rnd() < .5 ? (.35 + rnd() * .65) * (dark ? .6 : 1) : (rnd(), 0);
+  const mole = () => (rnd() < .3 ? [(rnd() < .5 ? -1 : 1) * (.018 + rnd() * .04), -.06 + rnd() * .075] : (rnd(), rnd(), [9, 9]));
+  const m1 = mole(), m2 = rnd() < .35 ? mole() : [9, 9];
+  const F = look.face || c.face || {};
+  ['jaw', 'chin', 'len', 'cheek', 'noseW', 'noseL', 'brow', 'lips', 'width', 'ears', 'noseTip', 'skull'].forEach((k, i) => { if (F[k] != null) f[i] = clamp(F[k], -1.5, 1.5); });
+  return { f, eye: F.eye || eye, fk: F.freckles ?? fk, stub: F.stubble ?? stub, mole: [m1[0], m1[1], m2[0], m2[1]] };
+}
+const skinUniforms = () => ({ uHead: { value: new THREE.Vector3(0, 1.6, .045) }, uPore: { value: PORE }, uPoreK: { value: S.settings.gfx === 'leve' ? 0 : .8 }, uSweat: { value: 0 }, uSway: { value: new THREE.Vector3() },
+  // rosto próprio de cada jogador (faceOf): medidas da deformação, origem do rosto, sardas, barba por fazer, pintas e cor dos olhos
+  uFace: { value: new Float32Array(12) }, uFaceO: { value: new THREE.Vector3(0, 1.6, .045) }, uFk: { value: 0 }, uStub: { value: 0 }, uHairC: { value: new THREE.Color('#2a1a0e') }, uMole: { value: new THREE.Vector4(9, 9, 9, 9) }, uEye: { value: new THREE.Color('#4a2f1b') } });
 const SKIN_BASE = new THREE.Color('#d9a982'), HAIR_BASE = new THREE.Color('#7a7a7a');
 function tint(m, target, base) { if (!m) return; const t = col(target); m.color.setRGB(t.r / base.r, t.g / base.g, t.b / base.b); }
 const HAIR_PARTS = ['Hair', 'HairTied', 'HairTiedCards', 'BunM', 'HairCards', 'HairQuiff', 'HairVol', 'HairFringe', 'HairBuzz', 'HairMohawk', 'HairCurly', 'HairCurlyCards', 'HairLong', 'HairBob', 'Bun', 'Pony', 'PonyCards', 'Braid'];
@@ -357,6 +431,11 @@ function dressSkin(p, root) {
   const SU = p.skinU || (p.skinU = skinUniforms()); SU.uPoreK.value = S.settings.gfx === 'leve' ? 0 : .8;
   { const b = (parts.Body || [])[0]; const sk = b && b.skeleton; const hi = sk ? sk.bones.findIndex(x => /Head$/.test(x.name)) : -1; if (hi >= 0) { const M = sk.boneInverses[hi].clone().invert(); SU.uHead.value.setFromMatrixPosition(M); } }
   for (const n in parts) if (n === 'Body' || n.startsWith('BodySk_')) parts[n].forEach(o => skinShader(o.material, SU));
+  // rosto próprio (forma, olhos, sardas, pintas, barba por fazer) em todas as peças da cabeça
+  { const fc = faceOf(c, look, fem, BEARDS.some(n => (parts[n] || []).some(o => o.visible)));
+    SU.uFace.value.set(fc.f); SU.uFaceO.value.copy(SU.uHead.value); if (fem) { SU.uFaceO.value.y -= .01; SU.uFaceO.value.z -= .011; }
+    SU.uFk.value = fc.fk; SU.uStub.value = fc.stub; SU.uHairC.value.copy(col(look.hair || '#2a1a0e')); SU.uMole.value.set(fc.mole[0], fc.mole[1], fc.mole[2], fc.mole[3]); SU.uEye.value.copy(col(EYE_COLS[fc.eye] || EYE_COLS.castanho));
+    for (const n in parts) if (HEAD_RE.test(n)) parts[n].forEach(o => faceShader(o, SU)); }
   for (const n of HAIR_PARTS.concat(BEARDS, BEARDS.map(x => x + 'Edge'))) (parts[n] || []).forEach(o => tint(o.material, look.hair || '#2a1a0e', HAIR_BASE));
   const shirt = col(look.shirt || '#1f6fd1'), shorts = col(look.shorts || '#17324d');
   // estampa: a do uniforme próprio; os outros jogadores ganham uma (sempre a mesma para cada um) na cor do detalhe do time
@@ -828,4 +907,4 @@ function updateParticles(dt) {
   pGeo.attributes.position.needsUpdate = true;
 }
 
-export { jointPos, orientBone, makeServePreview, makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, scuffMark, trail, trailGeo, trailPos, updateParticles };
+export { faceOf, EYE_COLS, jointPos, orientBone, makeServePreview, makePreview, PALM, greenWave, drawBall, BALL_STYLES, setBallStyle, CURL, GLB, RING_MATE, RING_MINE, TRAIL_N, applyPlayerStyle, applyRackets, assignCharacters, b64Buf, ball, ballMesh, ballShadow, clearPrints, driveSkin, fpArm, fpWrist, landRing, loadModels, particles, puff, sparkle, reachRing, resetTrail, stamp, ballMark, diveMark, scuffMark, trail, trailGeo, trailPos, updateParticles };

@@ -6,7 +6,7 @@ import { SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_S
 import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { ac, applyGfx } from './08-audio';
-import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview } from './07-glb';
+import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview, faceOf, EYE_COLS } from './07-glb';
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
@@ -201,18 +201,36 @@ function crEditHTML() {
   const sw = (arr, key) => arr.map(c => '<button type="button" class="cr-sw' + (L[key] === c ? ' sel' : '') + '" data-look-' + key + '="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
   const sel = (id, opts, v) => '<select id="' + id + '" class="cr-sel">' + opts.map(([k, n]) => '<option value="' + k + '"' + (k === (v || '') ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
   // abas: cada parte do jogador numa página (antes era tudo numa lista longa); a aba do saque mostra o saque animado
-  const tab = ED.tab || 'corpo', T = [['corpo', 'Corpo'], ['cabeca', 'Cabeça e acessórios'], ['uniforme', 'Uniforme'], ['saque', 'Saque']];
+  const tab = ED.tab || 'corpo', T = [['corpo', 'Corpo'], ['rosto', 'Rosto'], ['cabeca', 'Cabeça e acessórios'], ['uniforme', 'Uniforme'], ['saque', 'Saque']];
   const sec = (k, h) => '<div class="ed-sec" data-sec="' + k + '"' + (k === tab ? '' : ' hidden') + '>' + h + '</div>';
   return '<div class="ed-tabs" role="tablist">' + T.map(([k, n]) => '<button type="button" role="tab" data-ed-tab="' + k + '" class="' + (k === tab ? 'on' : '') + '">' + n + '</button>').join('') + '</div>'
     + sec('corpo', '<div class="cr-sws ed-col"><div><span class="cr-lbl">Pele</span><div class="ed-swl">' + sw(SKINS, 'skin') + '</div></div><div><span class="cr-lbl">Cabelo</span><div class="ed-swl">' + sw(HAIRS, 'hair') + '</div></div></div>'
       + '<div class="cr-look"><label class="cr-field">Corte ' + sel('crLkHair', HAIR_ST, L.hairStyle) + '</label>'
       + (me.fem ? '' : '<label class="cr-field">Barba ' + sel('crLkBeard', BEARDS, L.beard) + '</label>')
       + '<label class="cr-field">Biotipo ' + sel('crLkBuild', BUILDS, me.build || 'atletico') + '</label></div>')
+    + sec('rosto', crFaceHTML())
     + sec('cabeca', '<div class="cr-look"><label class="cr-field">Na cabeça ' + sel('crLkAcc', ACCS, lookAcc(L)) + '</label>'
       + '<label class="cr-field">Óculos ' + sel('crLkGlass', [['1', 'Com óculos'], ['', 'Sem óculos']], L.glasses ? '1' : '') + '</label></div>' + crAccHTML())
     + sec('uniforme', crOutfitHTML())
     + sec('saque', crServeHTML())
     + '<p class="cr-note">Vale a partir da próxima partida.</p>';
+}
+// rosto: as medidas que mudam a forma do rosto (−1 a 1), cor dos olhos, sardas e barba por fazer. Sem mexer, o rosto é
+// o que o jogo sorteou para você; "Sortear" tira outro e "Voltar ao original" desfaz
+const FACE_SL = [['jaw', 'Mandíbula', 'fina', 'larga'], ['chin', 'Queixo', 'recuado', 'marcado'], ['len', 'Rosto', 'curto', 'comprido'], ['cheek', 'Maçãs do rosto', 'suaves', 'salientes'],
+  ['noseW', 'Nariz (largura)', 'fino', 'largo'], ['noseL', 'Nariz (projeção)', 'baixo', 'projetado'], ['noseTip', 'Ponta do nariz', 'arrebitada', 'caída'], ['brow', 'Arco da sobrancelha', 'suave', 'marcado'],
+  ['lips', 'Lábios', 'finos', 'cheios'], ['width', 'Cabeça', 'estreita', 'larga'], ['ears', 'Orelhas', 'coladas', 'abertas'], ['skull', 'Testa', 'baixa', 'alta']];
+const FACE_IDX = ['jaw', 'chin', 'len', 'cheek', 'noseW', 'noseL', 'brow', 'lips', 'width', 'ears', 'noseTip', 'skull'];
+const EYE_NAMES = [['castanho', 'Castanhos'], ['escuro', 'Castanho-escuros'], ['mel', 'Cor de mel'], ['verde', 'Verdes'], ['azul', 'Azuis'], ['cinza', 'Cinza']];
+function crFaceCur() { const me = $s.CR.me; return faceOf(Object.assign({}, me, { id: 'crme' }), me.look, !!me.fem, !!me.look.beard); }
+function crFaceHTML() {
+  const me = $s.CR.me, fc = crFaceCur(), txt = (v, a, b) => Math.abs(v) < .15 ? 'médio' : (v < 0 ? a : b) + (Math.abs(v) > .65 ? ' (bem)' : '');
+  const rng = (id, n, v, mn, mx, t) => '<label class="cr-field cr-rng">' + n + ' <input type="range" id="' + id + '" min="' + mn + '" max="' + mx + '" step=".05" value="' + v.toFixed(2) + '"><small>' + t + '</small></label>';
+  return '<div class="cr-look"><label class="cr-field">Olhos <select id="crFcEye" class="cr-sel">' + EYE_NAMES.map(([k, n]) => '<option value="' + k + '"' + (k === fc.eye ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label></div>'
+    + '<div class="cr-srv">' + FACE_SL.map(([k, n, a, b]) => { const v = fc.f[FACE_IDX.indexOf(k)]; return rng('crFc_' + k, n, v, -1, 1, txt(v, a, b)); }).join('')
+    + rng('crFc_freckles', 'Sardas', fc.fk, 0, 1, fc.fk < .05 ? 'sem' : fc.fk < .6 ? 'poucas' : 'muitas')
+    + (me.fem ? '' : rng('crFc_stubble', 'Barba por fazer', fc.stub, 0, 1, fc.stub < .05 ? 'sem' : fc.stub < .6 ? 'leve' : 'marcada')) + '</div>'
+    + '<div class="cr-look"><button type="button" class="ghost sm" id="crFcRnd">Sortear rosto</button><button type="button" class="ghost sm" id="crFcAuto">Voltar ao original</button></div>';
 }
 // jeito de sacar (por cima): parte de um estilo pronto e ajusta agachar, pulo, avanço e para onde lança a bola
 const SRV_SL = [['crouch', 'Agachar no troféu', .5, 2, .05, v => Math.round(v * 100) + '%'], ['jump', 'Altura do pulo', 0, .6, .02, v => v < .03 ? 'sem pulo' : Math.round(v * 100) + ' cm'],
@@ -275,6 +293,13 @@ function bindLook(done) {
   on('crLkAcc', v => { const l = L(); delete l.cap; delete l.visor; delete l.headband; if (v === 'cap') l.cap = '#fbf6ea'; else if (v === 'visor') l.visor = '#fbf6ea'; else if (v === 'band') l.headband = '#ff5a1f'; else l.headband = ''; }); // '' impede a faixa automática
   on('crLkGlass', v => { L().glasses = !!v; });
   on('crLkBuild', v => { $s.CR.me.build = v; });
+  // rosto
+  const F = () => (L().face = L().face || {});
+  FACE_IDX.concat(['freckles', 'stubble']).forEach(k => on('crFc_' + k, v => { F()[k] = +v; }));
+  on('crFcEye', v => { F().eye = v; });
+  const btn = (id, fn) => { const e = $(id); if (e) e.addEventListener('click', () => { fn(); done(); }); };
+  btn('crFcRnd', () => { const g = () => Math.max(-1, Math.min(1, ((Math.random() + Math.random() + Math.random()) / 1.5 - 1) * 1.4)), f = F(); FACE_IDX.forEach(k => { f[k] = +g().toFixed(2); }); });
+  btn('crFcAuto', () => { delete L().face; });
   on('crOfOn', v => { if (v) L().outfit = { top: 'tee', pat: 'liso', bot: 'short', c1: '#1f6fd1', c2: '#fbf6ea', bc: '#17324d', logo: $s.CR.master ? $s.CR.master.brand : '' }; else delete L().outfit; });
   const A = () => (L().acc = L().acc || {});
   document.querySelectorAll('[data-acc-head]').forEach(b => b.addEventListener('click', () => { const l = L(), c = b.dataset.accHead; if (l.cap) l.cap = c; else if (l.visor) l.visor = c; else if (l.headband) l.headband = c; done(); }));
@@ -342,7 +367,10 @@ function openEditor() {
   ED.el.hidden = false; renderEditor(); refreshPreview();
   const loop = () => { if (ED.el.hidden) return; const now = performance.now(), dt = Math.min(.05, (now - (ED.last || now)) / 1000); ED.last = now;
     if (ED.srv && ED.sp) { srvPreviewTick(dt); const a = ED.rot + 1.2, zc = -.45; ED.cam.position.set(Math.sin(a) * 6.2, 1.6, Math.cos(a) * 6.2 + zc); ED.cam.lookAt(0, 1.35, zc); }
-    else if (ED.model) ED.model.rotation.y = ED.rot; // parado: você gira arrastando
+    else if (ED.model) { ED.model.rotation.y = ED.rot; // parado: você gira arrastando
+      const h = ED.h || 1.8, face = ED.tab === 'rosto'; // aba do rosto: câmera de perto, sem boné e óculos na frente
+      if (face) { ED.cam.position.set(0, h * .925, h * .47); ED.cam.lookAt(0, h * .905, 0); } else { ED.cam.position.set(0, h * .6, h * 2.25); ED.cam.lookAt(0, h * .52, 0); }
+      if (ED.faceVis !== face || ED.faceMdl !== ED.model) { ED.faceVis = face; ED.faceMdl = ED.model; ED.model.traverse(o => { if (o.isMesh && /^(Glasses|Cap|Visor)/.test(o.name)) o.visible = !o.userData.off && !face; }); } }
     ED.r.render(ED.scene, ED.cam); ED.raf = requestAnimationFrame(loop); };
   cancelAnimationFrame(ED.raf); loop();
 }
