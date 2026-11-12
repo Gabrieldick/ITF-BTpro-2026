@@ -5,6 +5,7 @@ import { $s } from '../state';
 import { SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
+import { human } from './06-modelos';
 import { ac, applyGfx } from './08-audio';
 import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview, faceOf, EYE_COLS } from './07-glb';
 import * as THREE from 'three';
@@ -1087,8 +1088,16 @@ function menuStep(st) {
   m.dataset.step = st;
   m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });
   readMenu(); syncMenu(); qmDupla(); qmLocal2();
-  m.scrollTop = 0;
+  m.scrollTop = 0; heroPlate();
 }
+// placa do jogador em destaque na tela inicial (nome, país, estilo e overall de quem está escolhido na partida rápida)
+function heroPlate() {
+  const el = $('heroPlate'); if (!el) return;
+  const c = human && human.char; el.hidden = !c || $('menu').dataset.step !== 'home'; if (el.hidden) return;
+  el.querySelector('.hp-ovr b').textContent = String(overall(c)); el.querySelector('.hp-name').textContent = nameOf(c);
+  el.querySelector('.hp-sub').textContent = [c.pais, c.estilo].filter(Boolean).join(' · ');
+}
+setInterval(() => { if (document.body.classList.contains('hero-menu')) heroPlate(); }, 1500);
 // configurações em abas
 document.querySelectorAll('#menu [data-cfgt]').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('#menu [data-cfgt]').forEach(x => x.classList.toggle('sel', x === b));

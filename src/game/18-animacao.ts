@@ -540,7 +540,7 @@ function animateAthlete(p, dt) {
   // esperando o saque também: o parceiro de quem saca fica solto até a bola entrar em jogo; quem recebe segura a raquete baixa
   // e solta na frente do corpo (só no lançamento entra na prontidão)
   const srvW = S.mode === 'serve' && S.serverPlayer !== p ? (p.team === S.server ? 1 : .85) : S.mode === 'toss' && S.serverPlayer !== p && p.team === S.server ? 1 : 0;
-  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'dead' && (S.ptT || 0) > .35 ? 1 : srvW) : 0;
+  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'menu' || (S.mode === 'dead' && (S.ptT || 0) > .35) ? 1 : srvW) : 0; // (no menu os jogadores ficam soltos, à vontade)
   p.idl = (p.idl || 0) + (idlT - (p.idl || 0)) * Math.min(1, dt * (idlT ? 2.2 : 8));
   const idv = ((S.ptN || 0) * 5 + (p.slot > 0 ? 3 : 0) + p.team * 7) % 5, idk = S.mode === 'serve' && p.team !== S.server ? 'strings' : idv < 2 ? 'hang' : idv < 4 ? 'strings' : 'twirl', ph = p.team * 2 + (p.slot > 0 ? 1.3 : 0);
   if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph);
@@ -667,7 +667,12 @@ function updateCamera(dt) {
   // 1ª pessoa: sempre o braço da câmera (com a sua raquete); os braços do corpo somem (não aparecem do nada nem trocam de raquete)
   human.model.armR.el.visible = !fpBody; human.model.armL.el.visible = !fpBody;
   fpArm.visible = fp;
-  if (S.mode === 'menu') {
+  if (S.mode === 'menu' && S.menuHero) {
+    // tela inicial: o seu jogador em destaque, do lado direito da tela (a câmera fica à frente dele e balança devagar)
+    S.orbit += dt * .22; const hp = human.pos, hh = (human.height || 1.8), sg = human.team === 0 ? 1 : -1;
+    tmpA.set(hp.x - sg * (.6 + Math.sin(S.orbit) * .25), hh * .76 + Math.sin(S.orbit * .6) * .05, hp.z - sg * (2.55 + Math.cos(S.orbit * .8) * .12));
+    camPos.lerp(tmpA, .05); tmpB.set(hp.x + sg * .86, hh * .6, hp.z); camLook.lerp(tmpB, .05);
+  } else if (S.mode === 'menu') {
     S.orbit += dt * .06;
     tmpA.set(Math.sin(S.orbit) * 12, 3.2 + Math.sin(S.orbit * .7) * 1.2, Math.cos(S.orbit) * 12);
     camPos.lerp(tmpA, .04); tmpB.set(0, 1.2, 0); camLook.lerp(tmpB, .04);

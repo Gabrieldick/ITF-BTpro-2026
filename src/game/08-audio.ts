@@ -20,7 +20,8 @@ const basePR = () => { const dpr = window.devicePixelRatio || 1, m = resMode();
 // com menu aberto a quadra fica só de fundo (escurecida atrás do painel): 38% da resolução, segue a 60 fps e libera a placa de vídeo
 let menuScale = 1;
 function applyPR() { renderer.setPixelRatio(basePR() * (resMode() === 'auto' ? resScale : 1) * menuScale); }
-function setMenuRes(on) { const v = on ? .38 : 1; if (v === menuScale) return; menuScale = v; applyPR(); }
+// hero: tela inicial com o jogador em destaque (precisa de mais resolução que o fundo desfocado dos outros menus)
+function setMenuRes(on, hero) { const v = !on ? 1 : hero ? .8 : .38; if (v === menuScale) return; menuScale = v; applyPR(); }
 function setResScale(v) { if (Math.abs(v - resScale) < .01) return; resScale = v; applyPR(); }
 const getResScale = () => resScale;
 function applyGfx() {

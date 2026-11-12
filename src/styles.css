@@ -1186,3 +1186,30 @@ body.in-menu .mus-box:not([hidden]) { display: inline-flex; }
 .mus-box button:hover, .mus-box button:focus-visible { background: rgba(255, 255, 255, .2); }
 @keyframes musPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 @media (prefers-reduced-motion: reduce) { .mus-box .mus-ic { animation: none; } }
+
+/* ---------- tela inicial com o jogador em destaque (telas largas, gráficos em Alto) ---------- */
+.home-tag { display: none; margin: 6px 0 0; font: 700 13px var(--f-ui); letter-spacing: .24em; text-transform: uppercase; color: var(--ui-acc); }
+.hero-plate { display: none; }
+body.hero-menu #menu[data-step="home"] { justify-items: start; padding: 0; overflow: hidden;
+  background: linear-gradient(90deg, rgba(3, 9, 26, .97) 0%, rgba(4, 13, 36, .93) 30%, rgba(5, 17, 46, .55) 52%, rgba(5, 17, 46, .08) 72%, rgba(5, 17, 46, 0) 100%), linear-gradient(0deg, rgba(3, 9, 26, .75) 0%, rgba(3, 9, 26, 0) 28%), linear-gradient(180deg, rgba(3, 9, 26, .5) 0%, rgba(3, 9, 26, 0) 18%); }
+body.hero-menu #menu[data-step="home"] .card { width: min(47vw, 640px); margin: auto 0 auto clamp(28px, 5.5vw, 96px); background: none; border: 0; box-shadow: none; padding: 0; overflow: visible; gap: 26px; }
+body.hero-menu #menu[data-step="home"] .card::before { display: none; }
+body.hero-menu #menu[data-step="home"] .title { font-size: clamp(64px, 7.4vw, 118px); line-height: .88; text-shadow: 0 8px 40px rgba(0, 0, 0, .5); }
+body.hero-menu #menu[data-step="home"] .title span { display: block; }
+body.hero-menu #menu[data-step="home"] .home-tag { display: block; }
+body.hero-menu #menu[data-step="home"] .title::after { content: ''; display: block; width: 96px; height: 5px; margin-top: 18px; background: linear-gradient(90deg, var(--ui-acc), var(--ui-acc2)); }
+body.hero-menu #menu[data-step="home"] .tile { backdrop-filter: none; background: linear-gradient(135deg, rgba(20, 44, 96, .78), rgba(10, 24, 60, .78)); border: 1px solid rgba(120, 160, 255, .22); border-left: 3px solid transparent; }
+body.hero-menu #menu[data-step="home"] .tile:hover, body.hero-menu #menu[data-step="home"] .tile:focus-visible { transform: translateX(6px); border-left-color: var(--ui-acc); background: linear-gradient(135deg, rgba(30, 70, 150, .9), rgba(14, 34, 84, .9)); }
+body.hero-menu #menu[data-step="home"] .tile-main { background: linear-gradient(135deg, #1e8bff, var(--ui-acc) 70%, var(--ui-acc2)); border: 0; box-shadow: 0 14px 40px rgba(30, 139, 255, .35); }
+body.hero-menu #menu[data-step="home"] .tile-main:hover { transform: translateX(6px) scale(1.01); background: linear-gradient(135deg, #3b9bff, var(--ui-acc) 60%, var(--ui-acc2)); }
+body.hero-menu .hero-plate:not([hidden]) { display: flex; position: fixed; right: clamp(24px, 5vw, 90px); bottom: clamp(70px, 11vh, 120px); z-index: 21; align-items: stretch; gap: 0; color: #fff; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .55)); animation: heroIn .6s cubic-bezier(.2, .8, .2, 1) both; }
+.hero-plate .hp-ovr { display: grid; place-items: center; align-content: center; min-width: 78px; padding: 8px 12px; background: linear-gradient(160deg, #1e8bff, var(--ui-acc)); color: #04122e; }
+.hero-plate .hp-ovr b { font: 800 italic 40px/1 var(--f-ui); }
+.hero-plate .hp-ovr small { font: 800 10px var(--f-ui); letter-spacing: .2em; opacity: .8; }
+.hero-plate .hp-txt { display: grid; align-content: center; gap: 2px; padding: 8px 22px 8px 16px; background: rgba(4, 14, 40, .86); border-top: 3px solid var(--ui-acc2); clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%); }
+.hero-plate .hp-name { font: 800 italic 26px/1 var(--f-ui); text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.hero-plate .hp-sub { font: 700 11px var(--f-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--ui-acc); white-space: nowrap; }
+body.hero-menu #menu[data-step="home"] .card > * { animation: heroIn .5s cubic-bezier(.2, .8, .2, 1) both; }
+body.hero-menu #menu[data-step="home"] .card > *:nth-child(2) { animation-delay: .08s; }
+@keyframes heroIn { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { body.hero-menu .hero-plate, body.hero-menu #menu[data-step="home"] .card > * { animation: none; } }

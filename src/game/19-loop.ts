@@ -64,10 +64,13 @@ function frame(now) {
   // anda e os jogadores estão parados; a câmera girando não muda o mapa de sombra),
   // assim o fundo segue fluido e a página responde na hora (o hover dos botões demorava com o 3D pesado atrás)
   const inMenu = !NET.role && document.body.classList.contains('in-menu');
-  if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu); renderer.shadowMap.needsUpdate = true; }
+  // tela inicial em telas largas e gráficos em Alto: o seu jogador aparece em destaque ao lado do menu (S.menuHero)
+  { const mEl = document.getElementById('menu'), hero = inMenu && S.mode === 'menu' && !!mEl && !mEl.hidden && mEl.dataset.step === 'home' && S.settings.gfx !== 'leve' && innerWidth >= 980 && innerWidth / innerHeight >= 1.25;
+    if (hero !== !!S.menuHero) { S.menuHero = hero; document.body.classList.toggle('hero-menu', hero); menuMode = !inMenu; } }
+  if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu, !!S.menuHero); renderer.shadowMap.needsUpdate = true; }
   // sombra: refeita todo quadro em qualquer qualidade (a cada dois quadros ela ficava um quadro atrás do jogador correndo, e o
   // movimento parecia atrasado); com menu aberto fica parada
-  renderer.shadowMap.autoUpdate = !inMenu;
+  renderer.shadowMap.autoUpdate = !inMenu || !!S.menuHero;
   perfTick(now, now - last);
   const t0 = performance.now();
   const dt = Math.min(.05, (now - last) / 1000); last = now;
