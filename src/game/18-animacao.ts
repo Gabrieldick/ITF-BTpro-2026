@@ -90,6 +90,8 @@ const IDL_WX = 1.1, IDL_WR = 0; // punho com o braço caído: raquete apontando 
 const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
 // forma do golpe pela posição da bola: curta por baixo (raquete deitada) na bola baixa; voleio de backhand quando a bola
 // vem no lado contrário; leque (ventaglio) no backhand acima do ombro; gancho no smash com a bola passando para o lado da mão livre
+const LAND_T = .38; // tempo de amortecer a queda de um salto
+const SPLIT_T = .44; // duração do split step (pulinho + pouso)
 function visKey(ak, v) {
   if (ak === 'curta' && v.y < .85) return 'curta_baixa';
   if (ak === 'smash_vfh' && v.side < -.15) ak = 'smash_vbh';
@@ -260,15 +262,15 @@ function animateAthlete(p, dt) {
   // (2) voltou correndo para a posição (ex.: depois de uma curta) e parou → pulinho de prontidão
   if (S.mode === 'rally' && ball.state === 'live' && !(p.split > 0) && !busy && p.jump <= 0) {
     const sm = ($s.teams[1 - p.team] || []).some(o => (o.charging && (o.mtr || MTR).type !== 'lob') || (o.swing.t >= 0 && o.swing.type === 'smash' && !o.swing.hit && ball.pos.y > 1.9 && o.swing.t > o.swing.dur * .12));
-    if (sm && S.lastTeam === p.team && p.splitFor !== S.hitId) { p.splitFor = S.hitId; p.split = .26; }
-    else if (sp < .5 && (p.prevSp || 0) > 2.2 && S.lastTeam === p.team && p.splitBack !== S.hitId) { p.splitBack = S.hitId; p.split = .22; }
+    if (sm && S.lastTeam === p.team && p.splitFor !== S.hitId) { p.splitFor = S.hitId; p.split = SPLIT_T; }
+    else if (sp < .5 && (p.prevSp || 0) > 2.2 && S.lastTeam === p.team && p.splitBack !== S.hitId) { p.splitBack = S.hitId; p.split = SPLIT_T * .85; }
   }
   p.prevSp = sp;
   if (p.split > 0) { p.split = Math.max(0, p.split - dt); if (p.split === 0) p.burst = .3; }
   if (p.burst > 0) p.burst = Math.max(0, p.burst - dt);
   // split step: pulinho com os dois pés quando o adversário bate, aterrissando abaixado e com as pernas abertas
-  const spU = p.split > 0 ? 1 - p.split / .26 : -1;
-  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? Math.sin(Math.PI * spU / .6) * .15 : 0); // (pulinho de ~15 cm: com 10 cm quase não se via)
+  const spU = p.split > 0 ? 1 - p.split / SPLIT_T : -1;
+  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? 4 * (spU / .6) * (1 - spU / .6) * .11 : 0); // (pulinho de ~11 cm em ~0,26 s: o tempo de voo que essa altura pede; antes eram 15 cm em 0,16 s, rápido demais)
   m.group.position.set(p.pos.x, jy + (p.liftY || 0), p.pos.z); // liftY: em cima do pódio
   if (tiltK > 0) { const D = p.dive, la = D.t < .26 ? Math.sin(Math.PI * D.t / .26) * .14 : 0, sh = Math.sin(tiltA) * .5; m.group.position.x -= D.dx * sh; m.group.position.z -= D.dz * sh; m.group.position.y += la + Math.sin(tiltA) * .05; } // voo curto na saída; o corpo deitado fica centrado onde o jogador está
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
@@ -297,10 +299,15 @@ function animateAthlete(p, dt) {
   // salto com peso: as pernas empurram na saída (o quadril ainda baixo enquanto os pés estão na areia) e amortecem na queda
   // (afunda e volta), mais quanto mais alto foi o pulo
   const jH = Math.min(1, (p.jumpH || .3) / .34), jp0 = p.jump > 0 && p.jumpDur ? 1 - p.jump / p.jumpDur : -1;
-  if (p.airPrev && !(jy > .02) && !(p.split > 0)) p.landT = .3;
+  if (p.airPrev && !(jy > .02) && !(p.split > 0)) p.landT = LAND_T;
   p.airPrev = jy > .02 && p.jump > 0;
   if (p.landT > 0) p.landT = Math.max(0, p.landT - dt);
-  const jumpCr = (jp0 >= 0 && jp0 < .14 ? (1 - jp0 / .14) * .16 : 0) * jH + (p.landT > 0 ? Math.sin(Math.PI * Math.min(1, (1 - p.landT / .3) * 1.15)) * .2 * jH : 0);
+  // queda: afunda rápido (30% do tempo) e sobe devagar, com o tronco indo um pouco à frente
+  const lx = p.landT > 0 ? 1 - p.landT / LAND_T : -1, landK = lx < 0 ? 0 : (lx < .3 ? Math.sin(Math.PI / 2 * lx / .3) : Math.cos(Math.PI / 2 * (lx - .3) / .7)) * jH;
+  // saque: nos últimos 0,2 s antes de sair do chão as pernas carregam (o joelho dobra mais) e então empurram
+  let srvLoad = 0;
+  if (S.mode === 'toss' && S.serverPlayer === p && !(p.jump > 0) && !p.serveJumped && S.serveType !== 'lob' && ((p.srvSt || {}).jump ?? .34) > .02) { const tl = (p.tossDur || TOSS_T) - .22 - (p.tossT || 0); if (tl >= 0 && tl < .2) srvLoad = smooth(0, 1, 1 - tl / .2); }
+  const jumpCr = (jp0 >= 0 && jp0 < .14 ? (1 - jp0 / .14) * .16 : 0) * jH + landK * .24 + srvLoad * .14;
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
   const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + jumpCr + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + (p.hgtK > 0 ? p.hgtK * .15 : p.hgtK * .1) + p.lowK * .11 * (1 - run * .5) + defLow;
   const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
@@ -318,7 +325,7 @@ function animateAthlete(p, dt) {
   p.hpY = (pose.hp || 0) + p.bhTw * .35;
   m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6) + p.hpY, Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
-  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .17 + diveK * .75 + p.reachK * (.15 + reachLow * .35) + (p.hgtK > 0 ? p.hgtK * .22 : p.hgtK * .12)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.bhTw * .65 + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - prA * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
+  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .17 + diveK * .75 + p.reachK * (.15 + reachLow * .35) + landK * .1 + (p.hgtK > 0 ? p.hgtK * .22 : p.hgtK * .12)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.bhTw * .65 + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - prA * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: cada pé fica plantado no mundo até ficar longe de onde deveria estar (posição da pose + um pouco à frente, onde o
@@ -346,6 +353,7 @@ function animateAthlete(p, dt) {
     // (lado da raquete) dá um coice para trás e a da frente estica para pousar primeiro dentro da quadra
     const srv = (S.mode === 'toss' && S.serverPlayer === p) || (p.swing.t >= 0 && p.swing.var === 'saque');
     p.jumpMode = srv ? { tk: 1, serve: true } : one ? { tk } : null;
+    p.jumpVar = { lead: Math.random() < .5 ? 0 : 1, k: .75 + Math.random() * .45 }; // cada salto sai um pouco diferente: um pé vai à frente, sobe mais e pousa antes
   }
   p.wasAir = air;
   const jp = p.jumpDur ? clamp(1 - p.jump / p.jumpDur, 0, 1) : .5;
@@ -390,14 +398,16 @@ function animateAthlete(p, dt) {
       fx = D[0]; fz = D[1];
       if (air && p.jumpMode && spU < 0) {
         const tk = i === p.jumpMode.tk; // impulso: sai atrás, cruza para a frente no meio (tesoura) e volta atrás; a outra sobe o joelho e desce para pousar primeiro
-        if (p.jumpMode.serve) { const e = Math.sin(Math.PI * Math.min(1, jp * 1.1));
-          if (tk) { fz += .12 + .24 * e; fy += .04 + .15 * e; } else { fz += -.05 - .14 * jp; fy += .02 + .06 * Math.sin(Math.PI * jp); } }
+        if (p.jumpMode.serve) { const e = smooth(.35, .75, jp) * (1 - smooth(.88, 1, jp)); // corpo esticado até o contato; a perna de trás só chuta depois dele
+          if (tk) { fz += .1 + .26 * e; fy += .03 + .16 * e; } else { fz += -.05 - .14 * jp; fy += .02 + .03 * Math.sin(Math.PI * jp); } }
         else if (tk) { fz += .26 - .5 * Math.sin(Math.PI * jp) + .02; fy += .1 + .2 * Math.sin(Math.PI * jp) + .1 * jp; }
         else { fz += -.22 * Math.sin(Math.PI * Math.min(1, jp * 1.25)); fy += .26 * Math.sin(Math.PI * Math.min(1, jp * 1.2)) * (1 - jp * .6); }
-      } else if (air && spU >= 0) { fy += .03 + .05 * Math.sin(Math.PI * Math.min(1, spU / .6)); } // split step: os dois pés saem juntos do chão, abertos
-      else if (air) { const sw = jp < .45 ? 1 : -1; fy += .1 + ((s > 0) === (sw > 0) ? .12 : .02); fz += (s > 0 ? .2 : -.12) * sw; }
+      } else if (air && spU >= 0) { const V = p.jumpVar || { lead: 0 }; fy += .02 + .06 * Math.sin(Math.PI * clamp(spU / .6 + (i === V.lead ? .1 : -.1), 0, 1)); } // split step: pés abertos, um sai e pousa um instante antes do outro
+      else if (air) { // salto parado (duas pernas): um joelho sobe mais e vai à frente, o outro calcanhar vai atrás; o da frente desce antes para pousar primeiro
+        const V = p.jumpVar || { lead: 0, k: 1 }, ld = i === V.lead, a = Math.sin(Math.PI * jp), a2 = Math.sin(Math.PI * Math.min(1, jp * (ld ? 1.18 : 1))), hk = Math.min(1.2, (p.jumpH || .3) / .3);
+        fy += .03 + (ld ? .17 : .09) * a2 * V.k * hk; fz += ((ld ? -.12 : .16) * a + (ld ? -.03 : .03)) * V.k; }
       F.w = null;
-      F.st = { from: toW(fx, fz), y0: fy - .07, t: 0, dur: air && p.jumpMode && i === p.jumpMode.tk ? .16 : .06, h: .02 };
+      F.st = { from: toW(fx, fz), y0: fy - .07, t: 0, dur: air && p.jumpMode ? (i === p.jumpMode.tk ? .16 : .06) : air && p.jumpVar && i !== p.jumpVar.lead ? (spU >= 0 ? .1 : .14) : .05, h: .02 }; // (o segundo pé pousa um pouco depois)
     } else if (F.st) {
       // passo em andamento: arco até o alvo (que acompanha o corpo até o pé pousar)
       if (!F.st.y0) { F.st.dur = Math.min(F.st.dur, Math.max(stepDur, .14)); F.st.h = Math.min(F.st.h, .035 + Math.min(sp, 6) * .014); } // parou no meio do passo: o pé desce logo
@@ -430,6 +440,7 @@ function animateAthlete(p, dt) {
     // ficam esticados; o modelo 3D inclina o pé com isso (L.roll)
     let rollT = 0;
     if (air) rollT = .35;
+    else if (p.jump > 0 && jp < .2 && !F.st) rollT = .8; // saída do salto: empurra na ponta do pé
     else if (F.st) { const t = Math.min(1, F.st.t); rollT = t < .4 ? .65 * (1 - t / .4) : 0; }
     else if (!p.dive && thr > 0) { const rr = wants[i] / thr; rollT = rr > .45 ? .75 * clamp((rr - .45) / .55, 0, 1) * Math.min(1, sp / 1.2) : 0; fy += Math.sin(L.roll || 0) * .14; } // saída: o calcanhar sobe e a ponta empurra (a perna de trás estica sem o quadril afundar)
     L.roll = (L.roll || 0) + (rollT - (L.roll || 0)) * Math.min(1, dt * 22);
