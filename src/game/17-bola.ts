@@ -151,7 +151,7 @@ function celebrateStep(dt) {
   const c = S.celebrate; c.t += dt;
   const tm = $s.teams[c.team]; if (!tm) return;
   const s = c.team === 0 ? 1 : -1;
-  if (tm.length < 2) { const p = tm[0]; p.vel.set(0, 0, 0); if (c.title && !c.j1 && c.t > .6) { c.j1 = true; startJump(p, .45, .5); } if (c.title && !c.j2 && c.t > 1.6) { c.j2 = true; startJump(p, .45, .5); } return; }
+  if (tm.length < 2) { const p = tm[0]; p.vel.set(0, 0, 0); if (!c.j0 && c.t > .12) { c.j0 = true; startJump(p, .42, .3); } if (c.title && !c.j1 && c.t > .6) { c.j1 = true; startJump(p, .45, .5); } if (c.title && !c.j2 && c.t > 1.6) { c.j2 = true; startJump(p, .45, .5); } return; }
   const [a, b] = tm, mx = (a.pos.x + b.pos.x) / 2, mz = s * 3.2;
   if (c.mx === undefined) { c.mx = clamp(mx, -2, 2); }
   // distância entre os dois: chegando → toque de mão (.75 m) → abraço (.42 m) → separam um pouco e pulam
@@ -163,6 +163,9 @@ function celebrateStep(dt) {
     p.pos.x += p.vel.x * dt; p.pos.z += p.vel.z * dt;
     p.swing.t = -1; p.charging = false;
   });
+  if (!c.j0 && c.t > .12) { c.j0 = true; startJump(a, .42, .3); startJump(b, .42, .3); } // explosão: pulo com os braços para cima antes de correr para o abraço
+  if (!c.title && !c.j1 && c.t > 1.75) { c.j1 = true; startJump(a, .4, .3); startJump(b, .4, .3); }
+  if (c.title && !c.j3 && c.t > 4.75) { c.j3 = true; startJump(a, .45, .45); startJump(b, .45, .45); }
   if (!c.h5 && c.t > 1.1) { c.h5 = true; startJump(a, .25, .18); startJump(b, .25, .18); sndHit(.15); }
   if (c.title && !c.j1 && c.t > 3.5) { c.j1 = true; startJump(a, .45, .45); startJump(b, .45, .45); }
   if (c.title && !c.j2 && c.t > 4.2) { c.j2 = true; startJump(a, .45, .45); startJump(b, .45, .45); }

@@ -605,6 +605,8 @@ function pointTo(w, reason, kind) {
   S.ptWin = w; S.ptT = 0; S.ptN = (S.ptN || 0) + 1; // reações entre pontos (18-animacao)
   if (S.rallyLog) S.rallyLog.push(S.rally);
   const ev = awardPoint(w);
+  S.ptBig = S.rally >= 6 || ev !== 'point'; // ponto grande (rali longo, game, set): quem ganhou vibra mais, com um pulinho
+  if (S.ptBig && ev !== 'match') ($s.teams[w] || []).forEach(q => { if (!(q.jump > 0) && !q.dive) { q.jump = q.jumpDur = .34; q.jumpH = .14; } });
   // fôlego: recupera um tanto fixo por ponto (+10%) e mais no fim de cada game (+15%); nunca acima do teto da partida
   $s.players.forEach(q => staGain(q, ev === 'point' ? .08 : .25));
   updateLiveRating();
@@ -614,7 +616,7 @@ function pointTo(w, reason, kind) {
     // comemoração do time que venceu: toque de mão; no título, abraço, pulos e confete
     isTitle = w === 0 && ((S.careerActive && crIsFinal()) || (S.champActive && champIsFinal()));
     S.celebrate = { team: w, t: 0, title: isTitle };
-    S.deadT = isTitle ? 5 : dupla() ? 2.8 : 2.4;
+    S.deadT = isTitle ? 5.4 : dupla() ? 3.1 : 2.4;
   } else if (dupla()) {
     // entre os pontos a dupla às vezes se encontra (tapa de mão no alto, toque baixo ou raquete com raquete): mais depois
     // de um rali longo ou de um ponto vencedor, quase nunca dois pontos seguidos; quem perdeu raramente, para se animar

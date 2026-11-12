@@ -478,14 +478,14 @@ function animateAthlete(p, dt) {
   // solto: raquete desce ao lado do corpo e o braço balança (ao contrário da perna do mesmo lado)
   if (swingU < 0 && !p.charging && p.rlx > .01) { const am = .05 + .1 * run; _e.set(.27 - .05 * run, -.02 + .1 * run + Math.sin(p.gait * 2) * .012, -.1 + Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); }
   _b.fromArray(pose.rp);
-  const celPh = cel ? (!mateC ? (cel.title ? 'up' : '') : cel.t < 1.0 ? '' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
+  const celPh = cel ? (!mateC ? (cel.title || cel.t < 1.7 ? 'up' : '') : cel.t < .75 && !cel.hold ? 'up' : cel.t < 1.0 ? '' : !cel.title && cel.t > 1.7 && cel.t < 2.6 ? 'up' : cel.t < 1.6 ? 'five' : cel.title && cel.t < 3.4 ? 'hug' : cel.title ? 'up' : '') : '';
   // quem perdeu o ponto reage (um jeito por ponto e por jogador): mão na cabeça, raquete batendo na areia, mãos na cintura
   // ou balança a cabeça; entra e sai suave
   // quem ganhou às vezes vibra (punho cerrado / raquete para cima); quem perdeu quase sempre reage
   const rk = ((S.ptN || 0) * 7 + p.team * 3 + (p.slot > 0 ? 5 : 0)) % 8, won = S.ptWin === p.team;
-  const lose = !cel && !pc && !S.sideWalk && S.mode === 'dead' && S.ptWin !== undefined && (!won || rk < 3) ? { t: S.ptT || 0 } : null;
+  const lose = !cel && !pc && !S.sideWalk && S.mode === 'dead' && S.ptWin !== undefined && (!won || rk < 4 || S.ptBig) ? { t: S.ptT || 0 } : null;
   const lsW = lose ? clamp((lose.t - .35) / .25, 0, 1) * clamp((1.9 - lose.t) / .35, 0, 1) : 0;
-  const lsK = lose ? (won ? ['fist', 'rkup', 'fist'][rk % 3] : ['head', 'tap', 'hips', 'shake', 'tap', 'head', 'shake', 'hips'][rk]) : '';
+  const lsK = lose ? (won ? (S.ptBig ? ['two', 'roar', 'rkup', 'fist'][rk % 4] : ['fist', 'rkup', 'fist'][rk % 3]) : ['head', 'tap', 'hips', 'shake', 'tap', 'head', 'shake', 'hips'][rk]) : '';
   if (celPh === 'hug') { _c.set(.2, .5, -.32); _b.set(.9, -.3, .2); }
   else if (celPh === 'up') { _c.set(.18, 1.05, -.05); _b.set(.8, 0, .3); }
   // gesto com o parceiro: o braço estica na direção dele (de frente ou de lado, conforme o quanto viraram). Raquete com
@@ -495,7 +495,7 @@ function animateAthlete(p, dt) {
   if (pgW > 0 && pMate) { m.spine.getWorldPosition(_v2); _v2.x += pMate.pos.x - p.pos.x; _v2.z += pMate.pos.z - p.pos.z; m.spine.worldToLocal(_v2); _v2.y = 0;
     pgDir = _v2.lengthSq() > 1e-6 ? _v2.normalize() : null; pgR = !!pgDir && (pc.kind === 'rk' || pgDir.x > .15); }
   if (pgDir && pgR) { _e.copy(shR).addScaledVector(pgDir, .6); _e.y += pc.kind === 'five' ? .45 : pc.kind === 'rk' ? .12 : -.25; _e.z -= .12; _c.lerp(_e, pgW); }
-  if (lsW > 0) { if (lsK === 'rkup') _e.set(.2, .95, -.15); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
+  if (lsW > 0) { if (lsK === 'rkup' || lsK === 'two') _e.set(.2, .95, -.15); else if (lsK === 'roar') _e.set(.3, .16 + .05 * Math.abs(Math.sin(lose.t * 11)), -.22); else if (lsK === 'fist') _e.set(.22, .3, -.28); else if (lsK === 'head') _e.set(.12, .8, .02); else if (lsK === 'tap') _e.set(.28, -.28 + .07 * Math.abs(Math.sin(lose.t * 13)), -.34); else if (lsK === 'hips') _e.set(.22, .02, .03); else _e.set(.2, .0, -.12); _c.lerp(_e, lsW); }
   // peixinho: o braço da raquete vai esticado para a frente do mergulho (para onde a bola está)
   if (tiltK > .05 && p.dive) { _g.set(p.dive.dx, 0, p.dive.dz).applyQuaternion(m.spine.getWorldQuaternion(_q1).invert()); _e.copy(shR).addScaledVector(_g, .62); _c.lerp(_e, tiltK * (swingU >= 0 && !p.swing.hit ? .45 : .85)); }
   // parado entre os pontos: os braços soltam (nada da raquete segura no peito em "V"). Cada um do seu jeito, que muda a
@@ -533,7 +533,7 @@ function animateAthlete(p, dt) {
   if (tiltK > .05) { _g.set(0, -1, 0).applyQuaternion(_q1.copy(m.spine.getWorldQuaternion(_q1)).invert()); _e.set(-.12, .35, -.25).addScaledVector(_g, .45); _c.lerp(_e, tiltK); } // peixinho: a mão livre vai à areia embaixo do peito
   else if (diveK > .05) { _e.set(-.3, -.6, -.4); _c.lerp(_e, clamp(diveK * 1.4, 0, 1)); }
   else if (swingU >= 0 && p.reachK > .15 && !celPh) { _e.set(-reachS * .48, .28, -.04); _c.lerp(_e, .7 * p.reachK); }
-  if (lsW > 0) { if (lsK === 'fist') _e.set(-.2, .5 + .08 * Math.abs(Math.sin(lose.t * 10)), -.2); else if (lsK === 'head') _e.set(-.12, .8, .02); else if (lsK === 'hips') _e.set(-.22, .02, .03); else _e.set(-.2, .02, -.1); _c.lerp(_e, lsW); }
+  if (lsW > 0) { if (lsK === 'fist') _e.set(-.2, .5 + .08 * Math.abs(Math.sin(lose.t * 10)), -.2); else if (lsK === 'two') _e.set(-.2, .95, -.12); else if (lsK === 'roar') _e.set(-.3, .16 + .05 * Math.abs(Math.sin(lose.t * 11)), -.22); else if (lsK === 'head') _e.set(-.12, .8, .02); else if (lsK === 'hips') _e.set(-.22, .02, .03); else _e.set(-.2, .02, -.1); _c.lerp(_e, lsW); }
   if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph + 1.2);
     if (idk === 'strings') { _e.set(.06, shL.y - .4 + Math.sin(p.gT * 3 + ph) * .03, -.42); _b.set(-.6, -.3, .6); }
     else { _e.set(shL.x - .06, shL.y - .52, -.02 + sw * .03); _b.set(-.4, -.2, 1); }
@@ -547,7 +547,7 @@ function animateAthlete(p, dt) {
     const hp = clamp(Math.atan2(_e.y, Math.hypot(_e.x, _e.z)), -.5, .85);
     p.headYaw += (hy - p.headYaw) * Math.min(1, dt * 8); p.headPitch += (hp - p.headPitch) * Math.min(1, dt * 8);
   } else { p.headYaw *= .9; p.headPitch *= .9; }
-  m.headG.rotation.set(p.headPitch + lsW * (lsK === 'head' ? -.15 : lsK === 'fist' || lsK === 'rkup' ? -.1 : .3), p.headYaw + (lsK === 'shake' ? Math.sin((lose ? lose.t : 0) * 9) * .35 * lsW : 0), -(m.spine.rotation.z + m.hips.rotation.z) * .7); // cabeça fica nivelada (olhos na horizontal) quando o tronco inclina
+  m.headG.rotation.set(p.headPitch + lsW * (lsK === 'head' ? -.15 : lsK === 'two' || lsK === 'roar' ? -.22 : lsK === 'fist' || lsK === 'rkup' ? -.1 : .3), p.headYaw + (lsK === 'shake' ? Math.sin((lose ? lose.t : 0) * 9) * .35 * lsW : 0), -(m.spine.rotation.z + m.hips.rotation.z) * .7); // cabeça fica nivelada (olhos na horizontal) quando o tronco inclina
   if (m.tail) {
     m.tail.rotation.x += (-(.25 + clamp(fwd * .06, -.2, .5) + jy * 1.5) - m.tail.rotation.x) * Math.min(1, dt * 5);
     m.tail.rotation.z += (clamp(lvx * .05, -.4, .4) - m.tail.rotation.z) * Math.min(1, dt * 5);
