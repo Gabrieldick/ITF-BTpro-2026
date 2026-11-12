@@ -6,7 +6,7 @@ import { rand } from './00-base';
 import { S } from './01-estado';
 import * as THREE from 'three';
 import { renderer, sun, scene } from './02-render';
-import { sky, setCourtSandDetail } from './03-cenario';
+import { CROWD_SND, sky, setCourtSandDetail } from './03-cenario';
 import { particles } from './07-glb';
 // ---------- Qualidade gráfica ----------
 // resolução: base pela qualidade x escala dinâmica (cai quando o jogo não segura 60 fps)
@@ -124,6 +124,43 @@ function sndWhistle(good) {
     o.connect(g).connect(a.destination); o.start(t + d); o.stop(t + d + .22);
   });
 }
+// ---------- torcida (gravações reais, baixadas só quando precisam) ----------
+// ponto: vibração curta · forte: game/partida · titulo: vibração longa com palmas ritmadas · aplauso: quadra sem arquibancada
+const CROWD_FILES = { ponto: ['torcida-ponto.mp3', 'torcida-ponto2.mp3'], forte: ['torcida-forte.mp3'], titulo: ['torcida-titulo.mp3'], aplauso: ['aplauso.mp3'], fundo: ['torcida-fundo.mp3'] };
+const CROWD_BUF = {}; let crowdLast = null, crowdAmb = null;
+function crowdBuf(file, cb) {
+  const c = CROWD_BUF[file]; if (c) { if (c.buf) cb(c.buf); else if (c.wait) c.wait.push(cb); return; }
+  const a = ac(); if (!a) return; const e = (CROWD_BUF[file] = { buf: null, wait: [cb] });
+  fetch(import.meta.env.BASE_URL + 'assets/som/' + file).then(r => (r.ok ? r.arrayBuffer() : Promise.reject())).then(ab => a.decodeAudioData(ab, b => { e.buf = b; e.wait.forEach(f => f(b)); e.wait = null; }, () => { e.wait = null; })).catch(() => { e.wait = null; });
+}
+// k: tamanho da vibração (1,2 ponto · 2 game · 3 partida · 4+ título) · crowd: lugares de torcida na arena (0 = quadra aberta)
+function sndCheer(k, crowd) {
+  if (S.muted || typeof window === 'undefined') return; const a = ac(); if (!a) return;
+  const now = a.currentTime;
+  if (crowdLast && now - crowdLast.t < 1.5) { if (k <= crowdLast.k) return; try { crowdLast.g.gain.setTargetAtTime(0, now, .15); crowdLast.src.stop(now + .6); } catch (e) {} } // (título logo depois do ponto: troca pela maior)
+  // quadra aberta (sem arquibancada): só palmas de quem está em volta, e só em game, partida e título
+  if (!crowd && k < 2) return;
+  const kind = !crowd ? 'aplauso' : k >= 4 ? 'titulo' : k >= 2 ? 'forte' : 'ponto';
+  const list = CROWD_FILES[kind], file = list[Math.floor(Math.random() * list.length)];
+  const vol = !crowd ? .5 : (kind === 'ponto' ? .45 : kind === 'forte' ? .75 : .95) * Math.min(1, .55 + crowd / 400);
+  const mark = (crowdLast = { t: now, k, g: null, src: null });
+  crowdBuf(file, buf => {
+    if (S.muted || crowdLast !== mark || a.currentTime - now > 1.2) return; // (chegou tarde demais: melhor nada que fora de hora)
+    const src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.playbackRate.value = rand(.96, 1.04); g.gain.value = vol;
+    src.connect(g).connect(a.destination); src.start(); mark.g = g; mark.src = src;
+  });
+}
+// burburinho da arquibancada durante a partida (só com torcida)
+function sndCrowdAmb(on) {
+  if (typeof window === 'undefined') return;
+  on = on && !S.muted;
+  if (!on) { if (crowdAmb && crowdAmb.g) crowdAmb.g.gain.value = 0; return; }
+  if (crowdAmb) { if (crowdAmb.g) crowdAmb.g.gain.value = .16; return; }
+  if (!actx) return; // (o áudio só nasce depois de um toque do jogador)
+  const amb = (crowdAmb = { g: null });
+  crowdBuf(CROWD_FILES.fundo[0], buf => { const a = actx, src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.loop = true; g.gain.value = .16; src.connect(g).connect(a.destination); src.start(); amb.g = g; });
+}
+CROWD_SND.cheer = sndCheer; CROWD_SND.amb = sndCrowdAmb;
 // som do mar ao fundo
 let surf = null;
 function startSurf() {

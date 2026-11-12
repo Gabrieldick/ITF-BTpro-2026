@@ -1124,9 +1124,12 @@ function updateConfetti(dt) {
   CONF.mesh.instanceMatrix.needsUpdate = true;
 }
 // torcida comemora depois do ponto
-function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); }
+// som da torcida: quem toca é o áudio (08-audio), que se registra aqui (este arquivo não importa o áudio)
+const CROWD_SND = { cheer: null, amb: null };
+function cheerArena(k) { ARENA.cheerT = Math.max(ARENA.cheerT, k || 1.4); if (CROWD_SND.cheer) CROWD_SND.cheer(k || 1.4, ARENA.crowd.length); }
 const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cq2 = new THREE.Quaternion(), _cs = new V3(1, 1, 1), _upC = new V3(0, 1, 0), _fw = new V3();
 function updateArena(dt) {
+  if (CROWD_SND.amb) CROWD_SND.amb(ARENA.crowd.length > 0 && S.mode !== 'menu');
   updateConfetti(dt);
   updateSideGames(dt);
   if (!ARENA.crowd.length || ARENA.cheerT <= 0) return;
@@ -1162,4 +1165,4 @@ function setSide(flip) {
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail, ULTRA_U, sea, setSunElev };
+export { CROWD_SND, sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail, ULTRA_U, sea, setSunElev };

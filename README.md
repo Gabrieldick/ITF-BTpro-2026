@@ -107,5 +107,7 @@ Os módulos em `src/game/` ainda têm `// @ts-nocheck`: compilam como TypeScript
 - **Mens/Womens Tennis Uniforms Set1** — modelos gratuitos baixados da internet.
 - **Jogador masculino escaneado** — modelo gratuito baixado da internet (autor e licença a confirmar).
 - **Sons de batida** — freesound community.
+- **Torcida** (vibração e burburinho) — "Free Crowd Cheering Sounds", Gregor Quendel, CC BY 4.0 (opengameart.org), recortada.
+- **Palmas** — "Applause", leezh, CC BY 3.0 (opengameart.org), recortada e com volume ajustado.
 
 Nomes de atletas são paródias dos jogadores reais do circuito.
