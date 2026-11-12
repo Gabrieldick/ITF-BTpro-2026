@@ -118,7 +118,6 @@ Os módulos em `src/game/` ainda têm `// @ts-nocheck`: compilam como TypeScript
   - "Sun goes Down (Pop Mix)" — Hasenchat (Pop) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/1322499
   - "Secret in Their Eyes" — Capashen (Pop rock) · [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/fr/) · https://www.jamendo.com/track/769000
   - "I want you (pop rock remix)" — Lollita (Pop) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/1015339
-  - "Bunny Hip-Hop" — Badger (Hip-hop) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) · https://www.jamendo.com/track/780359
   - "Funky House" — Of Far Different Nature (Instrumental) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) · https://opengameart.org/content/funky-house
   - "Beach Stage" — mintodog (Instrumental) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) · https://opengameart.org/content/beach-stage
   - "Feel Good Island Loop" — antumdeluge (Instrumental) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) · https://opengameart.org/content/feel-good-island-loop

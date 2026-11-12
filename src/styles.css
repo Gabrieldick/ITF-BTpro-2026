@@ -1226,3 +1226,19 @@ body.hero-menu #menu[data-step="home"] .card > *:nth-child(2) { animation-delay:
 .am-btn.live .am-ic { box-shadow: 0 0 0 2px #4fd18b; }
 .am-btn.live .am-tx small { opacity: 1; font-weight: 800; }
 @media (max-width: 560px) { .am-btn .am-tx small { display: none; } .am-btn { padding: 6px 10px 6px 6px; } }
+
+/* ---------- telas internas dos menus: cabeçalho compacto, entrada animada, cantos compactos ---------- */
+#menu:not([data-step="home"]) .title { font-size: 20px; letter-spacing: .06em; opacity: .9; margin: 0; }
+#menu:not([data-step="home"]) .title span { text-shadow: none; }
+#menu:not([data-step="home"]) section[data-step] > .eyebrow:first-child { font: 800 italic clamp(30px, 4.2vw, 46px)/1 var(--f-ui); letter-spacing: .01em; text-transform: uppercase; color: #fff; margin-top: -6px; }
+#menu:not([data-step="home"]) section[data-step] > .eyebrow:first-child::after { content: ''; display: block; width: 72px; height: 4px; margin-top: 10px; background: linear-gradient(90deg, var(--ui-acc), var(--ui-acc2)); }
+.overlay:not([hidden]) > .card { animation: cardIn .26s cubic-bezier(.2, .8, .2, 1); }
+@keyframes cardIn { from { transform: translateY(12px); } to { transform: none; } } /* (sem mexer na opacidade: num aparelho lento o painel nunca fica invisível) */
+body.hero-menu #menu[data-step="home"] > .card { animation: none; }
+@media (prefers-reduced-motion: reduce) { .overlay:not([hidden]) > .card { animation: none; } }
+/* fora da tela inicial: a música vira um botão pequeno e o de amigos fica só com ícone e nível (não cobrem o conteúdo) */
+body.in-menu:not(.at-home) .mus-box .mus-txt { display: none; }
+body.in-menu:not(.at-home) .mus-box { padding: 5px 6px 5px 10px; opacity: .78; }
+body.in-menu:not(.at-home) .mus-box:hover { opacity: 1; }
+body:not(.at-home) .am-btn .am-tx { display: none; }
+body:not(.at-home) .am-btn { padding: 6px 8px 6px 6px; gap: 6px; opacity: .92; }

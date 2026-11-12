@@ -65,6 +65,8 @@ function frame(now) {
   // assim o fundo segue fluido e a página responde na hora (o hover dos botões demorava com o 3D pesado atrás)
   const inMenu = !NET.role && document.body.classList.contains('in-menu');
   // tela inicial em telas largas e gráficos em Alto: o seu jogador aparece em destaque ao lado do menu (S.menuHero)
+  { const mE = document.getElementById('menu'), atHome = document.body.classList.contains('in-menu') && !!mE && !mE.hidden && mE.dataset.step === 'home';
+    if (atHome !== !!S.atHome) { S.atHome = atHome; document.body.classList.toggle('at-home', atHome); } } // (fora da tela inicial, música e amigos ficam compactos)
   { const mEl = document.getElementById('menu'), hero = inMenu && S.mode === 'menu' && !!mEl && !mEl.hidden && mEl.dataset.step === 'home' && S.settings.gfx !== 'leve' && innerWidth >= 980 && innerWidth / innerHeight >= 1.25;
     if (hero !== !!S.menuHero) { S.menuHero = hero; document.body.classList.toggle('hero-menu', hero); menuMode = !inMenu; } }
   if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu, !!S.menuHero); renderer.shadowMap.needsUpdate = true; }
