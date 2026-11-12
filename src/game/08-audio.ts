@@ -40,12 +40,19 @@ function applyGfx() {
 }
 // ---------- Áudio ----------
 let actx = null;
+// canais de volume (mixer das configurações): cada som sai por um canal, e todos passam pelo geral
+const VOL_DEF = { master: 1, music: .5, hits: 1, crowd: .7, amb: .8, fx: .8 };
+const vol = k => { const v = (S.settings.vol || {})[k]; return v == null ? VOL_DEF[k] : Math.max(0, Math.min(1, +v || 0)); };
+const BUS = {};
+function bus(k) { const a = actx; if (!BUS.master) { BUS.master = a.createGain(); BUS.master.connect(a.destination); BUS.master.gain.value = S.muted ? 0 : vol('master'); }
+  if (!BUS[k]) { BUS[k] = a.createGain(); BUS[k].gain.value = vol(k); BUS[k].connect(BUS.master); } return BUS[k]; }
+function applyVol() { if (actx) { for (const k of ['hits', 'crowd', 'amb', 'fx']) bus(k).gain.value = vol(k); BUS.master.gain.value = S.muted ? 0 : vol('master'); } }
 function ac() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); loadHitSounds(actx); } catch (e) { actx = null; } } if (actx && actx.state === 'suspended') actx.resume().catch(() => {}); return actx; }
 function noiseBurst(a, t, dur, freq, gain) {
   const len = Math.floor(a.sampleRate * dur); const buf = a.createBuffer(1, len, a.sampleRate); const d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
   const src = a.createBufferSource(); src.buffer = buf; const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = .8;
-  const g = a.createGain(); g.gain.value = gain; src.connect(f).connect(g).connect(a.destination); src.start(t);
+  const g = a.createGain(); g.gain.value = gain; src.connect(f).connect(g).connect(bus('fx')); src.start(t);
 }
 // batidas recortadas do arquivo em Sounds/ (início de cada batida em segundos e pico medido)
 const HIT_CUTS = {
@@ -59,7 +66,7 @@ let HIT_BUS = null;
 function hitBus(a) {
   if (HIT_BUS) return HIT_BUS;
   const comp = a.createDynamicsCompressor(); comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = .002; comp.release.value = .12;
-  const g = a.createGain(); g.gain.value = .9; comp.connect(g).connect(a.destination);
+  const g = a.createGain(); g.gain.value = .9; comp.connect(g).connect(bus('hits'));
   return (HIT_BUS = comp);
 }
 function loadHitSounds(a) {
@@ -98,10 +105,10 @@ function sndHitSynth(power) {
   // saída com corte de agudos e um eco curto de ambiente aberto (menos seco)
   const out = a.createGain(); out.gain.value = .5 + power * .35;
   const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; lp.Q.value = .5;
-  out.connect(lp); lp.connect(a.destination);
+  out.connect(lp); lp.connect(bus('hits'));
   const dl = a.createDelay(.2); dl.delayTime.value = .045; const fb = a.createGain(); fb.gain.value = .22; const wet = a.createGain(); wet.gain.value = .28;
   const dlp = a.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 1400;
-  lp.connect(dl); dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dlp.connect(wet); wet.connect(a.destination);
+  lp.connect(dl); dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dlp.connect(wet); wet.connect(bus('hits'));
   // 'pop' oco e macio da bola despressurizada na face de carbono
   const len = Math.floor(a.sampleRate * .09), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (a.sampleRate * .016));
@@ -121,48 +128,72 @@ function sndWhistle(good) {
     const o = a.createOscillator(), g = a.createGain(); o.type = 'sine';
     o.frequency.value = good ? (i ? 880 : 660) : (i ? 330 : 440);
     g.gain.setValueAtTime(.0001, t + d); g.gain.exponentialRampToValueAtTime(.18, t + d + .02); g.gain.exponentialRampToValueAtTime(.0001, t + d + .2);
-    o.connect(g).connect(a.destination); o.start(t + d); o.stop(t + d + .22);
+    o.connect(g).connect(bus('fx')); o.start(t + d); o.stop(t + d + .22);
   });
 }
 // ---------- torcida (gravações reais, baixadas só quando precisam) ----------
-// ponto: vibração curta · forte: game/partida · titulo: vibração longa com palmas ritmadas · aplauso: quadra sem arquibancada
-const CROWD_FILES = { ponto: ['torcida-ponto.mp3', 'torcida-ponto2.mp3'], forte: ['torcida-forte.mp3'], titulo: ['torcida-titulo.mp3'], aplauso: ['aplauso.mp3'], fundo: ['torcida-fundo.mp3'] };
-const CROWD_BUF = {}; let crowdLast = null, crowdAmb = null;
+// leve: palmas e reação curta (ponto comum) · ponto: vibração (ponto bonito, game) · forte: set e partida · titulo: vibração
+// longa com palmas ritmadas · aplauso: quadra sem arquibancada. Vários trechos de cada (nunca o mesmo duas vezes seguidas)
+const CROWD_FILES = { leve: [1, 2, 3, 4, 5].map(i => 'torcida-leve' + i + '.mp3'), ponto: [1, 2, 3, 4].map(i => 'torcida-ponto' + i + '.mp3'), forte: [1, 2, 3, 4].map(i => 'torcida-forte' + i + '.mp3'),
+  titulo: ['torcida-titulo.mp3'], aplauso: ['aplauso.mp3', 'aplauso2.mp3'], fundo: ['torcida-fundo.mp3'] };
+const CROWD_BUF = {}, crowdPrev = {}; let crowdLast = null, crowdAmb = null;
+function crowdPick(kind) { const l = CROWD_FILES[kind]; let i = Math.floor(Math.random() * l.length); if (l.length > 1 && i === crowdPrev[kind]) i = (i + 1 + Math.floor(Math.random() * (l.length - 1))) % l.length; crowdPrev[kind] = i; return l[i]; }
 function crowdBuf(file, cb) {
   const c = CROWD_BUF[file]; if (c) { if (c.buf) cb(c.buf); else if (c.wait) c.wait.push(cb); return; }
   const a = ac(); if (!a) return; const e = (CROWD_BUF[file] = { buf: null, wait: [cb] });
   fetch(import.meta.env.BASE_URL + 'assets/som/' + file).then(r => (r.ok ? r.arrayBuffer() : Promise.reject())).then(ab => a.decodeAudioData(ab, b => { e.buf = b; e.wait.forEach(f => f(b)); e.wait = null; }, () => { e.wait = null; })).catch(() => { e.wait = null; });
 }
-// k: tamanho da vibração (1,2 ponto · 2 game · 3 partida · 4+ título) · crowd: lugares de torcida na arena (0 = quadra aberta)
-function sndCheer(k, crowd) {
+// k: tamanho do momento (1,2 ponto comum · 1,9 ponto bonito · 2,3 game · 2,9 set · 3,2 partida · 4+ título) · crowd: lugares de
+// torcida na arena (0 = quadra aberta) · m: de que lado a torcida está (acima de 1: ponto de quem ela apoia; abaixo: do outro)
+function sndCheer(k, crowd, m = 1) {
   if (S.muted || typeof window === 'undefined') return; const a = ac(); if (!a) return;
-  const now = a.currentTime;
-  if (crowdLast && now - crowdLast.t < 1.5) { if (k <= crowdLast.k) return; try { crowdLast.g.gain.setTargetAtTime(0, now, .15); crowdLast.src.stop(now + .6); } catch (e) {} } // (título logo depois do ponto: troca pela maior)
-  // quadra aberta (sem arquibancada): só palmas de quem está em volta, e só em game, partida e título
-  if (!crowd && k < 2) return;
-  const kind = !crowd ? 'aplauso' : k >= 4 ? 'titulo' : k >= 2 ? 'forte' : 'ponto';
-  const list = CROWD_FILES[kind], file = list[Math.floor(Math.random() * list.length)];
-  const vol = !crowd ? .3 : (kind === 'ponto' ? .2 : kind === 'forte' ? .38 : .55) * Math.min(1, .55 + crowd / 400);
-  const mark = (crowdLast = { t: now, k, g: null, src: null });
-  crowdBuf(file, buf => {
+  const now = a.currentTime, x = k * m;
+  if (crowdLast && now - crowdLast.t < 1.5) { if (x <= crowdLast.x) return; try { crowdLast.g.gain.setTargetAtTime(0, now, .15); crowdLast.src.stop(now + .6); } catch (e) {} } // (título logo depois do ponto: troca pela maior)
+  let kind, v;
+  if (!crowd) { if (x < 2.1) return; kind = 'aplauso'; v = .22 + .1 * Math.min(1, (x - 2) / 2); } // quadra aberta: só palmas de quem está em volta, em game, set, partida e título
+  else if (x >= 3.8) { kind = 'titulo'; v = .55; }
+  else if (x >= 2.6) { kind = 'forte'; v = .4; }
+  else if (x >= 1.75) { kind = 'ponto'; v = .26; }
+  else if (x >= .95) { kind = 'leve'; v = .15; }
+  else { if (Math.random() < .55) return; kind = 'leve'; v = .08; } // ponto de quem a torcida não apoia: quase nada
+  if (crowd) v *= Math.min(1, .55 + crowd / 400) * Math.max(.6, Math.min(1.1, .75 + .25 * m));
+  const mark = (crowdLast = { t: now, x, g: null, src: null });
+  crowdBuf(crowdPick(kind), buf => {
     if (S.muted || crowdLast !== mark || a.currentTime - now > 1.2) return; // (chegou tarde demais: melhor nada que fora de hora)
-    const src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.playbackRate.value = rand(.96, 1.04); g.gain.value = vol;
-    src.connect(g).connect(a.destination); src.start(); mark.g = g; mark.src = src;
+    const src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.playbackRate.value = rand(.94, 1.06); g.gain.value = v * rand(.85, 1.1);
+    src.connect(g).connect(bus('crowd')); src.start(); mark.g = g; mark.src = src;
   });
 }
 // burburinho da arquibancada: só entre os pontos e baixo; no saque e durante o ponto a torcida fica em silêncio (e a
-// vibração do ponto anterior some)
+// vibração do ponto anterior some). Fora da partida (menus), tudo da torcida se cala
 function sndCrowdAmb(on, inPoint) {
   if (typeof window === 'undefined' || !actx) return; // (o áudio só nasce depois de um toque do jogador)
   const now = actx.currentTime;
-  if (crowdLast && crowdLast.g && (inPoint || S.muted) && !crowdLast.cut) { crowdLast.cut = true; try { crowdLast.g.gain.setTargetAtTime(0, now, S.muted ? .05 : .35); crowdLast.src.stop(now + 2); } catch (e) {} }
+  if (crowdLast && crowdLast.g && (inPoint || S.muted || !on) && !crowdLast.cut) { crowdLast.cut = true; try { crowdLast.g.gain.setTargetAtTime(0, now, inPoint ? .35 : .08); crowdLast.src.stop(now + 2); } catch (e) {} }
   const v = on && !S.muted && !inPoint ? .05 : 0;
-  if (crowdAmb) { if (crowdAmb.g && crowdAmb.v !== v) { crowdAmb.v = v; crowdAmb.g.gain.setTargetAtTime(v, now, v ? .8 : .3); } return; }
+  if (crowdAmb) { if (crowdAmb.g && crowdAmb.v !== v) { crowdAmb.v = v; crowdAmb.g.gain.setTargetAtTime(v, now, v ? .8 : .15); } return; }
   if (!v) return;
   const amb = (crowdAmb = { g: null, v });
-  crowdBuf(CROWD_FILES.fundo[0], buf => { const a = actx, src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(amb.v, a.currentTime, .8); src.connect(g).connect(a.destination); src.start(); amb.g = g; });
+  crowdBuf(CROWD_FILES.fundo[0], buf => { const a = actx, src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(amb.v, a.currentTime, .8); src.connect(g).connect(bus('crowd')); src.start(); amb.g = g; });
 }
 CROWD_SND.cheer = sndCheer; CROWD_SND.amb = sndCrowdAmb;
+// ---------- música dos menus (faixas CC0; ver README) ----------
+// toca só nos menus, uma faixa depois da outra; some ao entrar na partida. Volume pelo mixer; S.settings.musicOff desliga
+const MUSIC = ['funky-house.mp3', 'beach-stage.mp3', 'feel-good-island.mp3'];
+let mus = null, musI = Math.floor(Math.random() * MUSIC.length), musTry = 0;
+function musicTick(inMenu) {
+  if (typeof Audio === 'undefined') return;
+  const v = S.muted || S.settings.musicOff ? 0 : vol('master') * vol('music') * .55, on = inMenu && v > 0;
+  if (!mus) { if (!on) return; const src = () => import.meta.env.BASE_URL + 'assets/musica/' + MUSIC[musI];
+    mus = new Audio(); mus.preload = 'none'; mus.volume = 0; mus.src = src();
+    mus.addEventListener('ended', () => { musI = (musI + 1) % MUSIC.length; mus.src = src(); mus.play().catch(() => {}); }); }
+  const cur = mus.volume, tgt = on ? v : 0, nv = Math.abs(tgt - cur) < .004 ? tgt : cur + (tgt - cur) * .06; mus.volume = Math.max(0, Math.min(1, nv));
+  const t = performance.now();
+  if (on && mus.paused && t - musTry > 1500) { musTry = t; mus.play().catch(() => {}); } // (antes do primeiro toque o navegador recusa: tenta de novo)
+  else if (!on && !mus.paused && mus.volume < .01) mus.pause();
+}
+// a cada quadro (19-loop): fora da partida a torcida se cala e a música entra
+function audioTick(inMenu) { if (inMenu) sndCrowdAmb(false, false); musicTick(inMenu); }
 // som do mar ao fundo
 let surf = null;
 function startSurf() {
@@ -174,8 +205,8 @@ function startSurf() {
   const g = a.createGain(); g.gain.value = .07;
   const lfo = a.createOscillator(); lfo.frequency.value = .11; const lg = a.createGain(); lg.gain.value = .05;
   lfo.connect(lg).connect(g.gain);
-  src.connect(f).connect(g).connect(a.destination); src.start(); lfo.start();
+  src.connect(f).connect(g).connect(bus('amb')); src.start(); lfo.start();
   surf = { g };
 }
 
-export { setMenuRes, HITS, ac, applyGfx, setResScale, getResScale, sndHit, sndSand, sndWhistle, surf };
+export { audioTick, applyVol, VOL_DEF, setMenuRes, HITS, ac, applyGfx, setResScale, getResScale, sndHit, sndSand, sndWhistle, surf };

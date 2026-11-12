@@ -130,7 +130,7 @@
     <!-- configurações gerais -->
     <section data-step="cfg" hidden>
       <div class="eyebrow">Configurações</div>
-      <div class="cfg-tabs" role="tablist"><button type="button" data-cfgt="tela" class="sel">Gráficos</button><button type="button" data-cfgt="cam">Câmera</button><button type="button" data-cfgt="ajuda">Ajudas na partida</button><button type="button" data-cfgt="jogo">Jogo e controles</button></div>
+      <div class="cfg-tabs" role="tablist"><button type="button" data-cfgt="tela" class="sel">Gráficos</button><button type="button" data-cfgt="cam">Câmera</button><button type="button" data-cfgt="ajuda">Ajudas na partida</button><button type="button" data-cfgt="jogo">Jogo e controles</button><button type="button" data-cfgt="som">Som</button></div>
       <div class="opts" data-cfgp="tela">
       <fieldset class="seg"><legend>Gráficos</legend><div class="pills">
         <input type="radio" name="gfx" id="gfxH" value="alto" checked><label for="gfxH">Alto</label>
@@ -175,6 +175,18 @@
         <label class="cr-field">Aviso de linha (perto ou fora da quadra) <select data-setting="lineWarn" class="cr-sel"><option value="on">Mostrar</option><option value="off">Esconder</option></select></label>
         <label class="chk"><input type="checkbox" id="aimArrow" checked> Mostrar a flecha de mira no chão (A/D lado, W funda / S curta) <kbd>V</kbd></label>
         <label class="cr-field">Nome do golpe na tela <select id="shotTextSel" class="cr-sel"><option value="completo">Completo</option><option value="discreto" selected>Discreto (menor e mais rápido)</option><option value="off">Desligado</option></select></label>
+      </div>
+      <div class="opts" data-cfgp="som" hidden>
+      <fieldset class="seg cfg-cam"><legend>Volume</legend>
+        <label class="cfg-row"><span>Geral</span><span class="cfg-rng"><input type="range" data-vol="master" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="cfg-row"><span>Música dos menus</span><span class="cfg-rng"><input type="range" data-vol="music" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="cfg-row"><span>Batidas na bola</span><span class="cfg-rng"><input type="range" data-vol="hits" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="cfg-row"><span>Torcida</span><span class="cfg-rng"><input type="range" data-vol="crowd" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="cfg-row"><span>Mar e ambiente</span><span class="cfg-rng"><input type="range" data-vol="amb" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="cfg-row"><span>Apito e efeitos</span><span class="cfg-rng"><input type="range" data-vol="fx" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+      </fieldset>
+      <label class="mix-chk"><input type="checkbox" data-music-on checked> Tocar música nos menus</label>
+      <p class="credit" style="margin:.2rem 0 0;font-size:.72rem;opacity:.7">Vale na hora. A tecla M liga e desliga todo o som.</p>
       </div>
       <div class="opts" data-cfgp="jogo" hidden>
       <div class="cr-field">Bolinha <div class="ball-pick" data-ballpick></div></div>
@@ -497,6 +509,13 @@
         <label class="pz-row"><span>Resolução</span><select id="pResSel" class="cr-sel"><option value="auto">Automática</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select></label>
         <label class="pz-row"><span>Gráficos</span><select id="pGfxSel" class="cr-sel"><option value="alto">Alto</option><option value="leve">Leve</option></select></label>
         <label class="pz-row pz-tgl pz-chk"><span>Mostrar FPS <kbd>F</kbd></span><input type="checkbox" id="pFps"><i></i></label>
+      </section>
+      <section class="pz-sec"><h4>Som</h4>
+        <label class="pz-row"><span>Geral</span><span class="cfg-rng"><input type="range" data-vol="master" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="pz-row"><span>Batidas</span><span class="cfg-rng"><input type="range" data-vol="hits" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="pz-row"><span>Torcida</span><span class="cfg-rng"><input type="range" data-vol="crowd" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="pz-row"><span>Ambiente</span><span class="cfg-rng"><input type="range" data-vol="amb" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
+        <label class="pz-row"><span>Efeitos</span><span class="cfg-rng"><input type="range" data-vol="fx" min="0" max="100" step="5" value="100"> <b>100%</b></span></label>
       </section>
     </div>
   </div>

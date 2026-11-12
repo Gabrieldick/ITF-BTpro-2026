@@ -109,5 +109,6 @@ Os módulos em `src/game/` ainda têm `// @ts-nocheck`: compilam como TypeScript
 - **Sons de batida** — freesound community.
 - **Torcida** (vibração e burburinho) — "Free Crowd Cheering Sounds", Gregor Quendel, CC BY 4.0 (opengameart.org), recortada.
 - **Palmas** — "Applause", leezh, CC BY 3.0 (opengameart.org), recortada e com volume ajustado.
+- **Música dos menus** (CC0, opengameart.org) — "Funky House", Of Far Different Nature; "Beach Stage", mintodog; "Feel Good Island Loop", antumdeluge.
 
 Nomes de atletas são paródias dos jogadores reais do circuito.

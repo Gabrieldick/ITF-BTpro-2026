@@ -1165,3 +1165,10 @@ body.caos-inv::after { content: ''; position: fixed; inset: 0; pointer-events: n
 @keyframes czPulse2 { from { opacity: .6; } to { opacity: 1; } }
 body.in-replay #caosAlert, body.spectate #caosAlert, body.in-replay.caos-inv::after { display: none !important; }
 @media (max-width: 700px) { #caosAlert { top: 18%; white-space: normal; max-width: 92vw; } }
+
+/* mixer de som (configurações) */
+.cfg-cam label.cfg-row > span:first-child { min-width: 150px; }
+.cfg-cam label.cfg-row { display: flex; align-items: center; gap: 12px; }
+.cfg-cam label.cfg-row .cfg-rng { flex: 1; }
+.mix-chk { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .86rem; margin-top: 4px; }
+.mix-chk input { width: 18px; height: 18px; accent-color: var(--accent, #ff6a00); }

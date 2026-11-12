@@ -8,7 +8,7 @@ import { camera, camera2 } from './02-render';
 import { swingVar, predictPt } from './04-poses';
 import { human, partner, cpuA } from './06-modelos';
 import { ball, BALL_STYLES, setBallStyle, drawBall } from './07-glb';
-import { ac, surf, applyGfx } from './08-audio';
+import { ac, surf, applyGfx, applyVol, VOL_DEF } from './08-audio';
 import { $, dupla, el, feedback, isTouch, shotBtns, shotFeedback, COURTS } from './09-interface';
 import { startJump, startToss } from './11-mira';
 import { caosActivate, caosGold } from './23-caos';
@@ -616,7 +616,17 @@ function syncCamMenu() {
 function toggleSound() {
   S.muted = !S.muted; el.btnSnd.firstChild.textContent = S.muted ? 'Som desligado' : 'Som ligado';
   if (surf) surf.g.gain.value = 0;
+  applyVol();
 }
+// mixer de som (configurações e pausa): um controle por canal; vale na hora e fica salvo
+function bindMixer() {
+  document.querySelectorAll('input[data-vol]').forEach(e => { const k = e.dataset.vol, cur = () => { const v = (S.settings.vol || {})[k]; return v == null ? VOL_DEF[k] : v; };
+    const show = () => { e.value = String(Math.round(cur() * 100)); const o = e.parentElement.querySelector('b, small'); if (o) o.textContent = Math.round(cur() * 100) + '%'; };
+    show(); e.addEventListener('input', () => { (S.settings.vol = S.settings.vol || {})[k] = +e.value / 100; applyVol(); document.querySelectorAll('input[data-vol="' + k + '"]').forEach(x => { x.value = e.value; const o = x.parentElement.querySelector('b, small'); if (o) o.textContent = e.value + '%'; }); });
+    e.addEventListener('change', () => saveSettings()); });
+  document.querySelectorAll('input[data-music-on]').forEach(e => { e.checked = !S.settings.musicOff; e.addEventListener('change', () => { S.settings.musicOff = !e.checked; saveSettings(); document.querySelectorAll('input[data-music-on]').forEach(x => { x.checked = e.checked; }); }); });
+}
+bindMixer();
 // online: a partida não para (o outro jogador continua); a pausa só abre o menu por cima
 function setPaused(v) { if (!inPlay() && v) return; { const sr = document.getElementById('btnSimRest'); if (sr) sr.hidden = !(S.careerActive && !NET.role); } if (NET.role) { S.paused = false; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } return; } S.paused = v; el.pause.hidden = !v; if (v) { syncAssistButtons(); $('btnResume').focus(); } }
 function togglePause() { if (!inPlay()) return; setPaused(NET.role ? el.pause.hidden : !S.paused); }

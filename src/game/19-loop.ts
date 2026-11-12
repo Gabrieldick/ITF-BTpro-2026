@@ -11,7 +11,7 @@ import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
 import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
 import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, diveMark, fpArm, fpWrist, loadModels, makePreview } from './07-glb';
-import { HITS, applyGfx, getResScale, setResScale, setMenuRes } from './08-audio';
+import { HITS, applyGfx, audioTick, getResScale, setResScale, setMenuRes } from './08-audio';
 import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
 import { MTR, applyCam, inPlay, setPaused, syncMenu, saveSettings } from './12-controles';
 import { step } from './17-bola';
@@ -88,7 +88,7 @@ function frame(now) {
   else if (!S.paused && inPlay()) recordTick(dt);
   updateVisuals(vdt);
   const t2 = performance.now(); FPS.ms[1] += t2 - t1;
-  updateArena(dt);
+  updateArena(dt); audioTick(document.body.classList.contains('in-menu'));
   updateCamera(dt);
   if (S.mode === 'replay') replayCamera(dt);
   if (S.mode === 'ceremony') ceremonyCam(dt);

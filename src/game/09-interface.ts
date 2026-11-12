@@ -631,13 +631,25 @@ function pointTo(w, reason, kind) {
   pointShow(w, ev, reason, isTitle);
   if (NET.onPoint) NET.onPoint(w, ev, reason);
 }
+// para quem a torcida torce: a dupla com mais gente do país da arena (carreira: país do torneio; fora dela, Brasil ou o país
+// da arena escolhida); empate → na carreira, você quando já tem fama; senão uma leve simpatia por um dos lados
+function crowdFavFor() {
+  const ar = arenaFor(), loc = ar.loc || 'BRA', home = t => { const tm = $s.teams[t] || []; return tm.filter(p => p.char && (p.char.pais || 'BRA') === loc).length / Math.max(1, tm.length); };
+  const h0 = loc === 'MUN' ? 0 : home(0), h1 = loc === 'MUN' ? 0 : home(1);
+  if (Math.abs(h0 - h1) > .01) return { team: h0 > h1 ? 0 : 1, k: Math.max(.55, Math.min(1, Math.abs(h0 - h1) * 1.2)) };
+  const fame = S.careerActive && $s.CR ? $s.CR.fama || 0 : 0;
+  if (fame >= 35) return { team: 0, k: Math.min(.7, fame / 100) };
+  return { team: Math.random() < .5 ? 0 : 1, k: .25 };
+}
 // placar, apito e aviso do ponto, do ponto de vista de quem está na tela (time 0 = você);
 // o convidado do online chama direto com o vencedor já convertido para o lado dele
 function pointShow(w, ev, reason, isTitle) {
   renderBoard();
   // quem só assiste (online) vê o nome de quem fez o ponto, nunca "seu"
   const mine = w === 0 && !S.spectate;
-  sndWhistle(mine); cheerArena(ev === 'match' ? 3 : ev === 'game' ? 2 : 1.2);
+  // torcida: reação do tamanho do momento (ponto comum = palmas leves) e com lado (S.crowdFav)
+  if (!S.crowdFav) S.crowdFav = crowdFavFor();
+  sndWhistle(mine); cheerArena(ev === 'match' ? 3.2 : ev === 'set' || ev === 'stb' || ev === 'tb' ? 2.9 : ev === 'game' ? 2.3 : S.ptBig ? 1.9 : S.rally < 3 ? 1.0 : 1.2, w);
   landRing.visible = false;
   const g = S.score.games;
   const d = dupla(), of = S.spectate ? 'de ' + teamNames(w) : oppOf();
@@ -748,7 +760,7 @@ function arenaFor() {
     let master = '';
     if (t.tier >= 4 && !t.special) { let h = 7; for (const ch of (t.name || '') + ($s.CR.season || 1)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
       if (t.tier >= 6 || h % 100 < (t.tier >= 5 ? 85 : 65)) master = TOUR_MASTERS[(h >>> 8) % TOUR_MASTERS.length]; }
-    return Object.assign({ size, indoor, hall, urban, master, ref: t.tier >= 6 && !t.special && crIsSemiOrFinal(), amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
+    return Object.assign({ loc, size, indoor, hall, urban, master, ref: t.tier >= 6 && !t.special && crIsSemiOrFinal(), amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO', master: TOUR_MASTERS[(S.champSeed || 0) % TOUR_MASTERS.length] }, ARENA_PAL.BRA);
   // partida rápida e online: modelo de quadra escolhido (no online vale o de quem criou a sala)
@@ -759,20 +771,20 @@ const COURTS = {
   praia: { nome: 'Praia (padrão)', a: { size: 0 } },
   amador: { nome: 'Torneio amador (público e quadras ao lado)', a: Object.assign({ size: 0, amateur: true, text: 'TORNEIO DA PRAIA' }, { line: '#1f4fb8', trim: '#ffd23f', sand: '#ffffff', board: ['#0a7d3c', '#ffd23f'] }) },
   brasil: { nome: 'Arena Brasil', a: Object.assign({ size: 2, text: 'BEACH TENNIS BRASIL' }, ARENA_PAL.BRA) },
-  italia: { nome: 'Arena Itália', a: Object.assign({ size: 2, text: 'BEACH TENNIS ITALIA' }, ARENA_PAL.ITA) },
-  espanha: { nome: 'Arena Espanha', a: Object.assign({ size: 2, text: 'BEACH TENIS ESPAÑA' }, ARENA_PAL.ESP) },
-  franca: { nome: 'Arena França', a: Object.assign({ size: 2, text: 'BEACH TENNIS FRANCE' }, ARENA_PAL.FRA) },
-  portugal: { nome: 'Arena Portugal', a: Object.assign({ size: 2, text: 'BEACH TÉNIS PORTUGAL' }, ARENA_PAL.POR) },
-  aruba: { nome: 'Arena Aruba', a: Object.assign({ size: 2, text: 'ARUBA BEACH TENNIS' }, ARENA_PAL.ARU) },
+  italia: { nome: 'Arena Itália', a: Object.assign({ loc: 'ITA', size: 2, text: 'BEACH TENNIS ITALIA' }, ARENA_PAL.ITA) },
+  espanha: { nome: 'Arena Espanha', a: Object.assign({ loc: 'ESP', size: 2, text: 'BEACH TENIS ESPAÑA' }, ARENA_PAL.ESP) },
+  franca: { nome: 'Arena França', a: Object.assign({ loc: 'FRA', size: 2, text: 'BEACH TENNIS FRANCE' }, ARENA_PAL.FRA) },
+  portugal: { nome: 'Arena Portugal', a: Object.assign({ loc: 'POR', size: 2, text: 'BEACH TÉNIS PORTUGAL' }, ARENA_PAL.POR) },
+  aruba: { nome: 'Arena Aruba', a: Object.assign({ loc: 'ARU', size: 2, text: 'ARUBA BEACH TENNIS' }, ARENA_PAL.ARU) },
   coberta: { nome: 'Arena coberta (sem vento)', a: Object.assign({ size: 0, amateur: true, indoor: true, text: 'ARENA COBERTA' }, ARENA_PAL.BRA) },
   ginasio: { nome: 'Point pequeno (coberto, sem vento)', a: Object.assign({ size: 0, indoor: true, hall: 'small', text: 'POINT DO BEACH' }, ARENA_PAL.BRA) },
   urbana: { nome: 'Arena na praça (cidade, sem praia)', a: Object.assign({ size: 2, urban: true, text: 'BEACH TENNIS NA PRAÇA' }, ARENA_PAL.BRA) },
-  estadio: { nome: 'Estádio do Mundial', a: Object.assign({ size: 3, text: 'CAMPEONATO MUNDIAL' }, ARENA_PAL.MUN) },
+  estadio: { nome: 'Estádio do Mundial', a: Object.assign({ loc: 'MUN', size: 3, text: 'CAMPEONATO MUNDIAL' }, ARENA_PAL.MUN) },
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
   S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; q.sta = 1; q.staTired = 0; });
-  S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; // lição do tutorial: tudo em 1 estrela (só nesta partida)
+  S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; S.crowdFav = null; // lição do tutorial: tudo em 1 estrela (só nesta partida)
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');
   assignCharacters();
   if (!guest) setupLocal2(); // 2 jogadores no mesmo PC (partida rápida): o controle fica com o jogador 2
