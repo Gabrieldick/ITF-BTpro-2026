@@ -109,6 +109,7 @@ Os módulos em `src/game/` ainda têm `// @ts-nocheck`: compilam como TypeScript
 - **Sons de batida** — freesound community.
 - **Torcida** (vibração e burburinho) — "Free Crowd Cheering Sounds", Gregor Quendel, CC BY 4.0 (opengameart.org), recortada.
 - **Palmas** — "Applause", leezh, CC BY 3.0 (opengameart.org), recortada e com volume ajustado.
+- **Palmas de plateia** — "Applause in a large hall or church", expl0it3r, CC0 (opengameart.org), recortada e misturada com a torcida acima.
 - **Trilha dos menus** — lista em `public/assets/musica/trilha.json` (para tirar ou trocar uma faixa, edite esse arquivo). As faixas foram só convertidas de formato e niveladas de volume:
   - "Samba pro seu dia" — Madalena Moog (MPB / samba-rock) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/902459
   - "Samba Groove" — Regra 4 (Samba) · [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5/br/) · https://www.jamendo.com/track/821218

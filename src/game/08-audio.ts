@@ -133,8 +133,9 @@ function sndWhistle(good) {
   });
 }
 // ---------- torcida (gravações reais, baixadas só quando precisam) ----------
-// leve: palmas e reação curta (ponto comum) · ponto: vibração (ponto bonito, game) · forte: set e partida · titulo: vibração
-// longa com palmas ritmadas · aplauso: quadra sem arquibancada. Vários trechos de cada (nunca o mesmo duas vezes seguidas)
+// Plateia de tênis: mais palmas que gritos. leve: só palmas, curtas (ponto comum) · ponto: palmas com um pouco de vibração
+// (ponto bonito, game) · forte: palmas cheias com vibração (set e partida) · titulo: vibração longa com palmas · aplauso: quadra
+// sem arquibancada. Vários trechos de cada (nunca o mesmo duas vezes seguidas)
 const CROWD_FILES = { leve: [1, 2, 3, 4, 5].map(i => 'torcida-leve' + i + '.mp3'), ponto: [1, 2, 3, 4].map(i => 'torcida-ponto' + i + '.mp3'), forte: [1, 2, 3, 4].map(i => 'torcida-forte' + i + '.mp3'),
   titulo: ['torcida-titulo.mp3'], aplauso: ['aplauso.mp3', 'aplauso2.mp3'], fundo: ['torcida-fundo.mp3'] };
 const CROWD_BUF = {}, crowdPrev = {}; let crowdLast = null, crowdAmb = null;
