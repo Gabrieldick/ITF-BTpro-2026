@@ -148,7 +148,7 @@ ACT.smash_costas = ACT.smash_recuo;
 // lado, quase de costas para a rede, e o braço quase esticado faz um arco largo por fora — sai de baixo do lado da
 // raquete, sobe por cima e em volta da cabeça e encontra a bola no alto, na linha (ou atrás) dos ombros, com o tronco
 // tombando para o lado da mão livre; termina descendo pelo lado esquerdo. A mão livre só equilibra
-ACT.smash_gancho = [READY,
+const GANCHO = [READY,
   P({ rh: [.56, .42, .14], rp: [.9, -.3, .5], wx: -.5, wr: .6, lh: [-.3, .7, -.28], lp: [-.8, -.2, .3], tw: -.4, hp: -.25, yw: -1.0, lean: -.12, bend: .14, crouch: .22, stag: .3 }),
   P({ rh: [.5, .8, .18], rp: [.9, .2, .5], wx: -.4, wr: .8, lh: [-.36, .55, -.22], lp: [-.8, -.2, .3], tw: -.32, hp: -.1, yw: -1.1, lean: -.2, bend: .08, crouch: .16, stag: .25 }),
   P({ rh: [.02, 1.0, .1], rp: [-.3, .9, .5], wx: -.4, wr: .95, lh: [-.42, .42, -.04], lp: [-.8, -.3, .3], tw: -.06, hp: .12, yw: -1.1, lean: -.22, bend: -.26, crouch: .08 }),
@@ -187,7 +187,9 @@ ACT.lob_alto = [READY, ACT.smash_bandeja[1], ACT.smash_bandeja[2], ACT.smash_ban
 // contato e a terminação. Gancho: mesmo smash (a terminação vem do efeito: pancada, slice ou topspin). Bandeja: arma como
 // o smash e termina contida
 for (const k of ['smash_avanco', 'smash_recuo', 'smash_lateral', 'smash_bandeja']) { ACT[k][1] = ACT.smash[1]; ACT[k][2] = ACT.smash[2]; }
-ACT.smash_gancho = ACT.smash;
+// gancho: arma como o smash; o contato é em cima/atrás do ombro da mão livre, com o tronco tombando para esse lado, e a
+// terminação desce pelo lado esquerdo
+ACT.smash_gancho = [READY, ACT.smash[1], ACT.smash[2], P({ ...GANCHO[3], yw: -.45 }), P({ ...GANCHO[4], yw: -.3 }), READY];
 // voleio de forehand (bola no peito, lado da raquete): curto e compacto, quase só braço e raquete; a raquete sobe um
 // pouco atrás do ombro (sem girar o corpo), o contato é na frente com um passo de leve e a mão livre abre para equilibrar
 ACT.smash_vfh = [READY,

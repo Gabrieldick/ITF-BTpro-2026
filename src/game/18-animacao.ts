@@ -88,6 +88,15 @@ function armIK(p, arm, sh, target, pole) {
 const RLX_WX = .55, RLX_WR = .9; // punho andando solto
 const IDL_WX = 1.1, IDL_WR = 0; // punho com o braço caído: raquete apontando para baixo/frente
 const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
+// forma do golpe pela posição da bola: curta por baixo (raquete deitada) na bola baixa; voleio de backhand quando a bola
+// vem no lado contrário; leque (ventaglio) no backhand acima do ombro; gancho no smash com a bola passando para o lado da mão livre
+function visKey(ak, v) {
+  if (ak === 'curta' && v.y < .85) return 'curta_baixa';
+  if (ak === 'smash_vfh' && v.side < -.15) ak = 'smash_vbh';
+  if (ak === 'smash_vbh' && v.y >= 1.5) return 'smash_ventaglio';
+  if (/^smash(_salto|_curto|_avanco|_lateral)?$/.test(ak) && v.side < -.3) return 'smash_gancho';
+  return ak;
+}
 function sideOf(p, pt) { const q = pt || ball.pos; return (q.x - p.pos.x) * (p.team === 0 ? 1 : -1) * (p.lefty ? -1 : 1); }
 const _a = new V3(), _b = new V3(), _c = new V3(), _e = new V3(), _g = new V3(), _v2 = new V3(), _q1 = new THREE.Quaternion(), _hq = new THREE.Quaternion();
 // mola amortecida (pouco abaixo do crítico): a postura chega com velocidade, passa um tico e assenta — o golpe tem
@@ -160,7 +169,11 @@ function animateAthlete(p, dt) {
     // carregando a barra: a preparação já é a do golpe que a situação pede (gancho, verônica, bandeja…)
     const v = (p.chVar = ball.state === 'live' && S.lastTeam !== p.team ? provVar(p, ty) : ''), ck = ty === 'smash' ? 'smash' : ACT[ty + '_' + v] && !mirrorKey(ty + '_' + v) ? ty + '_' + v : ty; // smash: arma sempre como o smash normal
     poseAt(ACT[ck], uOf(ck), .3 * clamp(M.t / .18, 0, 1), pose); p.animK = 'charge'; p.animU = clamp(M.t / .18, 0, 1); p.animAk = ck; p.animMir = false; }
-  else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); let ak = swingKey(p); mirror = mirrorKey(ak) && p.swing.side < -.15; if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh'; else if ((ak === 'defesa' || ak === 'defesa_alta') && !mirror) ak += '_fh'; // defesa de forehand: no jeito da curta de forehand
+  else if (p.swing.t >= 0) { swingU = clamp(p.swing.t / p.swing.dur, 0, 1); let ak = swingKey(p);
+    // variação só de imagem (não muda o efeito do golpe): onde a bola vai estar no contato — altura e lado — escolhe a forma do golpe
+    if (!p.swVis || swingU < (p.swU0 ?? 1) - .2) { const pt = ball.state === 'live' && !p.swing.hit ? predictPt(p) : ball.pos; p.swVis = { y: pt.y, side: p.swing.side }; }
+    ak = visKey(ak, p.swVis);
+    mirror = mirrorKey(ak) && p.swing.side < -.15; if (ak === 'curta_alta' && !mirror) ak = 'curta_alta_fh'; else if ((ak === 'defesa' || ak === 'defesa_alta') && !mirror) ak += '_fh'; // defesa de forehand: no jeito da curta de forehand
     // terminação no ritmo de cada golpe: depois do contato a pose anda mais devagar nos golpes grandes (rate < 1) e continua
     // depois do fim do golpe no jogo (p.tail, abaixo) — nada de voltar de uma vez para a espera
     if (p.swing.hit && p.contact && p.swCuId !== p.contact.hitId) { p.swCuId = p.contact.hitId; p.swCu = p.contact.u; }
@@ -275,9 +288,14 @@ function animateAthlete(p, dt) {
     reachS = Math.sign(_e.x) || 1; reachLow = clamp((.9 - _e.y) / .6, 0, 1);
   }
   p.reachK = (p.reachK || 0) + (reachK - (p.reachK || 0)) * Math.min(1, dt * 14);
+  // altura do contato muda o corpo: bola baixa → agacha e inclina mais; bola alta (fora do smash) → o corpo sobe e estica
+  let hgtT = 0;
+  if (swingU >= 0 && swingU < .85 && p.swVis && !/^smash($|_(?!v|reflexo|spinto))/.test(p.curAk || '')) { const y = p.swing.hit && p.contact ? p.contact.y : p.swVis.y, w = clamp(1 - Math.abs(swingU - .45) / .45, 0, 1);
+    hgtT = (y < .6 ? clamp((.6 - y) / .4, 0, 1) : y > 1.25 ? -clamp((y - 1.25) / .6, 0, 1) : 0) * w; }
+  p.hgtK = (p.hgtK || 0) + (hgtT - (p.hgtK || 0)) * Math.min(1, dt * 12);
   const defLow = swingU >= 0 && p.swing.type === 'defesa' ? Math.sin(Math.PI * clamp(swingU, 0, 1)) * .09 : 0; // na defesa o corpo abaixa
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
-  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + (p.hgtK > 0 ? p.hgtK * .15 : p.hgtK * .1) + p.lowK * .11 * (1 - run * .5) + defLow;
   const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
@@ -293,7 +311,7 @@ function animateAthlete(p, dt) {
   p.hpY = (pose.hp || 0) + p.bhTw * .35;
   m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6) + p.hpY, Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
-  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .17 + diveK * .75 + p.reachK * (.15 + reachLow * .35)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.bhTw * .65 + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - prA * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
+  m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .17 + diveK * .75 + p.reachK * (.15 + reachLow * .35) + (p.hgtK > 0 ? p.hgtK * .22 : p.hgtK * .12)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.bhTw * .65 + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - prA * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: cada pé fica plantado no mundo até ficar longe de onde deveria estar (posição da pose + um pouco à frente, onde o
