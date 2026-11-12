@@ -82,8 +82,11 @@ def cycle(name, codes, f0=None, f1=None, tmin=.45, tmax=1.5, mirror=False, ncyc=
         add(nm, frames(c, a, b, True, mr), c.fps, loop=1, vel=[round(float(-v[0] * sx), 3), round(float(-v[2]), 3)], src=code, de=[int(a), int(b)], erro=round(float(d), 3))
 
 
-def shot(name, code, a, b, mirror=False):
-    c = load(code); add(name, frames(c, a, min(b, c.n), False, mirror), c.fps, loop=0, src=code, de=[int(a), int(b)])
+def shot(name, code, a, b, mirror=False, arm=None, hit=None):
+    """trecho de uma vez só (a, b, arm, hit em quadros do arquivo original); arm = fim da preparação, hit = contato/soltura"""
+    c = load(code); st = int(round(1 / c.b.dt / c.fps)); kw = {}
+    if arm is not None: kw = dict(keys=[round((arm - a) * c.b.dt, 4), round((hit - a) * c.b.dt, 4), round((b - a) * c.b.dt, 4)])
+    add(name, frames(c, a // st, min(b // st + 1, c.n), False, mirror), c.fps, loop=0, src=code, de=[int(a), int(b)], **kw)
 
 
 print('ciclos de deslocamento')
@@ -91,8 +94,15 @@ print('ciclos de deslocamento')
 cycle('walk', ['35_01', '35_02', '07_01'])
 cycle('jog', ['35_17', '35_18', '16_35', '16_36'], tmin=.4)
 cycle('run', ['16_45', '16_46', '127_06', '127_08', '09_01', '09_02', '09_04'], tmin=.35, cond=lambda v: v[2] > 3.4)
-cycle('shufL', ['102_28', '141_33', '143_40'], tmin=.3, tmax=1.2, cond=lambda v: v[0] > 1.0 and abs(v[2]) < .7, also_mirror='shufR')
+# passo lateral (anda de lado, pé com pé); no jogo ele acelera e a base abaixa para virar o deslocamento de defesa
+# (as capturas de defesa do basquete, 102_28/78_30, trocam de direção a cada 2 passos: não dão um ciclo limpo)
+cycle('sideL', ['141_33', '143_40'], tmin=.3, tmax=1.2, cond=lambda v: v[0] > 1.0 and abs(v[2]) < .7, also_mirror='sideR')
 cycle('back', ['141_31', '143_39', '76_11'], tmin=.35, tmax=1.4, cond=lambda v: v[2] < -.9 and abs(v[0]) < .5)
+
+print('corpo dos golpes (gestos reais: o corpo vem daqui, a mão da raquete continua a do jogo)')
+shot('throw', '141_11', 208, 368, arm=288, hit=297)   # arremesso por cima → smash e saque
+shot('toss', '124_12', 56, 240, arm=120, hit=158)     # arremesso por baixo → lob, defesa e curta de forehand
+shot('disc', '79_92', 344, 440, arm=380, hit=393)     # lançamento de disco (backhand) → golpes de backhand
 
 c0 = load('35_01')
 rest = {g: [round(float(x), 4) for x in (c0.rest_dir[g] * [-1, 1, -1])] for g, m in BONES}

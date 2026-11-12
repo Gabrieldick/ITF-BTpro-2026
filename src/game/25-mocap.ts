@@ -112,10 +112,10 @@ function locoWeights(vx, vf, sp, W) {
   const sw = Math.abs(C.walk.vel[1]), sj = Math.abs(C.jog.vel[1]), sr = Math.abs(C.run.vel[1]);
   let ww = 0, wj = 0, wr = 0;
   if (sp <= sw) ww = 1; else if (sp < sj) { wj = (sp - sw) / (sj - sw); ww = 1 - wj; } else if (sp < sr) { wr = (sp - sj) / (sr - sj); wj = 1 - wr; } else wr = 1;
-  const fwd = C.back ? wF : wF + wB, lat = C.shufR && C.shufL;
+  const fwd = C.back ? wF : wF + wB, lat = C.sideR && C.sideL;
   W.walk = fwd * ww; W.jog = fwd * wj; W.run = fwd * wr;
   if (C.back) W.back = wB;
-  if (lat) { W.shufR = wR; W.shufL = wL; } else { W.walk += (wR + wL) * (ww + wj * .5); W.jog += (wR + wL) * (wj * .5 + wr); }
+  if (lat) { W.sideR = wR; W.sideL = wL; } else { W.walk += (wR + wL) * (ww + wj * .5); W.jog += (wR + wL) * (wj * .5 + wr); }
   return locoStats(W);
 }
 const LS = { T: 1, v: 1 };
@@ -126,82 +126,206 @@ function locoStats(W) {
   LS.T = T / tot; LS.v = v / tot; return LS;
 }
 
+// ---------- corpo dos golpes ----------
+// cada golpe do jogo usa o corpo de um gesto real parecido: arremesso por cima (smash, saque), arremesso por baixo (lob,
+// defesa e curta de forehand) e lançamento de disco (backhand). Devolve [trecho, peso] ou null (bloqueios e voleios curtos)
+function coreFor(p) {
+  if (!p.animK) return null;
+  const ak = p.animAk || '';
+  if (/reflexo|bloqueio|vfh|vbh|spinto/.test(ak)) return null;
+  // peso moderado: o gesto real soma articulação de tronco e transferência de peso; a explosão do golpe continua a do jogo
+  if (/ventaglio|veronica/.test(ak)) return ['disc', .4];
+  if (ak === 'smash_saquebaixo') return ['toss', .55];
+  if (ak.startsWith('smash')) return ['throw', ak === 'smash_bandeja' ? .35 : .45];
+  if (p.animMir) return ['disc', ak.startsWith('lob') ? .55 : .5];
+  return ['toss', ak.startsWith('lob') ? .6 : ak.startsWith('curta') ? .4 : .5];
+}
+// fase do golpe do jogo (0 → .3 armado → .45 contato → 1) → tempo no gesto (0 → fim da preparação → soltura → fim)
+function coreTime(p, clip) {
+  const tA = clip.keys[0], tH = clip.keys[1], tE = clip.keys[2], u = p.animU || 0;
+  if (p.animK === 'toss' || p.animK === 'charge') return tA * u;            // lançamento do saque / barra carregando = preparação
+  if (p.animAk === 'smash_saque') return u <= .45 ? tA + (tH - tA) * (u / .45) : tH + (tE - tH) * ((u - .45) / .55); // a batida do saque já começa armada
+  return u <= .3 ? tA * (u / .3) : u <= .45 ? tA + (tH - tA) * ((u - .3) / .15) : tH + (tE - tH) * ((u - .45) / .55);
+}
+// espelha a pose (canhoto): troca os lados e reflete as rotações
+const PAIRS = [[6, 10], [7, 11], [8, 12], [9, 13], [14, 18], [15, 19], [16, 20], [17, 21]];
+function mirrorPose(o) {
+  const q = o.q, p = o.p;
+  for (let b = 0; b < NB; b++) { q[b * 4 + 1] = -q[b * 4 + 1]; q[b * 4 + 2] = -q[b * 4 + 2]; }
+  for (const [a, b] of PAIRS) for (let k = 0; k < 4; k++) { const t = q[a * 4 + k]; q[a * 4 + k] = q[b * 4 + k]; q[b * 4 + k] = t; }
+  for (let k = 0; k < NP; k++) p[k * 3] = -p[k * 3];
+  for (const [a, b] of [[1, 3], [2, 4]]) for (let k = 0; k < 3; k++) { const t = p[a * 3 + k]; p[a * 3 + k] = p[b * 3 + k]; p[b * 3 + k] = t; }
+}
+const CORE = newPose(), CORE0 = {};
+function core0(name) { // posição do quadril no começo do gesto (o deslocamento do peso é medido a partir dela)
+  if (!CORE0[name]) { resetPose(TMP); sample(MC.clips[name], 0, 1, TMP); finishPose(TMP); CORE0[name] = [TMP.p[0], TMP.p[1], TMP.p[2]]; }
+  return CORE0[name];
+}
+
 // ---------- aplica no esqueleto ----------
 const FEET = [['LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 1, 2], ['RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase', 3, 4]];
+const KEEPQ = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase'];
+const _wr = new V3(), _el = new V3(), _hgq = new THREE.Quaternion(), _s1 = new V3(), _s2 = new V3();
 function mocapDrive(p, dt) {
   if (!MC.ok || !p.skin || !p.model.group.visible) return;
   const k = p.skin, B = k.B, m = p.model;
   if (!k.mc) { setup(p); return; }
   const mc = k.mc, dbg = S.mcDebug;
-  // quanto a captura manda: pela velocidade; fora em mergulho, salto, lançamento do saque, comemoração e cerimônia
+  // quanto a captura de deslocamento manda: pela velocidade; fora em mergulho, salto, lançamento do saque e cerimônia
   const sp = Math.hypot(p.vel.x, p.vel.z);
   const sw = p.swing, acting = sw.t >= 0 || p.charging || (p.tail ? 1 : 0);
   const blocked = !!p.dive || p.jump > 0 || (S.mode === 'toss' && S.serverPlayer === p) || S.mode === 'ceremony' || (p.split > 0) || !!p.forceYaw;
   let Wt = blocked ? 0 : smooth(.35, 1.1, sp);
-  if (dbg) Wt = 1;
+  if (dbg) Wt = dbg.core ? 0 : 1;
   mc.W += (Wt - mc.W) * Math.min(1, dt * (Wt > mc.W ? 9 : 7));
   mc.act += ((acting ? 1 : 0) - mc.act) * Math.min(1, dt * 12);
   const W = mc.W;
-  if (W < .004) { mc.lock[0].on = mc.lock[1].on = 0; return; }
-  // velocidade no referencial do corpo
+  // corpo do golpe: entra junto com o golpe e sai aos poucos depois dele
+  const cf = p.dive ? null : coreFor(p), cT = cf ? cf[1] : 0;
+  if (cf) mc.coreClip = cf[0];
+  mc.wC = (mc.wC || 0) + (cT - (mc.wC || 0)) * Math.min(1, dt * (cT > (mc.wC || 0) ? 14 : 5));
+  const wC = MC.clips[mc.coreClip] ? mc.wC : 0;
+  if (W < .004 && wC < .004) { // parado e sem golpe: só o ritmo dos ombros
+    mc.lock[0].on = mc.lock[1].on = 0;
+    const Hh = B[(p.lefty ? 'Left' : 'Right') + 'Hand']; Hh.getWorldPosition(_wr); mc.rk = (mc.rk || new V3()).copy(k.racket.position).sub(_wr);
+    shoulders(p, k, B, mc, dt); Hh.getWorldPosition(_e); k.racket.position.copy(_e).add(mc.rk); return;
+  }
   m.group.getWorldQuaternion(_qg); m.group.getWorldPosition(_gp);
-  _a.set(p.vel.x, 0, p.vel.z).applyQuaternion(_q.copy(_qg).invert());
-  let vx = _a.x * (p.lefty ? 1 : 1), vf = -_a.z;
-  if (dbg) { vx = dbg.vx || 0; vf = dbg.vf == null ? 1.3 : dbg.vf; }
-  const spd = dbg ? Math.hypot(vx, vf) : sp;
-  const WS = mc.ws || (mc.ws = {});
-  const lw = locoWeights(vx, vf, Math.max(spd, .2), WS);
-  const rate = clamp(spd / (lw.v || 1), .6, 1.45);
-  mc.phase = (mc.phase + dt * rate / Math.max(.2, lw.T)) % 1; if (!(mc.phase >= 0)) mc.phase = 0;
-  resetPose(POSE);
-  for (const n in WS) if (WS[n] > .004) sample(MC.clips[n], mc.phase, WS[n], POSE);
-  if (dbg && dbg.clip && MC.clips[dbg.clip]) { resetPose(POSE); sample(MC.clips[dbg.clip], dbg.t != null ? dbg.t : mc.phase, 1, POSE); }
-  finishPose(POSE);
   const r = (k.leg[0] + k.leg[1]) / MC.meta.leg; // escala da captura para as pernas deste jogador
-  // poses do jogo (driveSkin) que serão misturadas
-  const hip = B.Hips, wq = mc.wq, keep = ['Neck', 'Head'];
-  for (const n of ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftFoot', 'RightFoot', 'LeftToeBase', 'RightToeBase']) (wq[n] || (wq[n] = new THREE.Quaternion())), B[n].getWorldQuaternion(wq[n]);
+  let latW = 0, spd = sp;
+  if (W >= .004) {
+    // velocidade no referencial do corpo → mistura dos ciclos e ritmo da passada
+    _a.set(p.vel.x, 0, p.vel.z).applyQuaternion(_q.copy(_qg).invert());
+    let vx = _a.x, vf = -_a.z;
+    if (dbg) { vx = dbg.vx || 0; vf = dbg.vf == null ? 1.3 : dbg.vf; spd = Math.hypot(vx, vf); }
+    const WS = mc.ws || (mc.ws = {});
+    const lw = locoWeights(vx, vf, Math.max(spd, .2), WS);
+    latW = (WS.sideR || 0) + (WS.sideL || 0);
+    const rate = clamp(spd / (lw.v || 1), .6, 1.45 + .5 * latW); // (o passo lateral da captura é lento: no jogo ele acelera mais)
+    mc.phase = (mc.phase + dt * rate / Math.max(.2, lw.T)) % 1; if (!(mc.phase >= 0)) mc.phase = 0;
+    resetPose(POSE);
+    for (const n in WS) if (WS[n] > .004) sample(MC.clips[n], mc.phase, WS[n], POSE);
+    if (dbg && dbg.clip && MC.clips[dbg.clip]) { resetPose(POSE); sample(MC.clips[dbg.clip], dbg.t != null ? dbg.t : mc.phase, 1, POSE); }
+    finishPose(POSE);
+  }
+  if (wC >= .004) {
+    const clip = MC.clips[mc.coreClip];
+    mc.coreT = cf ? coreTime(p, clip) : Math.min(clip.keys[2], (mc.coreT || 0) + dt * .6); // depois do golpe: termina o gesto devagar enquanto sai
+    resetPose(CORE); sample(clip, mc.coreT, 1, CORE); finishPose(CORE);
+    if (p.lefty) mirrorPose(CORE);
+  }
+  // poses do jogo (driveSkin) que entram na mistura
+  const hip = B.Hips, wq = mc.wq;
+  for (const n of KEEPQ) (wq[n] || (wq[n] = new THREE.Quaternion())), B[n].getWorldQuaternion(wq[n]);
   const gA = [B.LeftFoot.getWorldPosition(mc.gA0 || (mc.gA0 = new V3())), B.RightFoot.getWorldPosition(mc.gA1 || (mc.gA1 = new V3()))];
   const gK = [B.LeftLeg.getWorldPosition(mc.gK0 || (mc.gK0 = new V3())), B.RightLeg.getWorldPosition(mc.gK1 || (mc.gK1 = new V3()))];
-  const H = B.RightHand && B.LeftHand ? (p.lefty ? B.LeftHand : B.RightHand) : null;
-  if (H) { H.getWorldPosition(_e); _e.sub(k.racket.position).negate(); mc.rk = (mc.rk || new V3()).copy(_e); } // raquete em relação à mão
-  // quadril: rotação e posição (o meio das articulações das pernas vai para o ponto da captura)
-  setWorldQ(hip, mcWorld(mc, POSE, 0, _q).slerp(wq.Hips, 1 - W).normalize());
-  _a.copy(mc.hipOff); hip.localToWorld(_a);                                            // onde o meio do quadril está agora
-  _b.set(POSE.p[0] * r, POSE.p[1] * r, POSE.p[2] * r).applyQuaternion(_qg).add(_gp);   // onde a captura o quer
-  _b.sub(_a).multiplyScalar(W); hip.getWorldPosition(_c).add(_b); hip.parent.worldToLocal(_c); hip.position.copy(_c); hip.updateMatrixWorld(true);
-  // coluna: da captura enquanto só se desloca; durante o golpe fica a do jogo (o giro do golpe manda)
+  const Rn = p.lefty ? 'Left' : 'Right', On = p.lefty ? 'Right' : 'Left', H = B[Rn + 'Hand'];
+  H.getWorldPosition(_wr); B[Rn + 'ForeArm'].getWorldPosition(_el); H.getWorldQuaternion(_hgq); // punho, cotovelo e mão da raquete como o jogo pediu
+  mc.rk = (mc.rk || new V3()).copy(k.racket.position).sub(_wr);                                 // raquete em relação à mão
+  // quadril: rotação (deslocamento e/ou golpe) e posição
+  _q.copy(wq.Hips);
+  if (W >= .004) _q.slerp(mcWorld(mc, POSE, 0, _q2), W);
+  if (wC >= .004) _q.slerp(mcWorld(mc, CORE, 0, _q2), wC);
+  setWorldQ(hip, _q.normalize());
+  _b.set(0, 0, 0);
+  if (W >= .004) {
+    _a.copy(mc.hipOff); hip.localToWorld(_a);                                           // onde o meio do quadril está agora
+    // base atlética: no rali o quadril vai um pouco mais baixo que na captura (gente andando em pé), mais ainda de lado
+    const low = (S.mode === 'rally' ? .035 : 0) + .05 * latW * clamp(spd / 1.5, 0, 1);
+    _b.set(POSE.p[0] * r, (POSE.p[1] - low) * r, POSE.p[2] * r).applyQuaternion(_qg).add(_gp).sub(_a).multiplyScalar(W);
+  }
+  if (wC >= .004) { // transferência de peso do gesto: o quadril avança/abaixa como na captura (as pernas acompanham pelos pés plantados)
+    const c0 = core0(mc.coreClip), sx = p.lefty ? -1 : 1;
+    _c.set((CORE.p[0] - c0[0] * sx) * r, (CORE.p[1] - c0[1]) * r, (CORE.p[2] - c0[2]) * r).applyQuaternion(_qg).multiplyScalar(wC * .8);
+    _b.add(_c);
+  }
+  hip.getWorldPosition(_c).add(_b); hip.parent.worldToLocal(_c); hip.position.copy(_c); hip.updateMatrixWorld(true);
+  // coluna: do deslocamento enquanto só corre; no golpe, do gesto real
   const wT = W * (1 - mc.act);
-  [['Spine', 1], ['Spine1', 2], ['Spine2', 3]].forEach(([n, i]) => setWorldQ(B[n], mcWorld(mc, POSE, i, _q).slerp(wq[n], 1 - wT).normalize()));
-  for (const n of keep) setWorldQ(B[n], wq[n]); // cabeça e pescoço continuam olhando para onde o jogo mandou
-  // pernas: tornozelo e joelho da captura (na escala do jogador), com o pé de apoio preso no chão
+  [['Spine', 1], ['Spine1', 2], ['Spine2', 3]].forEach(([n, i]) => {
+    _q.copy(wq[n]);
+    if (wT >= .004) _q.slerp(mcWorld(mc, POSE, i, _q2), wT);
+    if (wC >= .004) _q.slerp(mcWorld(mc, CORE, i, _q2), wC);
+    setWorldQ(B[n], _q.normalize());
+  });
+  setWorldQ(B.Neck, wq.Neck); setWorldQ(B.Head, wq.Head); // cabeça e pescoço continuam olhando para onde o jogo mandou
+  // pernas: tornozelo e joelho (do jogo ou da captura de deslocamento), com o pé de apoio preso no chão
   FEET.forEach(([up, lo, ft, toe, ik, ia], s) => {
-    const U = B[up], Lw = B[lo], Ft = B[ft], T = B[toe];
-    _a.set(POSE.p[ia * 3] * r, POSE.p[ia * 3 + 1] * r, POSE.p[ia * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // tornozelo
-    _b.set(POSE.p[ik * 3] * r, POSE.p[ik * 3 + 1] * r, POSE.p[ik * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // joelho
-    // pé de apoio: fica onde encostou (sem deslizar), enquanto a perna alcança
-    const L = mc.lock[s], ct = POSE.c[s] > .5 && !dbg;
-    if (ct && !L.on) { L.on = 1; L.x = _a.x; L.z = _a.z; }
-    if (!ct) L.on = 0;
-    L.w += ((L.on ? 1 : 0) - L.w) * Math.min(1, dt * (L.on ? 30 : 14));
-    if (L.w > .01) {
-      const dx = L.x - _a.x, dz = L.z - _a.z, dd = Math.hypot(dx, dz), mx = .22 * r;
-      if (dd > mx) { L.x = _a.x + dx / dd * mx; L.z = _a.z + dz / dd * mx; } // longe demais: a trava cede
-      _b.x += (L.x - _a.x) * L.w * .5; _b.z += (L.z - _a.z) * L.w * .5;
-      _a.x += (L.x - _a.x) * L.w; _a.z += (L.z - _a.z) * L.w;
-    }
-    _a.lerpVectors(gA[s], _a, W); _b.lerpVectors(gK[s], _b, W);
+    const U = B[up], Lw = B[lo], Ft = B[ft], T = B[toe], L = mc.lock[s];
+    if (W >= .004) {
+      _a.set(POSE.p[ia * 3] * r, POSE.p[ia * 3 + 1] * r, POSE.p[ia * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // tornozelo
+      _b.set(POSE.p[ik * 3] * r, POSE.p[ik * 3 + 1] * r, POSE.p[ik * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // joelho
+      const ct = POSE.c[s] > .5 && !dbg;
+      if (ct && !L.on) { L.on = 1; L.x = _a.x; L.z = _a.z; }
+      if (!ct) L.on = 0;
+      L.w += ((L.on ? 1 : 0) - L.w) * Math.min(1, dt * (L.on ? 30 : 14));
+      if (L.w > .01) { // pé de apoio: fica onde encostou (sem deslizar), enquanto a perna alcança
+        const dx = L.x - _a.x, dz = L.z - _a.z, dd = Math.hypot(dx, dz), mx = .22 * r;
+        if (dd > mx) { L.x = _a.x + dx / dd * mx; L.z = _a.z + dz / dd * mx; } // longe demais: a trava cede
+        _b.x += (L.x - _a.x) * L.w * .5; _b.z += (L.z - _a.z) * L.w * .5;
+        _a.x += (L.x - _a.x) * L.w; _a.z += (L.z - _a.z) * L.w;
+      }
+      _a.lerpVectors(gA[s], _a, W); _b.lerpVectors(gK[s], _b, W);
+    } else { L.on = 0; L.w = 0; _a.copy(gA[s]); _b.copy(gK[s]); }
     U.getWorldPosition(_c);
     _d.subVectors(_b, _c).addScaledVector(_e.subVectors(_a, _c), -.5); // lado para onde o joelho aponta
     jointPos(_c, _a, _d, k.leg[0], k.leg[1], _e);
     _u.subVectors(_e, _c).normalize(); _l.subVectors(_a, _e).normalize(); _h.crossVectors(_u, _l);
     if (_h.lengthSq() < 1e-6 && k.lim[up].h) _h.copy(k.lim[up].h); _h.addScaledVector(_u, -_h.dot(_u)).normalize();
     orientBone(U, k.lim[up], _u, _h); _h.addScaledVector(_l, -_h.dot(_l)).normalize(); orientBone(Lw, k.lim[lo], _l, _h);
-    // pé e dedos: rolagem da captura (calcanhar → planta → ponta)
-    setWorldQ(Ft, mcWorld(mc, POSE, MC.bi[ft], _q).slerp(wq[ft], 1 - W).normalize());
-    setWorldQ(T, mcWorld(mc, POSE, MC.bi[toe], _q).slerp(wq[toe], 1 - W).normalize());
+    // pé e dedos: do jogo, ou a rolagem da captura (calcanhar → planta → ponta)
+    _q.copy(wq[ft]); if (W >= .004) _q.slerp(mcWorld(mc, POSE, MC.bi[ft], _q2), W); setWorldQ(Ft, _q.normalize());
+    _q.copy(wq[toe]); if (W >= .004) _q.slerp(mcWorld(mc, POSE, MC.bi[toe], _q2), W); setWorldQ(T, _q.normalize());
   });
-  if (H && mc.rk) { H.getWorldPosition(_e); k.racket.position.copy(_e).add(mc.rk); }
+  // ombros e braço livre: no golpe, do gesto real (menos enquanto a mão livre aponta a bola no smash)
+  if (wC >= .004) {
+    const wF = wC * (1 - Math.min(1, (p.prep || 0) * 1.5)) * (1 - Math.min(1, (p.twoH || 0) * 1.5)); // (no backhand de duas mãos a mão livre fica na raquete)
+    for (const n of [Rn + 'Shoulder']) { const bn = B[n]; bn.getWorldQuaternion(_q); setWorldQ(bn, _q.slerp(mcWorld(mc, CORE, MC.bi[n], _q2), wC * .8).normalize()); }
+    if (wF > .004) for (const n of [On + 'Shoulder', On + 'Arm', On + 'ForeArm', On + 'Hand']) { const bn = B[n]; bn.getWorldQuaternion(_q); setWorldQ(bn, _q.slerp(mcWorld(mc, CORE, MC.bi[n], _q2), wF).normalize()); }
+  }
+  // braço da raquete: volta para o punho que o jogo pediu (o contato com a bola fica no mesmo lugar e tempo). Só correndo,
+  // sem golpe, o braço acompanha o tronco
+  const aW = Math.max(mc.act, Math.min(1, wC * 2.5));
+  if (aW > .01) {
+    H.getWorldPosition(_s1); B[Rn + 'ForeArm'].getWorldPosition(_s2);
+    _wr.lerpVectors(_s1, _wr, aW); _el.lerpVectors(_s2, _el, aW); H.getWorldQuaternion(_q); _hgq.copy(_q.slerp(_hgq, aW).normalize());
+    armIK(k, B, Rn, p.lefty ? k.armL : k.arm, _wr, _el, _hgq);
+  }
+  shoulders(p, k, B, mc, dt);
+  H.getWorldPosition(_e); k.racket.position.copy(_e).add(mc.rk);
+}
+// braço (dois ossos) até o punho e o cotovelo pedidos, com a mão na rotação pedida
+function armIK(k, B, side, aL, wrist, elbow, handQ) {
+  const Ua = B[side + 'Arm'], Fa = B[side + 'ForeArm'], Hd = B[side + 'Hand'], lim = k.lim[side + 'Arm'];
+  Ua.getWorldPosition(_c);
+  _d.subVectors(elbow, _c).addScaledVector(_e.subVectors(wrist, _c), -.5);
+  jointPos(_c, wrist, _d, aL[0], aL[1], _e);
+  _u.subVectors(_e, _c).normalize(); _l.subVectors(wrist, _e).normalize(); _h.crossVectors(_u, _l);
+  if (lim.h && (_h.lengthSq() < .02 || _h.dot(lim.h) < .2 * _h.length())) _h.copy(lim.h); // braço quase esticado: o eixo do cotovelo vem do jogo (sem girar de um quadro para o outro)
+  if (_h.lengthSq() > 1e-8) { _h.addScaledVector(_u, -_h.dot(_u)).normalize(); orientBone(Ua, lim, _u, _h); _h.addScaledVector(_l, -_h.dot(_l)).normalize(); orientBone(Fa, k.lim[side + 'ForeArm'], _l, _h); }
+  setWorldQ(Hd, handQ);
+}
+// ritmo dos ombros: a clavícula sobe quando o braço sobe e vai para a frente/trás com ele (num smash o ombro chega perto da
+// orelha); depois o braço é refeito até o mesmo punho, então a mão (e a raquete) não saem do lugar
+const _right = new V3(), _up = new V3(), _fw = new V3(), _w2 = new V3(), _e2 = new V3(), _hq2 = new THREE.Quaternion(), _qe = new THREE.Quaternion(), _qp = new THREE.Quaternion();
+function shoulders(p, k, B, mc, dt) {
+  B.RightArm.getWorldPosition(_a); B.LeftArm.getWorldPosition(_b); _right.subVectors(_a, _b).normalize();
+  B.Neck.getWorldPosition(_a); B.Spine2.getWorldPosition(_b); _up.subVectors(_a, _b).normalize();
+  _fw.crossVectors(_up, _right).normalize(); _up.crossVectors(_right, _fw).normalize();
+  const st = mc.sh || (mc.sh = { Left: [0, 0], Right: [0, 0] });
+  for (const side of ['Left', 'Right']) {
+    const C = B[side + 'Shoulder'], Ua = B[side + 'Arm'], Fa = B[side + 'ForeArm'], Hd = B[side + 'Hand'], sg = side === 'Right' ? 1 : -1;
+    Ua.getWorldPosition(_a); Fa.getWorldPosition(_e2); Hd.getWorldPosition(_w2); Hd.getWorldQuaternion(_hq2);
+    _d.subVectors(_e2, _a).normalize();
+    const el = Math.asin(clamp(_d.dot(_up), -1, 1)), fwd = _d.dot(_fw);
+    // elevação: nada com o braço caído, ~10° na horizontal, ~26° acima da cabeça; avanço/recuo: até ±13°
+    const tE = clamp((el + .55) * .32, 0, .46), tP = clamp(fwd * .23, -.2, .23) * (1 - Math.max(0, _d.dot(_up)) * .5);
+    const S = st[side], kk = Math.min(1, dt * 18); S[0] += (tE - S[0]) * kk; S[1] += (tP - S[1]) * kk;
+    if (S[0] < .01 && Math.abs(S[1]) < .01) continue;
+    _qe.setFromAxisAngle(_fw, -sg * S[0]); _qp.setFromAxisAngle(_up, sg * S[1]);
+    C.getWorldQuaternion(_q); setWorldQ(C, _qp.multiply(_qe).multiply(_q).normalize());
+    armIK(k, B, side, side === 'Left' ? k.armL : k.arm, _w2, _e2, _hq2);
+  }
 }
 if (typeof window !== 'undefined') window.__pdoMC = { MC, mocapLoad };
 export { mocapLoad, mocapReady, mocapDrive };
