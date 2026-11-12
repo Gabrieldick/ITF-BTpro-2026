@@ -109,6 +109,18 @@ Os módulos em `src/game/` ainda têm `// @ts-nocheck`: compilam como TypeScript
 - **Sons de batida** — freesound community.
 - **Torcida** (vibração e burburinho) — "Free Crowd Cheering Sounds", Gregor Quendel, CC BY 4.0 (opengameart.org), recortada.
 - **Palmas** — "Applause", leezh, CC BY 3.0 (opengameart.org), recortada e com volume ajustado.
-- **Música dos menus** (CC0, opengameart.org) — "Funky House", Of Far Different Nature; "Beach Stage", mintodog; "Feel Good Island Loop", antumdeluge.
+- **Trilha dos menus** — lista em `public/assets/musica/trilha.json` (para tirar ou trocar uma faixa, edite esse arquivo). As faixas foram só convertidas de formato e niveladas de volume:
+  - "Samba pro seu dia" — Madalena Moog (MPB / samba-rock) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/902459
+  - "Samba Groove" — Regra 4 (Samba) · [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5/br/) · https://www.jamendo.com/track/821218
+  - "Ser" — Vladimir Micheletti (MPB) · [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5/br/) · https://www.jamendo.com/track/1132537
+  - "Vem Me Socorrer" — Capa Preta Rock (Rock) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/1497310
+  - "Rock and Roll Man" — Larry Smith and Unfinished Business (Rock) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/73004
+  - "Sun goes Down (Pop Mix)" — Hasenchat (Pop) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/1322499
+  - "Secret in Their Eyes" — Capashen (Pop rock) · [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/fr/) · https://www.jamendo.com/track/769000
+  - "I want you (pop rock remix)" — Lollita (Pop) · [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) · https://www.jamendo.com/track/1015339
+  - "Bunny Hip-Hop" — Badger (Hip-hop) · [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) · https://www.jamendo.com/track/780359
+  - "Funky House" — Of Far Different Nature (Instrumental) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) · https://opengameart.org/content/funky-house
+  - "Beach Stage" — mintodog (Instrumental) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) · https://opengameart.org/content/beach-stage
+  - "Feel Good Island Loop" — antumdeluge (Instrumental) · [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) · https://opengameart.org/content/feel-good-island-loop
 
 Nomes de atletas são paródias dos jogadores reais do circuito.

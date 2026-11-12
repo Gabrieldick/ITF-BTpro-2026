@@ -1172,3 +1172,17 @@ body.in-replay #caosAlert, body.spectate #caosAlert, body.in-replay.caos-inv::af
 .cfg-cam label.cfg-row .cfg-rng { flex: 1; }
 .mix-chk { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .86rem; margin-top: 4px; }
 .mix-chk input { width: 18px; height: 18px; accent-color: var(--accent, #ff6a00); }
+
+/* trilha: mostrador "tocando agora" no canto do menu */
+.mus-box { position: fixed; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); z-index: 60; display: none; align-items: center; gap: 8px; max-width: min(360px, calc(100vw - 190px));
+  padding: 6px 8px 6px 12px; border-radius: 999px; background: rgba(9, 22, 52, .82); border: 1px solid rgba(120, 160, 255, .28); color: #eaf1ff; font: 600 12px var(--f-ui-body, system-ui); box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
+body.in-menu .mus-box:not([hidden]) { display: inline-flex; }
+.mus-box .mus-ic { color: var(--ui-acc, #33c3ff); font-size: 15px; animation: musPulse 1.6s ease-in-out infinite; }
+.mus-box.off .mus-ic { animation: none; opacity: .4; }
+.mus-box .mus-txt { display: grid; min-width: 0; line-height: 1.15; }
+.mus-box .mus-t { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mus-box .mus-a { opacity: .7; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mus-box button { all: unset; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .08); font-size: 13px; }
+.mus-box button:hover, .mus-box button:focus-visible { background: rgba(255, 255, 255, .2); }
+@keyframes musPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .mus-box .mus-ic { animation: none; } }

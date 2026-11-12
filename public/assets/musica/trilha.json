@@ -1,0 +1,122 @@
+[
+ {
+  "arquivo": "samba-pro-seu-dia.mp3",
+  "titulo": "Samba pro seu dia",
+  "artista": "Madalena Moog",
+  "estilo": "MPB / samba-rock",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/902459"
+ },
+ {
+  "arquivo": "samba-groove.mp3",
+  "titulo": "Samba Groove",
+  "artista": "Regra 4",
+  "estilo": "Samba",
+  "cantada": true,
+  "licenca": "CC BY-SA 2.5",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/2.5/br/",
+  "fonte": "https://www.jamendo.com/track/821218"
+ },
+ {
+  "arquivo": "ser.mp3",
+  "titulo": "Ser",
+  "artista": "Vladimir Micheletti",
+  "estilo": "MPB",
+  "cantada": true,
+  "licenca": "CC BY-SA 2.5",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/2.5/br/",
+  "fonte": "https://www.jamendo.com/track/1132537"
+ },
+ {
+  "arquivo": "vem-me-socorrer.mp3",
+  "titulo": "Vem Me Socorrer",
+  "artista": "Capa Preta Rock",
+  "estilo": "Rock",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/1497310"
+ },
+ {
+  "arquivo": "rock-and-roll-man.mp3",
+  "titulo": "Rock and Roll Man",
+  "artista": "Larry Smith and Unfinished Business",
+  "estilo": "Rock",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/73004"
+ },
+ {
+  "arquivo": "sun-goes-down.mp3",
+  "titulo": "Sun goes Down (Pop Mix)",
+  "artista": "Hasenchat",
+  "estilo": "Pop",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/1322499"
+ },
+ {
+  "arquivo": "secret-in-their-eyes.mp3",
+  "titulo": "Secret in Their Eyes",
+  "artista": "Capashen",
+  "estilo": "Pop rock",
+  "cantada": true,
+  "licenca": "CC BY-SA 2.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/2.0/fr/",
+  "fonte": "https://www.jamendo.com/track/769000"
+ },
+ {
+  "arquivo": "i-want-you.mp3",
+  "titulo": "I want you (pop rock remix)",
+  "artista": "Lollita",
+  "estilo": "Pop",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/1015339"
+ },
+ {
+  "arquivo": "bunny-hip-hop.mp3",
+  "titulo": "Bunny Hip-Hop",
+  "artista": "Badger",
+  "estilo": "Hip-hop",
+  "cantada": true,
+  "licenca": "CC BY 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by/3.0/",
+  "fonte": "https://www.jamendo.com/track/780359"
+ },
+ {
+  "arquivo": "funky-house.mp3",
+  "titulo": "Funky House",
+  "artista": "Of Far Different Nature",
+  "estilo": "Instrumental",
+  "cantada": false,
+  "licenca": "CC0 1.0",
+  "licencaUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "fonte": "https://opengameart.org/content/funky-house"
+ },
+ {
+  "arquivo": "beach-stage.mp3",
+  "titulo": "Beach Stage",
+  "artista": "mintodog",
+  "estilo": "Instrumental",
+  "cantada": false,
+  "licenca": "CC0 1.0",
+  "licencaUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "fonte": "https://opengameart.org/content/beach-stage"
+ },
+ {
+  "arquivo": "feel-good-island.mp3",
+  "titulo": "Feel Good Island Loop",
+  "artista": "antumdeluge",
+  "estilo": "Instrumental",
+  "cantada": false,
+  "licenca": "CC0 1.0",
+  "licencaUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "fonte": "https://opengameart.org/content/feel-good-island-loop"
+ }
+]

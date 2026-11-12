@@ -41,7 +41,7 @@ function applyGfx() {
 // ---------- Áudio ----------
 let actx = null;
 // canais de volume (mixer das configurações): cada som sai por um canal, e todos passam pelo geral
-const VOL_DEF = { master: 1, music: .5, hits: 1, crowd: .7, amb: .8, fx: .8 };
+const VOL_DEF = { master: 1, music: .45, hits: 1, crowd: .7, amb: .8, fx: .8 };
 const vol = k => { const v = (S.settings.vol || {})[k]; return v == null ? VOL_DEF[k] : Math.max(0, Math.min(1, +v || 0)); };
 const BUS = {};
 function bus(k) { const a = actx; if (!BUS.master) { BUS.master = a.createGain(); BUS.master.connect(a.destination); BUS.master.gain.value = S.muted ? 0 : vol('master'); }
@@ -177,20 +177,42 @@ function sndCrowdAmb(on, inPoint) {
   crowdBuf(CROWD_FILES.fundo[0], buf => { const a = actx, src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(amb.v, a.currentTime, .8); src.connect(g).connect(bus('crowd')); src.start(); amb.g = g; });
 }
 CROWD_SND.cheer = sndCheer; CROWD_SND.amb = sndCrowdAmb;
-// ---------- música dos menus (faixas CC0; ver README) ----------
-// toca só nos menus, uma faixa depois da outra; some ao entrar na partida. Volume pelo mixer; S.settings.musicOff desliga
-const MUSIC = ['funky-house.mp3', 'beach-stage.mp3', 'feel-good-island.mp3'];
-let mus = null, musI = Math.floor(Math.random() * MUSIC.length), musTry = 0;
+// ---------- trilha dos menus ----------
+// As faixas vêm de public/assets/musica/trilha.json (título, artista, estilo, licença — ver README): para tirar ou trocar
+// uma música basta mexer nesse arquivo. Toca só nos menus, em ordem sorteada; some ao entrar na partida. Volume pelo
+// mixer; S.settings.musicOff desliga. O mostrador #musBox (canto do menu) diz o que está tocando e deixa pular ou mutar
+const MUS = { list: null, loading: false, order: [], i: 0, el: null, tryT: 0, cur: null, shown: '' };
+function musLoad() {
+  if (MUS.loading) return; MUS.loading = true;
+  fetch(import.meta.env.BASE_URL + 'assets/musica/trilha.json').then(r => (r.ok ? r.json() : [])).then(l => { MUS.list = Array.isArray(l) ? l.filter(t => t && t.arquivo) : [];
+    MUS.order = MUS.list.map((_, k) => k); for (let k = MUS.order.length - 1; k > 0; k--) { const r = Math.floor(Math.random() * (k + 1)); [MUS.order[k], MUS.order[r]] = [MUS.order[r], MUS.order[k]]; } }).catch(() => { MUS.list = []; });
+}
+function musSet(step) {
+  if (!MUS.list || !MUS.list.length || !MUS.el) return;
+  MUS.i = (MUS.i + (step || 0) + MUS.order.length) % MUS.order.length; MUS.cur = MUS.list[MUS.order[MUS.i]];
+  MUS.el.src = import.meta.env.BASE_URL + 'assets/musica/' + MUS.cur.arquivo; MUS.el.play().catch(() => {});
+}
+function musicNext() { if (MUS.el && MUS.list && MUS.list.length) { MUS.el.volume = 0; musSet(1); musBox(true); } }
+function musBox(inMenu) {
+  const box = typeof document !== 'undefined' && document.getElementById('musBox'); if (!box) return;
+  const off = !!S.settings.musicOff || S.muted, txt = !inMenu || !MUS.cur ? '' : (off ? 'off|' : 'on|') + MUS.cur.titulo + '|' + MUS.cur.artista;
+  if (txt === MUS.shown) return; MUS.shown = txt;
+  box.hidden = !txt; if (!txt) return;
+  box.querySelector('.mus-t').textContent = off ? 'Música desligada' : MUS.cur.titulo; box.querySelector('.mus-a').textContent = off ? '' : MUS.cur.artista + (MUS.cur.estilo ? ' · ' + MUS.cur.estilo : '');
+  box.querySelector('[data-mus="mute"]').textContent = off ? '🔇' : '🔊'; box.classList.toggle('off', off);
+}
 function musicTick(inMenu) {
   if (typeof Audio === 'undefined') return;
-  const v = S.muted || S.settings.musicOff ? 0 : vol('master') * vol('music') * .55, on = inMenu && v > 0;
-  if (!mus) { if (!on) return; const src = () => import.meta.env.BASE_URL + 'assets/musica/' + MUSIC[musI];
-    mus = new Audio(); mus.preload = 'none'; mus.volume = 0; mus.src = src();
-    mus.addEventListener('ended', () => { musI = (musI + 1) % MUSIC.length; mus.src = src(); mus.play().catch(() => {}); }); }
-  const cur = mus.volume, tgt = on ? v : 0, nv = Math.abs(tgt - cur) < .004 ? tgt : cur + (tgt - cur) * .06; mus.volume = Math.max(0, Math.min(1, nv));
+  const v = S.muted || S.settings.musicOff ? 0 : vol('master') * vol('music') * .3, on = inMenu && v > 0;
+  if (inMenu && !MUS.list) musLoad();
+  if (!MUS.el) { if (!on || !MUS.list || !MUS.list.length) { musBox(inMenu && !!MUS.cur); return; }
+    MUS.el = new Audio(); MUS.el.preload = 'none'; MUS.el.volume = 0; MUS.el.addEventListener('ended', () => musSet(1)); MUS.el.addEventListener('error', () => { if (MUS.list.length > 1) setTimeout(() => musSet(1), 800); });
+    musSet(0); MUS.tryT = performance.now(); }
+  const m = MUS.el, cur = m.volume, tgt = on ? v : 0, nv = Math.abs(tgt - cur) < .004 ? tgt : cur + (tgt - cur) * .06; m.volume = Math.max(0, Math.min(1, nv));
   const t = performance.now();
-  if (on && mus.paused && t - musTry > 1500) { musTry = t; mus.play().catch(() => {}); } // (antes do primeiro toque o navegador recusa: tenta de novo)
-  else if (!on && !mus.paused && mus.volume < .01) mus.pause();
+  if (on && m.paused && t - MUS.tryT > 1500) { MUS.tryT = t; m.play().catch(() => {}); } // (antes do primeiro toque o navegador recusa: tenta de novo)
+  else if (!on && !m.paused && m.volume < .01) m.pause();
+  musBox(inMenu);
 }
 // a cada quadro (19-loop): fora da partida a torcida se cala e a música entra
 function audioTick(inMenu) { if (inMenu) sndCrowdAmb(false, false); musicTick(inMenu); }
@@ -209,4 +231,4 @@ function startSurf() {
   surf = { g };
 }
 
-export { audioTick, applyVol, VOL_DEF, setMenuRes, HITS, ac, applyGfx, setResScale, getResScale, sndHit, sndSand, sndWhistle, surf };
+export { musicNext, audioTick, applyVol, VOL_DEF, setMenuRes, HITS, ac, applyGfx, setResScale, getResScale, sndHit, sndSand, sndWhistle, surf };
