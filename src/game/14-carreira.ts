@@ -2,7 +2,7 @@
 // modo carreira: circuito, ranking, torneios, economia, eventos
 import './13-campeonato';
 import { $s } from '../state';
-import { gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, folegoOf, attrOf, NAMES, HEIGHTS, cleanNames } from './00-base';
+import { charCtx, gearOn, gearSum, ATTRS, GEAR, RACKET_STATS, ROSTER, STAFF, clamp, gauss, effA, nameOf, overall, racketBonus, rand, shortOf, leituraOf, voleioOf, folegoOf, attrOf, NAMES, HEIGHTS, cleanNames } from './00-base';
 import { S } from './01-estado';
 import { ac } from './08-audio';
 import { $, newMatch, scoreText } from './09-interface';
@@ -228,6 +228,7 @@ if (!SAVES.slots) SAVES = { active: null, slots: {} };
 // save antigo de uma carreira só
 try { const old = JSON.parse(localStorage.getItem('pdo-career') || 'null'); if (old && !Object.keys(SAVES.slots).length) { old.id = old.id || 'c' + old.seed; SAVES.slots[old.id] = old; SAVES.active = old.id; } } catch (e) {}
 $s.CR = SAVES.active && SAVES.slots[SAVES.active] || null;
+charCtx.career = () => !!S.careerActive; // a versão "da carreira" dos jogadores do elenco só vale em partida da carreira
 let saveErr = '';
 // grava já: o índice e as carreiras que mudaram
 function flushSaves() {

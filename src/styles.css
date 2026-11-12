@@ -1213,3 +1213,16 @@ body.hero-menu #menu[data-step="home"] .card > * { animation: heroIn .5s cubic-b
 body.hero-menu #menu[data-step="home"] .card > *:nth-child(2) { animation-delay: .08s; }
 @keyframes heroIn { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { body.hero-menu .hero-plate, body.hero-menu #menu[data-step="home"] .card > * { animation: none; } }
+
+/* botão de amigos: mais aparente (faixa clara com ícone, duas linhas e nível) */
+.am-btn { padding: 7px 14px 7px 8px; gap: 10px; border-radius: 12px; border: 1px solid rgba(120, 200, 255, .55); background: linear-gradient(135deg, #1e8bff, var(--ui-acc)); color: #04122e; font: 800 15px/1 var(--f-ui); letter-spacing: .04em;
+  box-shadow: 0 8px 26px rgba(30, 139, 255, .45), inset 0 1px 0 rgba(255, 255, 255, .35); transition: transform .12s, box-shadow .12s; }
+.am-btn:hover, .am-btn:focus-visible { transform: translateY(-2px); border-color: #fff; box-shadow: 0 12px 32px rgba(30, 139, 255, .6), inset 0 1px 0 rgba(255, 255, 255, .45); }
+.am-btn .am-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: rgba(4, 18, 46, .85); font-size: 17px; }
+.am-btn .am-tx { display: grid; gap: 3px; text-align: left; }
+.am-btn .am-tx b { text-transform: uppercase; font-style: italic; }
+.am-btn .am-tx small { font: 700 10.5px/1 var(--f-ui-body); letter-spacing: .02em; opacity: .8; text-transform: none; }
+.am-btn .am-lvs { align-self: center; padding: 4px 7px; border-radius: 7px; background: rgba(4, 18, 46, .85); color: var(--ui-acc2, #b6ff3c); font-size: 11px; }
+.am-btn.live .am-ic { box-shadow: 0 0 0 2px #4fd18b; }
+.am-btn.live .am-tx small { opacity: 1; font-weight: 800; }
+@media (max-width: 560px) { .am-btn .am-tx small { display: none; } .am-btn { padding: 6px 10px 6px 6px; } }

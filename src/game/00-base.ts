@@ -472,7 +472,11 @@ cleanNames(NAMES);
 $s.CAREER_CHARS = []; // jogador da carreira e personagens fictícios
 // na carreira vale a versão da carreira (com fase e evolução); fora dela, a base
 // online: personagens da carreira trazidos por quem está na sala
-const charById = id => ($s.ONLINE_CHARS && $s.ONLINE_CHARS.find(c => c.id === id)) || ($s.CAREER_CHARS && $s.CAREER_CHARS.find(c => c.id === id)) || ROSTER.find(c => c.id === id) || ROSTER[0];
+// Os jogadores do elenco têm uma versão "da carreira" (com a fase do momento e o bônus de entrosamento). Ela só vale numa
+// partida da carreira (charCtx.career, ligado pelo 14-carreira); na partida rápida, no campeonato e nos menus vale o jogador
+// base do elenco (antes, com uma carreira carregada, a partida rápida mostrava 86 na lista e 83 no cartão, e jogava com 83)
+const charCtx = { career: () => false };
+const charById = id => ($s.ONLINE_CHARS && $s.ONLINE_CHARS.find(c => c.id === id)) || (charCtx.career() && $s.CAREER_CHARS && $s.CAREER_CHARS.find(c => c.id === id)) || ROSTER.find(c => c.id === id) || ($s.CAREER_CHARS && $s.CAREER_CHARS.find(c => c.id === id)) || ROSTER[0];
 let HEIGHTS = {};
 try { HEIGHTS = JSON.parse(localStorage.getItem('pdo-heights') || '{}') || {}; } catch (e) { HEIGHTS = {}; }
 cleanNames(null, HEIGHTS);
@@ -532,4 +536,5 @@ function vnoise(x, y, P, seed) {
 }
 function fbm(x, y, P, oct, seed) { let a = .5, f = 1, s = 0, n = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, P * f, seed + o); n += a; a *= .5; f *= 2; } return s / n; }
 
+export { charCtx };
 export { cleanName, cleanNames, smashZoneK, folegoOf, staMul, staErr, SERVE_STYLES, bCurve, GEAR_SLOTS, gearOn, GEAR_CAP, gearSum, ACCESS, FABRIC_NOME, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, TOSS_G, voleioOf, attrN, velMul, accOf, accelStep, runTime, backZ, backAcc, runDist, BACK_ACC, weakK, lookExtras, ATTRS, ATTR_OF, C, DIFF, G, GEAR, HALF_W, HEIGHTS, KITS, NAMES, PLAY_STYLES, P_SPEED, RACKET_STATS, ROSTER, SERVES, SHORE_Z, SHOTS, STAFF, STEP, SWING_DUR, TOSS_T, V3, WATERLINE, ZONE3, attrK, bG, charById, clamp, effA, fbm, gauss, hScale, heightOf, lerp, nameOf, overall, racketBonus, rand, shortK, shortOf, smooth, styleOf , attrOf, leituraOf , rkSummary };

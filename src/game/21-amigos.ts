@@ -320,6 +320,9 @@ function render() {
 async function sendText() { const i = $('amText'); if (!i) return; const v = i.value; i.value = ''; const ok = await send(AM.chat, v); const j = $('amText'); if (j) { if (!ok && !j.value) j.value = v; j.focus(); } } // (não enviou: a mensagem volta para o campo novo, não para o antigo)
 function badge() {
   const lv = $('amLvl'); if (lv) lv.textContent = 'Nv ' + lvOf(LV.xp).L;
+  // linha de baixo do botão: quantos amigos estão online agora (ou o convite para entrar na conta)
+  { const sub = $('amSub'); if (sub) { const fr = AM.friends.filter(f => f.st === 'ok' || f.st === 'accepted' || !f.st), on = fr.filter(f => { const s = AM.pres[f.id] || 'off'; return s !== 'off'; }).length;
+      sub.textContent = !CL.sess ? 'entre para jogar com amigos' : on ? on + ' online agora' : fr.length ? fr.length + (fr.length > 1 ? ' amigos' : ' amigo') : 'chat e convites'; const btn = $('amBtn'); if (btn) btn.classList.toggle('live', on > 0); } }
   const n = Object.values(AM.unread).reduce((t, v) => t + v, 0) + AM.friends.filter(f => f.st === 'pending-in').length;
   const b = $('amBadge'); if (b) { b.textContent = n > 9 ? '9+' : String(n); b.hidden = !n && !(CL.sess && AM.nameLoaded && !AM.name && AM.setup); if (!n && !b.hidden) b.textContent = '!'; }
 }
@@ -339,7 +342,7 @@ function closePanel() { AM.open = false; $('amPanel').hidden = true; }
 // monta os elementos (botão flutuante, painel e aviso)
 {
   const wrap = document.createElement('div');
-  wrap.innerHTML = '<button type="button" id="amBtn" class="am-btn" title="Amigos, chat e nível">👥 Amigos<span id="amLvl" class="am-lvs"></span><em id="amBadge" class="am-badge" hidden></em></button>'
+  wrap.innerHTML = '<button type="button" id="amBtn" class="am-btn" title="Amigos, chat e nível"><span class="am-ic">👥</span><span class="am-tx"><b>Amigos</b><small id="amSub">chat e convites</small></span><span id="amLvl" class="am-lvs"></span><em id="amBadge" class="am-badge" hidden></em></button>'
     + '<aside id="amPanel" class="am-panel card" hidden><div class="am-head"><div class="eyebrow">Amigos e chat</div><button type="button" class="ghost xs" id="amClose" aria-label="Fechar">✕</button></div><div id="amBody" class="am-body"></div></aside>'
     + '<div id="amToast" class="am-toast" hidden></div>';
   document.body.append(...wrap.children);

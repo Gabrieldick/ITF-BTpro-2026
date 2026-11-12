@@ -2,7 +2,7 @@
 // telas do modo carreira
 import './14-carreira';
 import { $s } from '../state';
-import { SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
+import { charById, SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GEAR, PLAY_STYLES, RACKET_STATS, STAFF, clamp, heightOf, nameOf, overall, racketBonus, shortOf, rkSummary, TOP_KINDS, BOT_KINDS, PATTERNS, OUTFIT_COLORS, ACCESS, FABRIC_NOME } from './00-base';
 import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { human } from './06-modelos';
@@ -1094,7 +1094,8 @@ function menuStep(st) {
 function heroPlate() {
   const el = $('heroPlate'); if (!el) return;
   const c = human && human.char; el.hidden = !c || $('menu').dataset.step !== 'home'; if (el.hidden) return;
-  el.querySelector('.hp-ovr b').textContent = String(overall(c)); el.querySelector('.hp-name').textContent = nameOf(c);
+  el.querySelector('.hp-ovr b').textContent = String(overall((charById(c.id) || c).a)); // (o mesmo número do cartão da partida rápida: sem o bônus da raquete)
+  el.querySelector('.hp-name').textContent = nameOf(c);
   el.querySelector('.hp-sub').textContent = [c.pais, c.estilo].filter(Boolean).join(' · ');
 }
 setInterval(() => { if (document.body.classList.contains('hero-menu')) heroPlate(); }, 1500);
