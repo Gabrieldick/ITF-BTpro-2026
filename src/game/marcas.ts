@@ -1,6 +1,6 @@
 // @ts-nocheck
 // símbolos das marcas de raquete (estilizados a partir das raquetes e logos reais, nomes com uma letra trocada): o disco
-// com o X da Herue's, o "nox" da Nux, o AMA angular da Ana Sport, o K de barra e chevron da Kona, o Z com a faixa verde
+// com o X da Herue's, o X da Nux, o AMA angular da Ana Sport, o K de barra e chevron da Kona, o Z com a faixa verde
 // da Zanb, a estrela-cometa da Drop Shut, a oval de traços da Mormaji, o olho com redemoinho da Vizion, a barbatana da
 // Shank e as três faixas da Adibas. Desenha centrado em (cx, cy) com "raio" r (largura total ~2r); fg = cor principal
 function brandMark(x, brand, cx, cy, r, fg, bg, o = {}) { // o.ring: centro vazado (Vizion); o.swirl: cor dos arcos (Vizion); o.mono: tudo na cor fg (raquete própria, camiseta)
@@ -11,8 +11,10 @@ function brandMark(x, brand, cx, cy, r, fg, bg, o = {}) { // o.ring: centro vaza
     x.beginPath(); x.arc(0, 0, r * .62, 0, Math.PI * 2); x.fill();
     // X vazado: na cor do fundo; sem fundo (logo da camiseta, em textura própria) recorta o disco de verdade
     if (bg === 'rgba(0,0,0,0)') x.globalCompositeOperation = 'destination-out'; x.strokeStyle = bg && bg !== 'rgba(0,0,0,0)' ? bg : '#ffffff'; x.lineCap = 'butt'; x.lineWidth = r * .2; x.beginPath(); x.moveTo(-r * .44, -r * .44); x.lineTo(r * .44, r * .44); x.moveTo(r * .44, -r * .44); x.lineTo(-r * .44, r * .44); x.stroke(); }
-  else if (b.startsWith('nux')) { // "nux" minúsculo, arredondado (como o "nox")
-    x.font = '700 ' + Math.round(r * 1.05) + 'px "Arial Rounded MT Bold", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('nux', 0, 0); }
+  else if (b.startsWith('nux')) { // o X da marca (dois braços largos que se cruzam, como no centro das raquetes dela) e o nome minúsculo embaixo
+    const arm = (sx) => { x.beginPath(); x.moveTo(sx * -.86 * r, -.92 * r); x.lineTo(sx * -.5 * r, -.92 * r); x.lineTo(sx * .86 * r, .5 * r); x.lineTo(sx * .5 * r, .5 * r); x.closePath(); x.fill(); };
+    arm(1); arm(-1);
+    if (!o.noWord) { x.font = '700 ' + Math.round(r * .46) + 'px "Arial Rounded MT Bold", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('nux', 0, r * .82); } }
   else if (b.startsWith('ana')) { // AMA: um zigue-zague grosso de pontas arredondadas (A-M-A emendados), os A com a barra de
     // baixo separada da perna de fora por um corte inclinado; desenhado numa grade 1050x250 (como o logo) e reescalado
     const k = r * 2.5 / 1050, X = v => (v - 525) * k, Y = v => (v - 135) * k;

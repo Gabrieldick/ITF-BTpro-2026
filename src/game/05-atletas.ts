@@ -188,6 +188,41 @@ function mkRacketDraw(c) {
     else if (c.pattern === 'shards') { const r = mulberry(13); x.fillStyle = c.a1; for (let k = 0; k < 9; k++) { const cx = r() * w, cy = r() * h * .7, s0 = 14 + r() * 30, a = r() * 6; x.beginPath(); x.moveTo(cx + Math.cos(a) * s0, cy + Math.sin(a) * s0); x.lineTo(cx + Math.cos(a + 2.3) * s0 * .6, cy + Math.sin(a + 2.3) * s0 * .6); x.lineTo(cx + Math.cos(a + 3.9) * s0 * .8, cy + Math.sin(a + 3.9) * s0 * .8); x.fill(); } if (c.a2) { x.strokeStyle = c.a2; x.lineWidth = 1.5; for (let i = -200; i < 400; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i - 120, h * .74); x.stroke(); } } }
     else if (c.pattern === 'checker') { x.fillStyle = c.a1; for (let j = 0; j < h * .74; j += 16) for (let i = (j / 16 % 2) * 16; i < w; i += 32) x.fillRect(i, j, 16, 16); }
     else if (c.pattern === 'camo') { const r = mulberry(5); [c.a1, c.a2 || c.a1].forEach((cc, k) => { x.fillStyle = cc; for (let i = 0; i < 26; i++) { x.beginPath(); x.ellipse(r() * w, r() * h * .74, 10 + r() * 22, 6 + r() * 14, r() * 3, 0, Math.PI * 2); x.fill(); } }); }
+    // ---- desenhos novos (no estilo das raquetes de hoje: moldura colorida, cortes em velocidade, degradês, carbono à mostra) ----
+    else if (c.pattern === 'frame') { // moldura em degradê acompanhando o aro, centro limpo
+      const g = x.createLinearGradient(0, 0, w, h * .74); g.addColorStop(0, c.a1); g.addColorStop(1, c.a2 || c.a1);
+      x.save(); x.beginPath(); x.rect(0, 0, w, h * .74); x.ellipse(w / 2, h * .39, w * .36, h * .27, 0, 0, Math.PI * 2, true); x.fillStyle = g; x.fill('evenodd'); x.restore();
+      x.strokeStyle = c.a2 || '#ffffff'; x.lineWidth = 1.6; x.beginPath(); x.ellipse(w / 2, h * .39, w * .36 - 5, h * .27 - 5, 0, 0, Math.PI * 2); x.stroke(); }
+    else if (c.pattern === 'slash') { // três cortes inclinados (velocidade), do grosso ao fino, com degradê
+      const g = x.createLinearGradient(0, 0, w, 0); g.addColorStop(0, c.a1); g.addColorStop(1, c.a2 || c.a1); x.fillStyle = g;
+      [[.08, .3], [.44, .16], [.68, .08]].forEach(([o0, wd]) => { x.beginPath(); x.moveTo(w * (o0 + .22), 0); x.lineTo(w * (o0 + .22 + wd), 0); x.lineTo(w * (o0 + wd - .12), h * .74); x.lineTo(w * (o0 - .12), h * .74); x.closePath(); x.fill(); }); }
+    else if (c.pattern === 'aura') { // brilho radial no centro e anel fino
+      const g = x.createRadialGradient(w / 2, h * .4, 6, w / 2, h * .4, w * .52); g.addColorStop(0, c.a2 || c.a1); g.addColorStop(.45, c.a1); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h * .74);
+      x.strokeStyle = c.a2 || c.a1; x.lineWidth = 1.5; x.globalAlpha = .7; x.beginPath(); x.ellipse(w / 2, h * .4, w * .4, h * .29, 0, 0, Math.PI * 2); x.stroke(); x.globalAlpha = 1; }
+    else if (c.pattern === 'lowpoly') { // mosaico de triângulos em vários tons
+      const r = mulberry(47), N = 7, M = 5, P = []; for (let j = 0; j <= M; j++) for (let i = 0; i <= N; i++) P.push([i * w / N + (i && i < N ? (r() - .5) * 18 : 0), j * h * .74 / M + (j && j < M ? (r() - .5) * 16 : 0)]);
+      for (let j = 0; j < M; j++) for (let i = 0; i < N; i++) { const a0 = P[j * (N + 1) + i], b0 = P[j * (N + 1) + i + 1], c0 = P[(j + 1) * (N + 1) + i], d0 = P[(j + 1) * (N + 1) + i + 1];
+        [[a0, b0, c0], [b0, d0, c0]].forEach(t => { x.fillStyle = r() < .5 ? c.a1 : (c.a2 || c.a1); x.globalAlpha = .18 + r() * .7; x.beginPath(); x.moveTo(t[0][0], t[0][1]); x.lineTo(t[1][0], t[1][1]); x.lineTo(t[2][0], t[2][1]); x.closePath(); x.fill(); }); }
+      x.globalAlpha = 1; }
+    else if (c.pattern === 'pinstripe') { // risca fina vertical sumindo para baixo + faixa larga inclinada
+      for (let i = 6; i < w; i += 9) { const g = x.createLinearGradient(0, 0, 0, h * .74); g.addColorStop(0, c.a1); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(i, 0, 1.6, h * .74); }
+      x.fillStyle = c.a2 || c.a1; x.beginPath(); x.moveTo(0, h * .5); x.lineTo(w, h * .2); x.lineTo(w, h * .3); x.lineTo(0, h * .6); x.closePath(); x.fill(); }
+    else if (c.pattern === 'galaxy') { // manchas de nebulosa e pontinhos brilhantes
+      const r = mulberry(71); [c.a1, c.a2 || c.a1, c.a1].forEach((cc, k) => { const cx = w * (.25 + k * .25 + (r() - .5) * .1), cy = h * (.2 + r() * .34), g = x.createRadialGradient(cx, cy, 2, cx, cy, 70 + r() * 30); g.addColorStop(0, cc); g.addColorStop(1, 'rgba(0,0,0,0)'); x.globalAlpha = .55; x.fillStyle = g; x.fillRect(0, 0, w, h * .74); });
+      x.globalAlpha = 1; for (let i = 0; i < 420; i++) { x.fillStyle = r() < .5 ? '#ffffff' : (c.a2 || '#ffffff'); x.globalAlpha = .25 + r() * .75; const sz = r() < .08 ? 2.2 : 1.1; x.fillRect(r() * w, r() * h * .74, sz, sz); } x.globalAlpha = 1; }
+    else if (c.pattern === 'topo') { // curvas de nível
+      x.strokeStyle = c.a1; for (let k = 0; k < 13; k++) { x.lineWidth = k % 4 === 0 ? 2.2 : 1; x.globalAlpha = k % 4 === 0 ? 1 : .7; x.beginPath(); for (let i = 0; i <= 72; i++) { const t = i / 72 * Math.PI * 2, rr = 10 + k * 11 + Math.sin(t * 3 + k * .7) * 7 + Math.cos(t * 5 - k) * 4; const px = w * .46 + Math.cos(t) * rr * 1.15, py = h * .38 + Math.sin(t) * rr * .85; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.closePath(); x.stroke(); }
+      x.globalAlpha = 1; if (c.a2) { x.fillStyle = c.a2; x.beginPath(); x.arc(w * .46, h * .38, 5, 0, Math.PI * 2); x.fill(); } }
+    else if (c.pattern === 'brush') { // pinceladas largas
+      const r = mulberry(23); [c.a1, c.a2 || c.a1, c.a1].forEach((cc, k) => { x.strokeStyle = cc; x.lineCap = 'round'; for (let j = 0; j < 16; j++) { x.globalAlpha = .35 + r() * .5; x.lineWidth = 1 + r() * 4; const y0 = h * (.14 + k * .2) + (j - 8) * 2.4; x.beginPath(); x.moveTo(w * (.06 + r() * .06), y0 + r() * 3); x.bezierCurveTo(w * .35, y0 - 16 + r() * 6, w * .65, y0 + 14 - r() * 6, w * (.9 + r() * .06), y0 - 8 + r() * 5); x.stroke(); } }); x.globalAlpha = 1; x.lineCap = 'butt'; }
+    else if (c.pattern === 'vees') { // "V" empilhados subindo, do mais forte ao mais apagado
+      for (let k = 0; k < 6; k++) { x.strokeStyle = k % 2 ? (c.a2 || c.a1) : c.a1; x.globalAlpha = 1 - k * .14; x.lineWidth = 11 - k * 1.2; x.lineJoin = 'miter'; x.beginPath(); x.moveTo(w * .08, h * (.06 + k * .1)); x.lineTo(w / 2, h * (.24 + k * .1)); x.lineTo(w * .92, h * (.06 + k * .1)); x.stroke(); } x.globalAlpha = 1; }
+    else if (c.pattern === 'duo') { // dois tons divididos por uma curva em S, com filete de luz
+      x.fillStyle = c.a1; x.beginPath(); x.moveTo(w * .5, 0); x.bezierCurveTo(w * .86, h * .2, w * .14, h * .5, w * .52, h * .74); x.lineTo(w, h * .74); x.lineTo(w, 0); x.closePath(); x.fill();
+      x.strokeStyle = c.a2 || '#ffffff'; x.lineWidth = 3; x.beginPath(); x.moveTo(w * .5, 0); x.bezierCurveTo(w * .86, h * .2, w * .14, h * .5, w * .52, h * .74); x.stroke(); }
+    else if (c.pattern === 'weave') { // trama de carbono grande à mostra, com janela colorida em cima
+      for (let j = 0; j < h * .74; j += 10) for (let i = 0; i < w; i += 10) { const a = ((i + j) / 10) % 2 < 1; x.fillStyle = a ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.18)'; x.fillRect(i, j, 10, 10); x.fillStyle = 'rgba(255,255,255,.05)'; a ? x.fillRect(i, j + 4, 10, 2) : x.fillRect(i + 4, j, 2, 10); }
+      const g = x.createLinearGradient(0, 0, w, 0); g.addColorStop(0, c.a1); g.addColorStop(1, c.a2 || c.a1); x.fillStyle = g; x.beginPath(); x.moveTo(w * .16, h * .06); x.lineTo(w * .84, h * .06); x.lineTo(w * .7, h * .2); x.lineTo(w * .3, h * .2); x.closePath(); x.fill(); x.fillRect(w * .12, h * .64, w * .76, h * .025); }
     x.fillStyle = c.band || c.a1; x.fillRect(0, h * .74, w, h * .1);
     modelName(x, c.label, h * .79, c.labelColor || c.bg, c.label.length > 9 ? 11 : 13);
   };
@@ -443,7 +478,7 @@ const RACKET_MATS = {};
 // raquete própria da carreira: cores e desenho escolhidos pelo jogador, logo do patrocinador master atual e o nome dele
 // furação da raquete própria (as mesmas da modelagem das raquetes)
 const SIG_HOLES = [['side1', 'Duas colunas laterais'], ['side2', 'Laterais cheias'], ['arc', 'Arco no topo'], ['ring', 'Anel em volta'], ['full', 'Face toda furada'], ['band', 'Grade central']];
-const SIG_PATTERNS = [['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras'], ['xcross', 'X grande'], ['star', 'Estrela'], ['swirl', 'Redemoinho'], ['hex', 'Colmeia'], ['fade', 'Degradê'], ['split', 'Metade e metade'], ['zigzag', 'Zigue-zague'], ['halftone', 'Pontilhado'], ['flames', 'Chamas'], ['shards', 'Estilhaços'], ['checker', 'Xadrez'], ['camo', 'Camuflado']];
+const SIG_PATTERNS = [['frame', 'Moldura em degradê'], ['slash', 'Cortes de velocidade'], ['duo', 'Dois tons em curva'], ['aura', 'Brilho no centro'], ['weave', 'Carbono à mostra'], ['vees', 'V empilhados'], ['lowpoly', 'Mosaico de triângulos'], ['pinstripe', 'Risca fina e faixa'], ['galaxy', 'Galáxia'], ['topo', 'Curvas de nível'], ['brush', 'Pinceladas'], ['diag', 'Faixa diagonal'], ['chevron', 'Chevron'], ['waves', 'Ondas'], ['rings', 'Anéis'], ['tri', 'Triângulos'], ['stripes', 'Listras'], ['xcross', 'X grande'], ['star', 'Estrela'], ['swirl', 'Redemoinho'], ['hex', 'Colmeia'], ['fade', 'Degradê'], ['split', 'Metade e metade'], ['zigzag', 'Zigue-zague'], ['halftone', 'Pontilhado'], ['flames', 'Chamas'], ['shards', 'Estilhaços'], ['checker', 'Xadrez'], ['camo', 'Camuflado']];
 function setSignatureArt(cfg, brand, name) {
   const c = Object.assign({ bg: '#0b0b0b', a1: '#ff6a00', a2: '#ffd23f', pattern: 'diag', carbon: true }, cfg || {});
   const base = mkRacketDraw(Object.assign({}, c, { label: (brand || 'SIGNATURE').toUpperCase(), labelColor: c.bg, band: c.a1 }));
@@ -645,4 +680,5 @@ function profR(prof, y) {
 }
 
 if (typeof window !== 'undefined') window.__pdoSig = setSignatureArt;
+if (typeof window !== 'undefined') window.__pdoRk = { RACKETS, setSignatureArt, SIG_PATTERNS, brandMark }; // (para testes: desenhar as raquetes numa folha)
 export { SIG_HOLES, brandMark, SIG_PATTERNS, setSignatureArt, drawPattern, setRacketModels, FOOT_GEO, HAND_GEO, PELVIS_PROF, RACKETS, SHADOW_TEX, THUMB_GEO, capsuleGeo, chainRings, headGeo, latheGeo, makeRacket, profR, shirtTex, shortsTex, skinTubeGeo };
