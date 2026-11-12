@@ -20,6 +20,7 @@ import { S } from './01-estado';
 import { MAX_ANISO, SUN_DIR, camera, hemi, renderer, scene, sun } from './02-render';
 import { ULTRA_U, sky } from './03-cenario';
 import { mocapLoad } from './25-mocap';
+import { ALL } from './06-modelos';
 
 const BASE = import.meta.env.BASE_URL + 'assets/ultra/';
 const U = { want: false, on: false, loading: null, ok: false, meta: null, tex: {}, env: null, composer: null, passes: {}, saved: null, w: 0, h: 0, pr: 0, focus: 8, dof: 0 };
@@ -108,6 +109,44 @@ function sizeComposer() {
   U.w = w; U.h = h; U.pr = pr; U.composer.setSize(w, h);
 }
 
+// ---------- jogadores ----------
+// materiais dos jogadores no modo: trama de tecido nas roupas e no boné (relevo fino, some de longe), olhos úmidos que
+// refletem o céu, cabelo e barba com mais brilho, pele com poros mais marcados. Passa de tempos em tempos (as roupas
+// trocam de material quando o visual muda) e desfaz tudo ao sair do modo
+let WEAVE = null;
+function weaveTex() {
+  if (WEAVE) return WEAVE;
+  const n = 64, c = document.createElement('canvas'); c.width = c.height = n; const x = c.getContext('2d'), im = x.createImageData(n, n);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { // malha esportiva: fios cruzados com furinhos
+    const u = i / n * Math.PI * 8, v = j / n * Math.PI * 8, h = .5 + .25 * Math.sin(u) * Math.cos(v * .5) + .25 * Math.cos(v) * Math.sin(u * .5) + (Math.random() - .5) * .12;
+    const k = (j * n + i) * 4, g = Math.max(0, Math.min(255, h * 255)); im.data[k] = im.data[k + 1] = im.data[k + 2] = g; im.data[k + 3] = 255; }
+  x.putImageData(im, 0, 0);
+  WEAVE = new THREE.CanvasTexture(c); WEAVE.wrapS = WEAVE.wrapT = THREE.RepeatWrapping; WEAVE.repeat.set(80, 80); WEAVE.anisotropy = MAX_ANISO;
+  return WEAVE;
+}
+const CLOTH_RE = /^(Top_|Shorts|ShortS|Bermuda|Skirt|Compress|Legging|Cap|Visor|Headband|Wristband|ArmSleeve|Calf)/, HAIR_RE = /^(Hair|Bun|Pony|Braid|Beard|Goatee|Mustache|Brow)/;
+function ultraPlayers(on) {
+  for (const p of ALL) {
+    if (!p.skin || !p.skin.holder) continue;
+    if (p.skinU) p.skinU.uPoreK.value = on ? 1.35 : S.settings.gfx === 'leve' ? 0 : .8;
+    p.skin.holder.traverse(o => {
+      const m = o.isMesh && o.material; if (!m || Array.isArray(m) || !m.isMeshStandardMaterial || !!m.userData.ultraP === on) return;
+      const kind = CLOTH_RE.test(o.name) ? 'cloth' : /^Eyes/.test(o.name) ? 'eye' : HAIR_RE.test(o.name) ? 'hair' : '';
+      if (!kind) return;
+      if (on) {
+        m.userData.ultraP = true; m.userData.u0 = [m.roughness, m.envMapIntensity];
+        if (kind === 'cloth') { if (!m.bumpMap) { m.bumpMap = weaveTex(); m.bumpScale = .55; m.userData.uBump = true; m.needsUpdate = true; } }
+        else if (kind === 'eye') { m.roughness = .07; m.envMapIntensity = 1.6; }
+        else { m.roughness = Math.max(.3, m.roughness * .72); m.envMapIntensity = 1.1; }
+      } else {
+        m.userData.ultraP = false; const u0 = m.userData.u0; if (u0) { m.roughness = u0[0]; m.envMapIntensity = u0[1]; }
+        if (m.userData.uBump) { m.bumpMap = null; m.userData.uBump = false; m.needsUpdate = true; }
+      }
+    });
+  }
+}
+let plTick = 0;
+
 // ---------- ligar / desligar ----------
 function apply(on) {
   if (on === U.on) return;
@@ -134,7 +173,8 @@ function ultraSync(split) {
   const want = ultraWanted() && !split;
   if (ultraWanted()) mocapLoad(); // capturas de movimento (valem também com tela dividida)
   if (want && !U.ok) { if (!U.loading) loadAssets(); if (U.on) apply(false); return false; }
-  apply(want);
+  const was = U.on; apply(want);
+  if (U.on ? (plTick++ % 90 === 0 || !was) : was) ultraPlayers(U.on);
   return U.on;
 }
 // desenha o quadro com o pós-processamento
