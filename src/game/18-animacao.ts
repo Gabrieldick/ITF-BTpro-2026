@@ -90,6 +90,21 @@ const IDL_WX = 1.1, IDL_WR = 0; // punho com o braço caído: raquete apontando 
 const stepCad = sp => clamp(1.8 + .4 * sp, 1.8, 3.8);
 // forma do golpe pela posição da bola: curta por baixo (raquete deitada) na bola baixa; voleio de backhand quando a bola
 // vem no lado contrário; leque (ventaglio) no backhand acima do ombro; gancho no smash com a bola passando para o lado da mão livre
+// O que o time espera receber enquanto a bola está com o adversário: 0 = ataque (smash/acelerada: bola alta para eles ou
+// já armando) → espera de frente, base aberta; 1 = bola baixa para eles (só dá para devolver curta ou lob) → espera meio
+// de lado, um pé à frente, pronto para correr para a frente ou para trás. Calculado uma vez por posição da bola
+const EXP = { key: '', v: [0, 0] };
+function expectSoft(team) {
+  if (ball.state !== 'live' || S.mode !== 'rally' || S.lastTeam !== team) return 0;
+  const key = S.hitId + '|' + Math.round(ball.pos.z * 3) + '|' + Math.round(ball.pos.y * 3);
+  if (EXP.key !== key) { EXP.key = key;
+    for (const t of [0, 1]) { const opp = $s.teams[1 - t] || []; let v = 0;
+      if (opp.length && !opp.some(o => (o.charging && (o.mtr || MTR).type !== 'lob') || (o.swing.t >= 0 && o.swing.type === 'smash'))) {
+        let y = 9, bd = 1e9; for (const o of opp) { const pt = predictPt(o), d = Math.hypot(pt.x - o.pos.x, pt.z - o.pos.z); if (d < bd) { bd = d; y = pt.y; } }
+        v = clamp((1.95 - y) / .5, 0, 1); }
+      EXP.v[t] = v; } }
+  return EXP.v[team];
+}
 const LAND_T = .38; // tempo de amortecer a queda de um salto
 const SPLIT_T = .44; // duração do split step (pulinho + pouso)
 function visKey(ak, v) {
@@ -232,7 +247,9 @@ function animateAthlete(p, dt) {
   const turnT = swk && sp > .5 ? r0 + Math.atan2(Math.sin(-hd - r0), Math.cos(-hd - r0)) : p.rlx > .3 && sp > 1 && Math.abs(hd) < 1.9 ? clamp(-hd, -1.5, 1.5) * p.rlx : 0;
   p.rlxTurn = r0 + (turnT - r0) * Math.min(1, dt * (swk ? 7 : 5));
   const prA = Math.abs(p.prep); // (verônica: prep negativo, vira para o outro lado)
-  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + (pose.yw || 0) * (p.lefty ? -1 : 1) + p.moveTurn * (1 - prA) * (1 - p.rlx) + p.rlxTurn * (1 - prA);
+  // espera meio de lado quando a bola foi baixa para o adversário (ver expectSoft); de frente quando vem ataque
+  { const dT = !busy && sp < 2.4 && !(p === human && fpBodyOn) ? expectSoft(p.team) : 0; p.diagK = (p.diagK || 0) + (dT - (p.diagK || 0)) * Math.min(1, dt * (dT > (p.diagK || 0) ? 8 : 9)); }
+  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.diagK * .5 * (p.lefty ? 1 : -1) * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + (pose.yw || 0) * (p.lefty ? -1 : 1) + p.moveTurn * (1 - prA) * (1 - p.rlx) + p.rlxTurn * (1 - prA);
   const cel = (S.mode === 'dead' || S.mode === 'ceremony') && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
   // comemoração entre pontos (tapa de mão / toque baixo / raquete com raquete): vira para o parceiro quando ele chega perto
@@ -262,7 +279,8 @@ function animateAthlete(p, dt) {
   // (2) voltou correndo para a posição (ex.: depois de uma curta) e parou → pulinho de prontidão
   if (S.mode === 'rally' && ball.state === 'live' && !(p.split > 0) && !busy && p.jump <= 0) {
     const sm = ($s.teams[1 - p.team] || []).some(o => (o.charging && (o.mtr || MTR).type !== 'lob') || (o.swing.t >= 0 && o.swing.type === 'smash' && !o.swing.hit && ball.pos.y > 1.9 && o.swing.t > o.swing.dur * .12));
-    if (sm && S.lastTeam === p.team && p.splitFor !== S.hitId) { p.splitFor = S.hitId; p.split = SPLIT_T; }
+    const soft = !sm && sp < 2.5 && ($s.teams[1 - p.team] || []).some(o => o.swing.t >= 0 && !o.swing.hit && o.swing.type !== 'smash' && o.swing.t > o.swing.dur * .12);
+    if ((sm || soft) && S.lastTeam === p.team && p.splitFor !== S.hitId) { p.splitFor = S.hitId; p.split = SPLIT_T; }
     else if (sp < .5 && (p.prevSp || 0) > 2.2 && S.lastTeam === p.team && p.splitBack !== S.hitId) { p.splitBack = S.hitId; p.split = SPLIT_T * .85; }
   }
   p.prevSp = sp;
@@ -381,7 +399,7 @@ function animateAthlete(p, dt) {
   const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1;
-    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + spLand * .15 + (spU >= 0 && spU < .45 ? .1 : 0) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = (pose.stag || 0) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
+    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + (spLand * .15 + (spU >= 0 && spU < .45 ? .1 : 0)) * (1 - .45 * (p.diagK || 0)) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = Math.max(pose.stag || 0, (p.diagK || 0) * .55 * (1 - run)) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     loc.push([fx + lvx / spn * mx * leadD / hs, fz + lvz / spn * leadD / hs]); // onde o pé deveria estar (local)
   }
