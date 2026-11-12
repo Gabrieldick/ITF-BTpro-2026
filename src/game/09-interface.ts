@@ -14,7 +14,7 @@ import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam, setupLocal2 } from './12-controles';
 import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
-import { STATE_INFO, crBoardTitle, crIsFinal, careerMatchEnded, crPotBarHTML } from './14-carreira';
+import { STATE_INFO, crBoardTitle, crIsFinal, crIsSemiOrFinal, careerMatchEnded, crPotBarHTML } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
 import { sideOf } from './18-animacao';
 import { warmShaders } from './02-render';
@@ -748,7 +748,7 @@ function arenaFor() {
     let master = '';
     if (t.tier >= 4 && !t.special) { let h = 7; for (const ch of (t.name || '') + ($s.CR.season || 1)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
       if (t.tier >= 6 || h % 100 < (t.tier >= 5 ? 85 : 65)) master = TOUR_MASTERS[(h >>> 8) % TOUR_MASTERS.length]; }
-    return Object.assign({ size, indoor, hall, urban, master, amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
+    return Object.assign({ size, indoor, hall, urban, master, ref: t.tier >= 6 && !t.special && crIsSemiOrFinal(), amateur: t.tier <= 2 && !t.mixed, text: (t.name || '').replace(/ · (AMADOR [ABC]|BT\d+)$/, '').toUpperCase().slice(0, 26) }, stPal || ARENA_PAL[loc]);
   }
   if (S.champActive) return Object.assign({ size: 2, text: 'CAMPEONATO', master: TOUR_MASTERS[(S.champSeed || 0) % TOUR_MASTERS.length] }, ARENA_PAL.BRA);
   // partida rápida e online: modelo de quadra escolhido (no online vale o de quem criou a sala)

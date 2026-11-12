@@ -697,6 +697,36 @@ function updateSideGames(dt) {
   });
   SIDE.players.forEach(m => { m.instanceMatrix.needsUpdate = true; }); SIDE.balls.instanceMatrix.needsUpdate = true;
 }
+// árbitro de cadeira (semifinais e finais dos torneios grandes): cadeira alta ao lado do poste da rede, com escada e
+// guarda-sol, e o árbitro sentado olhando a quadra
+function umpire(a) {
+  const g = new THREE.Group(), add = (geo, hex, x, y, z, rx = 0, ry = 0, rz = 0, o) => { const m = new THREE.Mesh(geo, mat(hex, o)); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true; g.add(m); return m; };
+  const B = (w, h, d) => new THREE.BoxGeometry(w, h, d), frame = '#e9edf2', dark = '#1c2a44', skin = '#c99a76';
+  // estrutura: quatro pernas abertas, travessas, degraus na parte de trás, assento, encosto, braços e apoio dos pés
+  const H = 1.75;
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => add(new THREE.CylinderGeometry(.025, .025, H + .05, 8), frame, sx * .36, H / 2, sz * .36, sz * -.09, 0, sx * .09));
+  [.45, .85, 1.25].forEach(y => { add(B(.04, .035, .62), frame, .43 - y * .05, y, 0); add(B(.62, .035, .04), frame, 0, y, .4 - y * .05); add(B(.62, .035, .04), frame, 0, y, -.4 + y * .05); });
+  add(B(.62, .05, .6), dark, 0, H, 0); add(B(.06, .62, .6), dark, .3, H + .33, 0); // assento e encosto
+  [-1, 1].forEach(sz => add(B(.5, .04, .05), frame, .04, H + .27, sz * .3));
+  add(B(.3, .03, .5), frame, -.42, H - .42, 0);                                     // apoio dos pés
+  add(B(.34, .02, .26), '#ffffff', -.2, H + .3, .3, 0, 0, .25);                     // prancheta da súmula no braço
+  // guarda-sol preso atrás do encosto
+  add(new THREE.CylinderGeometry(.015, .015, 1.5, 6), frame, .36, H + .9, 0);
+  add(new THREE.ConeGeometry(.95, .28, 10), a.trim || '#1f4fb8', .2, H + 1.72, 0);
+  // árbitro: sentado, polo branca e bermuda escura, boné, mãos nos joelhos
+  add(new THREE.CapsuleGeometry(.15, .34, 4, 10), '#f4f6f8', .14, H + .4, 0, 0, 0, .06);
+  add(new THREE.SphereGeometry(.105, 14, 12), skin, .1, H + .84, 0);
+  add(new THREE.CylinderGeometry(.11, .11, .06, 14), dark, .1, H + .92, 0); add(B(.12, .015, .16), dark, -.02, H + .9, 0); // boné com aba para a quadra
+  [-1, 1].forEach(sz => {
+    add(new THREE.CapsuleGeometry(.068, .3, 4, 8), dark, -.06, H + .1, sz * .1, 0, 0, Math.PI / 2);          // coxa
+    add(new THREE.CapsuleGeometry(.05, .32, 4, 8), skin, -.27, H - .16, sz * .1);                              // canela
+    add(B(.2, .05, .09), '#ffffff', -.33, H - .38, sz * .1);                                                   // tênis
+    add(new THREE.CapsuleGeometry(.045, .24, 4, 8), '#f4f6f8', .1, H + .47, sz * .2, 0, 0, .5);                // braço
+    add(new THREE.CapsuleGeometry(.038, .22, 4, 8), skin, -.03, H + .27, sz * .17, 0, 0, 1.25);                // antebraço até o joelho
+  });
+  // ao lado do poste (lado direito de quem joga de baixo), virado para a quadra
+  g.position.set(HALF_W.dupla + 1.25, 0, 0); ARENA.group.add(g);
+}
 function applyArena(a) {
   a = Object.assign({ size: 0, line: '#1f4fb8', trim: '#1f4fb8', sand: '#ffffff', seat: '#2457c5', board: ['#0b1d3f', '#33c3ff'], text: 'ITF-BT PRO 2026' }, a || {});
   const key = JSON.stringify(a); if (key === ARENA.key) return; ARENA.key = key;
@@ -732,6 +762,7 @@ function applyArena(a) {
   }
   if (a.size >= 2) { boards(-(W - .6), -1, L - 2, 'z', ...brd(a), brdT(a)); boards(W - .6, -1, L - 2, 'z', ...brd(a), brdT(a)); }
   if (a.size >= 3) boards(0, -(C.halfL + 4.4), 2 * W - 2.4, 'x', ...brd(a), brdT(a));
+  if (a.ref) umpire(a);
   indoorHall(a);
   if (a.urban) urbanSite(a);
   if (!a.indoor && (a.amateur || a.size >= 1)) beachDecor(a);
