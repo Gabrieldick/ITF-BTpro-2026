@@ -6,7 +6,7 @@ import { $s } from '../state';
 import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, smooth, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, camera2, sun } from './02-render';
-import { mocapReady, mocapDrive } from './25-mocap';
+import { mocapReady, mocapDrive, mocapLoad } from './25-mocap';
 import { sky } from './03-cenario';
 import { pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf, swingVar, predictPt, tailRate, mirrorKey } from './04-poses';
 import { ALL, human } from './06-modelos';
@@ -775,7 +775,10 @@ function updateVisuals(dt) {
   updateAimMarker();
   if ($s.defRingT > 0) { $s.defRingT = Math.max(0, $s.defRingT - dt); const k = 1 - $s.defRingT / .5; defRing.scale.setScalar(1 + k * 1.6); defRing.material.opacity = .7 * (1 - k); if ($s.defRingT === 0) defRing.visible = false; }
   for (const p of ALL) if (p.model.group.visible || p === human) animateAthlete(p, dt);
-  { const mc = (S.settings.players === 'ultra' || S.mcForce) && mocapReady(); // Ultrarrealista: deslocamento por captura de movimento
+  // captura de movimento (passos reais, tronco nos golpes, ombros): no Ultrarrealista e também no Realista com gráficos em
+  // Alto (custa ~0,2 ms por jogador por quadro; no Leve fica desligada para poupar o celular)
+  { const want = S.settings.players === 'ultra' || (S.settings.players === '3d' && S.settings.gfx !== 'leve') || S.mcForce; if (want && !mocapReady()) mocapLoad();
+    const mc = want && mocapReady();
     for (const p of ALL) if (p.skin && p.skinOn) { driveSkin(p); if (mc) mocapDrive(p, dt); } }
   animateFP();
   updateParticles(dt);
