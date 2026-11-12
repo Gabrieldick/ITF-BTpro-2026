@@ -231,7 +231,7 @@ function mocapDrive(p, dt) {
   if (W >= .004) {
     _a.copy(mc.hipOff); hip.localToWorld(_a);                                           // onde o meio do quadril está agora
     // base atlética: no rali o quadril vai um pouco mais baixo que na captura (gente andando em pé), mais ainda de lado
-    const low = (S.mode === 'rally' ? .035 : 0) + .05 * latW * clamp(spd / 1.5, 0, 1);
+    const low = (S.mode === 'rally' ? .035 : 0) + .075 * latW * clamp(spd / 1.5, 0, 1);
     _b.set(POSE.p[0] * r, (POSE.p[1] - low) * r, POSE.p[2] * r).applyQuaternion(_qg).add(_gp).sub(_a).multiplyScalar(W);
   }
   if (wC >= .004) { // transferência de peso do gesto: o quadril avança/abaixa como na captura (as pernas acompanham pelos pés plantados)
@@ -253,8 +253,10 @@ function mocapDrive(p, dt) {
   FEET.forEach(([up, lo, ft, toe, ik, ia], s) => {
     const U = B[up], Lw = B[lo], Ft = B[ft], T = B[toe], L = mc.lock[s];
     if (W >= .004) {
-      _a.set(POSE.p[ia * 3] * r, POSE.p[ia * 3 + 1] * r, POSE.p[ia * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // tornozelo
-      _b.set(POSE.p[ik * 3] * r, POSE.p[ik * 3 + 1] * r, POSE.p[ik * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // joelho
+      // de lado, a base abre (deslocamento de defesa: pés mais afastados que no andar de lado da captura)
+      const wide = (ft.startsWith('Left') ? -1 : 1) * .1 * latW * clamp(spd / 1.5, 0, 1);
+      _a.set((POSE.p[ia * 3] + wide) * r, POSE.p[ia * 3 + 1] * r, POSE.p[ia * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // tornozelo
+      _b.set((POSE.p[ik * 3] + wide * .6) * r, POSE.p[ik * 3 + 1] * r, POSE.p[ik * 3 + 2] * r).applyQuaternion(_qg).add(_gp); // joelho
       const ct = POSE.c[s] > .5 && !dbg;
       if (ct && !L.on) { L.on = 1; L.x = _a.x; L.z = _a.z; }
       if (!ct) L.on = 0;
