@@ -10,6 +10,56 @@
   "fonte": "https://www.jamendo.com/track/902459"
  },
  {
+  "arquivo": "saudades-do-carnaval.mp3",
+  "titulo": "Saudades do Carnaval",
+  "artista": "Pierino",
+  "estilo": "MPB",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/506681"
+ },
+ {
+  "arquivo": "a-rua-da-vida-feliz.mp3",
+  "titulo": "A Rua da Vida Feliz",
+  "artista": "Madalena Moog",
+  "estilo": "MPB",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/371830"
+ },
+ {
+  "arquivo": "as-casas.mp3",
+  "titulo": "As Casas",
+  "artista": "Madalena Moog",
+  "estilo": "MPB",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/371836"
+ },
+ {
+  "arquivo": "ela-so-gosta-e-de-carnaval.mp3",
+  "titulo": "Ela só gosta é de carnaval",
+  "artista": "Madalena Moog",
+  "estilo": "MPB / samba-rock",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/902460"
+ },
+ {
+  "arquivo": "stronic-up.mp3",
+  "titulo": "Stronic Up!",
+  "artista": "Madalena Moog",
+  "estilo": "MPB / samba-rock",
+  "cantada": true,
+  "licenca": "CC BY-SA 3.0",
+  "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "fonte": "https://www.jamendo.com/track/371835"
+ },
+ {
   "arquivo": "samba-groove.mp3",
   "titulo": "Samba Groove",
   "artista": "Regra 4",
