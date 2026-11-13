@@ -47,6 +47,11 @@ function renderCrSide() {
   side.querySelector('.cr-news-box').addEventListener('toggle', e => { if (!wide) crFeedOpen = e.target.open; });
 }
 { const lb = document.getElementById('crLivre'); if (lb) lb.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
+{ const w = document.getElementById('crWalk'); if (w) w.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
+// menu principal: entra direto andando com a última carreira salva
+{ const b = document.getElementById('btnLivre'); if (b) b.addEventListener('click', () => { if (!$s.CR) { const l = crSlots(); if (!l.length || !crLoadSlot(l[0].id)) return; } crTab = 'agenda'; crEntry = null; openCareer(); livreEnter(); }); }
+function livreTile() { const b = $('btnLivre'); if (!b) return; const l = crSlots(), c = $s.CR ? { name: $s.CR.me.name } : l[0]; b.hidden = !c; if (c) b.querySelector('em').textContent = 'com ' + c.name; }
+setTimeout(livreTile, 0);
 HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
 LIVRE.actions = { play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 function renderCareer() {
@@ -57,6 +62,8 @@ function renderCareer() {
   $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
   $('crExport').hidden = $('crSwitch').hidden = $('crGuideBtn').hidden = !$s.CR;
   { const lb = $('crLivre'); if (lb) { lb.hidden = !$s.CR; lb.textContent = $s.CR && $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? '🚶 Andar pelo torneio' : '🚶 Modo livre'; } }
+  { const w = $('crWalk'); if (w && $s.CR) { const t = $s.CR.tour, on = t && !t.pending && !t.done;
+      w.innerHTML = '<span class="tw-ico">🚶</span><span class="tw-txt"><small>Mundo livre</small><b>' + (on ? 'Andar pelo ' + esc(String(t.name).replace(/ · .*$/, '')) : 'Andar pela sua casa e pelo bairro') + '</b><em>' + (on ? 'Passeie pelo torneio, fale com os fãs e entre na sua quadra para jogar.' : 'Treine na sua quadra, cuide do corpo, dê entrevistas e vá até a arena.') + '</em></span><span class="tw-go">Entrar ›</span>'; } }
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
@@ -977,10 +984,11 @@ function renderSaves() {
   renderCloud(); if (CL.sess && clRows === null) clRefresh();
   const list = crSlots();
   $('crSlotList').innerHTML = list.length ? list.map(c => '<div class="cr-slot"><div class="who"><b>' + esc(c.name) + ' · OVR ' + c.ovr + '</b><span>T' + c.season + ' S' + c.week + ' · ' + c.tier + ' · ' + money(c.money) + fmtDate(c.savedAt) + '</span></div>'
-    + '<div class="acts"><button class="cta sm" data-slot-load="' + esc(c.id) + '">Continuar</button><button class="ghost sm" data-slot-exp="' + esc(c.id) + '">Exportar</button><button class="ghost sm" data-slot-del="' + esc(c.id) + '">Apagar</button></div></div>').join('')
+    + '<div class="acts"><button class="cta sm" data-slot-load="' + esc(c.id) + '">Continuar</button><button class="ghost sm" data-slot-walk="' + esc(c.id) + '" title="Abrir a carreira já andando pela casa">🚶 Andar</button><button class="ghost sm" data-slot-exp="' + esc(c.id) + '">Exportar</button><button class="ghost sm" data-slot-del="' + esc(c.id) + '">Apagar</button></div></div>').join('')
     : '<p class="cr-note cr-wrap">Nenhuma carreira salva neste navegador. Crie uma na aba Criar carreira, baixe da nuvem ou importe um arquivo.</p>';
   const L = $('crSlotList');
   L.querySelectorAll('[data-slot-load]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotLoad)) { crTab = 'agenda'; crSaveMsg(''); renderCareer(); } }));
+  L.querySelectorAll('[data-slot-walk]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotWalk)) { crTab = 'agenda'; crSaveMsg(''); renderCareer(); livreEnter(); } }));
   L.querySelectorAll('[data-slot-exp]').forEach(b => b.addEventListener('click', () => { const fn = crDownload(b.dataset.slotExp); if (fn) crSaveMsg('Baixado: ' + fn + '. Para abrir em outro lugar, coloque o arquivo na pasta ' + SAVE_DIR + '/ do repositório e use "Carregar do GitHub", ou use "Importar arquivo".'); }));
   L.querySelectorAll('[data-slot-del]').forEach(b => b.addEventListener('click', () => { if (b.dataset.sure) { crDeleteSlot(b.dataset.slotDel); crSaveMsg('Carreira apagada deste navegador.'); renderCareer(); } else { b.dataset.sure = '1'; b.textContent = 'Confirmar'; } }));
 }
@@ -1109,6 +1117,7 @@ function menuStep(st) {
 }
 // placa do jogador em destaque na tela inicial (nome, país, estilo e overall de quem está escolhido na partida rápida)
 function heroPlate() {
+  livreTile();
   const el = $('heroPlate'); if (!el) return;
   const c = human && human.char; el.hidden = !c || $('menu').dataset.step !== 'home'; if (el.hidden) return;
   el.querySelector('.hp-ovr b').textContent = String(overall((charById(c.id) || c).a)); // (o mesmo número do cartão da partida rápida: sem o bônus da raquete)
