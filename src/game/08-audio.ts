@@ -42,7 +42,7 @@ function applyGfx() {
 // ---------- Áudio ----------
 let actx = null;
 // canais de volume (mixer das configurações): cada som sai por um canal, e todos passam pelo geral
-const VOL_DEF = { master: 1, music: .45, hits: 1, crowd: .7, amb: .8, fx: .8 };
+const VOL_DEF = { master: 1, music: .45, hits: 1, crowd: .7, amb: .8, fx: .8, voz: .9 };
 const vol = k => { const v = (S.settings.vol || {})[k]; return v == null ? VOL_DEF[k] : Math.max(0, Math.min(1, +v || 0)); };
 const BUS = {};
 function bus(k) { const a = actx; if (!BUS.master) { BUS.master = a.createGain(); BUS.master.connect(a.destination); BUS.master.gain.value = S.muted ? 0 : vol('master'); }

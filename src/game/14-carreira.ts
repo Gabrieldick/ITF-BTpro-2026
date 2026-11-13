@@ -9,6 +9,7 @@ import { $, newMatch, scoreText } from './09-interface';
 import { money } from './15-carreira-telas';
 import { setSignatureArt } from './05-atletas';
 import { countryName } from '../flags';
+import { HIST } from './26-historias';
 import LZString from 'lz-string';
 // ================= MODO CARREIRA =================
 // circuito em escada (amador -> ITF -> Sand Series -> Mundial), ranking de 26 semanas, dinheiro, evolução e parceiros
@@ -482,7 +483,7 @@ function crGearBonus() { return gearSum(gearOn($s.CR.gear, $s.CR.gearEq)); } // 
 // energia no desempenho (todos os atributos): abaixo de 10 → −4, de 20 → −3, de 30 → −2, de 45 → −1; acima de 85 → +1
 const crEnergyMod = () => { const e = $s.CR.energy; return e < 10 ? -4 : e < 20 ? -3 : e < 30 ? -2 : e < 45 ? -1 : e > 85 ? 1 : 0; };
 function crFatigue() { const p = crEnergyMod(); const b = {}; for (const [k] of ATTRS) b[k] = p; return b; }
-function crMental() { const b = {}; if ($s.CR.staff.psico) for (const [k] of ATTRS) b[k] = 1; return b; }
+function crMental() { const b = {}; if ($s.CR.staff.psico) for (const [k] of ATTRS) b[k] = 1; if (HIST.effects) { const a = HIST.effects().attr; for (const k in a) b[k] = (b[k] || 0) + a[k]; } return b; } // (personalidade também entra aqui)
 // equipamento (raquete + acessórios + psicólogo) somado por atributo, com retorno decrescente: até +2 vale cheio,
 // o que passa disso vale 25%, e nunca mais que +3 (os pontos fracos da raquete continuam valendo inteiros)
 function crEquipB() {
@@ -1316,6 +1317,7 @@ function crEnter(opt) {
 // o torneio começa no sábado: até lá ele fica marcado (pending) e os dias seguem livres
 function crTourDays() {
   const t = $s.CR.tour; if (!t) return;
+  if (HIST.preTour && !t.preTalk) { t.preTalk = true; HIST.preTour(t); }
   t.day = 1; t.pending = $s.CR.day < 6;
   if (t.pending) $s.CR.lastMsg = (($s.CR.lastMsg || '') + ' Inscrição feita: o torneio começa no sábado. Até lá, use os dias para treinar ou descansar.').trim();
   else $s.CR.day = 6;
@@ -1414,6 +1416,7 @@ function crRivalsIn(tm) { return [tm.a, tm.b].filter(id => id && id !== 'crme' &
 function crRivalOf(tm) { const h = crH2H(tm); return (h.w + h.l >= 3 && h.w >= 1 && h.l >= 1) || crRivalsIn(tm).length > 0; }
 function crAfterMyMatch(won) {
   const t = $s.CR.tour;
+  if (HIST.afterMatch && t) { const mm = crMyMatch(); if (mm) { const op = t.teams[mm.a === t.me ? mm.b : mm.a]; t.zebra = won && crTeamOvr(op) >= crTeamOvr(t.teams[t.me]) + 4; HIST.afterMatch(won, op ? crTeamName(op).replace(/^.* · /, '') : '', t); } }
   won ? $s.CR.mw = ($s.CR.mw || 0) + 1 : $s.CR.ml = ($s.CR.ml || 0) + 1; // para as conquistas
   if (S.perf && S.perf.ev && S.perf.ev.ventaglio) $s.CR.vent = ($s.CR.vent || 0) + S.perf.ev.ventaglio;
   // provocação aceita: o duelo vale muito
@@ -1594,6 +1597,7 @@ function crFinishTour() {
   crLoad(1.5); const injMsg = crInjuryRoll(1); if (injMsg) t.moodMsg = (t.moodMsg ? t.moodMsg + ' ' : '') + injMsg;
   const placeName = place === 0 ? 'Campeão' : place === 1 ? 'Vice-campeão' : place === 2 ? 'Semifinal' : place === 3 ? 'Quartas' : 'Oitavas';
   t.summary = { place, placeName, prize, pts, xp, offers };
+  if (HIST.afterTour) HIST.afterTour(t, place); // coletiva
   if (place === 0 && !t.singles) crNews(crTeamName(t.teams[t.me]) + ' são campeões do ' + t.name + '!', '🏆');
   $s.CR.history.unshift({ s: $s.CR.season, w: $s.CR.week, name: t.name, tier: T.curto, place: placeName, prize, pts, partner: t.singles ? '' : t.mx ? nameOf(crChar(t.mate)) : $s.CR.partner ? nameOf(crChar($s.CR.partner)) : '' });
   crAchCheck().forEach(n => t.log.push('🏅 Conquista: ' + n));
@@ -1608,7 +1612,7 @@ function crFinishTour() {
 const PE_K = .6;
 // e quanto mais alto o overall, menos pontos cada coisa rende (até ~45% no topo): perto do 90 evoluir é lento de verdade
 const crPeLvK = () => clamp(1 - (overall($s.CR.me.a) - 70) * .02, .7, 1); // (o corte por nível era até 45%: no fim da carreira quase não vinham pontos)
-const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0) + ($s.CR.coach > 0 ? .3 : 0); return (1 + x / (1 + x * .5)) * PE_K * crPeLvK(); };
+const crXpMul = () => { const x = crStaffList().reduce((t, s) => t + (s.xp || 0), 0) + ($s.CR.mentor > 0 ? .5 : 0) + ($s.CR.age <= 20 ? .3 : 0) + crInvXp() + ($s.CR.boostW > 0 ? .4 : 0) + ($s.CR.coach > 0 ? .3 : 0); return (1 + x / (1 + x * .5)) * PE_K * crPeLvK() * (HIST.effects ? HIST.effects().xp : 1); }; // (personalidade: focado evolui mais)
 // estoque máximo de pontos de evolução (~2 de overall no seu nível): o que passar disso não acumula
 const crPeMax = () => Math.max(300, 25 * crUpCostBase(overall($s.CR.me.a)));
 // ---------- negócios: investimentos permanentes para o fim da carreira ----------
@@ -1755,6 +1759,7 @@ function crNextWeek(note) {
   $s.CR.energy = Math.min(100, $s.CR.energy + 10 + crStaffList().reduce((t, x) => t + (x.energy || 0), 0) + (crInv('ct') >= 1 ? 6 : 0) + (crLife('nutri') ? 5 : 0) + (crLife('casa') ? 3 : 0) + crBizEnergy());
   let msg = note || '';
   if ($s.CR.partner) $s.CR.mood += (55 - $s.CR.mood) * (crLife('casa') || crInv('moradia') >= 2 ? .04 : .08);
+  if ($s.CR.partner && HIST.effects) $s.CR.mood = clamp($s.CR.mood + HIST.effects().mood, 0, 100); // humilde agrada o parceiro; explosivo irrita
   if (crLife('imprensa')) crAddFama(1);
   { const bf = crBizFamaWeek(); if (bf) crAddFama(bf); }
   if ($s.CR.boostW > 0) $s.CR.boostW--;
@@ -1775,6 +1780,7 @@ function crNextWeek(note) {
   crFamaWeek(); if ($s.CR.mentor > 0) $s.CR.mentor--; if ($s.CR.wildcard > 0) $s.CR.wildcard--;
   crMaybeSponsor(); { const mb = crMaybeMaster(); if (mb) msg += (msg ? ' ' : '') + 'A ' + mb + ' fez uma proposta de patrocínio master (veja Patrocínios).'; }
   if (Math.random() < .3) { const ev = crRollEvent(); if (ev) msg += (msg ? ' ' : '') + ev; }
+  if (HIST.week) HIST.week(); // histórias e entrevistas da semana
   if ($s.CR.week > SEASON_WEEKS) {
     const pos = crRank();
     msg = 'Fim da temporada ' + $s.CR.season + ': você terminou em ' + pos + 'º no ranking. ' + msg;
@@ -2112,7 +2118,8 @@ function crFamaTarget() {
   const prestige = Math.min(18, Object.entries($s.CR.titles || {}).reduce((t, [k, v]) => t + v * .3 * Math.pow(+k + 1, 1.4), 0));
   return clamp(base + prestige, 0, 100);
 }
-function crAddFama(v) { const cap = Math.min(100, crFamaTarget() + 12); const f = $s.CR.fama || 0; $s.CR.fama = v >= 0 ? Math.max(f, Math.min(f + v, cap)) : Math.max(0, f + v); } // ganhar nunca reduz; acima do teto o pico não soma
+function crAddFama(v) { if (v > 0 && HIST.effects) v *= HIST.effects().fama; // personalidade: carismático ganha mais fama
+ const cap = Math.min(100, crFamaTarget() + 12); const f = $s.CR.fama || 0; $s.CR.fama = v >= 0 ? Math.max(f, Math.min(f + v, cap)) : Math.max(0, f + v); } // ganhar nunca reduz; acima do teto o pico não soma
 function crFamaWeek() {
   const tg = crFamaTarget(), f = $s.CR.fama || 0;
   // acima do alvo cai devagar (mais devagar ainda com marca própria); abaixo sobe aos poucos
@@ -2246,6 +2253,7 @@ function crResolveEvent(i) {
 }
 
 export { crIsSemiOrFinal };
+export { crAddFama, crMood, crChemAdd, crMaybeSponsor, crNews };
 export { crRankingMode, crRankMode, crModePts, MODE_PAY };
 export { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo

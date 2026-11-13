@@ -1258,3 +1258,27 @@ body:not(.at-home) .am-btn { padding: 6px 8px 6px 6px; gap: 6px; opacity: .92; }
   body.hero-menu #menu[data-step="home"] .card { gap: 12px; }
   body.hero-menu #menu[data-step="home"] .tile-main { min-height: 104px; }
 }
+
+/* entrevistas e histórias da carreira */
+.talk-ov { z-index: 40; align-items: center; background: radial-gradient(ellipse at 50% 30%, rgba(30, 90, 200, .3), transparent 60%), rgba(3, 9, 26, .78); }
+.talk-card { width: min(100%, 640px); gap: 14px; }
+.talk-head { display: flex; align-items: center; gap: 12px; }
+.talk-head > div { flex: 1; min-width: 0; }
+.talk-ico { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 12px; background: linear-gradient(135deg, #1e8bff, var(--ui-acc)); font-size: 26px; flex: none; }
+.talk-rep { font: 800 italic 20px var(--f-ui); text-transform: uppercase; }
+.talk-q { margin: 0; font-size: 19px; line-height: 1.45; font-weight: 600; }
+.talk-opts { display: grid; gap: 8px; }
+.talk-opt { text-align: left; padding: 10px 14px; font: 600 15px/1.35 var(--f-ui-body); text-transform: none; letter-spacing: 0; display: grid; gap: 3px; white-space: normal; }
+.talk-opt small { font: 800 10px var(--f-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--ui-acc); }
+.talk-opt:hover, .talk-opt:focus-visible { border-color: var(--ui-acc); transform: translateX(4px); }
+.talk-res { display: grid; gap: 10px; }
+.talk-reply { margin: 0; font-style: italic; font-size: 16px; line-height: 1.45; opacity: .95; }
+.talk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.talk-chip { padding: 4px 9px; border-radius: 999px; background: rgba(51, 195, 255, .14); border: 1px solid rgba(51, 195, 255, .35); font: 700 12px var(--f-ui-body); }
+.talk-ok { justify-self: start; }
+/* personalidade */
+.pers { display: grid; gap: 8px; margin: 4px 0 6px; }
+.pers-row { display: grid; grid-template-columns: 100px 1fr 100px; align-items: center; gap: 10px; font: 700 12px var(--f-ui-body); }
+.pers-row span:last-child { text-align: right; }
+.pers-bar { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(51, 195, 255, .35), rgba(255, 255, 255, .08) 50%, rgba(182, 255, 60, .35)); }
+.pers-bar i { position: absolute; top: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; transform: translateY(-50%); box-shadow: 0 0 0 3px rgba(4, 18, 46, .8); }

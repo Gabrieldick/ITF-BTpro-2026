@@ -6,6 +6,7 @@ import { charById, SERVE_STYLES, GEAR_SLOTS, gearOn, GEAR_CAP, ATTRS, attrOf, GE
 import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { human } from './06-modelos';
+import { HIST, renderTalk, persHTML } from './26-historias';
 import { ac, applyGfx } from './08-audio';
 import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview, faceOf, EYE_COLS } from './07-glb';
 import * as THREE from 'three';
@@ -44,6 +45,7 @@ function renderCrSide() {
   side.querySelector('.cr-pairs-box').addEventListener('toggle', e => { if (!wide) crPairsOpen = e.target.open; });
   side.querySelector('.cr-news-box').addEventListener('toggle', e => { if (!wide) crFeedOpen = e.target.open; });
 }
+HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -80,6 +82,7 @@ function renderCareer() {
   $('crTabs').hidden = !!($s.CR.tour && !$s.CR.tour.pending);
   const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
+  setTimeout(renderTalk, 0); // entrevistas e histórias na fila: aparecem por cima da carreira
   if ($s.CR.tour && !$s.CR.tour.pending) { body.innerHTML = crTourHTML(); bindTour(); return; }
   body.innerHTML = ({ agenda: crAgendaHTML, calendario: crCalendarHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML, trofeus: crTrophyHTML, ajustes: crSettingsHTML }[crTab])();
   bindCareerBody();
@@ -181,6 +184,7 @@ function crPlayerHTML() {
     + (crNatural('forca') === null ? ' Completo: acima de 90, todo atributo custa 1,4×.' : ' Acima de 90, atributos fora do seu estilo custam o dobro (os do estilo estão marcados com ★).') + (crAvgRating() !== null ? ' Média das últimas notas: <b>' + crAvgRating().toFixed(1).replace('.', ',') + '</b>.' : '') + ' Em verde/vermelho: efeito da raquete e dos equipamentos.</p></div>'
     + '<div><p class="section-label">Evolução do overall</p><p class="cr-note">' + log + '</p><p class="section-label">Títulos</p><p class="cr-note">' + (Object.keys($s.CR.titles).length ? Object.entries($s.CR.titles).map(([t, n]) => TIERS[t].curto + ' ×' + n).join(' · ') : 'Nenhum ainda.') + '</p>'
     + '<p class="section-label">Aparência e uniforme</p><div class="cta-row"><button type="button" class="cta" id="crEditBtn">✏️ Editar jogador</button></div>'
+    + persHTML()
     + '</div></div>';
 }
 // ajustes da carreira (antes ficavam misturados com os atributos)
