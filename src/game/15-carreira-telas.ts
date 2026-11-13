@@ -13,6 +13,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
+import { BAGS, crBagBuy, crBagPrice } from './14-carreira';
 import { crRankingMode, crModePts, MODE_PAY, crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
@@ -49,7 +50,21 @@ function renderCrSide() {
 { const lb = document.getElementById('crLivre'); if (lb) lb.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 { const w = document.getElementById('crWalk'); if (w) w.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
-LIVRE.actions = { cfg: () => { const m = $('menu'); m.hidden = false; menuStep('cfg'); menuPrev = 'livre'; }, play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
+// jogo-treino marcado no modo livre: partida amistosa (sem ranking) com quem você escolheu; ao fim, conta como treino e volta a andar
+LIVRE.friendly = null;
+function friendlyStart(v) {
+  LIVRE.friendly = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, racket: S.settings.racket };
+  livreExit(false); crSyncChars();
+  S.settings.mode = 'dupla'; S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme', mate: v.mate, o1: v.o1, o2: v.o2 }); S.settings.racket = $s.CR.racket;
+  el.menu.hidden = true; $('career').hidden = true; newMatch();
+}
+function friendlyBack() {
+  const f = LIVRE.friendly; if (!f) return false; LIVRE.friendly = null;
+  S.settings.pick = f.pick; S.settings.mode = f.mode; S.settings.racket = f.racket;
+  S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; hideBanner();
+  crTrain(); saveCareer(); openCareer(); livreEnter(); return true;
+}
+LIVRE.actions = { editLook: () => { livreExit(true); crTab = 'jogador'; renderCareer(); openEditor(); }, shopClothes: () => { livreExit(true); crTab = 'loja'; shopTab = 'cima'; renderCareer(); }, friendly: v => friendlyStart(v), cfg: () => { const m = $('menu'); m.hidden = false; menuStep('cfg'); menuPrev = 'livre'; }, play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -506,11 +521,15 @@ function crShopHTML() {
   const sub = SHOP_TABS.map(([k, n]) => '<button type="button" class="' + (shopTab === k ? 'sel' : '') + '" data-shop="' + k + '">' + n + '</button>').join('');
   const head = (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '') + '<div class="cr-tabs cr-shop-tabs">' + sub + '</div>';
   if (shopTab === 'raquetes') return head + crSigHTML() + '<p class="section-label">🎾 Raquetes (' + list.length + ' de ' + all.length + ')</p>' + tools + '<div class="cr-list rk-shop">' + rk + '</div>';
+  if (shopTab === 'bolsas') { const own = $s.CR.bags || [];
+    return head + '<p class="section-label">🎒 Raqueteiras (você anda com ela nas costas no modo livre)</p><div class="cr-list">' + BAGS.map(b => { const o = own.includes(b.id), u = $s.CR.bag === b.id, pr = crBagPrice(b);
+      return '<div class="cr-row' + (u ? ' me' : '') + '"><span class="cr-ic" style="background:linear-gradient(135deg,' + b.cols[0] + ' 55%,' + b.cols[1] + ' 55%);border-radius:8px"></span><div><b>' + esc(b.nome) + (u ? ' · em uso' : '') + '</b><small>' + (pr ? money(pr) : 'grátis (patrocinador master)') + '</small></div>'
+        + (u ? '' : o ? '<button class="ghost sm" data-bag="' + b.id + '">Usar</button>' : '<button class="cta sm" data-bag="' + b.id + '"' + ($s.CR.money < pr ? ' disabled' : '') + '>Comprar</button>') + '</div>'; }).join('') + '</div>'; }
   if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Um em uso por categoria, como a raquete (quanto melhor, mais caro). Somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
   return head + crClothesHTML(shopTab);
 }
 // ---------- loja de roupas: parte de cima, de baixo, estampas, acessórios e a vitrine das exclusivas ----------
-const SHOP_TABS = [['raquetes', '🎾 Raquetes'], ['equipe', '🧢 Equipe e equipamentos'], ['cima', '👕 Parte de cima'], ['baixo', '🩳 Parte de baixo'], ['estampas', '🎨 Estampas'], ['acess', '🕶️ Acessórios'], ['exclusivas', '💎 Exclusivas']];
+const SHOP_TABS = [['raquetes', '🎾 Raquetes'], ['equipe', '🧢 Equipe e equipamentos'], ['cima', '👕 Parte de cima'], ['baixo', '🩳 Parte de baixo'], ['estampas', '🎨 Estampas'], ['acess', '🕶️ Acessórios'], ['bolsas', '🎒 Raqueteiras'], ['exclusivas', '💎 Exclusivas']];
 let shopTab = 'raquetes';
 const CLOTH_CAT = { tops: TOP_KINDS, bots: BOT_KINDS, pats: PATTERNS, acc: ACCESS };
 // exclusiva: pede posição no ranking, um título (nível do torneio) ou fama
@@ -574,7 +593,7 @@ function crBizHTML() {
     }).join('');
     return '<p class="section-label">' + tr.nome + ' · nível ' + lv + '/' + tr.niveis.length + '</p><div class="cr-list">' + rows + '</div>';
   }).join('');
-  const life = LIFE.map(it => { const own = crLife(it.id); return '<div class="cr-row' + (own ? ' me' : '') + '"><span class="cr-ic">' + ({ nutri: '🥗', imprensa: '📰', crio: '🧊', carro: '🚗', casa: '🏠', social: '🤝' }[it.id]) + '</span><div><b>' + it.nome + (it.temp ? ' · temporada' : '') + '</b><small>' + it.desc + '</small></div>' + (own ? '<span class="cr-own">' + (it.temp ? 'contratado' : 'comprado') + '</span>' : '<button class="cta sm" data-life="' + it.id + '"' + ($s.CR.money < it.preco ? ' disabled' : '') + '>' + money(it.preco) + '</button>') + '</div>'; }).join('');
+  const life = LIFE.map(it => { const own = crLife(it.id); return '<div class="cr-row' + (own ? ' me' : '') + '"><span class="cr-ic">' + ({ nutri: '🥗', imprensa: '📰', crio: '🧊', carro: '🚗', casa: '🏠', social: '🤝', skate: '🛹', bike: '🚲', cachorro: '🐕', gato: '🐈', trofeus: '🏆' }[it.id]) + '</span><div><b>' + it.nome + (it.temp ? ' · temporada' : '') + '</b><small>' + it.desc + '</small></div>' + (own ? '<span class="cr-own">' + (it.temp ? 'contratado' : 'comprado') + '</span>' : '<button class="cta sm" data-life="' + it.id + '"' + ($s.CR.money < it.preco ? ' disabled' : '') + '>' + money(it.preco) + '</button>') + '</div>'; }).join('');
   const sig = $s.CR.rackets.includes('assinatura') && $s.CR.racket !== 'assinatura' ? '<p class="cr-msg">Você não está usando a sua raquete própria. <button class="cta sm" data-equip="assinatura">Usar a assinatura</button></p>' : '';
   return sig + '<p class="cr-note">Investimentos permanentes (não acabam no fim da temporada). Cada nível exige o anterior e conquistas na carreira.</p>' + tracks
     + '<p class="section-label">Estilo de vida</p><div class="cr-list">' + life + '</div>';
@@ -789,6 +808,7 @@ function bindCareerBody() {
     cd.classList.add('one'); cd.addEventListener('click', e => { if (!e.target.closest('button, a, select, input')) bs[0].click(); }); });
   body.querySelectorAll('[data-t-go]').forEach(bt => bt.addEventListener('click', () => { crTab = bt.dataset.tGo; renderCareer(); }));
   body.querySelectorAll('[data-shop]').forEach(bt => bt.addEventListener('click', () => { shopTab = bt.dataset.shop; renderCareer(); }));
+  body.querySelectorAll('[data-bag]').forEach(bt => bt.addEventListener('click', () => { crBagBuy(bt.dataset.bag); renderCareer(); }));
   // raquete própria: prévia, cores, desenho e pontos
   sigPreview3D();
   ['bg', 'a1', 'a2', 'grip'].forEach(k => body.querySelectorAll('[data-sig-' + k + ']').forEach(bt => bt.addEventListener('click', () => { crSigLook(k, bt.getAttribute('data-sig-' + k)); renderCareer(); })));
@@ -1080,6 +1100,7 @@ $('rkSel').addEventListener('change', () => { rkInfo(); readMenu(); });
 function startFromMenu() { ac(); readMenu(); newMatch(); }
 function toMenu() {
   if (NET.role && NET.onMenu) { NET.onMenu(); return; } // online: volta para a sala, não para o menu
+  if (friendlyBack()) return; // jogo-treino do modo livre: volta a andar
   if (S.careerActive) careerMatchEnded(false); // abandonar conta como derrota
   S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; el.menu.hidden = false;
   document.body.classList.add('in-menu'); hideBanner(); syncMenu(); menuStep('home');

@@ -1355,3 +1355,11 @@ body.livre #menu { z-index: 70; }
 #livreHud .lv-go i { display: block; font-style: normal; font-size: 26px; line-height: 1; color: #b6ff3c; text-shadow: 0 0 10px rgba(182, 255, 60, .7); transition: transform .12s linear; }
 #livreHud .lv-go small { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .75; }
 #livreHud .lv-go b { font-size: 13px; color: #b6ff3c; }
+#livreFriendly { z-index: 80; }
+.lv-fr { display: grid; gap: 10px; max-width: 440px; }
+.lv-fr label { display: grid; gap: 4px; font-weight: 700; font-size: 13px; }
+.lv-fr select { padding: 8px; border-radius: 8px; }
+.lv-fr-err { color: #ff7b70; font-weight: 700; }
+.lv-name { padding: 10px; border-radius: 8px; font-size: 16px; }
+.lv-look { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.06); }
+.lv-look span { display: flex; gap: 6px; }
