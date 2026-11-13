@@ -1163,7 +1163,7 @@ function cheerArena(k, w) { k = k || 1.4; const f = S.crowdFav, m = w == null ||
   ARENA.cheerT = Math.max(ARENA.cheerT, Math.min(k, 5) * Math.max(.3, Math.min(1.15, m))); if (CROWD_SND.cheer) CROWD_SND.cheer(k, ARENA.crowd.length, m); }
 const _cm = new THREE.Matrix4(), _cp = new V3(), _cq = new THREE.Quaternion(), _cq2 = new THREE.Quaternion(), _cs = new V3(1, 1, 1), _upC = new V3(0, 1, 0), _fw = new V3();
 function updateArena(dt) {
-  if (CROWD_SND.amb) CROWD_SND.amb(ARENA.crowd.length > 0 && S.mode !== 'menu', S.mode === 'rally' || S.mode === 'toss' || S.mode === 'serve');
+  if (CROWD_SND.amb) CROWD_SND.amb(ARENA.crowd.length > 0 && S.mode !== 'menu' && S.mode !== 'livre', S.mode === 'rally' || S.mode === 'toss' || S.mode === 'serve');
   updateConfetti(dt);
   updateSideGames(dt);
   if (!ARENA.crowd.length || ARENA.cheerT <= 0) return;

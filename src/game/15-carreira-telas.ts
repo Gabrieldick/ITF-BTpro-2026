@@ -7,6 +7,7 @@ import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { human } from './06-modelos';
 import { HIST, renderTalk, persHTML } from './26-historias';
+import { LIVRE, livreEnter, livreExit } from './27-livre';
 import { ac, applyGfx } from './08-audio';
 import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview, faceOf, EYE_COLS } from './07-glb';
 import * as THREE from 'three';
@@ -45,7 +46,9 @@ function renderCrSide() {
   side.querySelector('.cr-pairs-box').addEventListener('toggle', e => { if (!wide) crPairsOpen = e.target.open; });
   side.querySelector('.cr-news-box').addEventListener('toggle', e => { if (!wide) crFeedOpen = e.target.open; });
 }
+{ const lb = document.getElementById('crLivre'); if (lb) lb.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
+LIVRE.actions = { openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -53,6 +56,7 @@ function renderCareer() {
   document.querySelectorAll('[data-entry]').forEach(b => b.classList.toggle('sel', b.dataset.entry === crEntry));
   $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
   $('crExport').hidden = $('crSwitch').hidden = $('crGuideBtn').hidden = !$s.CR;
+  { const lb = $('crLivre'); if (lb) lb.hidden = !$s.CR || !!($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done); } // modo livre: fora do torneio em andamento
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }

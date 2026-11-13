@@ -11,6 +11,7 @@ import { applyArena, seaMat, sky, updateArena } from './03-cenario';
 import { ACT, READY, SERVE_KEYS } from './04-poses';
 import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
 import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, diveMark, fpArm, fpWrist, loadModels, makePreview } from './07-glb';
+import { livreTick } from './27-livre';
 import { HITS, applyGfx, audioTick, getResScale, setResScale, setMenuRes } from './08-audio';
 import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
 import { MTR, applyCam, inPlay, setPaused, syncMenu, saveSettings } from './12-controles';
@@ -91,9 +92,10 @@ function frame(now) {
   let vdt = dt;
   if (S.mode === 'replay' && RP.list) vdt = replayTick(dt);
   else if (!S.paused && inPlay()) recordTick(dt);
+  if (S.mode === 'livre') livreTick(dt);
   updateVisuals(vdt);
   const t2 = performance.now(); FPS.ms[1] += t2 - t1;
-  updateArena(dt); audioTick(document.body.classList.contains('in-menu'));
+  updateArena(dt); audioTick(document.body.classList.contains('in-menu') || S.mode === 'livre'); // (a trilha continua tocando no modo livre)
   updateCamera(dt);
   if (S.mode === 'replay') replayCamera(dt);
   if (S.mode === 'ceremony') ceremonyCam(dt);

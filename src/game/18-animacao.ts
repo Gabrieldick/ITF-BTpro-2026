@@ -6,6 +6,7 @@ import { $s } from '../state';
 import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, smooth, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, camera2, sun } from './02-render';
+import { livreCam } from './27-livre';
 import { mocapReady, mocapDrive, mocapLoad } from './25-mocap';
 import { sky } from './03-cenario';
 import { pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf, swingVar, predictPt, tailRate, mirrorKey } from './04-poses';
@@ -540,7 +541,7 @@ function animateAthlete(p, dt) {
   // esperando o saque também: o parceiro de quem saca fica solto até a bola entrar em jogo; quem recebe segura a raquete baixa
   // e solta na frente do corpo (só no lançamento entra na prontidão)
   const srvW = S.mode === 'serve' && S.serverPlayer !== p ? (p.team === S.server ? 1 : .85) : S.mode === 'toss' && S.serverPlayer !== p && p.team === S.server ? 1 : 0;
-  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'menu' || (S.mode === 'dead' && (S.ptT || 0) > .35) ? 1 : srvW) : 0; // (no menu os jogadores ficam soltos, à vontade)
+  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'menu' || S.mode === 'livre' || (S.mode === 'dead' && (S.ptT || 0) > .35) ? 1 : srvW) : 0; // (no menu os jogadores ficam soltos, à vontade)
   p.idl = (p.idl || 0) + (idlT - (p.idl || 0)) * Math.min(1, dt * (idlT ? 2.2 : 8));
   const idv = ((S.ptN || 0) * 5 + (p.slot > 0 ? 3 : 0) + p.team * 7) % 5, idk = S.mode === 'serve' && p.team !== S.server ? 'strings' : idv < 2 ? 'hang' : idv < 4 ? 'strings' : 'twirl', ph = p.team * 2 + (p.slot > 0 ? 1.3 : 0);
   if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph);
@@ -658,6 +659,7 @@ const CAM3 = {
   perto: { nome: 'Perto', h: [2.6, 2.75], back: [3.9, 4.3], fx: [.9, .85], lx: [.5, .4], ly: .85, lz: -6, zf: 1 },
 };
 function updateCamera(dt) {
+  if (S.mode === 'livre' && livreCam(dt)) return; // modo livre da carreira: câmera própria
   const k = 1 - Math.exp(-dt * 7);
   const fp = S.settings.cam === '1p' && S.mode !== 'menu' && S.mode !== 'replay';
   const fpBody = fp && !(human.skin && human.skinOn);
@@ -789,7 +791,7 @@ function updateVisuals(dt) {
   updateParticles(dt);
   ballMesh.position.copy(ball.pos);
   ballMesh.rotation.x += dt * ball.vel.length() * 2; ballMesh.rotation.y += dt * 3;
-  ballMesh.visible = S.mode !== 'menu' && !ball.ghostHide; // (bola fantasma do modo Caos: some no meio do caminho)
+  ballMesh.visible = S.mode !== 'menu' && S.mode !== 'livre' && !ball.ghostHide; // (bola fantasma do modo Caos: some no meio do caminho)
   ballShadow.visible = ballMesh.visible;
   ballShadow.position.set(ball.pos.x, .014, ball.pos.z);
   const sh = clamp(1 - ball.pos.y / 8, .35, 1); ballShadow.scale.set(sh, sh, 1); ballShadow.material.opacity = sh * .8;
@@ -811,7 +813,7 @@ function updateVisuals(dt) {
   } else landRing.visible = false;
   hudHints(incoming);
   const fp = S.settings.cam === '1p' && S.mode !== 'replay';
-  reachRing.visible = S.mode !== 'menu' && S.mode !== 'replay' && !fp && !S.spectate;
+  reachRing.visible = S.mode !== 'menu' && S.mode !== 'livre' && S.mode !== 'replay' && !fp && !S.spectate;
   reachRing.position.set(human.pos.x, .02, human.pos.z);
   { const rs = reachOf('defesa', human) / 1.335; reachRing.scale.set(rs, rs, 1); } // anel do tamanho real do alcance da defesa
   const ready = incoming && canHit(human, 'lob');

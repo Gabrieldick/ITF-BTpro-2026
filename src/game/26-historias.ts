@@ -314,7 +314,7 @@ function paintResult(T) {
 function renderTalk() {
   const C = $s.CR, E = el();
   const T = C && C.talks && C.talks[0];
-  if (!T || S.careerActive || document.getElementById('career').hidden) { E.hidden = true; return; }
+  if (!T || S.careerActive || (document.getElementById('career').hidden && S.mode !== 'livre')) { E.hidden = true; return; }
   if (!E.hidden && E.dataset.k === String(C.talks.length) + T.q + T.text) return;
   E.dataset.k = String(C.talks.length) + T.q + T.text; E.hidden = false;
   E.querySelector('.talk-snd').textContent = S.settings.voices === false ? '🔇' : '🔊';

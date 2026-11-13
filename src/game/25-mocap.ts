@@ -174,7 +174,7 @@ function mocapDrive(p, dt) {
   // quanto a captura de deslocamento manda: pela velocidade; fora em mergulho, salto, lançamento do saque e cerimônia
   const sp = Math.hypot(p.vel.x, p.vel.z);
   const sw = p.swing, acting = sw.t >= 0 || p.charging || (p.tail ? 1 : 0);
-  const blocked = !!p.dive || p.jump > 0 || (S.mode === 'toss' && S.serverPlayer === p) || S.mode === 'ceremony' || (p.split > 0) || !!p.forceYaw;
+  const blocked = !!p.dive || p.jump > 0 || (S.mode === 'toss' && S.serverPlayer === p) || S.mode === 'ceremony' || (p.split > 0) || (!!p.forceYaw && S.mode !== 'livre'); // (no modo livre o corpo segue a direção do passo, com a caminhada capturada)
   let Wt = blocked ? 0 : smooth(.35, 1.1, sp);
   if (dbg) Wt = dbg.core ? 0 : 1;
   mc.W += (Wt - mc.W) * Math.min(1, dt * (Wt > mc.W ? 9 : 7));
