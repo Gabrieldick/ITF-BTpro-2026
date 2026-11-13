@@ -9,7 +9,8 @@ import { $s } from '../state';
 import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer } from './14-carreira';
+import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crTeamName, crNRounds, crRoundNames, crAddFama } from './14-carreira';
+import { say } from './26-historias';
 import { mergeStatic } from './03-cenario';
 import { nameOf } from './00-base';
 
@@ -116,8 +117,84 @@ function neighborHouse(g, x, z, w, d, wall0, roof, face) { // casa do vizinho (c
 }
 function sign(g, text, sub, x, y, z, sx = 3.6) { const s = label(text, sub); s.position.set(x, y, z); s.scale.set(sx, sx / 4, 1); g.add(s); return s; }
 
+// ---------- local do torneio (andar por ele; a sua quadra abre a partida) ----------
+const VX = 300, VZ = 0;
+const mulberry = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; // posição do local do torneio dentro do bairro (longe da casa)
+const FAN_COLS = ['#ff6a00', '#2457c5', '#e63946', '#2a9d8f', '#ffd23f', '#f4f4f4', '#6b4f7a', '#1d1d20', '#7fb069', '#ff8fab'];
+const SKINS = ['#f1c9a5', '#d9a982', '#b07a52', '#7a4e32', '#e8b48f'];
+function fan(g, x, z, rot, seed, sit) { // pessoa simples (corpo, cabeça, braços); sit: sentada na arquibancada
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o);
+  const c = FAN_COLS[seed % FAN_COLS.length], s = SKINS[(seed * 7) % SKINS.length], h = .9 + (seed % 5) * .04;
+  if (!sit) { box(o, .14, .8 * h, .14, -.1, .4 * h, 0, '#2b3445'); box(o, .14, .8 * h, .14, .1, .4 * h, 0, '#2b3445'); }
+  box(o, .44, .6 * h, .26, 0, (sit ? .55 : .8 * h + .3 * h), 0, c); const hd = new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), mat(s)); hd.position.set(0, (sit ? .55 : 1.1 * h) + .5 * h, 0); hd.castShadow = true; o.add(hd);
+  if (seed % 3 === 0) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .08, 10), mat(FAN_COLS[(seed + 3) % FAN_COLS.length])); cap.position.set(0, hd.position.y + .12, 0); o.add(cap); }
+  [-1, 1].forEach(a => box(o, .1, .55 * h, .1, a * .28, (sit ? .55 : 1.1 * h) - .05, 0, s));
+  return o;
+}
+function courtAt(g, x, z, n, center) {
+  const cw = 8, cl = 16;
+  box(g, cw + 6, .06, cl + 8, x, .05, z, '#f1e2b8', { noShadow: true });
+  const line = (w, d, lx, lz) => box(g, w, .02, d, x + lx, .09, z + lz, '#1f4fb8', { noShadow: true });
+  line(cw, .06, 0, -cl / 2); line(cw, .06, 0, cl / 2); line(.06, cl, -cw / 2, 0); line(.06, cl, cw / 2, 0);
+  box(g, cw + .6, .9, .03, x, 1.25, z, '#ffffff', { transparent: true, opacity: .45 }); box(g, cw + .6, .07, .05, x, 1.72, z, '#1f4fb8'); [-1, 1].forEach(s => box(g, .1, 1.75, .1, x + s * (cw / 2 + .3), .88, z, '#1f4fb8'));
+  solid(x - cw / 2 - .4, z - .1, x + cw / 2 + .4, z + .1);
+  if (center) { // arquibancadas dos dois lados e no fundo, cheias; placa grande
+    [-1, 1].forEach(s => { for (let k = 0; k < 6; k++) { box(g, 1, .5, cl + 6, x + s * (cw / 2 + 4 + k), .25 + k * .5, z, '#2457c5'); }
+      solid(x + s * (cw / 2 + 3.5) - (s < 0 ? 6 : 0), z - cl / 2 - 3, x + s * (cw / 2 + 3.5) + (s > 0 ? 6 : 0), z + cl / 2 + 3);
+      for (let k = 0; k < 6; k++) for (let i = 0; i < 14; i++) if ((i * 7 + k * 3) % 5) fan(g, x + s * (cw / 2 + 4 + k), z - cl / 2 - 1.5 + i * 1.35, -s * Math.PI / 2, i * 3 + k * 5, true).position.y = .5 + k * .5; });
+    for (let k = 0; k < 5; k++) box(g, cw + 21, .5, 1, x, .25 + k * .5, z - cl / 2 - 4.5 - k, '#2457c5');
+    solid(x - cw / 2 - 10, z - cl / 2 - 10, x + cw / 2 + 10, z - cl / 2 - 4);
+    for (let k = 0; k < 5; k++) for (let i = 0; i < 16; i++) if ((i * 5 + k) % 4) fan(g, x - 10 + i * 1.35, z - cl / 2 - 4.5 - k, 0, i + k * 9, true).position.y = .5 + k * .5;
+    sign(g, 'Quadra Central', '', x, 6.2, z - cl / 2 - 9.6, 7);
+  } else {
+    [-1, 1].forEach(s => { box(g, .5, .45, 4, x + s * (cw / 2 + 2.2), .23, z + 3, '#ffffff'); solid(x + s * (cw / 2 + 2.2) - .3, z + 1, x + s * (cw / 2 + 2.2) + .3, z + 5); });
+    sign(g, 'Quadra ' + n, '', x - cw / 2 - 2.5, 2.4, z - cl / 2 - 1, 2.6);
+  }
+}
+function buildVenue(g, sp) {
+  const t = $s.CR.tour; if (!t) return;
+  const S2 = (id, x, z, ti, su, r) => spot(sp, id, x, z, ti, su, r);
+  const name = String(t.name || 'Torneio').replace(/ · .*$/, '');
+  box(g, 220, .2, 200, VX, -.1, VZ, '#efe0b9', { noShadow: true }); solid(VX - 52, VZ - 48, VX + 52, VZ - 47); solid(VX - 52, VZ + 50, VX + 52, VZ + 51); solid(VX - 53, VZ - 48, VX - 52, VZ + 51); solid(VX + 52, VZ - 48, VX + 53, VZ + 51);
+  box(g, 4, .05, 70, VX, .04, VZ + 8, '#d8cdb5', { noShadow: true }); box(g, 70, .05, 4, VX, .04, VZ - 2, '#d8cdb5', { noShadow: true });
+  // quadras: central no fundo, 4 laterais
+  courtAt(g, VX, VZ - 22, 0, true);
+  const SIDE = [[VX - 24, VZ - 18], [VX + 24, VZ - 18], [VX - 24, VZ + 14], [VX + 24, VZ + 14]];
+  SIDE.forEach(([x, z], i) => courtAt(g, x, z, i + 1, false));
+  // jogadores aquecendo nas quadras laterais
+  SIDE.forEach(([x, z], i) => { if (i === 3) return; [-1, 1].forEach(s => fan(g, x + s * 1.5, z + s * 5, s > 0 ? Math.PI : 0, 40 + i * 2 + s, false)); });
+  // entrada com o pórtico e o nome do torneio
+  [-1, 1].forEach(s => { box(g, .6, 5, .6, VX + s * 5, 2.5, VZ + 38, '#1d2a4a'); solid(VX + s * 5 - .3, VZ + 37.7, VX + s * 5 + .3, VZ + 38.3); });
+  box(g, 11, 1.4, .3, VX, 5.2, VZ + 38, '#ff6a00'); sign(g, name, crTourT(t).nome || '', VX, 5.2, VZ + 37.6, 8.5);
+  S2('casaVolta', VX - 10, VZ + 40, 'Táxi', 'Voltar para casa');
+  // tendas: patrocinador, comida e área dos atletas
+  const brand = ($s.CR.master && $s.CR.master.brand) || 'Herue\'s';
+  const tent = (x, z, col, title) => { box(g, 6, .12, 5, x, 2.9, z, col); [-1, 1].forEach(a => [-1, 1].forEach(b => { cyl(g, .06, .06, 2.9, x + a * 2.8, 1.45, z + b * 2.3, '#e9e9e9'); })); box(g, 5, .9, 1, x, .45, z - 1.5, '#f4f4f4'); solid(x - 2.6, z - 2.1, x + 2.6, z - .9); sign(g, title, '', x, 3.7, z, 4); };
+  tent(VX - 12, VZ + 26, '#e30613', 'Estande ' + brand); S2('estande', VX - 12, VZ + 24, 'Estande ' + brand, 'Ação com fãs e brindes', .9);
+  tent(VX + 12, VZ + 26, '#2a9d8f', 'Comida'); S2('comida', VX + 12, VZ + 24, 'Comida', 'Lanche e água', .9);
+  tent(VX + 12, VZ + 4, '#1d2a4a', 'Área dos atletas'); S2('atletas', VX + 12, VZ + 6.2, 'Área dos atletas', t.mate || $s.CR.partner ? 'Conversar com a dupla' : 'Descansar', .9);
+  if (t.mate || $s.CR.partner) fan(g, VX + 13.5, VZ + 4.5, Math.PI, 77, false);
+  // painel com a chave
+  box(g, 5, 3, .2, VX - 12, 1.9, VZ + 4, '#0d1b3a'); box(g, 4.6, 2.6, .05, VX - 12, 1.9, VZ + 4.12, '#183a7a', glow('#2b6cff', .35)); solid(VX - 14.5, VZ + 3.8, VX - 9.5, VZ + 4.2);
+  S2('chave', VX - 12, VZ + 6, 'Chave do torneio', 'Ver jogos e resultados', .9);
+  // a sua partida: na central nas semifinais e finais (e em todo o Mundial e nas seleções), senão numa quadra lateral
+  const mm = crMyMatch();
+  if (mm) { const opp = t.teams[mm.a === t.me ? mm.b : mm.a], imp = crIsSemiOrFinal() || t.tier >= 9 || (t.special && t.special !== 'estadual');
+    const i = t.rounds[t.round].indexOf(mm), [mx, mz] = imp ? [VX, VZ - 22] : SIDE[i % 4];
+    LV.myCourt = { x: mx, z: mz + (imp ? 10.5 : 10), vs: crTeamName(opp).replace(/^.* · /, ''), name: imp ? 'Quadra Central' : 'Quadra ' + (i % 4 + 1), round: crRoundNames(crNRounds())[t.round] };
+    S2('partida', LV.myCourt.x, LV.myCourt.z, 'Sua partida · ' + LV.myCourt.round, 'vs ' + LV.myCourt.vs, 1.3);
+    const arrow = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.1, 4), mat('#b6ff3c', glow('#b6ff3c', 1.4))); arrow.rotation.x = Math.PI; arrow.position.set(mx, 4.2, LV.myCourt.z); arrow.userData.spin = true; sp.add(arrow); LV.arrow = arrow;
+  } else LV.myCourt = null;
+  // fãs pelo local: parados (dá para tirar foto e dar autógrafo) e alguns andando
+  LV.fans = [];
+  const R = mulberry(($s.CR.seed || 1) + (t.round || 0) * 17 + (t.day || 0));
+  for (let k = 0; k < 26; k++) { let x, z; do { x = VX - 40 + R() * 80; z = VZ - 2 + R() * 40; } while (Math.abs(x - VX) < 2.5 && z > VZ - 2 || (Math.abs(x - VX) > 14 && Math.abs(x - VX) < 34 && z > VZ + 2 && z < VZ + 26));
+    const f = fan(g, x, z, R() * 6.28, k + 3, false); f.userData.dyn = true; LV.fans.push({ o: f, x, z, walk: k % 5 === 0, a: R() * 6.28, done: false }); }
+}
+const FAN_LINES = ['Posso tirar uma foto com você? Minha filha joga beach tennis por sua causa!', 'Assina a minha viseira? Vou guardar pra sempre!', 'Vim de longe só para te ver jogar. Boa sorte hoje!', 'Aquele smash na semana passada foi absurdo!', 'Você é meu jogador favorito do circuito!', 'Me dá uma dica de saque? Eu travo sempre no lançamento.', 'Uma selfie rapidinha? Prometo que é só uma!', 'Autografa a minha bola? É a do meu primeiro torneio!', 'Te vi crescer desde o amador. Que orgulho!', 'Vai ganhar hoje, hein? Tô confiante!'];
+
 function build() {
-  const lvl = crInv('moradia'), key = ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0);
+  const lvl = crInv('moradia'), key = ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   LV.built = key; LV.spots = []; LV.boxes = [];
@@ -250,7 +327,9 @@ function build() {
   S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra');
   // limites do bairro
   solid(-60, -40, -59, 60); solid(89, -40, 90, 60); solid(-60, 59, 90, 60);
-  // junta o cenário parado em poucos desenhos (os pontos de interação ficam de fora)
+  LV.fans = []; LV.myCourt = null; LV.arrow = null;
+  if ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) buildVenue(g, sp);
+  // junta o cenário parado em poucos desenhos (os pontos de interação e os fãs ficam de fora)
   mergeStatic(g);
 }
 
@@ -271,8 +350,16 @@ const ACT = {
   academia: { txt: () => 'Treinar na academia de casa', run: () => crTrain() },
   ct: { txt: () => 'Treinar no seu CT', run: () => crTrain() },
   podcast: { txt: () => 'Gravar conteúdo', run: () => { const C = $s.CR, k = C.season + '-' + C.week; if (C.podW === k) { LV.msg('Você já gravou esta semana.'); return; } C.podW = k; C.fama = Math.min(100, (C.fama || 0) + 1); C.energy = Math.max(0, C.energy - 3); LV.msg('🎙️ Episódio gravado: +1 de fama, −3 de energia.'); } },
-  torneio: { txt: () => { const t = $s.CR.tour; return !t ? 'Ver os torneios da semana' : t.pending ? 'Ir ao torneio (descansa até sábado)' : t.done ? 'Voltar do torneio' : 'Ir para a quadra do torneio'; },
-    run: () => { const t = $s.CR.tour; if (t && t.pending) crRestUntil(); LV.actions.openCareer(); } },
+  torneio: { txt: () => { const t = $s.CR.tour; return !t ? 'Ver os torneios da semana' : t.pending ? 'Ir ao torneio (descansa até sábado)' : t.done ? 'Ver o resultado do torneio' : 'Ir ao local do torneio'; },
+    run: () => { const t = $s.CR.tour; if (t && t.pending) crRestUntil(); const u = $s.CR.tour; if (u && !u.pending && !u.done) goVenue(); else LV.actions.openCareer(); } },
+  casaVolta: { txt: () => 'Voltar para casa', run: () => goHome() },
+  partida: { txt: () => LV.myCourt ? 'Entrar na ' + LV.myCourt.name + ' (vs ' + LV.myCourt.vs + ')' : 'Sem jogo agora', run: () => { if (crMyMatch()) LV.actions.play(); } },
+  chave: { txt: () => 'Ver a chave do torneio', run: () => LV.actions.openCareer() },
+  estande: { txt: () => 'Ação no estande (fotos e brindes)', run: () => { const t = $s.CR.tour; if (t.standDone) { LV.msg('Você já fez a ação no estande neste torneio.'); return; } t.standDone = true; crAddFama(1); $s.CR.energy = Math.max(0, $s.CR.energy - 2); LV.msg('📸 Fila de fãs no estande: +1 de fama.'); } },
+  comida: { txt: () => 'Comer e se hidratar (+5 energia)', run: () => { const t = $s.CR.tour, k = 'd' + (t.day || 1); if (t.food === k) { LV.msg('Você já comeu hoje.'); return; } t.food = k; $s.CR.energy = Math.min(100, $s.CR.energy + 5); LV.msg('🥤 Água de coco e um açaí: +5 de energia.'); } },
+  atletas: { txt: () => ($s.CR.tour.mate || $s.CR.partner) ? 'Conversar com a dupla' : 'Descansar na área dos atletas', run: () => { const t = $s.CR.tour, k = 'd' + (t.day || 1); if (t.lounge === k) { LV.msg('Vocês já conversaram hoje.'); return; } t.lounge = k; if ($s.CR.partner && !t.mate) { crPartnerAct('conversa'); } else $s.CR.energy = Math.min(100, $s.CR.energy + 3); LV.msg($s.CR.lastMsg || 'Um tempo na sombra: +3 de energia.'); } },
+  fa: { txt: () => 'Tirar foto e dar autógrafo', run: () => { const f = LV.nearFan, t = $s.CR.tour; if (!f || f.done) return; f.done = true; t.fanN = (t.fanN || 0) + 1; const line = FAN_LINES[Math.floor(Math.random() * FAN_LINES.length)]; say(line, Math.random() < .5 ? 'f' : 'm', t.fanN);
+    if (t.fanN <= 8) { crAddFama(.4); LV.msg('🙋 "' + line + '" (+0,4 de fama)'); } else LV.msg('🙋 "' + line + '"'); } },
 };
 
 // ---------- entrar e sair ----------
@@ -286,7 +373,11 @@ function enter() {
   [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
   human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9;
   hud(true); LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.');
+  const t = $s.CR.tour; if (t && !t.pending && !t.done) goVenue(); // torneio em andamento: começa no local do torneio
 }
+function goVenue() { build(); human.pos.copy(P(VX, VZ + 34)); human.vel.set(0, 0, 0); human.feet = null; LV.yaw = 0; LV.camYaw = 0; LV.camPitch = .7; LV.zoom = 11; LV.where = '';
+  LV.msg(LV.myCourt ? 'Você chegou ao ' + String($s.CR.tour.name).replace(/ · .*$/, '') + '. Sua partida (' + LV.myCourt.round + ') é na ' + LV.myCourt.name + ': siga a seta verde.' : 'Você chegou ao local do torneio.'); }
+function goHome() { human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
 function exit(toCareer = true) {
   if (!LV.on) return;
   LV.on = false; S.mode = 'menu'; document.body.classList.remove('livre');
@@ -324,17 +415,24 @@ function tick(dt) {
   // ponto de interação mais perto
   let near = null, nd = 9;
   for (const s of LV.spots) { const d = Math.hypot(px - s.x, pz - s.z); s.ring.material.opacity = d < s.r ? .95 : .45; if (d < s.r && d < nd) { nd = d; near = s; } }
-  if (near !== LV.near) { LV.near = near; prompt(); }
+  // fãs: andando devagar, e o mais perto vira ponto de interação
+  let nf = null, nfd = 1.6;
+  (LV.fans || []).forEach(f => { if (f.walk) { f.a += dt * .25; f.o.position.x = f.x + Math.cos(f.a) * 3; f.o.position.z = f.z + Math.sin(f.a) * 3; f.o.rotation.y = -f.a; }
+    const d = Math.hypot(px - f.o.position.x, pz - f.o.position.z); if (!f.done && d < nfd) { nfd = d; nf = f; }
+    if (d < 4 && !f.walk) f.o.rotation.y += (Math.atan2(px - f.o.position.x, pz - f.o.position.z) - f.o.rotation.y) * Math.min(1, dt * 3); });
+  LV.nearFan = nf; if (nf && !near) near = { id: 'fa' };
+  if (LV.arrow) { LV.arrow.rotation.y += dt * 2; LV.arrow.position.y = 4.2 + Math.sin(performance.now() / 300) * .25; }
+  if ((near && near.id) !== (LV.near && LV.near.id)) { LV.near = near; prompt(); } else LV.near = near;
   LV.spots.forEach(s => { const d = Math.hypot(px - s.x, pz - s.z); s.label.visible = d < 16; });
   // nome do lugar onde está
-  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 ? 'Área da piscina' : pz < -12 ? 'Praia' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
+  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 ? 'Área da piscina' : pz < -12 ? 'Praia' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : px > 240 ? String(($s.CR.tour && $s.CR.tour.name) || 'Torneio').replace(/ · .*$/, '') : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
     if (where !== LV.where) { LV.where = where; const e = document.querySelector('#livreHud .lv-where'); if (e) e.textContent = where; } }
   if (LV.msgT > 0 && (LV.msgT -= dt) <= 0) { const m = document.getElementById('livreMsg'); if (m) m.hidden = true; }
 }
 // câmera: atrás do jogador, girada pelo mouse (arrastando) ou Q/E… (E é interagir: gira com Q e R); dentro de casa sobe e olha de cima
 function cam(dt) {
   if (!LV.on) return false;
-  const k = LV.keys; if (k.q) LV.camYaw += dt * 1.8; if (k.r) LV.camYaw -= dt * 1.8;
+  const k = LV.keys;
   if (k.z) LV.zoom = Math.max(2.2, LV.zoom * (1 - dt * 1.4)); if (k.x) LV.zoom = Math.min(22, LV.zoom * (1 + dt * 1.4)); if (k.t) LV.camPitch = Math.min(1.45, LV.camPitch + dt * .9); if (k.g) LV.camPitch = Math.max(.08, LV.camPitch - dt * .9);
   const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, inside = lx > -hw && lx < hw && lz > -hd && lz < hd;
   // zoom e inclinação escolhidos pelo jogador; dentro de casa a câmera nunca fica mais baixa que as paredes (vista de cima)
@@ -355,7 +453,7 @@ function hud(on) {
     el = document.createElement('div'); el.id = 'livreHud';
     el.innerHTML = '<div class="lv-top"><b class="lv-where"></b><span class="lv-day"></span><button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div>'
       + '<div id="livrePrompt" class="lv-prompt" hidden><kbd>E</kbd><span></span></div><div id="livreMsg" class="lv-msg" hidden></div>'
-      + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · arrastar: girar · rodinha: zoom · clique da rodinha (ou direito) arrastando: inclinação · Z/X: zoom · T/G: inclinação</div>'
+      + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · arrastar: girar · rodinha: zoom · clique da rodinha arrastando: girar e inclinar · Z/X: zoom · T/G: inclinação</div>'
       + '<div class="lv-joy" id="livreJoy"><i></i></div><button type="button" class="lv-act" id="livreAct">E</button>';
     document.body.appendChild(el);
     el.querySelector('#livreExit').addEventListener('click', () => exit(true));
@@ -398,7 +496,7 @@ addEventListener('keyup', e => { const k = e.key.toLowerCase(); LV.keys[k] = fal
 // dá e tira zoom. No toque: um dedo gira, dois dedos (pinça) dão zoom
 addEventListener('pointerdown', e => { if (LV.on && e.target && e.target.tagName === 'CANVAS') { LV.drag = { x: e.clientX, y: e.clientY, b: e.button }; if (e.button === 1) e.preventDefault(); } });
 addEventListener('pointermove', e => { if (!LV.on || !LV.drag) return; const dx = e.clientX - LV.drag.x, dy = e.clientY - LV.drag.y; LV.drag.x = e.clientX; LV.drag.y = e.clientY;
-  if (LV.drag.b === 1 || LV.drag.b === 2 || e.shiftKey) LV.camPitch = Math.max(.08, Math.min(1.45, LV.camPitch + dy * .006));
+  if (LV.drag.b === 1 || LV.drag.b === 2 || e.shiftKey) { LV.camYaw -= dx * .006; LV.camPitch = Math.max(.08, Math.min(1.45, LV.camPitch + dy * .006)); } // clique da rodinha (ou direito): gira e inclina
   else { LV.camYaw -= dx * .006; LV.camPitch = Math.max(.08, Math.min(1.45, LV.camPitch + dy * .003)); } });
 addEventListener('pointerup', () => { LV.drag = null; });
 addEventListener('wheel', e => { if (!LV.on || !e.target || e.target.tagName !== 'CANVAS') return; e.preventDefault(); LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * Math.exp(e.deltaY * .0012))); }, { passive: false });

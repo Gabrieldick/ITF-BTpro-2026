@@ -48,7 +48,7 @@ function renderCrSide() {
 }
 { const lb = document.getElementById('crLivre'); if (lb) lb.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
-LIVRE.actions = { openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
+LIVRE.actions = { play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -56,7 +56,7 @@ function renderCareer() {
   document.querySelectorAll('[data-entry]').forEach(b => b.classList.toggle('sel', b.dataset.entry === crEntry));
   $('crNew').hidden = !!$s.CR || crEntry !== 'new'; $('crHub').hidden = !$s.CR; $('crSaves').hidden = !!$s.CR || crEntry !== 'load'; $('crAccount').hidden = !!$s.CR || crEntry !== 'conta';
   $('crExport').hidden = $('crSwitch').hidden = $('crGuideBtn').hidden = !$s.CR;
-  { const lb = $('crLivre'); if (lb) lb.hidden = !$s.CR || !!($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done); } // modo livre: fora do torneio em andamento
+  { const lb = $('crLivre'); if (lb) { lb.hidden = !$s.CR; lb.textContent = $s.CR && $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? '🚶 Andar pelo torneio' : '🚶 Modo livre'; } }
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
   if (!$s.CR) { renderSaves(); renderCrNew(); return; }
