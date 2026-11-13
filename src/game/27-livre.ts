@@ -11,8 +11,9 @@ import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama } from './14-carreira';
 import { say } from './26-historias';
-import { assignCharacters } from './07-glb';
-import { mergeStatic } from './03-cenario';
+import { assignCharacters, applyRackets, applyPlayerStyle } from './07-glb';
+import { mergeStatic, sea as SEA } from './03-cenario';
+import { arenaFor } from './09-interface';
 import { nameOf } from './00-base';
 
 const H0 = new THREE.Vector3(320, 0, 40); // origem do bairro no mundo (longe da quadra, fora do cenário da praia)
@@ -21,6 +22,7 @@ const P = (x, z) => new THREE.Vector3(H0.x + x, 0, H0.z + z);
 
 // ---------- montagem ----------
 function box(g, w, h, d, x, y, z, color, o) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, o)); m.position.set(x, y, z); m.castShadow = !(o && o.noShadow); m.receiveShadow = true; g.add(m); return m; }
+function blocked(x, z, m = 0) { return LV.boxes.some(([x0, z0, x1, z1]) => x > x0 - m && x < x1 + m && z > z0 - m && z < z1 + m); }
 function solid(x0, z0, x1, z1) { LV.boxes.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]); }
 function label(text, sub) {
   const t = canvasTex(512, 128, (x, w, h) => { x.fillStyle = 'rgba(4,14,40,.82)'; x.beginPath(); x.roundRect(4, 4, w - 8, h - 8, 26); x.fill(); x.strokeStyle = '#33c3ff'; x.lineWidth = 4; x.stroke();
@@ -119,7 +121,7 @@ function neighborHouse(g, x, z, w, d, wall0, roof, face) { // casa do vizinho (c
 function sign(g, text, sub, x, y, z, sx = 3.6) { const s = label(text, sub); s.position.set(x, y, z); s.scale.set(sx, sx / 4, 1); g.add(s); return s; }
 
 // ---------- local do torneio (andar por ele; a sua quadra abre a partida) ----------
-const VX = 300, VZ = 0;
+const VX = 200, VZ = -30; // na orla, ligado à rua do bairro (dá para ir andando)
 const mulberry = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; // posição do local do torneio dentro do bairro (longe da casa)
 const FAN_COLS = ['#ff6a00', '#2457c5', '#e63946', '#2a9d8f', '#ffd23f', '#f4f4f4', '#6b4f7a', '#1d1d20', '#7fb069', '#ff8fab'];
 const SKINS = ['#f1c9a5', '#d9a982', '#b07a52', '#7a4e32', '#e8b48f'];
@@ -130,59 +132,111 @@ function fan(g, x, z, rot, seed, sit) { // pessoa simples (corpo, cabeça, braç
   box(o, .44, .6 * h, .26, 0, (sit ? .55 : .8 * h + .3 * h), 0, c); const hd = new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), mat(s)); hd.position.set(0, (sit ? .55 : 1.1 * h) + .5 * h, 0); hd.castShadow = true; o.add(hd);
   if (seed % 3 === 0) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .08, 10), mat(FAN_COLS[(seed + 3) % FAN_COLS.length])); cap.position.set(0, hd.position.y + .12, 0); o.add(cap); }
   [-1, 1].forEach(a => box(o, .1, .55 * h, .1, a * .28, (sit ? .55 : 1.1 * h) - .05, 0, s));
+  if (!sit && seed % 4 === 1) { const b = racketBag(BAG_COLS[seed % BAG_COLS.length]); b.position.set(0, 1.05 * h, .2); b.scale.setScalar(.85); o.add(b); } // raqueteira nas costas
   return o;
 }
-function courtAt(g, x, z, n, center) {
-  const cw = 8, cl = 16;
-  box(g, cw + 6, .06, cl + 8, x, .05, z, '#f1e2b8', { noShadow: true });
-  const line = (w, d, lx, lz) => box(g, w, .02, d, x + lx, .09, z + lz, '#1f4fb8', { noShadow: true });
+// cores da raqueteira pela marca da raquete (enquanto não compra outra na loja)
+function bagOfRacket() { const r = String(S.settings.racket || ''); let h = 0; for (const ch of r) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return BAG_COLS[h % BAG_COLS.length]; }
+// raqueteira (bolsa de raquetes): corpo comprido com faixa e alça, usada nas costas na diagonal
+const BAG_COLS = [['#111214', '#e30613'], ['#1f4fb8', '#ffffff'], ['#ff6a00', '#111214'], ['#0a7d3c', '#ffd23f'], ['#e9e9e9', '#2457c5'], ['#6b2737', '#f2c14e']];
+function racketBag(c) {
+  const o = new THREE.Group(), [a, b] = c;
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(.13, .62, 4, 10), mat(a, { roughness: .6 })); body.scale.z = .55; o.add(body);
+  const st = new THREE.Mesh(new THREE.CylinderGeometry(.132, .132, .1, 12), mat(b)); st.scale.z = .56; st.position.y = .14; o.add(st);
+  const zip = new THREE.Mesh(new THREE.BoxGeometry(.02, .7, .02), mat('#d9d9d9', { metalness: .6, roughness: .3 })); zip.position.z = .075; o.add(zip);
+  const strap = new THREE.Mesh(new THREE.TorusGeometry(.32, .018, 6, 18, Math.PI * .9), mat('#1d1d20')); strap.rotation.set(0, Math.PI / 2, -.2); strap.position.set(0, .05, -.12); o.add(strap);
+  o.rotation.z = .55; o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
+}
+// faixa/placa com marca (painel com o nome, nas cores da marca)
+function banner(g, text, x, y, z, w, h, bg, fg, rot = 0, sub) {
+  const t = canvasTex(512, Math.round(512 * h / w), (c, W, H) => { c.fillStyle = bg; c.fillRect(0, 0, W, H); c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '900 italic ' + Math.round(H * (sub ? .46 : .62)) + 'px Barlow Condensed, Arial Narrow, Arial'; c.fillText(String(text).toUpperCase(), W / 2, H * (sub ? .4 : .52), W * .92);
+    if (sub) { c.font = '700 ' + Math.round(H * .2) + 'px Arial'; c.globalAlpha = .85; c.fillText(sub, W / 2, H * .8, W * .9); } }, true);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, roughness: .7, side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.y = rot; g.add(m); return m;
+}
+// cadeira de plástico (de frente para rot)
+function chair(g, x, z, rot, col = '#f4f4f4') { const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); box(o, .46, .05, .44, 0, .44, 0, col); box(o, .46, .46, .05, 0, .68, -.2, col); [-1, 1].forEach(a => [-1, 1].forEach(b => box(o, .04, .44, .04, a * .2, .22, b * .18, col))); return o; }
+// pessoa deitada (tomando sol na toalha)
+function sunbather(g, x, z, rot, seed) { const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o);
+  box(o, .75, .02, 1.9, 0, .02, 0, FAN_COLS[(seed + 2) % FAN_COLS.length]); const s = SKINS[(seed * 7) % SKINS.length];
+  box(o, .4, .2, .62, 0, .14, -.1, FAN_COLS[seed % FAN_COLS.length]); box(o, .32, .16, .8, 0, .1, .58, s); const hd = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 8), mat(s)); hd.position.set(0, .15, -.58); o.add(hd); return o; }
+function courtAt(g, x, z, n, center, A) {
+  const cw = 8, cl = 16, rows = center ? A.rows : 0, lc = A.line || '#1f4fb8', seat = A.seat || '#2457c5';
+  box(g, cw + 6, .06, cl + 8, x, .05, z, '#f1e2b8', { noShadow: true }); (LV.noSpawn || (LV.noSpawn = [])).push([x - cw / 2 - 3.5, z - cl / 2 - 4, x + cw / 2 + 3.5, z + cl / 2 + 4]);
+  const line = (w, d, lx, lz) => box(g, w, .02, d, x + lx, .09, z + lz, lc, { noShadow: true });
   line(cw, .06, 0, -cl / 2); line(cw, .06, 0, cl / 2); line(.06, cl, -cw / 2, 0); line(.06, cl, cw / 2, 0);
-  box(g, cw + .6, .9, .03, x, 1.25, z, '#ffffff', { transparent: true, opacity: .45 }); box(g, cw + .6, .07, .05, x, 1.72, z, '#1f4fb8'); [-1, 1].forEach(s => box(g, .1, 1.75, .1, x + s * (cw / 2 + .3), .88, z, '#1f4fb8'));
+  box(g, cw + .6, .9, .03, x, 1.25, z, '#ffffff', { transparent: true, opacity: .45 }); box(g, cw + .6, .07, .05, x, 1.72, z, lc); [-1, 1].forEach(s => box(g, .1, 1.75, .1, x + s * (cw / 2 + .3), .88, z, lc));
   solid(x - cw / 2 - .4, z - .1, x + cw / 2 + .4, z + .1);
-  if (center) { // arquibancadas dos dois lados e no fundo, cheias; placa grande
-    [-1, 1].forEach(s => { for (let k = 0; k < 6; k++) { box(g, 1, .5, cl + 6, x + s * (cw / 2 + 4 + k), .25 + k * .5, z, '#2457c5'); }
-      solid(x + s * (cw / 2 + 3.5) - (s < 0 ? 6 : 0), z - cl / 2 - 3, x + s * (cw / 2 + 3.5) + (s > 0 ? 6 : 0), z + cl / 2 + 3);
-      for (let k = 0; k < 6; k++) for (let i = 0; i < 14; i++) if ((i * 7 + k * 3) % 5) fan(g, x + s * (cw / 2 + 4 + k), z - cl / 2 - 1.5 + i * 1.35, -s * Math.PI / 2, i * 3 + k * 5, true).position.y = .5 + k * .5; });
-    for (let k = 0; k < 5; k++) box(g, cw + 21, .5, 1, x, .25 + k * .5, z - cl / 2 - 4.5 - k, '#2457c5');
-    solid(x - cw / 2 - 10, z - cl / 2 - 10, x + cw / 2 + 10, z - cl / 2 - 4);
-    for (let k = 0; k < 5; k++) for (let i = 0; i < 16; i++) if ((i * 5 + k) % 4) fan(g, x - 10 + i * 1.35, z - cl / 2 - 4.5 - k, 0, i + k * 9, true).position.y = .5 + k * .5;
-    sign(g, 'Quadra Central', '', x, 6.2, z - cl / 2 - 9.6, 7);
+  if (center && rows > 0) { // arquibancadas dos dois lados (e no fundo nos grandes), cheias; placa grande
+    [-1, 1].forEach(s => { for (let k = 0; k < rows; k++) { box(g, 1, .5, cl + 6, x + s * (cw / 2 + 4 + k), .25 + k * .5, z, seat); }
+      solid(x + s * (cw / 2 + 3.5) - (s < 0 ? rows : 0), z - cl / 2 - 3, x + s * (cw / 2 + 3.5) + (s > 0 ? rows : 0), z + cl / 2 + 3);
+      for (let k = 0; k < rows; k++) for (let i = 0; i < 14; i++) if ((i * 7 + k * 3) % (A.full ? 7 : 4)) fan(g, x + s * (cw / 2 + 4 + k), z - cl / 2 - 1.5 + i * 1.35, -s * Math.PI / 2, i * 3 + k * 5, true).position.y = .5 + k * .5; });
+    if (A.back) { for (let k = 0; k < 5; k++) box(g, cw + 21, .5, 1, x, .25 + k * .5, z - cl / 2 - 4.5 - k, seat);
+      solid(x - cw / 2 - 10, z - cl / 2 - 10, x + cw / 2 + 10, z - cl / 2 - 4);
+      for (let k = 0; k < 5; k++) for (let i = 0; i < 16; i++) if ((i * 5 + k) % 4) fan(g, x - 10 + i * 1.35, z - cl / 2 - 4.5 - k, 0, i + k * 9, true).position.y = .5 + k * .5; }
+    // faixas da marca do torneio em volta da quadra
+    if (A.master) [-1, 1].forEach(s => banner(g, A.master, x + s * (cw / 2 + 3.2), .45, z, cl, .7, A.mbg, A.mfg, s * Math.PI / 2));
+    if (A.screen) { box(g, 9, 5, .4, x, 7.2, z - cl / 2 - (A.back ? 11.5 : 5), '#111214'); banner(g, A.name, x, 7.2, z - cl / 2 - (A.back ? 11.3 : 4.78), 8.4, 4.4, '#0b1a3a', '#ffffff', 0, 'AO VIVO · QUADRA CENTRAL'); }
+    sign(g, 'Quadra Central', '', x, 6.2, z - cl / 2 - (A.back ? 9.6 : 3.5), 7);
   } else {
-    [-1, 1].forEach(s => { box(g, .5, .45, 4, x + s * (cw / 2 + 2.2), .23, z + 3, '#ffffff'); solid(x + s * (cw / 2 + 2.2) - .3, z + 1, x + s * (cw / 2 + 2.2) + .3, z + 5); });
-    sign(g, 'Quadra ' + n, '', x - cw / 2 - 2.5, 2.4, z - cl / 2 - 1, 2.6);
+    // cadeiras dos dois lados da quadra, com gente sentada assistindo (mais gente nos torneios maiores)
+    [-1, 1].forEach(s => { for (let r = 0; r < (center ? 2 : 1); r++) for (let i = 0; i < 7; i++) { const cx2 = x + s * (cw / 2 + 2 + r * .8), cz2 = z - 5.4 + i * 1.8;
+        chair(g, cx2, cz2, -s * Math.PI / 2, A.chair); if ((i * 3 + r + n) % 10 < A.sitK) fan(g, cx2, cz2, -s * Math.PI / 2, i * 5 + n * 3 + r, true).position.y = -.05; }
+      solid(x + s * (cw / 2 + 2) - .3, z - 6, x + s * (cw / 2 + 2 + (center ? 1.1 : .3)), z + 6.6); });
+    sign(g, center ? 'Quadra Central' : 'Quadra ' + n, '', x - cw / 2 - 2.5, 2.4, z - cl / 2 - 1, 2.6);
   }
+}
+// cara do evento: nível (tamanho, público), marca master e cores do local
+function venueLook(t) {
+  let ar = {}; try { ar = arenaFor(true) || {}; } catch (e) {}
+  const size = ar.size == null ? 2 : ar.size, mcol = { NUX: ['#111214', '#ffffff'], "HERUE'S": ['#e30613', '#ffffff'], KUNA: ['#ffd23f', '#111214'], 'ANA SPORT': ['#1f4fb8', '#ffffff'], MORMAJI: ['#0b0b0b', '#f2c14e'], 'DROP SHUT': ['#ff6a00', '#111214'], ZANB: ['#2a9d8f', '#ffffff'], VIZION: ['#6b2fb8', '#ffffff'] }[ar.master] || ['#ff6a00', '#ffffff'];
+  return { size, rows: [0, 3, 6, 8][size], back: size >= 2, screen: size >= 2, full: size >= 3, sitK: [2, 4, 6, 8][size], nFans: [18, 32, 50, 75][size], nCourts: size === 0 ? 2 : 4,
+    line: ar.line, seat: ar.seat, trim: ar.trim || '#1d2a4a', chair: size >= 2 ? '#f4f4f4' : '#e8e2d2', master: ar.master || '', mbg: mcol[0], mfg: mcol[1], name: String(t.name || '').replace(/ · .*$/, '') };
 }
 function buildVenue(g, sp) {
   const t = $s.CR.tour; if (!t) return;
-  const S2 = (id, x, z, ti, su, r) => spot(sp, id, x, z, ti, su, r);
-  const name = String(t.name || 'Torneio').replace(/ · .*$/, '');
-  box(g, 220, .2, 200, VX, -.1, VZ, '#efe0b9', { noShadow: true }); solid(VX - 52, VZ - 48, VX + 52, VZ - 47); solid(VX - 52, VZ + 50, VX + 52, VZ + 51); solid(VX - 53, VZ - 48, VX - 52, VZ + 51); solid(VX + 52, VZ - 48, VX + 53, VZ + 51);
-  box(g, 4, .05, 70, VX, .04, VZ + 8, '#d8cdb5', { noShadow: true }); box(g, 70, .05, 4, VX, .04, VZ - 2, '#d8cdb5', { noShadow: true });
-  // quadras: central no fundo, 4 laterais
-  courtAt(g, VX, VZ - 22, 0, true);
-  const SIDE = [[VX - 24, VZ - 18], [VX + 24, VZ - 18], [VX - 24, VZ + 14], [VX + 24, VZ + 14]];
-  SIDE.forEach(([x, z], i) => courtAt(g, x, z, i + 1, false));
-  // jogadores aquecendo nas quadras laterais
-  SIDE.forEach(([x, z], i) => { if (i === 3) return; [-1, 1].forEach(s => fan(g, x + s * 1.5, z + s * 5, s > 0 ? Math.PI : 0, 40 + i * 2 + s, false)); });
-  // entrada com o pórtico e o nome do torneio
+  const S2 = (id, x, z, ti, su, r) => spot(sp, id, x, z, ti, su, r), A = venueLook(t);
+  const name = A.name || 'Torneio', FZ = VZ + 44; // FZ: cerca da frente (a rua fica logo depois)
+  box(g, 106, .1, 94, VX, -.03, VZ - 3, '#efe0b9', { noShadow: true });
+  // cerca de evento com faixas (marca master, patrocinadores e o nome do torneio); entrada larga na frente
+  const fence = (x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), r = Math.atan2(-(z1 - z0), x1 - x0); box(g, L, 1.1, .08, (x0 + x1) / 2, .55, (z0 + z1) / 2, A.trim).rotation.y = r; solid(x0, z0 - .1, x1, z1 + .1); };
+  fence(VX - 52, VZ - 50, VX + 52, VZ - 50); fence(VX - 52, FZ, VX - 7, FZ); fence(VX + 7, FZ, VX + 52, FZ);
+  box(g, .08, 1.1, FZ - VZ + 50, VX - 52, .55, (FZ + VZ - 50) / 2, A.trim); solid(VX - 52.1, VZ - 50, VX - 51.9, FZ); box(g, .08, 1.1, FZ - VZ + 50, VX + 52, .55, (FZ + VZ - 50) / 2, A.trim); solid(VX + 51.9, VZ - 50, VX + 52.1, FZ);
+  const BR = [A.master, ...(($s.CR.sponsors || []).map(x => x.brand)), $s.CR.master && $s.CR.master.brand, 'Coco Gelado', 'Solar Max', 'Ondas Telecom'].filter(Boolean);
+  for (let i = 0; i < 10; i++) { const br = BR[i % BR.length], c = i % 2 ? [A.mbg, A.mfg] : ['#ffffff', '#1d2a4a'];
+    banner(g, br, VX - 46 + i * 10.2, .6, FZ + .06, 8, .9, c[0], c[1]); banner(g, br, VX - 46 + i * 10.2, .6, VZ - 49.94, 8, .9, c[0], c[1]); }
+  box(g, 4, .05, 30, VX, .04, VZ + 26, '#d8cdb5', { noShadow: true }); box(g, 70, .05, 4, VX, .04, VZ - 2, '#d8cdb5', { noShadow: true });
+  // quadras: central no fundo, laterais (duas no amador)
+  courtAt(g, VX, VZ - 22, 0, true, A);
+  const SIDE = [[VX - 24, VZ - 18], [VX + 24, VZ - 18], [VX - 24, VZ + 14], [VX + 24, VZ + 14]].slice(0, A.nCourts);
+  SIDE.forEach(([x, z], i) => courtAt(g, x, z, i + 1, false, A));
+  // jogadores aquecendo nas quadras laterais (com as raqueteiras no banco)
+  SIDE.forEach(([x, z], i) => { if (i === 3) return; [-1, 1].forEach(s => fan(g, x + s * 1.5, z + s * 5, s > 0 ? Math.PI : 0, 40 + i * 2 + s, false)); const bg = racketBag(BAG_COLS[i % BAG_COLS.length]); bg.rotation.set(Math.PI / 2, 0, .2); bg.position.set(x + 6.2, .14, z + 7.2); g.add(bg); });
+  // entrada com o pórtico e o nome do torneio; bandeiras de marca dos dois lados do caminho
   [-1, 1].forEach(s => { box(g, .6, 5, .6, VX + s * 5, 2.5, VZ + 38, '#1d2a4a'); solid(VX + s * 5 - .3, VZ + 37.7, VX + s * 5 + .3, VZ + 38.3); });
-  box(g, 11, 1.4, .3, VX, 5.2, VZ + 38, '#ff6a00'); sign(g, name, crTourT(t).nome || '', VX, 5.2, VZ + 37.6, 8.5);
+  box(g, 11, 1.4, .3, VX, 5.2, VZ + 38, A.mbg); sign(g, name, crTourT(t).nome || '', VX, 5.2, VZ + 37.6, 8.5);
+  for (let i = 0; i < 4; i++) [-1, 1].forEach(s => { const fx = VX + s * 3.2, fz = VZ + 33 - i * 6; cyl(g, .03, .03, 3.4, fx, 1.7, fz, '#cfd3d8'); banner(g, BR[(i + (s > 0 ? 1 : 0)) % BR.length], fx + s * .35, 2.3, fz, .7, 2.2, i % 2 ? A.mbg : '#ffffff', i % 2 ? A.mfg : '#1d2a4a', Math.PI / 2); });
   S2('casaVolta', VX - 10, VZ + 40, 'Táxi', 'Voltar para casa');
-  // tendas: patrocinador, comida e área dos atletas
-  const brand = ($s.CR.master && $s.CR.master.brand) || 'Herue\'s';
-  const tent = (x, z, col, title) => { box(g, 6, .12, 5, x, 2.9, z, col); [-1, 1].forEach(a => [-1, 1].forEach(b => { cyl(g, .06, .06, 2.9, x + a * 2.8, 1.45, z + b * 2.3, '#e9e9e9'); })); box(g, 5, .9, 1, x, .45, z - 1.5, '#f4f4f4'); solid(x - 2.6, z - 2.1, x + 2.6, z - .9); sign(g, title, '', x, 3.7, z, 4); };
+  // tendas: patrocinador, comida, área dos atletas e marcas (mais tendas nos torneios maiores)
+  const brand = ($s.CR.master && $s.CR.master.brand) || A.master || 'Herue\'s';
+  const tent = (x, z, col, title, sub) => { box(g, 6, .12, 5, x, 2.9, z, col); [-1, 1].forEach(a => [-1, 1].forEach(b => { cyl(g, .06, .06, 2.9, x + a * 2.8, 1.45, z + b * 2.3, '#e9e9e9'); })); box(g, 5, .9, 1, x, .45, z - 1.5, '#f4f4f4'); solid(x - 2.6, z - 2.1, x + 2.6, z - .9);
+    banner(g, title, x, 3.25, z + 2.52, 6, .6, col, '#ffffff', 0, sub); banner(g, title, x, 3.25, z - 2.52, 6, .6, col, '#ffffff', Math.PI, sub); };
   tent(VX - 12, VZ + 26, '#e30613', 'Estande ' + brand); S2('estande', VX - 12, VZ + 24, 'Estande ' + brand, 'Ação com fãs e brindes', .9);
   tent(VX + 12, VZ + 26, '#2a9d8f', 'Comida'); S2('comida', VX + 12, VZ + 24, 'Comida', 'Lanche e água', .9);
   tent(VX + 12, VZ + 4, '#1d2a4a', 'Área dos atletas'); S2('atletas', VX + 12, VZ + 6.2, 'Área dos atletas', t.mate || $s.CR.partner ? 'Conversar com a dupla' : 'Descansar', .9);
+  const extra = [['#111214', 'NUX'], ['#ffd23f', 'KUNA'], ['#1f4fb8', 'ANA SPORT'], ['#6b2fb8', 'VIZION'], ['#2a9d8f', 'ZANB'], ['#ff6a00', 'DROP SHUT']].filter(e => e[1] !== A.master).slice(0, [0, 2, 4, 6][A.size]);
+  const ET = [[VX - 40, VZ + 30], [VX + 40, VZ + 30], [VX - 40, VZ + 2], [VX + 40, VZ + 2], [VX - 26, VZ + 34], [VX + 26, VZ + 34]];
+  extra.forEach(([c, b], i) => tent(ET[i][0], ET[i][1], c, b, 'Raquetes e acessórios'));
+  if (A.size >= 3) { tent(VX - 12, VZ - 2 - 6, '#0b1a3a', 'Área VIP'); }
   if (t.mate || $s.CR.partner) fan(g, VX + 13.5, VZ + 4.5, Math.PI, 77, false);
   // painel com a chave
-  box(g, 5, 3, .2, VX - 12, 1.9, VZ + 4, '#0d1b3a'); box(g, 4.6, 2.6, .05, VX - 12, 1.9, VZ + 4.12, '#183a7a', glow('#2b6cff', .35)); solid(VX - 14.5, VZ + 3.8, VX - 9.5, VZ + 4.2);
+  box(g, 5, 3, .2, VX - 12, 1.9, VZ + 4, '#0d1b3a'); banner(g, name, VX - 12, 1.9, VZ + 4.12, 4.6, 2.6, '#183a7a', '#ffffff', 0, 'CHAVE · RESULTADOS'); solid(VX - 14.5, VZ + 3.8, VX - 9.5, VZ + 4.2);
   S2('chave', VX - 12, VZ + 6, 'Chave do torneio', 'Ver jogos e resultados', .9);
   // a sua partida: na central nas semifinais e finais, no Mundial e nas seleções, e quando joga uma dupla cabeça de chave; senão numa quadra lateral
   const mm = crMyMatch();
   if (mm) { const opp = t.teams[mm.a === t.me ? mm.b : mm.a], imp = crIsCentral();
-    const i = t.rounds[t.round].indexOf(mm), [mx, mz] = imp ? [VX, VZ - 22] : SIDE[i % 4];
-    LV.myCourt = { x: mx, z: mz + (imp ? 10.5 : 10), vs: crTeamName(opp).replace(/^.* · /, ''), name: imp ? 'Quadra Central' : 'Quadra ' + (i % 4 + 1), round: crRoundNames(crNRounds())[t.round] };
+    const i = t.rounds[t.round].indexOf(mm), [mx, mz] = imp ? [VX, VZ - 22] : SIDE[i % SIDE.length];
+    LV.myCourt = { x: mx, z: mz + (imp ? 10.5 : 10), vs: crTeamName(opp).replace(/^.* · /, ''), name: imp ? 'Quadra Central' : 'Quadra ' + (i % SIDE.length + 1), round: crRoundNames(crNRounds())[t.round] };
     S2('partida', LV.myCourt.x, LV.myCourt.z, 'Sua partida · ' + LV.myCourt.round, 'vs ' + LV.myCourt.vs, 1.3);
     const arrow = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.1, 4), mat('#b6ff3c', glow('#b6ff3c', 1.4))); arrow.rotation.x = Math.PI; arrow.position.set(mx, 4.2, LV.myCourt.z); arrow.userData.spin = true; sp.add(arrow); LV.arrow = arrow;
     // coluna de luz sobre a sua quadra: dá para ver de qualquer ponto do evento
@@ -191,29 +245,88 @@ function buildVenue(g, sp) {
   // fãs pelo local: parados (dá para tirar foto e dar autógrafo) e alguns andando
   LV.fans = [];
   const R = mulberry(($s.CR.seed || 1) + (t.round || 0) * 17 + (t.day || 0));
-  for (let k = 0; k < 26; k++) { let x, z; do { x = VX - 40 + R() * 80; z = VZ - 2 + R() * 40; } while (Math.abs(x - VX) < 2.5 && z > VZ - 2 || (Math.abs(x - VX) > 14 && Math.abs(x - VX) < 34 && z > VZ + 2 && z < VZ + 26));
+  for (let k = 0; k < A.nFans; k++) { let x, z, n = 0; do { x = VX - 48 + R() * 96; z = VZ - 4 + R() * 46; n++; } while (n < 30 && (Math.abs(x - VX) < 2.5 || blocked(x, z, 1.2) || (LV.noSpawn || []).some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1)));
     const f = fan(g, x, z, R() * 6.28, k + 3, false); f.userData.dyn = true; LV.fans.push({ o: f, x, z, walk: k % 5 === 0, a: R() * 6.28, done: false }); }
 }
 const FAN_LINES = ['Posso tirar uma foto com você? Minha filha joga beach tennis por sua causa!', 'Assina a minha viseira? Vou guardar pra sempre!', 'Vim de longe só para te ver jogar. Boa sorte hoje!', 'Aquele smash na semana passada foi absurdo!', 'Você é meu jogador favorito do circuito!', 'Me dá uma dica de saque? Eu travo sempre no lançamento.', 'Uma selfie rapidinha? Prometo que é só uma!', 'Autografa a minha bola? É a do meu primeiro torneio!', 'Te vi crescer desde o amador. Que orgulho!', 'Vai ganhar hoje, hein? Tô confiante!'];
 
+// ---------- a cidade em volta: lojas e restaurante na rua, gente na calçada e na praia, carros passando ----------
+const SHOPS = [['Café Maré', '#7a4e32', '#f2c14e', 'cafe'], ['Açaí da Praia', '#6b2fb8', '#b6ff3c', 'acai'], ['Pro Shop', '#111214', '#ff6a00', 'loja'], ['Restaurante Maré', '#1d3b5a', '#e9c46a', 'rest'],
+  ['Surf & Beach', '#2a9d8f', '#ffffff', ''], ['Mercado Sol', '#c0392b', '#ffd23f', ''], ['Sorveteria Onda', '#ff8fab', '#ffffff', 'sorvete'], ['Farmácia', '#0a7d3c', '#ffffff', ''], ['Academia Fit', '#2457c5', '#b6ff3c', '']];
+function city(g, sp) {
+  const R = mulberry(($s.CR.seed || 7) * 3 + 11), dyn = o => { o.userData.dyn = true; sp.add(o); return o; };
+  const pro = ($s.CR.master && $s.CR.master.brand) || 'Pro Shop';
+  // lojas do outro lado da rua (depois da arena e do CT), cada uma com fachada, toldo e letreiro próprios
+  let x = 94;
+  SHOPS.forEach(([nm0, wallC, awn, kind], i) => {
+    const nm = kind === 'loja' ? pro + ' Store' : nm0, w = kind === 'rest' ? 18 : 12, cx = x + w / 2, z0 = 33, d = 9; x += w + 4;
+    box(g, w, 4.2, d, cx, 2.1, z0 + d / 2, wallC); solid(cx - w / 2, z0, cx + w / 2, z0 + d);
+    box(g, w * .8, 2.4, .06, cx, 1.5, z0 - .02, '#9fd3ea', { transparent: true, opacity: .55, roughness: .1, metalness: .3 });
+    const aw = new THREE.Mesh(new THREE.BoxGeometry(w + .4, .1, 2), mat(awn)); aw.position.set(cx, 3.1, z0 - .9); aw.rotation.x = -.25; aw.castShadow = true; g.add(aw);
+    banner(g, nm, cx, 3.75, z0 - .06, w * .8, .9, wallC, awn, Math.PI);
+    if (kind === 'rest' || kind === 'cafe' || kind === 'acai' || kind === 'sorvete') { // mesas na calçada com gente
+      const nT = kind === 'rest' ? 4 : 2;
+      for (let k = 0; k < nT; k++) { const tx = cx - (nT - 1) * 2 + k * 4, tz = z0 - 2.6; cyl(g, .45, .45, .05, tx, .74, tz, '#f4f4f4'); cyl(g, .05, .05, .74, tx, .37, tz, '#3a3f47'); solid(tx - .5, tz - .5, tx + .5, tz + .5);
+        if (kind === 'rest') umbrella(g, tx, tz, k % 2 ? awn : '#ffffff');
+        [-1, 1].forEach(sd => { chair(g, tx + sd * .85, tz, sd * Math.PI / 2 * -1 + (sd > 0 ? 0 : 0), '#f4f4f4'); if (R() < .7) fan(g, tx + sd * .85, tz, -sd * Math.PI / 2, 60 + i * 7 + k * 3 + (sd > 0 ? 1 : 0), true).position.y = -.05; }); }
+    }
+    if (kind === 'rest') spot(sp, 'restaurante', cx, z0 - 4.6, nm, 'Almoçar fora (+6 energia)');
+    if (kind === 'acai') spot(sp, 'acai', cx, z0 - 4.4, nm, 'Açaí pós-treino');
+    if (kind === 'loja') spot(sp, 'loja', cx, z0 - 2, nm, 'Raquetes, roupas e raqueteiras');
+  });
+  // vôlei de praia e quiosque entre o bairro e o local do torneio
+  { const vx = 118, vz = -40; box(g, 9, .9, .03, vx, 1.9, vz, '#ffffff', { transparent: true, opacity: .5 }); [-1, 1].forEach(s => cyl(g, .05, .05, 2.4, vx + s * 4.6, 1.2, vz, '#3a3f47')); solid(vx - 4.6, vz - .1, vx + 4.6, vz + .1);
+    [[-2, -3], [2, -3.4], [-2.2, 3], [2.4, 3.3]].forEach(([a, b], k) => fan(g, vx + a, vz + b, b > 0 ? Math.PI : 0, 90 + k, false)); }
+  // sem torneio na semana: quadras públicas na orla, com a galera jogando
+  if (!($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done)) {
+    const A = { rows: 0, sitK: 3, chair: '#e8e2d2', line: '#1f4fb8' };
+    [[VX - 16, VZ - 10], [VX + 16, VZ - 10], [VX, VZ + 16]].forEach(([cx, cz], i) => { courtAt(g, cx, cz, i + 1, false, A); [-1, 1].forEach(s => [-1, 1].forEach(q => fan(g, cx + q * 1.8, cz + s * 5.2, s > 0 ? Math.PI : 0, 30 + i * 4 + q + s * 2, false))); });
+    banner(g, 'Quadras da Orla', VX, 2.8, VZ + 30, 8, 1.2, '#1f4fb8', '#ffffff', 0, 'beach tennis público'); cyl(g, .06, .06, 2.8, VX - 3.6, 1.4, VZ + 30, '#3a3f47'); cyl(g, .06, .06, 2.8, VX + 3.6, 1.4, VZ + 30, '#3a3f47');
+    spot(sp, 'orla', VX, VZ + 6, 'Quadras da Orla', 'Jogar com a galera (desafio)');
+  }
+  // praia: guarda-sóis com gente tomando sol, gente na água, frescobol
+  for (let k = 0; k < 34; k++) { const bx = -50 + R() * 330, bz = -48 - R() * 34; if (bx > VX - 56 && bx < VX + 56 && bz > VZ - 52) continue; if (blocked(bx, bz, 2)) continue;
+    if (k % 3 === 0) umbrella(g, bx, bz, FAN_COLS[k % FAN_COLS.length]); sunbather(g, bx + 1.2, bz + .6, R() * .6 - .3, k); }
+  for (let k = 0; k < 16; k++) { const f = fan(g, -50 + R() * 330, -89.5 - R() * 5, R() * 6.28, 120 + k, false); f.position.y = -.55 - R() * .3; } // na água
+  for (let k = 0; k < 5; k++) { const fx = -40 + k * 60 + R() * 20, fz = -70 + R() * 10; if (fx > VX - 56 && fx < VX + 56) continue;
+    const a = dyn(fan(new THREE.Group(), fx - 3, fz, -Math.PI / 2, 140 + k, false)), b = dyn(fan(new THREE.Group(), fx + 3, fz, Math.PI / 2, 150 + k, false));
+    LV.npcs.push({ kind: 'fresco', a, b, x: fx, ph: R() * 6 }); }
+  // calçadas: gente caminhando (algumas com raqueteira), carros passando na rua
+  for (let k = 0; k < 22; k++) { const z = (k % 2 ? 19.2 : 28.8) + (R() - .5) * .8, x0 = -50 + R() * 320, o = dyn(fan(new THREE.Group(), x0, z, 0, 200 + k, false));
+    LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (k % 2 ? 1 : -1) * (.9 + R() * .6), x0: -55, x1: 285 }); }
+  for (let k = 0; k < 4; k++) { const tmp = new THREE.Group(), east = k % 2 === 0; car(tmp, 0, 0, 0, ['#e63946', '#f4f4f4', '#2457c5', '#ffd23f'][k], k === 3); LV.boxes.pop(); const o = dyn(tmp); o.position.set(-90 + k * 95, 0, east ? 22.6 : 25.4); o.rotation.y = east ? 0 : Math.PI;
+    LV.npcs.push({ kind: 'car', o, v: east ? 9 : -9 }); }
+}
+// a cada quadro: gente andando, frescobol, carros
+function npcTick(dt, px, pz) {
+  const t = performance.now() / 1000;
+  for (const n of LV.npcs || []) {
+    if (n.kind === 'walk') { n.x += n.v * dt; if (n.x > n.x1 || n.x < n.x0) { n.v = -n.v; n.x = Math.max(n.x0, Math.min(n.x1, n.x)); }
+      // desvia do jogador
+      const dz = Math.abs(n.x - px) < 1.2 && Math.abs(n.z - pz) < 1.2 ? (n.z > pz ? .8 : -.8) : 0;
+      n.o.position.set(n.x, Math.abs(Math.sin(t * 7 + n.z)) * .04, n.z + dz); n.o.rotation.y = n.v > 0 ? -Math.PI / 2 : Math.PI / 2; }
+    else if (n.kind === 'fresco') { const sw = Math.sin(t * 2.2 + n.ph); n.a.position.x = n.x - 3 + sw * .3; n.b.position.x = n.x + 3 + sw * .3; }
+    else if (n.kind === 'car') { n.o.position.x += n.v * dt; if (n.o.position.x > 298) n.o.position.x = -98; if (n.o.position.x < -98) n.o.position.x = 298;
+      // freia se o jogador está na frente, na rua
+      if (Math.abs(n.o.position.z - pz) < 1.6 && (n.v > 0 ? px - n.o.position.x : n.o.position.x - px) > 0 && Math.abs(px - n.o.position.x) < 6) n.o.position.x -= n.v * dt; }
+  }
+}
 function build() {
   const lvl = crInv('moradia'), key = ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  LV.built = key; LV.spots = []; LV.boxes = [];
+  LV.built = key; LV.spots = []; LV.boxes = []; LV.noSpawn = []; LV.npcs = [];
   const g = new THREE.Group(); g.position.copy(H0); LV.group = g; scene.add(g);
   const sp = new THREE.Group(); g.add(sp); sp.userData.dyn = true; // pontos de interação (fora da junção)
   const S2 = (id, x, z, t, s, r) => spot(sp, id, x, z, t, s, r);
   const court = crInv('quadra') >= 1 || lvl >= 3, lights = crInv('quadra') >= 2 || lvl >= 3;
   // ---- chão: areia da praia ao norte, terrenos com grama, calçadas e a rua ----
-  box(g, 220, .2, 220, 15, -.12, 10, '#e8d7ae', { noShadow: true });
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(260, 120), mat('#1f8fb5', { roughness: .15, metalness: .2, transparent: true, opacity: .92 })); sea.rotation.x = -Math.PI / 2; sea.position.set(15, .02, -96); sea.receiveShadow = true; g.add(sea);
-  box(g, 260, .03, 3, 15, .03, -36.5, '#f4f8f8', { noShadow: true, transparent: true, opacity: .55 }); // espuma
-  solid(-60, -40, 90, -38);
+  box(g, 400, .2, 213, 100, -.12, 18.5, '#e8d7ae', { noShadow: true }); // (a areia vai até o mar da cena, em z −88)
+  solid(-60, -87, 290, -86); // beira do mar (o mar é o da cena, o mesmo da quadra: some a emenda com o local do torneio)
   const lotW = [14, 17, 22, 30][lvl], lotD = [12, 14, 18, 24][lvl];
   box(g, lotW + 18, .05, lotD + 6, court ? 6 : 0, .02, 1, lvl >= 2 ? '#6aa65a' : '#7fb069', { noShadow: true });
-  box(g, 220, .06, 8, 15, .03, 24, '#3a3f47', { noShadow: true }); for (let i = -90; i < 120; i += 5) box(g, 2.2, .02, .18, i, .07, 24, '#f2f2f2', { noShadow: true });
-  [19.2, 28.8].forEach(z => { box(g, 220, .14, 2.4, 15, .07, z, '#cfcac0', { noShadow: true }); box(g, 220, .16, .12, 15, .08, z + (z < 24 ? 1.2 : -1.2), '#9e9a92', { noShadow: true }); });
+  box(g, 400, .06, 8, 100, .03, 24, '#3a3f47', { noShadow: true }); for (let i = -98; i < 300; i += 5) box(g, 2.2, .02, .18, i, .07, 24, '#f2f2f2', { noShadow: true });
+  [19.2, 28.8].forEach(z => { box(g, 400, .14, 2.4, 100, .07, z, '#cfcac0', { noShadow: true }); box(g, 400, .16, .12, 100, .08, z + (z < 24 ? 1.2 : -1.2), '#9e9a92', { noShadow: true }); });
   box(g, 2.2, .05, 13, 0, .05, 12.5, '#cfcac0', { noShadow: true }); // caminho até a porta
   // ---- casa ----
   const W = [12, 14, 18, 24][lvl], D = [10, 11, 13, 16][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.3][lvl];
@@ -315,7 +428,7 @@ function build() {
   // praia: guarda-sóis e cadeiras, palmeiras na orla
   [[-30, -28, '#ff6a00'], [-14, -30, '#33c3ff'], [30, -27, '#ffd23f'], [44, -29, '#e63946'], [58, -26, '#2a9d8f']].forEach(([x, z, c]) => { umbrella(g, x, z, c); lounger(g, x + 1, z + .8, .3, '#ffffff'); });
   // rua: palmeiras, postes, bancos, carros estacionados
-  for (let x = -40; x <= 80; x += 12) { palm(g, x, 17.4, 4.8 + (x % 3)); streetLamp(g, x + 6, 18.3); }
+  for (let x = -40; x <= 280; x += 12) { palm(g, x, 17.4, 4.8 + (Math.abs(x) % 3)); streetLamp(g, x + 6, 18.3); }
   [[-26, 30.4], [6, 30.4], [32, 30.4]].forEach(([x, z]) => bench(g, x, z));
   [[-30, 26.4, '#e63946'], [20, 21.6, '#f4f4f4'], [62, 26.4, '#2a9d8f'], [-46, 21.6, '#ffd23f']].forEach(([x, z, c]) => car(g, x, z, 0, c));
   // ---- arena de treino no fim da rua ----
@@ -329,7 +442,8 @@ function build() {
   box(g, 8.6, .9, .03, ax, 1.25, az, '#ffffff', { transparent: true, opacity: .45 }); solid(ax - 4.4, az - .1, ax + 4.4, az + .1);
   S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra');
   // limites do bairro
-  solid(-60, -40, -59, 60); solid(89, -40, 90, 60); solid(-60, 59, 90, 60);
+  solid(-60, -87, -59, 60); solid(289, -87, 290, 60); solid(-60, 59, 290, 60);
+  city(g, sp);
   LV.fans = []; LV.myCourt = null; LV.arrow = null;
   if ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) buildVenue(g, sp);
   // junta o cenário parado em poucos desenhos (os pontos de interação e os fãs ficam de fora)
@@ -355,6 +469,10 @@ const ACT = {
   podcast: { txt: () => 'Gravar conteúdo', run: () => { const C = $s.CR, k = C.season + '-' + C.week; if (C.podW === k) { LV.msg('Você já gravou esta semana.'); return; } C.podW = k; C.fama = Math.min(100, (C.fama || 0) + 1); C.energy = Math.max(0, C.energy - 3); LV.msg('🎙️ Episódio gravado: +1 de fama, −3 de energia.'); } },
   torneio: { txt: () => { const t = $s.CR.tour; return !t ? 'Ver os torneios da semana' : t.pending ? 'Ir ao torneio (descansa até sábado)' : t.done ? 'Ver o resultado do torneio' : 'Ir ao local do torneio'; },
     run: () => { const t = $s.CR.tour; if (t && t.pending) crRestUntil(); const u = $s.CR.tour; if (u && !u.pending && !u.done) goVenue(); else LV.actions.openCareer(); } },
+  restaurante: { txt: () => 'Almoçar fora (+6 energia · $40)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.lunchDay === k) { LV.msg('Você já almoçou hoje.'); return; } C.lunchDay = k; C.money -= 40; C.energy = Math.min(100, C.energy + 6); LV.msg('🍽️ Peixe grelhado, salada e suco: +6 de energia.'); } },
+  acai: { txt: () => 'Tomar um açaí ($15)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.acaiDay === k) { LV.msg('Um por dia já está bom.'); return; } C.acaiDay = k; C.money -= 15; C.energy = Math.min(100, C.energy + 2); LV.msg('🍧 Açaí com banana e granola: +2 de energia.'); } },
+  loja: { txt: () => 'Entrar na loja', run: () => LV.actions.openCareer() },
+  orla: { txt: () => 'Jogar com a galera (desafio)', run: () => LV.actions.drill() },
   casaVolta: { txt: () => 'Voltar para casa', run: () => goHome() },
   partida: { txt: () => LV.myCourt ? 'Entrar na ' + LV.myCourt.name + ' (vs ' + LV.myCourt.vs + ')' : 'Sem jogo agora', run: () => { if (crMyMatch()) LV.actions.play(); } },
   chave: { txt: () => 'Ver a chave do torneio', run: () => LV.actions.openCareer() },
@@ -369,27 +487,27 @@ const ACT = {
 function enter() {
   if (!$s.CR || LV.on) return;
   build();
-  LV.on = true; LV.saved = { mode: S.mode, pos: human.pos.clone() };
+  LV.on = true; LV.saved = { mode: S.mode, pos: human.pos.clone(), sea: SEA.visible }; SEA.visible = true; // o mar da cena é o da praia do bairro
   S.mode = 'livre';
   document.body.classList.remove('in-menu'); document.body.classList.add('livre');
   document.getElementById('career').hidden = true;
   [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
   // quem anda é o seu jogador da carreira (com a roupa, o rosto e a raquete dele), não o último boneco da partida rápida
   LV.savedPick = Object.assign({}, S.settings.pick); LV.savedRacket = S.settings.racket;
-  crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters();
+  crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); // (sem reaplicar o estilo, o boneco novo ficava invisível)
   human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9;
-  hud(true); LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.');
+  LV.snap = true; hud(true); LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.');
   const t = $s.CR.tour; if (t && !t.pending && !t.done) goVenue(); // torneio em andamento: começa no local do torneio
 }
-function goVenue() { build(); human.pos.copy(P(VX, VZ + 34)); human.vel.set(0, 0, 0); human.feet = null; LV.yaw = 0; LV.camYaw = 0; LV.camPitch = .7; LV.zoom = 11; LV.where = '';
+function goVenue() { build(); LV.snap = true; human.pos.copy(P(VX, VZ + 34)); human.vel.set(0, 0, 0); human.feet = null; LV.yaw = 0; LV.camYaw = 0; LV.camPitch = .7; LV.zoom = 11; LV.where = '';
   LV.msg(LV.myCourt ? 'Você chegou ao ' + String($s.CR.tour.name).replace(/ · .*$/, '') + '. Sua partida (' + LV.myCourt.round + ') é na ' + LV.myCourt.name + ': siga a seta verde.' : 'Você chegou ao local do torneio.'); }
-function goHome() { human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
+function goHome() { LV.snap = true; human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
 function exit(toCareer = true) {
   if (!LV.on) return;
-  LV.on = false; LV.lastEn = LV.lastMo = null; S.mode = 'menu'; document.body.classList.remove('livre');
+  LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.saved) SEA.visible = LV.saved.sea; if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
-  if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); } // volta o boneco da partida rápida
+  if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); applyRackets(); applyPlayerStyle(); } // volta o boneco da partida rápida
   hud(false);
   if (toCareer) { document.body.classList.add('in-menu'); document.getElementById('career').hidden = false; if (LV.actions.render) LV.actions.render(); }
 }
@@ -428,11 +546,12 @@ function tick(dt) {
     const d = Math.hypot(px - f.o.position.x, pz - f.o.position.z); if (!f.done && d < nfd) { nfd = d; nf = f; }
     if (d < 4 && !f.walk) f.o.rotation.y += (Math.atan2(px - f.o.position.x, pz - f.o.position.z) - f.o.rotation.y) * Math.min(1, dt * 3); });
   LV.nearFan = nf; if (nf && !near) near = { id: 'fa' };
+  npcTick(dt, px, pz);
   if (LV.arrow) { LV.arrow.rotation.y += dt * 2; LV.arrow.position.y = 4.2 + Math.sin(performance.now() / 300) * .25; }
   if ((near && near.id) !== (LV.near && LV.near.id)) { LV.near = near; prompt(); } else LV.near = near;
   LV.spots.forEach(s => { const d = Math.hypot(px - s.x, pz - s.z); s.label.visible = d < 16; });
   // nome do lugar onde está
-  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 ? 'Área da piscina' : pz < -12 ? 'Praia' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : px > 240 ? String(($s.CR.tour && $s.CR.tour.name) || 'Torneio').replace(/ · .*$/, '') : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
+  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 && px > -15 && px < 15 ? 'Área da piscina' : px > VX - 53 && px < VX + 53 && pz > VZ - 51 && pz < VZ + 45 ? ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? String($s.CR.tour.name).replace(/ · .*$/, '') : 'Quadras da Orla') : pz < -12 ? 'Praia' : pz > 30 && px > 92 ? 'Comércio' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
     if (where !== LV.where) { LV.where = where; const e = document.querySelector('#livreHud .lv-where'); if (e) e.textContent = where; } }
   // bússola para a sua quadra (no painel de cima): direção em relação à câmera e distância
   { const cp = document.getElementById('livreGo'); if (cp) { const mc = LV.myCourt && LV.nearVenue !== false ? LV.myCourt : null; cp.hidden = !mc;
@@ -449,11 +568,17 @@ function cam(dt) {
   // zoom e inclinação escolhidos pelo jogador; dentro de casa a câmera nunca fica mais baixa que as paredes (vista de cima)
   const dist = LV.zoom, pitch = inside ? Math.max(LV.camPitch, .78) : LV.camPitch, h = 1.2;
   _v.set(human.pos.x + Math.sin(LV.camYaw) * Math.cos(pitch) * dist, h + Math.sin(pitch) * dist, human.pos.z + Math.cos(LV.camYaw) * Math.cos(pitch) * dist);
-  const kk = 1 - Math.exp(-dt * 6);
+  const kk = LV.snap ? 1 : 1 - Math.exp(-dt * 6); if (LV.snap) { LV.look = null; LV.snap = false; } // depois do táxi/van: a câmera já aparece no lugar
   camera.position.lerp(_v, kk); _w.set(human.pos.x, 1.1, human.pos.z);
   LV.look = (LV.look || _w.clone()).lerp(_w, kk); camera.lookAt(LV.look);
   if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix(); }
   sun.target.position.set(human.pos.x, 0, human.pos.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 40);
+  // andando pelo mundo: raquete guardada na raqueteira, nas costas
+  if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
+  { const bc = ($s.CR.bag && BAG_COLS[$s.CR.bag.c]) || bagOfRacket();
+    if (!LV.bag || LV.bagKey !== bc.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); LV.bagKey = bc.join(); scene.add(LV.bag); }
+    LV.bag.visible = true; const hk = ((human.char && human.char.alt) || 180) / 180;
+    const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * .16, 1.3 * hk, human.pos.z - fz * .16); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.6); LV.bag.scale.set(.72 * hk, .72 * hk, .6 * hk); }
   return true;
 }
 
@@ -508,7 +633,7 @@ function prompt() {
   const b = document.getElementById('livreAct'); if (b) b.classList.toggle('on', !!a);
 }
 LV.msg = t => { const m = document.getElementById('livreMsg'); if (!m) return; m.textContent = t; m.hidden = !t; LV.msgT = 5; };
-const DAY_ACTS = new Set(['cama', 'piscina', 'gelo', 'quadraTreino', 'quadraDesafio', 'arenaTreino', 'arenaDesafio', 'aulas', 'academia', 'ct', 'podcast']);
+const DAY_ACTS = new Set(['orla', 'cama', 'piscina', 'gelo', 'quadraTreino', 'quadraDesafio', 'arenaTreino', 'arenaDesafio', 'aulas', 'academia', 'ct', 'podcast']);
 function interact() {
   const s = LV.near, a = s && ACT[s.id]; if (!a || !$s.CR) return;
   if (DAY_ACTS.has(s.id) && crTourDay()) { LV.msg('🏆 Hoje é dia de torneio: treino, aulas e descanso ficam para depois. Vá ao local do torneio (táxi/van na rua).'); return; }
