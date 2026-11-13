@@ -50,90 +50,106 @@ const TONES = {
   reservado: { d: { car: -6, temp: -3 }, fama: 0, chip: 'Discreto' },
   emocao: { d: { car: 4, temp: 2 }, fama: 3, mood: 2, chip: 'Emocionado' },
 };
-// respostas por tom e situação ({p} parceiro, {o} adversário, {t} torneio, {r} rival, {c} cidade)
-const ANS = {
-  vitoria: {
-    humilde: ['Foi um jogo duro. {o} jogou muito, a gente teve um pouco mais de sorte nos pontos importantes.', 'Ainda tenho muito a melhorar, mas hoje a bola entrou. Respeito total pelo outro lado.', 'Vitória do trabalho. Tem muita gente por trás disso: técnico, família, quem acorda cedo comigo.'],
-    confiante: ['A gente sabia que era superior. Era só jogar o nosso jogo.', 'Vim aqui para ganhar o torneio, não só um jogo. Isso foi só o começo.', 'Quando eu estou ligado, é difícil me parar. Hoje deu para ver.'],
-    brinca: ['Ganhei, agora quero saber onde é o açaí mais perto dessa arena!', 'Minha mãe estava assistindo, então eu não podia perder. Ela cobra mais que técnico.', 'Teve um smash que nem eu sei como entrou. Vou dizer que foi treinado.'],
-    tecnico: ['A chave foi a devolução de saque. Começamos a ler melhor o lado do backhand deles no segundo game.', 'Ajustamos a posição na rede e passamos a jogar mais curta cruzada. Funcionou.', 'O vento mudou no meio do set e a gente mudou o lob junto. Detalhe que decide.'],
-    parceiro: ['Isso tem a cara de {p}. Segurou a defesa quando eu errei.', 'Sem {p} essa vitória não acontece. A gente se entende só no olhar.', 'Quero agradecer a {p}: hoje carregou a dupla nas costas.'],
-    polemico: ['Achei a arbitragem fraca, mas nem isso nos parou.', 'Ouvi dizer que eles estavam confiantes. Agora podem ir para casa pensar.', 'Muita gente duvidou de mim. Fica o recado.'],
-    emocao: ['Tô arrepiado. Esse público é demais, obrigado de verdade!', 'É por isso que eu jogo. Essa sensação não tem preço.'],
-  },
-  derrota: {
-    humilde: ['Eles foram melhores, simples assim. Vou voltar para o treino.', 'Parabéns ao outro lado. Hoje eu fiquei devendo, mas é aprendizado.', 'Perder faz parte. Quem me ajudou até aqui merece mais, e eu vou dar mais.'],
-    confiante: ['Foi um dia ruim, só isso. Na próxima a história é outra.', 'Não estou preocupado. Meu nível é de final, e eu vou provar.', 'Eles tiveram a vez deles. A minha volta logo.'],
-    brinca: ['Pelo menos o bronzeado ficou ótimo.', 'Hoje a bola não quis conversa comigo. Vou ver se ela aceita um café amanhã.', 'Vou pedir para o técnico apagar esse jogo da memória.'],
-    tecnico: ['Erramos muito na primeira bola depois do saque. Tem que corrigir o posicionamento.', 'Faltou variação: jogamos muito lob e eles estavam esperando.', 'O smash do fundo não entrou. Vou trabalhar a transição para a rede.'],
-    parceiro: ['A culpa não é de {p}. Eu é que não encontrei meu jogo.', 'Vou ficar do lado de {p} sempre. Nós vamos voltar mais fortes juntos.'],
-    polemico: ['Tem muita coisa errada nesse torneio, desde a quadra até a arbitragem.', 'Sinceramente, não acho que eles foram melhores. A gente se entregou.', 'O calendário é um absurdo, a gente chega destruído. Alguém tem que falar.'],
-    reservado: ['Não tenho muito a dizer. Agora é descansar.', 'Prefiro não comentar o jogo hoje.'],
-  },
-  titulo: {
-    humilde: ['Ainda não caiu a ficha. Agradeço a cada pessoa que torceu.', 'Esse título é de todo mundo que me ajudou desde as quadras do clube.', 'Ganhar aqui em {c} é um sonho. Obrigado, de coração.'],
-    confiante: ['Eu falei no começo da semana que vinha para ganhar. Aí está.', 'É só o primeiro de muitos. Podem se acostumar.', 'Esse troféu tinha meu nome desde o sorteio da chave.'],
-    brinca: ['Agora o troféu vai dormir na minha cama. Desculpa, travesseiro.', 'Vou comemorar com uma pizza tamanho família e zero culpa.', 'Alguém sabe como se leva um troféu desses no avião?'],
-    tecnico: ['Fomos consistentes do primeiro ao último jogo. Pouquíssimos erros não forçados.', 'O plano foi o mesmo a semana toda: pressão na rede e curta quando eles recuam.'],
-    parceiro: ['{p} é o melhor parceiro que eu podia ter. Esse troféu é nosso.', 'Quero dividir esse momento com {p}. Ninguém trabalhou mais que a gente.'],
-    emocao: ['(com a voz embargada) Pensei em desistir no ano passado. Hoje eu tô aqui. Valeu a pena.', 'Dedico esse título à minha família. Sem eles eu não teria nem raquete.'],
-    polemico: ['Muita gente não acreditava. Hoje quero ver quem vai falar.', 'Esse é o recado para quem disse que eu não aguentava pressão.'],
-  },
-  vice: {
-    humilde: ['Chegar na final já é enorme. Parabéns aos campeões, mereceram.', 'Fico feliz pela semana. Faltou um pouco, mas estamos no caminho.'],
-    confiante: ['Final é pouco para mim. Quero o troféu e vou buscar.', 'Perdi hoje, mas eles sabem que vão me encontrar de novo.'],
-    brinca: ['Prata combina com a minha raquete, pelo menos.', 'Segundo lugar: o primeiro dos que perderam. Brincadeira, tô feliz!'],
-    tecnico: ['Na final o detalhe decide. Eles foram mais agressivos na volta do saque.', 'Precisamos ajustar o lado da defesa quando o jogo aperta.'],
-    parceiro: ['Sem {p} eu nem estaria aqui. Semana gigante da dupla.'],
-    emocao: ['Dói perder uma final. Mas olha esse público... obrigado mesmo.'],
-  },
-  pre: {
-    humilde: ['Vou jogo a jogo. A chave é muito forte e todo mundo pode ganhar.', 'Só quero fazer o meu melhor e aprender com os melhores.'],
-    confiante: ['Vim para ganhar. Não tem outro objetivo.', 'Estou no meu melhor momento. Quem cruzar comigo vai ter trabalho.'],
-    brinca: ['Meu objetivo principal é não errar o caminho do hotel. O resto é lucro.', 'Trouxe três raquetes e dez pares de óculos. Prioridades.'],
-    tecnico: ['Treinamos muito a devolução de saque e a transição para a rede esta semana.', 'O vento aqui em {c} é traiçoeiro. Vamos usar mais bola baixa.'],
-    parceiro: ['{p} está voando nos treinos. Confio demais na nossa dupla.'],
-    polemico: ['Tem gente que só ganha por causa do sorteio da chave. Comigo não.', 'O ranking não mostra quem é melhor de verdade. Vou mostrar aqui.'],
-  },
-  vida: {
-    humilde: ['Ainda sou a mesma pessoa de sempre, só com mais viagens.', 'Fico sem graça com elogio, mas agradeço muito.'],
-    brinca: ['Fora da quadra eu sou um desastre na cozinha. Só sei fazer miojo e smash.', 'Meu maior rival é o despertador.'],
-    tecnico: ['Durmo cedo, cuido da alimentação e assisto aos meus jogos. Detalhe vira resultado.', 'Treino físico quatro vezes por semana. O beach tennis pede muito do corpo.'],
-    confiante: ['Quero ser número um do mundo e não tenho vergonha de dizer.', 'Quero que daqui a dez anos falem do meu nome no beach tennis.'],
-    emocao: ['O que me move é a minha família e esse esporte que mudou a minha vida.'],
-    reservado: ['Prefiro manter a vida pessoal longe das câmeras.', 'Sou mais de ficar em casa. Gosto de silêncio.'],
-  },
+// perguntas e respostas: cada pergunta traz as próprias respostas, uma por tom, para a resposta sempre combinar com o que foi perguntado
+// ({p} parceiro, {o} adversário, {t} torneio, {r} rival, {c} cidade). Chaves curtas dos tons: h humilde, c confiante, b brinca,
+// t técnico, pa exalta a dupla, po polêmico, e emoção, r reservado
+const TK = { h: 'humilde', c: 'confiante', b: 'brinca', t: 'tecnico', pa: 'parceiro', po: 'polemico', e: 'emocao', r: 'reservado' };
+const Q = (q, a) => ({ q, a: Object.fromEntries(Object.entries(a).map(([k, v]) => [TK[k], v])) });
+const QA = {
+  vitoria: [
+    Q('Que vitória! O que fez a diferença contra {o}?', { h: '{o} jogou muito. A diferença foi pequena: a gente acertou um pouco mais nos pontos importantes.', c: 'A diferença foi o nível. Jogamos o nosso jogo e eles não tiveram resposta.', t: 'A devolução de saque. Começamos a ler o lado do backhand deles e a pressão mudou de lado.', pa: 'A diferença tem nome: {p}. Segurou cada bola difícil.', b: 'O açaí antes do jogo. Sério, vou repetir a receita amanhã.' }),
+    Q('Vocês pareciam tranquilos o jogo todo. Foi planejado?', { h: 'Por dentro nem tanto! Mas a gente treina para não mostrar o nervoso.', c: 'Foi. Quando você sabe que é melhor, não precisa se desesperar.', t: 'Combinamos jogar ponto a ponto e não olhar o placar. Respirar entre os pontos ajuda muito.', b: 'Tranquilo por fora, liquidificador por dentro.', pa: 'Com {p} do lado fica fácil ficar calmo. A gente se acalma no olhar.' }),
+    Q('O que o técnico falou entre os games?', { t: 'Pediu mais curta cruzada e menos lob, porque eles estavam recuando muito.', b: 'Falou para eu parar de reclamar do vento. Acho que funcionou.', h: 'Me lembrou de confiar no que treinamos. Ele enxerga coisas que eu não vejo dentro da quadra.', r: 'Isso fica entre a gente.', c: 'Nada de mais. Ele sabia que a gente tinha o jogo na mão.' }),
+    Q('Qual foi o ponto mais bonito do jogo para você?', { b: 'Aquele que eu caí na areia e a bola voltou. Ninguém entendeu, nem eu.', t: 'A troca longa no fim do set. Ganhamos com uma curta depois de três lobs seguidos, bem construído.', pa: 'A defesa de {p} na rede, de costas. Até eu aplaudi.', c: 'O smash que fechou o jogo. Gosto de terminar assim.', e: 'O último. Quando a torcida explodiu eu senti tudo de uma vez.' }),
+    Q('Como foi jogar com esse vento?', { t: 'Baixamos a altura do lob e jogamos mais a favor do vento no saque. Tem que se adaptar a cada lado.', b: 'Teve bola que eu mandei para a esquerda e foi parar no estacionamento.', h: 'Difícil para os dois lados. A gente só errou um pouco menos.', c: 'Vento não me atrapalha. Treino na praia desde criança.', po: 'Sinceramente, nem deviam ter liberado a quadra com esse vento.' }),
+    Q('Você virou um jogo complicado. Como foi a cabeça na hora do aperto?', { e: 'Passou um filme. Pensei em tudo que treinei e em quem estava torcendo.', c: 'No aperto eu cresço. Sempre foi assim.', t: 'Simplifiquei: saque no corpo e bola funda. Quando aperta, menos é mais.', h: 'Fiquei nervoso, não vou mentir. Mas ponto a ponto deu para virar.', b: 'Cabeça? Eu só pensava em não errar o saque de novo.' }),
+    Q('O público vibrou muito com vocês. Dá para sentir essa energia da quadra?', { e: 'Demais! Teve uma hora que me arrepiei inteiro. Obrigado, gente.', h: 'Dá sim, e ajuda muito. Agradeço cada pessoa que veio.', b: 'Senti tanto que errei um saque de emoção.', c: 'Dá. E eu jogo melhor com estádio cheio.', r: 'Sinto, mas tento me concentrar só na bola.' }),
+    Q('O próximo jogo já é amanhã. Como está o corpo?', { t: 'Agora é gelo, alongamento e dormir cedo. A recuperação começa já.', b: 'O corpo pediu férias. Vou negociar até amanhã.', c: 'Inteiro. Posso jogar mais três hoje se precisar.', h: 'Um pouco cansado, mas é assim para todo mundo. Vou me cuidar.', r: 'Bem. Agora é descansar.' }),
+    Q('Teve um momento em que o jogo pareceu escapar. O que mudou?', { t: 'Mudamos a posição na rede e passamos a atacar o meio. Eles não se entenderam mais.', pa: '{p} chegou em mim e falou: calma, uma bola de cada vez. Mudou tudo.', c: 'Eu decidi que não ia perder. Simples.', h: 'Eles baixaram um pouquinho e a gente aproveitou. Foi detalhe.', e: 'Olhei para a torcida e lembrei por que estou aqui.' }),
+    Q('Vitória contra uma dupla de nível alto. Esse resultado muda alguma coisa?', { h: 'Dá confiança, mas é só um jogo. Amanhã começa tudo de novo.', c: 'Muda o que os outros pensam. Eu já sabia que podia.', t: 'Mostra que o plano de jogo funciona contra duplas fortes. Vamos manter.', po: 'Muda para quem duvidava. Para mim, era o resultado esperado.', b: 'Muda o meu pedido de pizza hoje: vai ser a grande.' }),
+    Q('Muita gente comentou o seu smash hoje. Foi o melhor golpe da partida?', { c: 'Foi. Quando entra daquele jeito, não tem defesa.', t: 'O smash entrou porque a preparação foi boa: o lob deles saiu curto e eu cheguei cedo na bola.', h: 'Entrou bem hoje, mas a defesa foi o que segurou a gente.', b: 'Vou dizer que foi treinado. Não foi.', pa: 'O smash só sai porque {p} prepara a bola. Metade é dele.' }),
+  ],
+  zebra: [
+    Q('Ninguém apostava em vocês contra {o}. Qual o segredo da zebra?', { h: 'Não tem segredo: a gente acreditou e eles deram uma chance. Respeito total a {o}.', c: 'Zebra para quem não me conhece. Eu sabia que dava.', t: 'Estudamos o jogo deles. Eles sofrem com bola no meio e jogamos tudo ali.', b: 'O segredo é não ler as apostas antes do jogo.', e: 'Não tenho palavras. Foi a vitória mais especial da minha vida até aqui.' }),
+    Q('Vitória sobre favoritos! Vocês acreditaram desde o início?', { e: 'Desde o aquecimento. Algo me dizia que hoje era o dia.', h: 'Acreditar a gente acredita sempre. Mas confesso que no começo foi difícil.', c: 'Claro. Ninguém entra em quadra para perder.', b: 'Eu acreditei no segundo set. No primeiro eu estava só sobrevivendo.', pa: '{p} acreditou primeiro e me puxou junto.' }),
+    Q('Os rankings diziam o contrário. Hoje vocês provaram o quê?', { po: 'Que ranking não ganha jogo. Muita gente está lá em cima por calendário, não por nível.', c: 'Que meu lugar é lá em cima. É questão de tempo.', h: 'Que todo mundo pode ganhar de todo mundo. Amanhã pode ser a gente do outro lado.', t: 'Que um bom plano de jogo vale tanto quanto pontos no ranking.', b: 'Que matemática não é o meu forte, mas beach tennis é.' }),
+  ],
+  derrota: [
+    Q('O que faltou hoje contra {o}?', { h: '{o} foi melhor. Faltou eu jogar no meu nível, e eles não deixaram.', t: 'Faltou variação. Jogamos muito lob e eles estavam esperando.', c: 'Faltou só o dia ser nosso. Nível eu tenho.', po: 'Faltou uma arbitragem melhor, para começar.', r: 'Prefiro analisar com calma antes de falar.' }),
+    Q('Teve uma chance clara no fim. O que aconteceu ali?', { t: 'Escolhi o smash quando era bola de curta. Decisão errada na hora errada.', h: 'Errei. Simples assim. Vou rever esse ponto mil vezes.', b: 'Aconteceu que a bola resolveu ir passear fora da quadra.', c: 'Faz parte. Na próxima aquela bola entra.', r: 'Não quero falar desse ponto agora.' }),
+    Q('Vocês vão continuar juntos depois desse resultado?', { pa: 'Claro. Uma derrota não apaga o que a gente construiu. {p} sabe disso.', h: 'Vamos conversar com calma, mas a ideia é seguir.', r: 'Isso a gente conversa entre nós, não aqui.', po: 'Vou pensar bem. Algumas coisas precisam mudar.', b: 'Depende de quem paga o jantar hoje.' }),
+    Q('O calor pesou hoje?', { t: 'Pesou no fim do segundo set. A hidratação entre os games não foi suficiente.', h: 'Pesou para os dois lados. Não é desculpa.', po: 'Pesou porque marcaram o jogo no pior horário. Alguém tem que pensar no atleta.', b: 'Eu derreti. Literalmente. Ainda estou procurando meu boné.', c: 'Calor não decide jogo. Decidiram eles, hoje.' }),
+    Q('Uma derrota dura. Como você sai dessa partida?', { h: 'Triste, mas com vontade de treinar mais. Eles mereceram.', e: 'Dói muito. Eu queria muito esse jogo, pela torcida também.', c: 'Saio com raiva, e raiva boa. Volto mais forte.', r: 'Vou para casa descansar. Amanhã eu penso nisso.', b: 'Saio pela porta da frente, com o bronzeado em dia.' }),
+    Q('Vocês pareciam abaixo do normal. Foi físico ou mental?', { t: 'Mais físico. As pernas não chegaram nas bolas curtas no fim.', h: 'Um pouco dos dois. Não estava no meu melhor e vou ser honesto sobre isso.', po: 'Foi o calendário. A gente chega destruído em todo torneio.', r: 'Foi um dia ruim. Só isso.', c: 'Nenhum dos dois. Eles jogaram bem e acabou.' }),
+    Q('O que fica de lição desse torneio?', { t: 'Preciso melhorar a transição para a rede e a primeira bola depois do saque.', h: 'Que ainda tenho muito a aprender. E vou aprender.', c: 'Que eu estou perto. Muito perto.', e: 'Que eu amo isso aqui, mesmo quando perco.', b: 'Que eu preciso de um protetor solar melhor.' }),
+    Q('A torcida esperava mais. O que você diria para quem veio te ver?', { h: 'Desculpa e obrigado. Vou trabalhar para dar mais alegria na próxima.', e: 'Obrigado de verdade. Ouvir vocês me deu força até o último ponto.', c: 'Que voltem no próximo torneio. A história vai ser outra.', b: 'Que pelo menos o show de quedas na areia foi bom.', r: 'Obrigado pelo carinho.' }),
+  ],
+  titulo: [
+    Q('Campeões do {t}! O que passa pela cabeça agora?', { e: 'Passa a minha vida inteira. Todo treino, toda viagem… valeu a pena.', h: 'Ainda não caiu a ficha. Só agradeço a cada pessoa que torceu.', c: 'Que é só o começo. Quero muitos outros.', b: 'Que eu preciso descobrir como levar esse troféu no avião.', pa: 'Que {p} é o melhor parceiro que eu podia ter.' }),
+    Q('Em algum momento você achou que não ia dar?', { h: 'Achei, na semifinal. Foi muito difícil e eles quase viraram.', c: 'Não. Nem quando estava perdendo.', e: 'No ano passado pensei em desistir de tudo. Hoje eu tô aqui.', b: 'Quando eu vi o tamanho do adversário no sorteio, deu um frio na barriga.', t: 'No começo da final. Depois que ajustamos a devolução de saque, ficou sob controle.' }),
+    Q('O que esse título muda no ranking?', { t: 'São pontos importantes, mas o que eu quero é manter a regularidade em todo torneio.', c: 'Muda tudo. Quero subir mais e não vou parar.', h: 'Ajuda, claro. Mas ranking é consequência do trabalho.', b: 'Vou finalmente conseguir ver meu nome sem rolar a página.', r: 'Não olho muito o ranking. Vou ver depois.' }),
+    Q('Quem foi a primeira pessoa para quem você ligou?', { e: 'Para a minha mãe. Ela chorou, eu chorei… foi lindo.', h: 'Para a minha família. Eles acordaram cedo comigo a vida inteira.', b: 'Ainda não liguei para ninguém. Estou procurando o celular desde o pódio.', pa: 'Nem precisei ligar: o primeiro abraço foi de {p}.', r: 'Isso eu guardo para mim.' }),
+    Q('Qual foi o ponto mais difícil da semana?', { t: 'O match point da semifinal. Salvamos com uma curta cruzada que a gente treinou a semana toda.', h: 'A estreia. Primeiro jogo sempre dá nervoso.', b: 'O mais difícil foi acordar às seis para a estreia.', e: 'A semi. Quando ganhamos aquele ponto eu sabia que o título era possível.', c: 'Difícil, difícil mesmo, nenhum. Estava tudo sob controle.' }),
+    Q('Esse é o título mais importante da sua carreira?', { e: 'Sem dúvida. Vou lembrar desse dia para sempre.', c: 'Por enquanto. Os mais importantes ainda vão vir.', h: 'É especial, mas cada título tem a sua história.', b: 'É o mais pesado, pelo menos. Esse troféu pesa uma tonelada.', t: 'Pelo nível da chave, sim. Ganhamos de duplas muito fortes.' }),
+    Q('Para quem você dedica esse troféu?', { e: 'À minha família. Sem eles eu não teria nem raquete.', h: 'A todo mundo que me ajudou desde as quadras do clube.', pa: 'Metade é de {p}. A outra metade também, na verdade.', po: 'A quem duvidou de mim. Esse aqui é para vocês.', b: 'Ao meu travesseiro, que vai dividir a cama com o troféu hoje.' }),
+    Q('Como vai ser a comemoração hoje?', { b: 'Pizza tamanho família e zero culpa. Amanhã eu volto para a dieta.', h: 'Um jantar tranquilo com quem me ajudou. Nada de mais.', e: 'Abraçando todo mundo que veio até aqui torcer.', r: 'Em casa, descansando. Gosto de silêncio.', c: 'Hoje eu comemoro. Amanhã já começo a pensar no próximo título.' }),
+  ],
+  vice: [
+    Q('Faltou pouco para o título. O que pesou na final?', { t: 'Eles foram mais agressivos na volta do saque e a gente demorou a ajustar.', h: 'Pesou o nível deles. Parabéns aos campeões, mereceram.', c: 'Pesou um ou dois pontos. Na próxima final é minha.', po: 'Pesou umas decisões estranhas da arbitragem, para ser sincero.', e: 'Pesou o coração. Eu queria demais e talvez isso tenha atrapalhado.' }),
+    Q('Uma semana de grande nível, mas sem o troféu. Fica o gosto amargo?', { e: 'Fica, dói perder uma final. Mas olha esse público… obrigado.', h: 'Um pouco, mas chegar na final já é enorme. Estamos no caminho.', c: 'Fica, e é bom que fique. Vou usar isso para ganhar a próxima.', b: 'Amargo nada: prata combina com a minha raquete.', r: 'Prefiro não pensar nisso hoje.' }),
+    Q('O que você leva de positivo dessa final?', { t: 'O jogo de rede evoluiu muito. Ganhamos a maioria das trocas curtas da semana.', h: 'Ganhei confiança. Mostrei para mim mesmo que posso jogar finais.', pa: 'A dupla. {p} jogou uma semana gigante.', c: 'Que estou pronto para ganhar torneios grandes.', b: 'Um cheque menor que o do campeão, mas ainda é um cheque.' }),
+  ],
+  pre: [
+    Q('O {t} começa amanhã. Qual a expectativa?', { h: 'Vou jogo a jogo. A chave é forte e todo mundo pode ganhar.', c: 'Vim para ganhar. Não tem outro objetivo.', t: 'Quero manter o nível de saque e devolução da semana passada. O resto vem.', b: 'Minha meta principal é não errar o caminho do hotel. O resto é lucro.', pa: 'Com {p} do lado, a expectativa é ir longe.' }),
+    Q('Tem algum adversário que você prefere evitar na chave?', { c: 'Não. Prefiro que os outros evitem a gente.', h: 'Todo mundo é difícil. Não dá para escolher.', b: 'Prefiro evitar quem joga de óculos espelhado. Me distrai.', t: 'Duplas que jogam muito na rede dão mais trabalho para o nosso estilo. Mas estamos preparados.', po: 'Tem uns aí que só estão na chave pelo sorteio. Esses eu quero encontrar.' }),
+    Q('Você já jogou bem aqui antes. Isso ajuda?', { h: 'Ajuda a ficar à vontade, mas cada ano é diferente.', t: 'Ajuda: já conheço o vento e a areia de {c}, que é mais fofa que a média.', c: 'Ajuda. Esta quadra gosta de mim.', b: 'Ajuda, porque eu já sei onde fica o melhor açaí da cidade.', e: 'Muito. Tenho lembranças lindas daqui.' }),
+    Q('Como está o corpo depois de tantas viagens?', { t: 'Bem cuidado. Fisioterapia todo dia e sono regrado, mesmo no avião.', po: 'Cansado, como o de todo mundo. O calendário é um absurdo.', h: 'Um pouco cansado, mas faz parte da vida de atleta.', b: 'O corpo está aqui. A mala ainda está em outro aeroporto.', c: 'Perfeito. Nunca estive tão bem.' }),
+    Q('A chave do {t} está pesada. Quem você vê como favorito?', { c: 'Eu. E digo isso com todo o respeito pelos outros.', h: 'Os cabeças de chave, claro. A gente corre por fora.', po: 'Favorito no papel é uma coisa. Na areia a conversa é outra.', b: 'O favorito é quem trouxe mais protetor solar.', r: 'Não gosto de fazer previsão.' }),
+    Q('Você chega em boa fase. Dá para pensar em título?', { c: 'Dá, e eu penso. Vim para isso.', h: 'Penso no primeiro jogo. Se chegar lá, aí a gente conversa.', t: 'A fase é boa porque o saque está entrando. Se mantiver isso, temos chance.', e: 'Seria um sonho. Estou trabalhando muito por isso.', pa: 'Com {p} nessa fase, dá para sonhar sim.' }),
+    Q('Como foi a preparação para o {t}?', { t: 'Muito treino de devolução e transição para a rede, e físico para aguentar o calor.', b: 'Teve treino, teve dieta e teve uma pizza escondida.', h: 'Dentro do possível, tranquila. Treinei o que o técnico pediu.', r: 'Normal. Treino e descanso.', c: 'A melhor da minha carreira. Estou pronto.' }),
+  ],
+  vida: [
+    Q('Como é a sua rotina fora da quadra?', { t: 'Durmo cedo, cuido da alimentação e assisto aos meus jogos. Detalhe vira resultado.', b: 'Fora da quadra eu sou um desastre na cozinha. Só sei fazer miojo e smash.', r: 'Bem tranquila. Gosto de ficar em casa.', h: 'Normal, como a de qualquer pessoa: família, amigos e muito treino.', c: 'Tudo gira em torno de ser o melhor. Não tenho folga.' }),
+    Q('Qual atleta você admirava quando criança?', { h: 'Os pioneiros do beach tennis no Brasil. Sem eles nada disso existiria.', e: 'Meu pai jogava no fim de semana. Ele foi meu primeiro ídolo.', b: 'O goleiro do time do meu bairro. Pulava mais que eu no smash.', c: 'Admirava muitos. Hoje quero ser o atleta que as crianças admiram.', r: 'Prefiro não citar nomes.' }),
+    Q('O que ninguém sabe sobre você?', { b: 'Tenho medo de caranguejo. Jogo na praia e tenho medo de caranguejo.', r: 'Se ninguém sabe, é porque eu prefiro assim.', h: 'Que eu fico muito nervoso antes de todo jogo, até hoje.', e: 'Que eu choro vendo filme de esporte. Todos.', c: 'Que eu treino mais do que qualquer um no circuito.' }),
+    Q('Como você lida com as viagens e a saudade de casa?', { e: 'É a parte mais difícil. Ligo para a família todo dia.', h: 'Com paciência. Sei que é o preço de viver do esporte.', b: 'Levo o travesseiro de casa para todo lado. Ele já tem mais milhas que eu.', t: 'Tento manter a mesma rotina em qualquer cidade: horário de sono, alimentação e treino.', r: 'Lido bem. Sou bem independente.' }),
+    Q('Qual foi o momento mais difícil da sua carreira?', { e: 'Quando quase parei por falta de dinheiro. Muita gente me ajudou a continuar.', h: 'Uma sequência de derrotas no começo. Aprendi muito com ela.', c: 'Difícil foi só no começo. Agora é só subir.', r: 'Prefiro deixar isso no passado.', t: 'Uma lesão no ombro. Tive que mudar o movimento do saque inteiro.' }),
+    Q('O que te motiva a acordar cedo para treinar?', { c: 'Ser o número um. Simples assim.', e: 'A minha família e esse esporte que mudou a minha vida.', b: 'O café. Sem café não tem treino.', h: 'Saber que tem muita gente que queria estar no meu lugar.', t: 'Ver a evolução nos números: cada décimo de segundo no deslocamento conta.' }),
+    Q('Qual o seu sonho no beach tennis?', { c: 'Ser número um do mundo. Não tenho vergonha de dizer.', e: 'Ganhar um Mundial com a minha família na arquibancada.', h: 'Viver do esporte e inspirar a garotada que está começando.', b: 'Ter um smash com o meu nome. Tipo "o fulano". Ainda não pensei no nome.', pa: 'Ganhar tudo ao lado de {p}.' }),
+    Q('Muita gente te segue nas redes agora. Como lida com a fama?', { h: 'Fico sem graça com elogio, mas agradeço muito o carinho.', r: 'Uso pouco as redes. Prefiro manter a vida pessoal longe das câmeras.', b: 'Minha mãe ainda curte todas as fotos. Ela é a fã número um.', c: 'Gosto. Mostra que o trabalho está aparecendo.', po: 'Tem muita gente que só critica. Esses eu bloqueio sem dó.' }),
+    Q('Se não fosse atleta, o que você seria?', { b: 'Vendedor de picolé na praia. Ia estar na areia do mesmo jeito.', h: 'Professor de beach tennis, provavelmente. Gosto de ensinar.', t: 'Algo com números. Gosto de analisar dados dos meus jogos.', e: 'Não consigo imaginar. Esse esporte é a minha vida.', c: 'Seria o melhor no que eu escolhesse.' }),
+  ],
+  rival: [
+    Q('{r} disse que você não aguenta pressão. Quer responder?', { po: '{r} fala muito. Na quadra o placar fala por mim.', c: 'Respondo na areia. Me encontra na chave.', h: 'Respeito a opinião. Vou continuar trabalhando.', b: 'Deve ter confundido pressão com pressão alta. Estou ótimo, obrigado.', r: 'Não vou comentar.' }),
+    Q('Vocês e {r} viraram rivais. Existe amizade fora da quadra?', { h: 'Existe respeito. Rivalidade é dentro da quadra.', po: 'Amizade? Não. E está tudo bem assim.', b: 'A gente se cumprimenta. De longe. Bem de longe.', r: 'Cada um na sua.', c: 'Fora da quadra tudo bem. Dentro, não espere presente.' }),
+    Q('O próximo encontro com {r} pode decidir o ranking. Tem algum recado?', { c: 'Pode vir. Estou pronto.', po: 'Recado: vai ser diferente da última vez.', t: 'Já estou estudando os jogos de {r}. Tem coisa para explorar.', h: 'Que seja um grande jogo para o público.', b: 'Meu recado é: traz protetor, vai ser um jogo longo.' }),
+  ],
+  parceiro: [
+    Q('Como está a relação com {p}? Há boatos de separação.', { pa: 'Melhor do que nunca. {p} é a pessoa certa do meu lado.', po: 'Boato é boato. Quem espalha devia cuidar da própria dupla.', r: 'Isso a gente resolve entre nós.', b: 'Separação? A gente nem casou ainda.', h: 'Está tudo bem. Como toda dupla, temos dias bons e ruins.' }),
+    Q('{p} vive grande fase. Isso pressiona você?', { pa: 'Me inspira. Quando {p} joga assim, eu quero acompanhar.', c: 'Pressão nenhuma. Eu também estou em grande fase.', h: 'Um pouco. Mas pressão boa: quero estar à altura.', b: 'Pressiona, porque agora os aplausos são todos para o outro lado da quadra.', t: 'Faz eu cuidar mais da minha parte: saque e defesa do meu lado.' }),
+    Q('O que {p} tem que nenhum outro parceiro teve?', { pa: 'Leitura de jogo. {p} sabe para onde eu vou antes de eu ir.', b: 'Paciência para aguentar as minhas piadas.', t: 'Uma defesa de fundo absurda, que me deixa livre para atacar na rede.', h: 'Humildade. Nunca vi {p} reclamar de uma bola minha.', e: 'Coração. Joga cada ponto como se fosse o último.' }),
+  ],
 };
-// perguntas por situação
-const QUES = {
-  vitoria: ['Que vitória! O que fez a diferença contra {o}?', 'Vocês pareciam tranquilos o jogo todo. Foi planejado?', 'O que o técnico falou entre os games?', 'Qual foi o ponto mais bonito do jogo para você?', 'Como foi jogar com esse vento?', 'Você virou um jogo complicado. Como foi a cabeça na hora do aperto?', 'O público vibrou muito com vocês. Dá para sentir essa energia da quadra?', 'Próximo jogo já é amanhã. Como está o corpo?', 'Teve um momento em que o jogo pareceu escapar. O que mudou?', 'Vitória contra uma dupla de nível alto. Esse resultado muda alguma coisa para vocês?', 'Muita gente comentou o seu smash hoje. Foi o melhor golpe da partida?'],
-  zebra: ['Ninguém apostava em vocês contra {o}. Qual o segredo da zebra?', 'Vitória sobre favoritos! Vocês acreditaram desde o início?', 'Os rankings diziam o contrário. Hoje vocês provaram o quê?'],
-  derrota: ['O que faltou hoje contra {o}?', 'Teve uma chance clara no fim. O que aconteceu ali?', 'Vocês vão continuar juntos depois desse resultado?', 'O calor pesou hoje?', 'Uma derrota dura. Como você sai dessa partida?', 'Vocês pareciam abaixo do normal. Foi físico ou mental?', 'O que fica de lição desse torneio?', 'A torcida esperava mais. O que você diria para quem veio te ver?'],
-  titulo: ['Campeões do {t}! O que passa pela cabeça agora?', 'Em algum momento você achou que não ia dar?', 'O que esse título muda no ranking?', 'Quem foi a primeira pessoa para quem você ligou?', 'Qual foi o ponto mais difícil da semana?', 'Esse é o título mais importante da sua carreira?', 'Para quem você dedica esse troféu?', 'Como vai ser a comemoração hoje?'],
-  vice: ['Faltou pouco para o título. O que pesou na final?', 'Uma semana de grande nível, mas sem o troféu. Fica o gosto amargo?', 'O que você leva de positivo dessa final?'],
-  pre: ['O {t} começa amanhã. Qual a expectativa?', 'Tem algum adversário que você prefere evitar na chave?', 'Você já jogou bem aqui antes. Isso ajuda?', 'Como está o corpo depois de tantas viagens?', 'A chave do {t} está pesada. Quem você vê como favorito?', 'Você chega em boa fase. Dá para pensar em título?', 'Como foi a preparação para o {t}?'],
-  vida: ['Como é a sua rotina fora da quadra?', 'Qual atleta você admirava quando criança?', 'O que ninguém sabe sobre você?', 'Como você lida com as viagens e a saudade de casa?', 'Qual foi o momento mais difícil da sua carreira?', 'O que te motiva a acordar cedo para treinar?', 'Qual o seu sonho no beach tennis?', 'Muita gente te segue nas redes agora. Como lida com a fama?', 'Se não fosse atleta, o que você seria?'],
-  rival: ['{r} disse que você não aguenta pressão. Quer responder?', 'Vocês e {r} viraram rivais. Existe amizade fora da quadra?', 'O próximo encontro com {r} pode decidir o ranking. Tem algum recado?'],
-  parceiro: ['Como está a relação com {p}? Há boatos de separação.', '{p} vive grande fase. Isso pressiona você?', 'O que {p} tem que nenhum outro parceiro teve?'],
-};
-// quais tons cabem em cada situação
-const TONE_SET = { vitoria: 'vitoria', zebra: 'vitoria', derrota: 'derrota', titulo: 'titulo', vice: 'vice', pre: 'pre', vida: 'vida', rival: 'pre', parceiro: 'vitoria' };
 
-const Q_OPEN = { vitoria: ['', '', 'Parabéns! ', 'Rapidinho, antes do aquecimento: ', 'Com essa torcida toda… ', 'Ainda sem fôlego, né? '], zebra: ['', 'Que zebra! ', 'Ninguém esperava! '], derrota: ['', '', 'Sei que é um momento difícil, mas… ', 'Rapidinho: '],
-  titulo: ['', 'Campeão! ', 'Que semana! ', 'Com o troféu na mão: '], vice: ['', 'Parabéns pela campanha. ', 'Semana enorme. '], pre: ['', 'Bem-vindo a {c}! ', 'Último treino antes da estreia. ', 'Você parece tranquilo. '],
+const Q_OPEN = { vitoria: ['', '', 'Parabéns! ', 'Com essa torcida toda… ', 'Ainda sem fôlego, né? '], zebra: ['', 'Que zebra! ', 'Que resultado! '], derrota: ['', '', 'Sei que é um momento difícil, mas… ', 'Rapidinho: '],
+  titulo: ['', 'Campeão! ', 'Que semana! ', 'Com o troféu na mão: '], vice: ['', 'Parabéns pela campanha. ', 'Semana enorme. '], pre: ['', 'Bem-vindo! ', 'Último treino antes da estreia. ', 'Você parece tranquilo. '],
   vida: ['', 'Num papo mais leve: ', 'Fora das quadras: ', 'Pergunta dos seguidores: '], rival: ['', 'Não dá para não perguntar: ', 'O assunto da semana: '], parceiro: ['', 'Sobre a dupla: ', 'Muita gente quer saber: '] };
-const A_OPEN = { humilde: ['', '', 'Olha, ', 'Sinceramente, ', 'Primeiro, obrigado. '], confiante: ['', '', 'Vou ser direto: ', 'Sem falsa modéstia: ', 'Escuta: '], brinca: ['', '', '(rindo) ', 'Olha só… ', 'Vou contar um segredo: '],
-  tecnico: ['', '', 'Taticamente, ', 'Olhando o jogo, ', 'Analisando com calma, '], polemico: ['', 'Vou falar o que penso: ', 'Ninguém fala, então eu falo: ', 'Desculpa, mas '], parceiro: ['', 'Antes de tudo: ', 'Isso aqui é dupla, então: '],
+const A_OPEN = { humilde: ['', '', 'Olha, ', 'Sinceramente, '], confiante: ['', '', 'Vou ser direto: ', 'Sem falsa modéstia: ', 'Escuta: '], brinca: ['', '', '(rindo) ', 'Olha só… '],
+  tecnico: ['', '', 'Olhando o jogo, ', 'Analisando com calma, '], polemico: ['', 'Vou falar o que penso: ', 'Ninguém fala, então eu falo: ', 'Desculpa, mas '], parceiro: ['', 'Antes de tudo: ', 'Isso aqui é dupla, então: '],
   reservado: ['', '', 'Hum… '], emocao: ['', '(respira fundo) ', '(emocionado) '] };
 function fill(s, D) { return s.replace(/\{(\w)\}/g, (m, k) => D[k] || '').replace(/\s+/g, ' ').trim(); }
 // monta uma entrevista: veículo, repórter, pergunta e 3 respostas de tons diferentes
+// junta a abertura com a frase: depois de "," ":" ou "mas", a frase continua em minúscula (menos quando começa com um nome)
+function join(pre, txt, D) { const base = fill(txt, D); pre = pre.replace(/\{(\w)\}/g, (m, k) => D[k] || ''); return pre + (pre && /([,:]|\bmas)\s*$/.test(pre) && !/^\{/.test(txt) && !/^[A-Z]{2}/.test(base) ? base.charAt(0).toLowerCase() + base.slice(1) : base); }
 function makeInterview(kind, D, extra) {
-  const set = ANS[TONE_SET[kind] || 'vitoria'];
-  let tones = Object.keys(set).filter(t => (t !== 'parceiro' || D.p) && (t !== 'polemico' || Math.random() < .85));
+  // sem parceiro (simples) ou sem rival: só perguntas que não dependem deles
+  const ok = x => (D.p || !/\{p\}|\bvocês\b|juntos/i.test(x.q)) && (D.r || !/\{r\}/.test(x.q)), pool = (QA[kind] || QA.vitoria).filter(ok);
+  const it = pickFresh(pool.length ? pool : QA.vida, 'q' + kind);
+  let tones = Object.keys(it.a).filter(t => (D.p || !/\{p\}/.test(it.a[t])) && (t !== 'parceiro' || D.p) && (t !== 'polemico' || Math.random() < .85));
   tones.sort(() => Math.random() - .5); tones = tones.slice(0, 3);
   const [out, ico] = pickFresh(OUTLETS, 'o'), [rep, rg] = pickFresh(REPORTERS, 'r');
-  return Object.assign({ type: 'entrevista', kind, outlet: out, ico, rep, rg, q: fill(pick(Q_OPEN[kind] || ['']) + pickFresh(QUES[kind], 'q' + kind), D),
-    opts: tones.map(t => { const pre = pick(A_OPEN[t] || ['']), base = fill(pickFresh(set[t], 'a' + kind + t), D); return { tone: t, txt: pre && /[,:]\s*$/.test(pre) && !/^[A-Z]{2}/.test(base) ? pre + base.charAt(0).toLowerCase() + base.slice(1) : pre + base }; }) }, extra || {});
+  return Object.assign({ type: 'entrevista', kind, outlet: out, ico, rep, rg, q: join(/!/.test(it.q) ? '' : pick(Q_OPEN[kind] || ['']), it.q, D), // pergunta que já abre com exclamação dispensa a abertura
+    opts: tones.map(t => ({ tone: t, txt: join(pick(A_OPEN[t] || ['']), it.a[t], D) })) }, extra || {});
 }
 
 // ---------- histórias de várias etapas ----------
@@ -334,5 +350,5 @@ function persHTML() {
   return '<p class="section-label">Personalidade · ' + persWord() + '</p><div class="pers">' + AXES.map(([k, a, b]) => '<div class="pers-row"><span>' + a + '</span><span class="pers-bar"><i style="left:' + p[k] + '%"></i></span><span>' + b + '</span></div>').join('') + '</div>'
     + '<p class="cr-note">Muda com as respostas em entrevistas e as escolhas nas histórias. ' + (ef.txt.length ? 'Efeitos agora: ' + ef.txt.join(' · ') + '.' : 'Equilibrado: sem efeitos.') + '</p>';
 }
-if (typeof window !== 'undefined') window.__pdoHist = { STORIES, QUES, ANS, makeInterview, queueStory, answerTalk, closeTalk, pers, persEffects, renderTalk, ctx };
+if (typeof window !== 'undefined') window.__pdoHist = { STORIES, QA, makeInterview, queueStory, answerTalk, closeTalk, pers, persEffects, renderTalk, ctx };
 export { HIST, renderTalk, persHTML, persEffects, say, hush };

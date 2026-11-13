@@ -48,10 +48,6 @@ function renderCrSide() {
 }
 { const lb = document.getElementById('crLivre'); if (lb) lb.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 { const w = document.getElementById('crWalk'); if (w) w.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
-// menu principal: entra direto andando com a última carreira salva
-{ const b = document.getElementById('btnLivre'); if (b) b.addEventListener('click', () => { if (!$s.CR) { const l = crSlots(); if (!l.length || !crLoadSlot(l[0].id)) return; } crTab = 'agenda'; crEntry = null; openCareer(); livreEnter(); }); }
-function livreTile() { const b = $('btnLivre'); if (!b) return; const l = crSlots(), c = $s.CR ? { name: $s.CR.me.name } : l[0]; b.hidden = !c; if (c) b.querySelector('em').textContent = 'com ' + c.name; }
-setTimeout(livreTile, 0);
 HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
 LIVRE.actions = { play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 function renderCareer() {
@@ -1117,7 +1113,6 @@ function menuStep(st) {
 }
 // placa do jogador em destaque na tela inicial (nome, país, estilo e overall de quem está escolhido na partida rápida)
 function heroPlate() {
-  livreTile();
   const el = $('heroPlate'); if (!el) return;
   const c = human && human.char; el.hidden = !c || $('menu').dataset.step !== 'home'; if (el.hidden) return;
   el.querySelector('.hp-ovr b').textContent = String(overall((charById(c.id) || c).a)); // (o mesmo número do cartão da partida rápida: sem o bônus da raquete)
