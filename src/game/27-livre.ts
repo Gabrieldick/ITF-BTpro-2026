@@ -359,7 +359,7 @@ const ACT = {
   estande: { txt: () => 'Ação no estande (fotos e brindes)', run: () => { const t = $s.CR.tour; if (t.standDone) { LV.msg('Você já fez a ação no estande neste torneio.'); return; } t.standDone = true; crAddFama(1); $s.CR.energy = Math.max(0, $s.CR.energy - 2); LV.msg('📸 Fila de fãs no estande: +1 de fama.'); } },
   comida: { txt: () => 'Comer e se hidratar (+5 energia)', run: () => { const t = $s.CR.tour, k = 'd' + (t.day || 1); if (t.food === k) { LV.msg('Você já comeu hoje.'); return; } t.food = k; $s.CR.energy = Math.min(100, $s.CR.energy + 5); LV.msg('🥤 Água de coco e um açaí: +5 de energia.'); } },
   atletas: { txt: () => ($s.CR.tour.mate || $s.CR.partner) ? 'Conversar com a dupla' : 'Descansar na área dos atletas', run: () => { const t = $s.CR.tour, k = 'd' + (t.day || 1); if (t.lounge === k) { LV.msg('Vocês já conversaram hoje.'); return; } t.lounge = k; if ($s.CR.partner && !t.mate) { crPartnerAct('conversa'); } else $s.CR.energy = Math.min(100, $s.CR.energy + 3); LV.msg($s.CR.lastMsg || 'Um tempo na sombra: +3 de energia.'); } },
-  fa: { txt: () => 'Tirar foto e dar autógrafo', run: () => { const f = LV.nearFan, t = $s.CR.tour; if (!f || f.done) return; f.done = true; t.fanN = (t.fanN || 0) + 1; const line = FAN_LINES[Math.floor(Math.random() * FAN_LINES.length)]; say(line, Math.random() < .5 ? 'f' : 'm', t.fanN);
+  fa: { txt: () => 'Tirar foto e dar autógrafo', run: () => { const f = LV.nearFan, t = $s.CR.tour; if (!f || f.done) return; f.done = true; t.fanN = (t.fanN || 0) + 1; const line = FAN_LINES[Math.floor(Math.random() * FAN_LINES.length)]; say(line, Math.random() < .5 ? 'f' : 'm', t.fanN, [line], 'r');
     if (t.fanN <= 8) { crAddFama(.4); LV.msg('🙋 "' + line + '" (+0,4 de fama)'); } else LV.msg('🙋 "' + line + '"'); } },
 };
 
@@ -384,7 +384,7 @@ function goVenue() { build(); human.pos.copy(P(VX, VZ + 34)); human.vel.set(0, 0
 function goHome() { human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
 function exit(toCareer = true) {
   if (!LV.on) return;
-  LV.on = false; S.mode = 'menu'; document.body.classList.remove('livre');
+  LV.on = false; LV.lastEn = LV.lastMo = null; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
   if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); } // volta o boneco da partida rápida
@@ -456,7 +456,9 @@ function hud(on) {
   let el = document.getElementById('livreHud');
   if (!el) {
     el = document.createElement('div'); el.id = 'livreHud';
-    el.innerHTML = '<div class="lv-top"><b class="lv-where"></b><span class="lv-day"></span><button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div>'
+    el.innerHTML = '<div class="lv-top"><div class="lv-stat"><div class="lv-cal"><small></small><b></b><span></span></div><div class="lv-info"><b class="lv-where"></b><div class="lv-week"></div><div class="lv-next"></div></div></div>'
+      + '<div class="lv-res"><div class="lv-k lv-en" title="Energia"><span class="lv-ico">⚡</span><span class="lv-bar"><i></i></span><b></b><em class="lv-dl"></em></div><div class="lv-k lv-mo" title="Dinheiro"><span class="lv-ico">💰</span><b></b><em class="lv-dl"></em></div></div>'
+      + '<button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div>'
       + '<div id="livrePrompt" class="lv-prompt" hidden><kbd>E</kbd><span></span></div><div id="livreMsg" class="lv-msg" hidden></div>'
       + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · arrastar: girar · rodinha: zoom · clique da rodinha arrastando: girar e inclinar · Z/X: zoom · T/G: inclinação</div>'
       + '<div class="lv-joy" id="livreJoy"><i></i></div><button type="button" class="lv-act" id="livreAct">E</button>';
@@ -470,8 +472,28 @@ function hud(on) {
     J.addEventListener('pointerup', () => { LV.joy = null; knob.style.transform = ''; });
   }
   el.hidden = !on;
-  if (on) { el.querySelector('.lv-day').textContent = crDateTxt($s.CR.season, $s.CR.week, $s.CR.day) + ' · energia ' + Math.round($s.CR.energy) + ' · ' + money2($s.CR.money); LV.where = ''; }
+  if (on) { hudStats(el); LV.where = ''; }
 }
+// painel de cima: folha de calendário, a semana (hoje em destaque, fim de semana de torneio marcado), o que vem a seguir, energia e dinheiro
+const WD = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+function hudStats(el) {
+  const C = $s.CR; if (!C) return;
+  const [wd, dm] = crDateTxt(C.season, C.week, C.day).split(', '), [dd, mm] = (dm || '').split(' ');
+  el.querySelector('.lv-cal small').textContent = wd; el.querySelector('.lv-cal b').textContent = dd; el.querySelector('.lv-cal span').textContent = mm;
+  const t = C.tour, tourOn = t && !t.done;
+  el.querySelector('.lv-week').innerHTML = WD.map((d, i) => '<i class="' + (i + 1 < C.day ? 'past' : i + 1 === C.day ? 'now' : '') + (tourOn && i >= 5 ? ' tour' : '') + '" title="' + (tourOn && i >= 5 ? 'Torneio' : '') + '">' + d + '</i>').join('') + '<small>sem ' + C.week + ' · T' + C.season + '</small>';
+  const nm = t ? String(t.name).replace(/ · .*$/, '') : '';
+  el.querySelector('.lv-next').innerHTML = !t ? 'Sem torneio nesta semana' : t.done ? '🏁 ' + nm + ' encerrado' : t.pending ? '🏆 ' + nm + ' · começa no sábado' : LV.myCourt ? '🎾 ' + LV.myCourt.round + ' · ' + LV.myCourt.name : '🏆 ' + nm + ' em andamento';
+  const en = Math.round(C.energy), bar = el.querySelector('.lv-en .lv-bar i');
+  bar.style.width = clampN(en, 0, 100) + '%'; bar.className = en < 35 ? 'lo' : en < 65 ? 'mid' : 'hi';
+  el.querySelector('.lv-en b').textContent = en; el.querySelector('.lv-mo b').textContent = money2(C.money);
+  // variação desde a última vez (sobe um +/− e some)
+  const dl = (sel, d, fmt) => { if (!d) return; const e = el.querySelector(sel + ' .lv-dl'); e.textContent = (d > 0 ? '+' : '−') + fmt(Math.abs(d)); e.className = 'lv-dl ' + (d > 0 ? 'up' : 'dn'); void e.offsetWidth; e.classList.add('go'); };
+  if (LV.lastEn != null) dl('.lv-en', en - LV.lastEn, v => String(v));
+  if (LV.lastMo != null) dl('.lv-mo', Math.round(C.money - LV.lastMo), money2);
+  LV.lastEn = en; LV.lastMo = C.money;
+}
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
 const money2 = v => '$' + Math.round(v).toLocaleString('pt-BR');
 function prompt() {
   const el = document.getElementById('livrePrompt'); if (!el) return;
@@ -509,5 +531,5 @@ addEventListener('contextmenu', e => { if (LV.on && e.target && e.target.tagName
 addEventListener('auxclick', e => { if (LV.on && e.button === 1) e.preventDefault(); });
 { let pin = 0; addEventListener('touchmove', e => { if (!LV.on || e.touches.length !== 2) { pin = 0; return; } const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (pin) LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * pin / d)); pin = d; }, { passive: true }); addEventListener('touchend', () => { pin = 0; }); }
 
-if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0 };
+if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0, FAN_LINES };
 export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam };

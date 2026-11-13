@@ -1,0 +1,685 @@
+{
+ "QA": {
+  "vitoria": [
+   {
+    "q": "Que vitória! O que fez a diferença contra {o}?",
+    "a": {
+     "humilde": "{o} jogou muito. A diferença foi pequena: a gente acertou um pouco mais nos pontos importantes.",
+     "confiante": "A diferença foi o nível. Jogamos o nosso jogo e eles não tiveram resposta.",
+     "tecnico": "A devolução de saque. Começamos a ler o lado do backhand deles e a pressão mudou de lado.",
+     "parceiro": "A diferença tem nome: {p}. Segurou cada bola difícil.",
+     "brinca": "O açaí antes do jogo. Sério, vou repetir a receita amanhã."
+    }
+   },
+   {
+    "q": "Vocês pareciam tranquilos o jogo todo. Foi planejado?",
+    "a": {
+     "humilde": "Por dentro nem tanto! Mas a gente treina para não mostrar o nervoso.",
+     "confiante": "Foi. Quando você sabe que é melhor, não precisa se desesperar.",
+     "tecnico": "Combinamos jogar ponto a ponto e não olhar o placar. Respirar entre os pontos ajuda muito.",
+     "brinca": "Tranquilo por fora, liquidificador por dentro.",
+     "parceiro": "Com {p} do lado fica fácil ficar calmo. A gente se acalma no olhar."
+    }
+   },
+   {
+    "q": "O que o técnico falou entre os games?",
+    "a": {
+     "tecnico": "Pediu mais curta cruzada e menos lob, porque eles estavam recuando muito.",
+     "brinca": "Falou para eu parar de reclamar do vento. Acho que funcionou.",
+     "humilde": "Me lembrou de confiar no que treinamos. Ele enxerga coisas que eu não vejo dentro da quadra.",
+     "reservado": "Isso fica entre a gente.",
+     "confiante": "Nada de mais. Ele sabia que a gente tinha o jogo na mão."
+    }
+   },
+   {
+    "q": "Qual foi o ponto mais bonito do jogo para você?",
+    "a": {
+     "brinca": "Aquele que eu caí na areia e a bola voltou. Ninguém entendeu, nem eu.",
+     "tecnico": "A troca longa no fim do set. Ganhamos com uma curta depois de três lobs seguidos, bem construído.",
+     "parceiro": "A defesa de {p} na rede, de costas. Até eu aplaudi.",
+     "confiante": "O smash que fechou o jogo. Gosto de terminar assim.",
+     "emocao": "O último. Quando a torcida explodiu eu senti tudo de uma vez."
+    }
+   },
+   {
+    "q": "Como foi jogar com esse vento?",
+    "a": {
+     "tecnico": "Baixamos a altura do lob e jogamos mais a favor do vento no saque. Tem que se adaptar a cada lado.",
+     "brinca": "Teve bola que eu mandei para a esquerda e foi parar no estacionamento.",
+     "humilde": "Difícil para os dois lados. A gente só errou um pouco menos.",
+     "confiante": "Vento não me atrapalha. Treino na praia desde criança.",
+     "polemico": "Sinceramente, nem deviam ter liberado a quadra com esse vento."
+    }
+   },
+   {
+    "q": "Você virou um jogo complicado. Como foi a cabeça na hora do aperto?",
+    "a": {
+     "emocao": "Passou um filme. Pensei em tudo que treinei e em quem estava torcendo.",
+     "confiante": "No aperto eu cresço. Sempre foi assim.",
+     "tecnico": "Simplifiquei: saque no corpo e bola funda. Quando aperta, menos é mais.",
+     "humilde": "Fiquei nervoso, não vou mentir. Mas ponto a ponto deu para virar.",
+     "brinca": "Cabeça? Eu só pensava em não errar o saque de novo."
+    }
+   },
+   {
+    "q": "O público vibrou muito com vocês. Dá para sentir essa energia da quadra?",
+    "a": {
+     "emocao": "Demais! Teve uma hora que me arrepiei inteiro. Obrigado, gente.",
+     "humilde": "Dá sim, e ajuda muito. Agradeço cada pessoa que veio.",
+     "brinca": "Senti tanto que errei um saque de emoção.",
+     "confiante": "Dá. E eu jogo melhor com estádio cheio.",
+     "reservado": "Sinto, mas tento me concentrar só na bola."
+    }
+   },
+   {
+    "q": "O próximo jogo já é amanhã. Como está o corpo?",
+    "a": {
+     "tecnico": "Agora é gelo, alongamento e dormir cedo. A recuperação começa já.",
+     "brinca": "O corpo pediu férias. Vou negociar até amanhã.",
+     "confiante": "Inteiro. Posso jogar mais três hoje se precisar.",
+     "humilde": "Um pouco cansado, mas é assim para todo mundo. Vou me cuidar.",
+     "reservado": "Bem. Agora é descansar."
+    }
+   },
+   {
+    "q": "Teve um momento em que o jogo pareceu escapar. O que mudou?",
+    "a": {
+     "tecnico": "Mudamos a posição na rede e passamos a atacar o meio. Eles não se entenderam mais.",
+     "parceiro": "{p} chegou em mim e falou: calma, uma bola de cada vez. Mudou tudo.",
+     "confiante": "Eu decidi que não ia perder. Simples.",
+     "humilde": "Eles baixaram um pouquinho e a gente aproveitou. Foi detalhe.",
+     "emocao": "Olhei para a torcida e lembrei por que estou aqui."
+    }
+   },
+   {
+    "q": "Vitória contra uma dupla de nível alto. Esse resultado muda alguma coisa?",
+    "a": {
+     "humilde": "Dá confiança, mas é só um jogo. Amanhã começa tudo de novo.",
+     "confiante": "Muda o que os outros pensam. Eu já sabia que podia.",
+     "tecnico": "Mostra que o plano de jogo funciona contra duplas fortes. Vamos manter.",
+     "polemico": "Muda para quem duvidava. Para mim, era o resultado esperado.",
+     "brinca": "Muda o meu pedido de pizza hoje: vai ser a grande."
+    }
+   },
+   {
+    "q": "Muita gente comentou o seu smash hoje. Foi o melhor golpe da partida?",
+    "a": {
+     "confiante": "Foi. Quando entra daquele jeito, não tem defesa.",
+     "tecnico": "O smash entrou porque a preparação foi boa: o lob deles saiu curto e eu cheguei cedo na bola.",
+     "humilde": "Entrou bem hoje, mas a defesa foi o que segurou a gente.",
+     "brinca": "Vou dizer que foi treinado. Não foi.",
+     "parceiro": "O smash só sai porque {p} prepara a bola. Metade é dele."
+    }
+   }
+  ],
+  "zebra": [
+   {
+    "q": "Ninguém apostava em vocês contra {o}. Qual o segredo da zebra?",
+    "a": {
+     "humilde": "Não tem segredo: a gente acreditou e eles deram uma chance. Respeito total a {o}.",
+     "confiante": "Zebra para quem não me conhece. Eu sabia que dava.",
+     "tecnico": "Estudamos o jogo deles. Eles sofrem com bola no meio e jogamos tudo ali.",
+     "brinca": "O segredo é não ler as apostas antes do jogo.",
+     "emocao": "Não tenho palavras. Foi a vitória mais especial da minha vida até aqui."
+    }
+   },
+   {
+    "q": "Vitória sobre favoritos! Vocês acreditaram desde o início?",
+    "a": {
+     "emocao": "Desde o aquecimento. Algo me dizia que hoje era o dia.",
+     "humilde": "Acreditar a gente acredita sempre. Mas confesso que no começo foi difícil.",
+     "confiante": "Claro. Ninguém entra em quadra para perder.",
+     "brinca": "Eu acreditei no segundo set. No primeiro eu estava só sobrevivendo.",
+     "parceiro": "{p} acreditou primeiro e me puxou junto."
+    }
+   },
+   {
+    "q": "Os rankings diziam o contrário. Hoje vocês provaram o quê?",
+    "a": {
+     "polemico": "Que ranking não ganha jogo. Muita gente está lá em cima por calendário, não por nível.",
+     "confiante": "Que meu lugar é lá em cima. É questão de tempo.",
+     "humilde": "Que todo mundo pode ganhar de todo mundo. Amanhã pode ser a gente do outro lado.",
+     "tecnico": "Que um bom plano de jogo vale tanto quanto pontos no ranking.",
+     "brinca": "Que matemática não é o meu forte, mas beach tennis é."
+    }
+   }
+  ],
+  "derrota": [
+   {
+    "q": "O que faltou hoje contra {o}?",
+    "a": {
+     "humilde": "{o} foi melhor. Faltou eu jogar no meu nível, e eles não deixaram.",
+     "tecnico": "Faltou variação. Jogamos muito lob e eles estavam esperando.",
+     "confiante": "Faltou só o dia ser nosso. Nível eu tenho.",
+     "polemico": "Faltou uma arbitragem melhor, para começar.",
+     "reservado": "Prefiro analisar com calma antes de falar."
+    }
+   },
+   {
+    "q": "Teve uma chance clara no fim. O que aconteceu ali?",
+    "a": {
+     "tecnico": "Escolhi o smash quando era bola de curta. Decisão errada na hora errada.",
+     "humilde": "Errei. Simples assim. Vou rever esse ponto mil vezes.",
+     "brinca": "Aconteceu que a bola resolveu ir passear fora da quadra.",
+     "confiante": "Faz parte. Na próxima aquela bola entra.",
+     "reservado": "Não quero falar desse ponto agora."
+    }
+   },
+   {
+    "q": "Vocês vão continuar juntos depois desse resultado?",
+    "a": {
+     "parceiro": "Claro. Uma derrota não apaga o que a gente construiu. {p} sabe disso.",
+     "humilde": "Vamos conversar com calma, mas a ideia é seguir.",
+     "reservado": "Isso a gente conversa entre nós, não aqui.",
+     "polemico": "Vou pensar bem. Algumas coisas precisam mudar.",
+     "brinca": "Depende de quem paga o jantar hoje."
+    }
+   },
+   {
+    "q": "O calor pesou hoje?",
+    "a": {
+     "tecnico": "Pesou no fim do segundo set. A hidratação entre os games não foi suficiente.",
+     "humilde": "Pesou para os dois lados. Não é desculpa.",
+     "polemico": "Pesou porque marcaram o jogo no pior horário. Alguém tem que pensar no atleta.",
+     "brinca": "Eu derreti. Literalmente. Ainda estou procurando meu boné.",
+     "confiante": "Calor não decide jogo. Decidiram eles, hoje."
+    }
+   },
+   {
+    "q": "Uma derrota dura. Como você sai dessa partida?",
+    "a": {
+     "humilde": "Triste, mas com vontade de treinar mais. Eles mereceram.",
+     "emocao": "Dói muito. Eu queria muito esse jogo, pela torcida também.",
+     "confiante": "Saio com raiva, e raiva boa. Volto mais forte.",
+     "reservado": "Vou para casa descansar. Amanhã eu penso nisso.",
+     "brinca": "Saio pela porta da frente, com o bronzeado em dia."
+    }
+   },
+   {
+    "q": "Vocês pareciam abaixo do normal. Foi físico ou mental?",
+    "a": {
+     "tecnico": "Mais físico. As pernas não chegaram nas bolas curtas no fim.",
+     "humilde": "Um pouco dos dois. Não estava no meu melhor e vou ser honesto sobre isso.",
+     "polemico": "Foi o calendário. A gente chega destruído em todo torneio.",
+     "reservado": "Foi um dia ruim. Só isso.",
+     "confiante": "Nenhum dos dois. Eles jogaram bem e acabou."
+    }
+   },
+   {
+    "q": "O que fica de lição desse torneio?",
+    "a": {
+     "tecnico": "Preciso melhorar a transição para a rede e a primeira bola depois do saque.",
+     "humilde": "Que ainda tenho muito a aprender. E vou aprender.",
+     "confiante": "Que eu estou perto. Muito perto.",
+     "emocao": "Que eu amo isso aqui, mesmo quando perco.",
+     "brinca": "Que eu preciso de um protetor solar melhor."
+    }
+   },
+   {
+    "q": "A torcida esperava mais. O que você diria para quem veio te ver?",
+    "a": {
+     "humilde": "Desculpa e obrigado. Vou trabalhar para dar mais alegria na próxima.",
+     "emocao": "Obrigado de verdade. Ouvir vocês me deu força até o último ponto.",
+     "confiante": "Que voltem no próximo torneio. A história vai ser outra.",
+     "brinca": "Que pelo menos o show de quedas na areia foi bom.",
+     "reservado": "Obrigado pelo carinho."
+    }
+   }
+  ],
+  "titulo": [
+   {
+    "q": "Campeões do {t}! O que passa pela cabeça agora?",
+    "a": {
+     "emocao": "Passa a minha vida inteira. Todo treino, toda viagem… valeu a pena.",
+     "humilde": "Ainda não caiu a ficha. Só agradeço a cada pessoa que torceu.",
+     "confiante": "Que é só o começo. Quero muitos outros.",
+     "brinca": "Que eu preciso descobrir como levar esse troféu no avião.",
+     "parceiro": "Que {p} é o melhor parceiro que eu podia ter."
+    }
+   },
+   {
+    "q": "Em algum momento você achou que não ia dar?",
+    "a": {
+     "humilde": "Achei, na semifinal. Foi muito difícil e eles quase viraram.",
+     "confiante": "Não. Nem quando estava perdendo.",
+     "emocao": "No ano passado pensei em desistir de tudo. Hoje eu tô aqui.",
+     "brinca": "Quando eu vi o tamanho do adversário no sorteio, deu um frio na barriga.",
+     "tecnico": "No começo da final. Depois que ajustamos a devolução de saque, ficou sob controle."
+    }
+   },
+   {
+    "q": "O que esse título muda no ranking?",
+    "a": {
+     "tecnico": "São pontos importantes, mas o que eu quero é manter a regularidade em todo torneio.",
+     "confiante": "Muda tudo. Quero subir mais e não vou parar.",
+     "humilde": "Ajuda, claro. Mas ranking é consequência do trabalho.",
+     "brinca": "Vou finalmente conseguir ver meu nome sem rolar a página.",
+     "reservado": "Não olho muito o ranking. Vou ver depois."
+    }
+   },
+   {
+    "q": "Quem foi a primeira pessoa para quem você ligou?",
+    "a": {
+     "emocao": "Para a minha mãe. Ela chorou, eu chorei… foi lindo.",
+     "humilde": "Para a minha família. Eles acordaram cedo comigo a vida inteira.",
+     "brinca": "Ainda não liguei para ninguém. Estou procurando o celular desde o pódio.",
+     "parceiro": "Nem precisei ligar: o primeiro abraço foi de {p}.",
+     "reservado": "Isso eu guardo para mim."
+    }
+   },
+   {
+    "q": "Qual foi o ponto mais difícil da semana?",
+    "a": {
+     "tecnico": "O match point da semifinal. Salvamos com uma curta cruzada que a gente treinou a semana toda.",
+     "humilde": "A estreia. Primeiro jogo sempre dá nervoso.",
+     "brinca": "O mais difícil foi acordar às seis para a estreia.",
+     "emocao": "A semi. Quando ganhamos aquele ponto eu sabia que o título era possível.",
+     "confiante": "Difícil, difícil mesmo, nenhum. Estava tudo sob controle."
+    }
+   },
+   {
+    "q": "Esse é o título mais importante da sua carreira?",
+    "a": {
+     "emocao": "Sem dúvida. Vou lembrar desse dia para sempre.",
+     "confiante": "Por enquanto. Os mais importantes ainda vão vir.",
+     "humilde": "É especial, mas cada título tem a sua história.",
+     "brinca": "É o mais pesado, pelo menos. Esse troféu pesa uma tonelada.",
+     "tecnico": "Pelo nível da chave, sim. Ganhamos de duplas muito fortes."
+    }
+   },
+   {
+    "q": "Para quem você dedica esse troféu?",
+    "a": {
+     "emocao": "À minha família. Sem eles eu não teria nem raquete.",
+     "humilde": "A todo mundo que me ajudou desde as quadras do clube.",
+     "parceiro": "Metade é de {p}. A outra metade também, na verdade.",
+     "polemico": "A quem duvidou de mim. Esse aqui é para vocês.",
+     "brinca": "Ao meu travesseiro, que vai dividir a cama com o troféu hoje."
+    }
+   },
+   {
+    "q": "Como vai ser a comemoração hoje?",
+    "a": {
+     "brinca": "Pizza tamanho família e zero culpa. Amanhã eu volto para a dieta.",
+     "humilde": "Um jantar tranquilo com quem me ajudou. Nada de mais.",
+     "emocao": "Abraçando todo mundo que veio até aqui torcer.",
+     "reservado": "Em casa, descansando. Gosto de silêncio.",
+     "confiante": "Hoje eu comemoro. Amanhã já começo a pensar no próximo título."
+    }
+   }
+  ],
+  "vice": [
+   {
+    "q": "Faltou pouco para o título. O que pesou na final?",
+    "a": {
+     "tecnico": "Eles foram mais agressivos na volta do saque e a gente demorou a ajustar.",
+     "humilde": "Pesou o nível deles. Parabéns aos campeões, mereceram.",
+     "confiante": "Pesou um ou dois pontos. Na próxima final é minha.",
+     "polemico": "Pesou umas decisões estranhas da arbitragem, para ser sincero.",
+     "emocao": "Pesou o coração. Eu queria demais e talvez isso tenha atrapalhado."
+    }
+   },
+   {
+    "q": "Uma semana de grande nível, mas sem o troféu. Fica o gosto amargo?",
+    "a": {
+     "emocao": "Fica, dói perder uma final. Mas olha esse público… obrigado.",
+     "humilde": "Um pouco, mas chegar na final já é enorme. Estamos no caminho.",
+     "confiante": "Fica, e é bom que fique. Vou usar isso para ganhar a próxima.",
+     "brinca": "Amargo nada: prata combina com a minha raquete.",
+     "reservado": "Prefiro não pensar nisso hoje."
+    }
+   },
+   {
+    "q": "O que você leva de positivo dessa final?",
+    "a": {
+     "tecnico": "O jogo de rede evoluiu muito. Ganhamos a maioria das trocas curtas da semana.",
+     "humilde": "Ganhei confiança. Mostrei para mim mesmo que posso jogar finais.",
+     "parceiro": "A dupla. {p} jogou uma semana gigante.",
+     "confiante": "Que estou pronto para ganhar torneios grandes.",
+     "brinca": "Um cheque menor que o do campeão, mas ainda é um cheque."
+    }
+   }
+  ],
+  "pre": [
+   {
+    "q": "O {t} começa amanhã. Qual a expectativa?",
+    "a": {
+     "humilde": "Vou jogo a jogo. A chave é forte e todo mundo pode ganhar.",
+     "confiante": "Vim para ganhar. Não tem outro objetivo.",
+     "tecnico": "Quero manter o nível de saque e devolução da semana passada. O resto vem.",
+     "brinca": "Minha meta principal é não errar o caminho do hotel. O resto é lucro.",
+     "parceiro": "Com {p} do lado, a expectativa é ir longe."
+    }
+   },
+   {
+    "q": "Tem algum adversário que você prefere evitar na chave?",
+    "a": {
+     "confiante": "Não. Prefiro que os outros evitem a gente.",
+     "humilde": "Todo mundo é difícil. Não dá para escolher.",
+     "brinca": "Prefiro evitar quem joga de óculos espelhado. Me distrai.",
+     "tecnico": "Duplas que jogam muito na rede dão mais trabalho para o nosso estilo. Mas estamos preparados.",
+     "polemico": "Tem uns aí que só estão na chave pelo sorteio. Esses eu quero encontrar."
+    }
+   },
+   {
+    "q": "Você já jogou bem aqui antes. Isso ajuda?",
+    "a": {
+     "humilde": "Ajuda a ficar à vontade, mas cada ano é diferente.",
+     "tecnico": "Ajuda: já conheço o vento e a areia de {c}, que é mais fofa que a média.",
+     "confiante": "Ajuda. Esta quadra gosta de mim.",
+     "brinca": "Ajuda, porque eu já sei onde fica o melhor açaí da cidade.",
+     "emocao": "Muito. Tenho lembranças lindas daqui."
+    }
+   },
+   {
+    "q": "Como está o corpo depois de tantas viagens?",
+    "a": {
+     "tecnico": "Bem cuidado. Fisioterapia todo dia e sono regrado, mesmo no avião.",
+     "polemico": "Cansado, como o de todo mundo. O calendário é um absurdo.",
+     "humilde": "Um pouco cansado, mas faz parte da vida de atleta.",
+     "brinca": "O corpo está aqui. A mala ainda está em outro aeroporto.",
+     "confiante": "Perfeito. Nunca estive tão bem."
+    }
+   },
+   {
+    "q": "A chave do {t} está pesada. Quem você vê como favorito?",
+    "a": {
+     "confiante": "Eu. E digo isso com todo o respeito pelos outros.",
+     "humilde": "Os cabeças de chave, claro. A gente corre por fora.",
+     "polemico": "Favorito no papel é uma coisa. Na areia a conversa é outra.",
+     "brinca": "O favorito é quem trouxe mais protetor solar.",
+     "reservado": "Não gosto de fazer previsão."
+    }
+   },
+   {
+    "q": "Você chega em boa fase. Dá para pensar em título?",
+    "a": {
+     "confiante": "Dá, e eu penso. Vim para isso.",
+     "humilde": "Penso no primeiro jogo. Se chegar lá, aí a gente conversa.",
+     "tecnico": "A fase é boa porque o saque está entrando. Se mantiver isso, temos chance.",
+     "emocao": "Seria um sonho. Estou trabalhando muito por isso.",
+     "parceiro": "Com {p} nessa fase, dá para sonhar sim."
+    }
+   },
+   {
+    "q": "Como foi a preparação para o {t}?",
+    "a": {
+     "tecnico": "Muito treino de devolução e transição para a rede, e físico para aguentar o calor.",
+     "brinca": "Teve treino, teve dieta e teve uma pizza escondida.",
+     "humilde": "Dentro do possível, tranquila. Treinei o que o técnico pediu.",
+     "reservado": "Normal. Treino e descanso.",
+     "confiante": "A melhor da minha carreira. Estou pronto."
+    }
+   }
+  ],
+  "vida": [
+   {
+    "q": "Como é a sua rotina fora da quadra?",
+    "a": {
+     "tecnico": "Durmo cedo, cuido da alimentação e assisto aos meus jogos. Detalhe vira resultado.",
+     "brinca": "Fora da quadra eu sou um desastre na cozinha. Só sei fazer miojo e smash.",
+     "reservado": "Bem tranquila. Gosto de ficar em casa.",
+     "humilde": "Normal, como a de qualquer pessoa: família, amigos e muito treino.",
+     "confiante": "Tudo gira em torno de ser o melhor. Não tenho folga."
+    }
+   },
+   {
+    "q": "Qual atleta você admirava quando criança?",
+    "a": {
+     "humilde": "Os pioneiros do beach tennis no Brasil. Sem eles nada disso existiria.",
+     "emocao": "Meu pai jogava no fim de semana. Ele foi meu primeiro ídolo.",
+     "brinca": "O goleiro do time do meu bairro. Pulava mais que eu no smash.",
+     "confiante": "Admirava muitos. Hoje quero ser o atleta que as crianças admiram.",
+     "reservado": "Prefiro não citar nomes."
+    }
+   },
+   {
+    "q": "O que ninguém sabe sobre você?",
+    "a": {
+     "brinca": "Tenho medo de caranguejo. Jogo na praia e tenho medo de caranguejo.",
+     "reservado": "Se ninguém sabe, é porque eu prefiro assim.",
+     "humilde": "Que eu fico muito nervoso antes de todo jogo, até hoje.",
+     "emocao": "Que eu choro vendo filme de esporte. Todos.",
+     "confiante": "Que eu treino mais do que qualquer um no circuito."
+    }
+   },
+   {
+    "q": "Como você lida com as viagens e a saudade de casa?",
+    "a": {
+     "emocao": "É a parte mais difícil. Ligo para a família todo dia.",
+     "humilde": "Com paciência. Sei que é o preço de viver do esporte.",
+     "brinca": "Levo o travesseiro de casa para todo lado. Ele já tem mais milhas que eu.",
+     "tecnico": "Tento manter a mesma rotina em qualquer cidade: horário de sono, alimentação e treino.",
+     "reservado": "Lido bem. Sou bem independente."
+    }
+   },
+   {
+    "q": "Qual foi o momento mais difícil da sua carreira?",
+    "a": {
+     "emocao": "Quando quase parei por falta de dinheiro. Muita gente me ajudou a continuar.",
+     "humilde": "Uma sequência de derrotas no começo. Aprendi muito com ela.",
+     "confiante": "Difícil foi só no começo. Agora é só subir.",
+     "reservado": "Prefiro deixar isso no passado.",
+     "tecnico": "Uma lesão no ombro. Tive que mudar o movimento do saque inteiro."
+    }
+   },
+   {
+    "q": "O que te motiva a acordar cedo para treinar?",
+    "a": {
+     "confiante": "Ser o número um. Simples assim.",
+     "emocao": "A minha família e esse esporte que mudou a minha vida.",
+     "brinca": "O café. Sem café não tem treino.",
+     "humilde": "Saber que tem muita gente que queria estar no meu lugar.",
+     "tecnico": "Ver a evolução nos números: cada décimo de segundo no deslocamento conta."
+    }
+   },
+   {
+    "q": "Qual o seu sonho no beach tennis?",
+    "a": {
+     "confiante": "Ser número um do mundo. Não tenho vergonha de dizer.",
+     "emocao": "Ganhar um Mundial com a minha família na arquibancada.",
+     "humilde": "Viver do esporte e inspirar a garotada que está começando.",
+     "brinca": "Ter um smash com o meu nome. Tipo \"o fulano\". Ainda não pensei no nome.",
+     "parceiro": "Ganhar tudo ao lado de {p}."
+    }
+   },
+   {
+    "q": "Muita gente te segue nas redes agora. Como lida com a fama?",
+    "a": {
+     "humilde": "Fico sem graça com elogio, mas agradeço muito o carinho.",
+     "reservado": "Uso pouco as redes. Prefiro manter a vida pessoal longe das câmeras.",
+     "brinca": "Minha mãe ainda curte todas as fotos. Ela é a fã número um.",
+     "confiante": "Gosto. Mostra que o trabalho está aparecendo.",
+     "polemico": "Tem muita gente que só critica. Esses eu bloqueio sem dó."
+    }
+   },
+   {
+    "q": "Se não fosse atleta, o que você seria?",
+    "a": {
+     "brinca": "Vendedor de picolé na praia. Ia estar na areia do mesmo jeito.",
+     "humilde": "Professor de beach tennis, provavelmente. Gosto de ensinar.",
+     "tecnico": "Algo com números. Gosto de analisar dados dos meus jogos.",
+     "emocao": "Não consigo imaginar. Esse esporte é a minha vida.",
+     "confiante": "Seria o melhor no que eu escolhesse."
+    }
+   }
+  ],
+  "rival": [
+   {
+    "q": "{r} disse que você não aguenta pressão. Quer responder?",
+    "a": {
+     "polemico": "{r} fala muito. Na quadra o placar fala por mim.",
+     "confiante": "Respondo na areia. Me encontra na chave.",
+     "humilde": "Respeito a opinião. Vou continuar trabalhando.",
+     "brinca": "Deve ter confundido pressão com pressão alta. Estou ótimo, obrigado.",
+     "reservado": "Não vou comentar."
+    }
+   },
+   {
+    "q": "Vocês e {r} viraram rivais. Existe amizade fora da quadra?",
+    "a": {
+     "humilde": "Existe respeito. Rivalidade é dentro da quadra.",
+     "polemico": "Amizade? Não. E está tudo bem assim.",
+     "brinca": "A gente se cumprimenta. De longe. Bem de longe.",
+     "reservado": "Cada um na sua.",
+     "confiante": "Fora da quadra tudo bem. Dentro, não espere presente."
+    }
+   },
+   {
+    "q": "O próximo encontro com {r} pode decidir o ranking. Tem algum recado?",
+    "a": {
+     "confiante": "Pode vir. Estou pronto.",
+     "polemico": "Recado: vai ser diferente da última vez.",
+     "tecnico": "Já estou estudando os jogos de {r}. Tem coisa para explorar.",
+     "humilde": "Que seja um grande jogo para o público.",
+     "brinca": "Meu recado é: traz protetor, vai ser um jogo longo."
+    }
+   }
+  ],
+  "parceiro": [
+   {
+    "q": "Como está a relação com {p}? Há boatos de separação.",
+    "a": {
+     "parceiro": "Melhor do que nunca. {p} é a pessoa certa do meu lado.",
+     "polemico": "Boato é boato. Quem espalha devia cuidar da própria dupla.",
+     "reservado": "Isso a gente resolve entre nós.",
+     "brinca": "Separação? A gente nem casou ainda.",
+     "humilde": "Está tudo bem. Como toda dupla, temos dias bons e ruins."
+    }
+   },
+   {
+    "q": "{p} vive grande fase. Isso pressiona você?",
+    "a": {
+     "parceiro": "Me inspira. Quando {p} joga assim, eu quero acompanhar.",
+     "confiante": "Pressão nenhuma. Eu também estou em grande fase.",
+     "humilde": "Um pouco. Mas pressão boa: quero estar à altura.",
+     "brinca": "Pressiona, porque agora os aplausos são todos para o outro lado da quadra.",
+     "tecnico": "Faz eu cuidar mais da minha parte: saque e defesa do meu lado."
+    }
+   },
+   {
+    "q": "O que {p} tem que nenhum outro parceiro teve?",
+    "a": {
+     "parceiro": "Leitura de jogo. {p} sabe para onde eu vou antes de eu ir.",
+     "brinca": "Paciência para aguentar as minhas piadas.",
+     "tecnico": "Uma defesa de fundo absurda, que me deixa livre para atacar na rede.",
+     "humilde": "Humildade. Nunca vi {p} reclamar de uma bola minha.",
+     "emocao": "Coração. Joga cada ponto como se fosse o último."
+    }
+   }
+  ]
+ },
+ "A_OPEN": {
+  "humilde": [
+   "",
+   "",
+   "Olha, ",
+   "Sinceramente, "
+  ],
+  "confiante": [
+   "",
+   "",
+   "Vou ser direto: ",
+   "Sem falsa modéstia: ",
+   "Escuta: "
+  ],
+  "brinca": [
+   "",
+   "",
+   "(rindo) ",
+   "Olha só… "
+  ],
+  "tecnico": [
+   "",
+   "",
+   "Olhando o jogo, ",
+   "Analisando com calma, "
+  ],
+  "polemico": [
+   "",
+   "Vou falar o que penso: ",
+   "Ninguém fala, então eu falo: ",
+   "Desculpa, mas "
+  ],
+  "parceiro": [
+   "",
+   "Antes de tudo: ",
+   "Isso aqui é dupla, então: "
+  ],
+  "reservado": [
+   "",
+   "",
+   "Hum… "
+  ],
+  "emocao": [
+   "",
+   "(respira fundo) ",
+   "(emocionado) "
+  ]
+ },
+ "Q_OPEN": {
+  "vitoria": [
+   "",
+   "",
+   "Parabéns! ",
+   "Com essa torcida toda… ",
+   "Ainda sem fôlego, né? "
+  ],
+  "zebra": [
+   "",
+   "Que zebra! ",
+   "Que resultado! "
+  ],
+  "derrota": [
+   "",
+   "",
+   "Sei que é um momento difícil, mas… ",
+   "Rapidinho: "
+  ],
+  "titulo": [
+   "",
+   "Campeão! ",
+   "Que semana! ",
+   "Com o troféu na mão: "
+  ],
+  "vice": [
+   "",
+   "Parabéns pela campanha. ",
+   "Semana enorme. "
+  ],
+  "pre": [
+   "",
+   "Bem-vindo! ",
+   "Último treino antes da estreia. ",
+   "Você parece tranquilo. "
+  ],
+  "vida": [
+   "",
+   "Num papo mais leve: ",
+   "Fora das quadras: ",
+   "Pergunta dos seguidores: "
+  ],
+  "rival": [
+   "",
+   "Não dá para não perguntar: ",
+   "O assunto da semana: "
+  ],
+  "parceiro": [
+   "",
+   "Sobre a dupla: ",
+   "Muita gente quer saber: "
+  ]
+ },
+ "FAN": [
+  "Posso tirar uma foto com você? Minha filha joga beach tennis por sua causa!",
+  "Assina a minha viseira? Vou guardar pra sempre!",
+  "Vim de longe só para te ver jogar. Boa sorte hoje!",
+  "Aquele smash na semana passada foi absurdo!",
+  "Você é meu jogador favorito do circuito!",
+  "Me dá uma dica de saque? Eu travo sempre no lançamento.",
+  "Uma selfie rapidinha? Prometo que é só uma!",
+  "Autografa a minha bola? É a do meu primeiro torneio!",
+  "Te vi crescer desde o amador. Que orgulho!",
+  "Vai ganhar hoje, hein? Tô confiante!"
+ ]
+}

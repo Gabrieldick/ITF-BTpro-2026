@@ -148,8 +148,10 @@ function makeInterview(kind, D, extra) {
   let tones = Object.keys(it.a).filter(t => (D.p || !/\{p\}/.test(it.a[t])) && (t !== 'parceiro' || D.p) && (t !== 'polemico' || Math.random() < .85));
   tones.sort(() => Math.random() - .5); tones = tones.slice(0, 3);
   const [out, ico] = pickFresh(OUTLETS, 'o'), [rep, rg] = pickFresh(REPORTERS, 'r');
-  return Object.assign({ type: 'entrevista', kind, outlet: out, ico, rep, rg, q: join(/!/.test(it.q) ? '' : pick(Q_OPEN[kind] || ['']), it.q, D), // pergunta que já abre com exclamação dispensa a abertura
-    opts: tones.map(t => ({ tone: t, txt: join(pick(A_OPEN[t] || ['']), it.a[t], D) })) }, extra || {});
+  // vq / v: os textos-modelo (sem os nomes) para achar as falas gravadas
+  const qo = /!/.test(it.q) ? '' : pick(Q_OPEN[kind] || ['']); // pergunta que já abre com exclamação dispensa a abertura
+  return Object.assign({ type: 'entrevista', kind, outlet: out, ico, rep, rg, q: join(qo, it.q, D), vq: [qo, it.q],
+    opts: tones.map(t => { const pre = pick(A_OPEN[t] || ['']); return { tone: t, txt: join(pre, it.a[t], D), v: [pre, it.a[t]] }; }) }, extra || {});
 }
 
 // ---------- histórias de várias etapas ----------
@@ -230,7 +232,7 @@ function answerTalk(i) {
   const C = $s.CR, T = C.talks && C.talks[0]; if (!T || T.done) return null;
   let chips = [], reply = '';
   if (T.type === 'entrevista') {
-    const o = T.opts[i], tn = TONES[o.tone]; reply = o.txt;
+    const o = T.opts[i], tn = TONES[o.tone]; reply = o.txt; T.vr = o.v;
     const e = Object.assign({}, tn.d, { fama: tn.fama * (T.big ? 2 : 1), mood: tn.mood, chem: tn.chem, pe: tn.pe });
     if (tn.risk && Math.random() < .35) { e.fama = -2; e.sponsorRisk = true; }
     chips = applyEff(e); chips.unshift(tn.chip);
@@ -293,8 +295,22 @@ function loadVoices() { try { const v = speechSynthesis.getVoices(); if (v && v.
 if (typeof speechSynthesis !== 'undefined') { loadVoices(); try { speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {} }
 const voiceOn = () => typeof speechSynthesis !== 'undefined' && S.settings.voices !== false && !S.muted;
 // fala com uma voz: g 'f' ou 'm' (procura uma voz que pareça do gênero pelo nome; senão muda o tom)
-function say(text, g, who) {
+// falas gravadas (voz neural gerada por ferramentas/vozes/gerar.py): pasta rm/rf (repórter, fã) e jm/jf (jogador)
+const REC_V = { idx: null, loading: false, cur: null, tok: 0 };
+function fnv(s) { let x = 0x811c9dc5; for (const b of new TextEncoder().encode(s)) x = Math.imul(x ^ b, 0x01000193) >>> 0; return x.toString(16).padStart(8, '0'); }
+function recIdx() { if (REC_V.idx || REC_V.loading) return; REC_V.loading = true; fetch(import.meta.env.BASE_URL + 'assets/voz/index.json').then(r => r.ok ? r.json() : null).then(j => { if (j) { REC_V.idx = {}; for (const k in j) REC_V.idx[k] = new Set(j[k]); } }).catch(() => {}); }
+if (typeof window !== 'undefined') recIdx();
+// toca os pedaços (abertura + frase) em sequência; devolve false se faltar algum (aí usa a voz do navegador)
+function sayRec(parts, pasta) {
+  const I = REC_V.idx && REC_V.idx[pasta]; if (!I) return false;
+  const hs = parts.filter(x => x && x.replace(/\(.*?\)/g, '').trim()).map(fnv); if (!hs.length || hs.some(x => !I.has(x))) return false;
+  const tok = ++REC_V.tok, vs = S.settings.vol || {}, vol = clamp((vs.master == null ? 1 : vs.master) * (vs.voz == null ? .9 : vs.voz), 0, 1);
+  const next = i => { if (tok !== REC_V.tok || i >= hs.length) return; const a = new Audio(import.meta.env.BASE_URL + 'assets/voz/' + pasta + '/' + hs[i] + '.ogg'); a.volume = vol; REC_V.cur = a; a.onended = () => setTimeout(() => next(i + 1), 90); a.play().catch(() => {}); };
+  next(0); return true;
+}
+function say(text, g, who, parts, kind) {
   if (!voiceOn() || !text) return;
+  if (parts && sayRec(parts, (kind || 'j') + (g === 'f' ? 'f' : 'm'))) return;
   try {
     const u = new SpeechSynthesisUtterance(text.replace(/\(.*?\)/g, '')), L = VOX.list.length ? VOX.list : [];
     const fem = /female|mulher|maria|luciana|francisca|vit[oó]ria|camila|helena|joana|raquel|fernanda|google português/i, masc = /male|homem|daniel|ricardo|ant[oô]nio|felipe|duarte|jo[aã]o/i;
@@ -305,7 +321,7 @@ function say(text, g, who) {
     speechSynthesis.speak(u);
   } catch (e) {}
 }
-const hush = () => { try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); } catch (e) {} };
+const hush = () => { REC_V.tok++; if (REC_V.cur) { try { REC_V.cur.pause(); } catch (e) {} REC_V.cur = null; } try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); } catch (e) {} };
 
 // ---------- tela ----------
 let EL = null;
@@ -324,7 +340,7 @@ function paintResult(T) {
   const R = E.querySelector('.talk-res'); R.hidden = false;
   E.querySelector('.talk-reply').textContent = T.type === 'entrevista' ? '"' + T.reply + '"' : T.reply;
   E.querySelector('.talk-chips').innerHTML = (T.chips || []).map(c => '<span class="talk-chip">' + c.replace(/</g, '&lt;') + '</span>').join('');
-  if (T.type === 'entrevista') say(T.reply, $s.CR.me.fem ? 'f' : 'm', 1);
+  if (T.type === 'entrevista') say(T.reply, $s.CR.me.fem ? 'f' : 'm', 1, T.vr, 'j');
 }
 // mostra a próxima fala da fila (chamado pela tela da carreira)
 function renderTalk() {
@@ -342,7 +358,7 @@ function renderTalk() {
   const O = E.querySelector('.talk-opts'); O.hidden = false; E.querySelector('.talk-res').hidden = true;
   O.innerHTML = T.opts.map((o, i) => '<button type="button" class="ghost talk-opt" data-ta="' + i + '">' + (ent ? '<small>' + TONES[o.tone].chip + '</small>' : '') + o.txt.replace(/</g, '&lt;') + '</button>').join('');
   if (T.done) { paintResult(T); return; }
-  hush(); say(ent ? T.q : T.text, ent ? T.rg : 'm', ent ? REPORTERS.findIndex(r => r[0] === T.rep) : 0);
+  hush(); if (ent) say(T.q, T.rg, REPORTERS.findIndex(r => r[0] === T.rep), T.vq, 'r'); // as histórias ficam só no texto (a voz do navegador soava caricata)
 }
 // quadro da personalidade (aba Jogador)
 function persHTML() {
@@ -350,5 +366,5 @@ function persHTML() {
   return '<p class="section-label">Personalidade · ' + persWord() + '</p><div class="pers">' + AXES.map(([k, a, b]) => '<div class="pers-row"><span>' + a + '</span><span class="pers-bar"><i style="left:' + p[k] + '%"></i></span><span>' + b + '</span></div>').join('') + '</div>'
     + '<p class="cr-note">Muda com as respostas em entrevistas e as escolhas nas histórias. ' + (ef.txt.length ? 'Efeitos agora: ' + ef.txt.join(' · ') + '.' : 'Equilibrado: sem efeitos.') + '</p>';
 }
-if (typeof window !== 'undefined') window.__pdoHist = { STORIES, QA, makeInterview, queueStory, answerTalk, closeTalk, pers, persEffects, renderTalk, ctx };
+if (typeof window !== 'undefined') window.__pdoHist = { STORIES, QA, A_OPEN, Q_OPEN, makeInterview, queueStory, answerTalk, closeTalk, pers, persEffects, renderTalk, ctx };
 export { HIST, renderTalk, persHTML, persEffects, say, hush };
