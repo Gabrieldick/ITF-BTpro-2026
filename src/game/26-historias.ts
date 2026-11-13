@@ -330,7 +330,7 @@ function el() {
   EL = document.createElement('div'); EL.id = 'crTalk'; EL.className = 'overlay talk-ov'; EL.hidden = true;
   EL.innerHTML = '<div class="card talk-card"><div class="talk-head"><span class="talk-ico"></span><div><div class="eyebrow talk-out"></div><b class="talk-rep"></b></div><button type="button" class="ghost xs talk-snd" title="Ligar ou desligar as vozes">🔊</button></div><p class="talk-q"></p><div class="talk-opts"></div><div class="talk-res" hidden><p class="talk-reply"></p><div class="talk-chips"></div><button type="button" class="cta talk-ok">Continuar</button></div></div>';
   document.body.appendChild(EL);
-  EL.querySelector('.talk-ok').addEventListener('click', () => { hush(); closeTalk(); EL.hidden = true; if (HIST.rerender) HIST.rerender(); });
+  EL.querySelector('.talk-ok').addEventListener('click', () => { hush(); closeTalk(); EL.hidden = true; const nx = $s.CR && $s.CR.talks && $s.CR.talks[0]; if (!(nx && nx.type === 'entrevista') && HIST.pressOff) HIST.pressOff(); if (HIST.rerender) HIST.rerender(); });
   EL.querySelector('.talk-snd').addEventListener('click', () => { S.settings.voices = S.settings.voices === false; if (HIST.saveSettings) HIST.saveSettings(); EL.querySelector('.talk-snd').textContent = S.settings.voices === false ? '🔇' : '🔊'; if (S.settings.voices === false) hush(); });
   EL.querySelector('.talk-opts').addEventListener('click', e => { const b = e.target.closest('[data-ta]'); if (!b) return; hush(); const T = answerTalk(+b.dataset.ta); if (!T) return; paintResult(T); });
   return EL;
@@ -340,13 +340,15 @@ function paintResult(T) {
   const R = E.querySelector('.talk-res'); R.hidden = false;
   E.querySelector('.talk-reply').textContent = T.type === 'entrevista' ? '"' + T.reply + '"' : T.reply;
   E.querySelector('.talk-chips').innerHTML = (T.chips || []).map(c => '<span class="talk-chip">' + c.replace(/</g, '&lt;') + '</span>').join('');
-  if (T.type === 'entrevista') say(T.reply, $s.CR.me.fem ? 'f' : 'm', 1, T.vr, 'j');
+  if (T.type === 'entrevista') { say(T.reply, $s.CR.me.fem ? 'f' : 'm', 1, T.vr, 'j'); if (HIST.pressShot) HIST.pressShot('answer'); }
 }
 // mostra a próxima fala da fila (chamado pela tela da carreira)
 function renderTalk() {
   const C = $s.CR, E = el();
   const T = C && C.talks && C.talks[0];
-  if (!T || S.careerActive || (document.getElementById('career').hidden && S.mode !== 'livre')) { E.hidden = true; return; }
+  if (!T || S.careerActive || (document.getElementById('career').hidden && S.mode !== 'livre' && S.mode !== 'press')) { E.hidden = true; if (HIST.pressOff) HIST.pressOff(); return; }
+  // entrevista com a carreira aberta: vira cena (você na frente do painel dos patrocinadores, repórter e câmera); história: só o cartão
+  if (S.mode !== 'livre') { if (T.type === 'entrevista' && !T.done) { if (HIST.pressOn) HIST.pressOn(T); } else if (HIST.pressOff) HIST.pressOff(); }
   if (!E.hidden && E.dataset.k === String(C.talks.length) + T.q + T.text) return;
   E.dataset.k = String(C.talks.length) + T.q + T.text; E.hidden = false;
   E.querySelector('.talk-snd').textContent = S.settings.voices === false ? '🔇' : '🔊';

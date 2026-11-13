@@ -6,7 +6,7 @@ import { $s } from '../state';
 import { C, HALF_W, TOSS_T, V3, clamp, hScale, lerp, smooth, nameOf, overall, rand, shortOf, attrOf } from './00-base';
 import { NET, S } from './01-estado';
 import { SUN_DIR, camera, camera2, sun } from './02-render';
-import { livreCam } from './27-livre';
+import { livreCam, pressCam } from './27-livre';
 import { mocapReady, mocapDrive, mocapLoad } from './25-mocap';
 import { sky } from './03-cenario';
 import { pickStyle, styleSwing, ACT, KU, P, READY, SERVE_KEYS, SERVE_KEYS_LOW, SERVE_U, mirrorPose, newPose, poseAt, swingKey, uOf, swingVar, predictPt, tailRate, mirrorKey } from './04-poses';
@@ -541,7 +541,7 @@ function animateAthlete(p, dt) {
   // esperando o saque também: o parceiro de quem saca fica solto até a bola entrar em jogo; quem recebe segura a raquete baixa
   // e solta na frente do corpo (só no lançamento entra na prontidão)
   const srvW = S.mode === 'serve' && S.serverPlayer !== p ? (p.team === S.server ? 1 : .85) : S.mode === 'toss' && S.serverPlayer !== p && p.team === S.server ? 1 : 0;
-  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'menu' || S.mode === 'livre' || (S.mode === 'dead' && (S.ptT || 0) > .35) ? 1 : srvW) : 0; // (no menu os jogadores ficam soltos, à vontade)
+  const idlT = !busy && !p.charging && !cel && !celPh && !(pgW > 0) && !(lsW > 0) && sp < .6 ? (S.mode === 'menu' || S.mode === 'livre' || S.mode === 'press' || (S.mode === 'dead' && (S.ptT || 0) > .35) ? 1 : srvW) : 0; // (no menu os jogadores ficam soltos, à vontade)
   p.idl = (p.idl || 0) + (idlT - (p.idl || 0)) * Math.min(1, dt * (idlT ? 2.2 : 8));
   const idv = ((S.ptN || 0) * 5 + (p.slot > 0 ? 3 : 0) + p.team * 7) % 5, idk = S.mode === 'serve' && p.team !== S.server ? 'strings' : idv < 2 ? 'hang' : idv < 4 ? 'strings' : 'twirl', ph = p.team * 2 + (p.slot > 0 ? 1.3 : 0);
   if (p.idl > .01) { const sw = Math.sin(p.gT * 1.3 + ph);
@@ -660,6 +660,7 @@ const CAM3 = {
 };
 function updateCamera(dt) {
   if (S.mode === 'livre' && livreCam(dt)) return; // modo livre da carreira: câmera própria
+  if (S.mode === 'press' && pressCam(dt)) return; // cena da entrevista
   const k = 1 - Math.exp(-dt * 7);
   const fp = S.settings.cam === '1p' && S.mode !== 'menu' && S.mode !== 'replay';
   const fpBody = fp && !(human.skin && human.skinOn);

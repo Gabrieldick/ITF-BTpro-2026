@@ -10,7 +10,7 @@ import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, TIERS } from './14-carreira';
-import { say } from './26-historias';
+import { say, HIST } from './26-historias';
 import { assignCharacters, applyRackets, applyPlayerStyle } from './07-glb';
 import { mergeStatic, sea as SEA } from './03-cenario';
 import { arenaFor } from './09-interface';
@@ -722,6 +722,64 @@ function rideMesh(kind) {
   else { car(o, 0, 0, Math.PI / 2, ($s.CR && crInv('moradia') >= 3) ? '#111214' : '#2457c5'); LV.boxes.pop(); }
   o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
 }
+
+// ---------- cena da entrevista (coletiva) ----------
+// longe de tudo: painel com as marcas (patrocinadores, master e o torneio), repórter com microfone, cinegrafista e flashes;
+// a câmera alterna entre quem pergunta e você respondendo
+const PR = { on: false, g: null, base: new THREE.Vector3(-250, 0, 200), shot: 'ask', t: 0, flash: null, saved: null };
+function pressBuild(T) {
+  if (PR.g) { scene.remove(PR.g); PR.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  const g = new THREE.Group(); g.position.copy(PR.base); scene.add(g); PR.g = g;
+  const C = $s.CR, brands = [].concat(C.master ? [C.master.brand] : [], (C.sponsors || []).map(x => x.brand), C.tour ? [String(C.tour.name).replace(/ · .*$/, '')] : [], [T.outlet || 'Beach Tennis']).filter(Boolean);
+  const tex = canvasTex(1024, 512, (x, W, H) => { x.fillStyle = '#f4f6fb'; x.fillRect(0, 0, W, H); x.textAlign = 'center'; x.textBaseline = 'middle';
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) { const b = brands[(r * 2 + c) % brands.length], cols = ['#0b1a3a', '#e30613', '#1f4fb8', '#ff6a00', '#0a7d3c'];
+      x.fillStyle = cols[(r + c) % cols.length]; x.font = '900 italic 42px Barlow Condensed, Arial Narrow, Arial'; x.fillText(String(b).toUpperCase(), (c + .5 + (r % 2) * .5) * W / 5, (r + .5) * H / 5, W / 5.4); } }, true);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 3.2), new THREE.MeshStandardMaterial({ map: tex, roughness: .8 })); wall.position.set(0, 1.6, -1.3); g.add(wall);
+  box(g, 6.6, .12, .12, 0, 3.22, -1.32, '#2b2d31'); box(g, 6, .02, 5, 0, .01, .8, '#1d2a4a', { noShadow: true });
+  // repórter (com microfone) e cinegrafista
+  const rep = fan(g, 1.05, 1.15, -2.4, 7, false); const mic = new THREE.Group(); cyl(mic, .018, .022, .26, 0, 0, 0, '#111'); const head = new THREE.Mesh(new THREE.SphereGeometry(.045, 10, 8), mat('#2b2b2b', { roughness: .4 })); head.position.y = .15; mic.add(head);
+  box(mic, .07, .05, .07, 0, .06, 0, ['#e30613', '#1f4fb8', '#ff6a00'][(T.rep || '').length % 3]); mic.position.set(.55, 1.32, .8); mic.rotation.set(.3, 0, .9); g.add(mic);
+  const cam = fan(g, -1.9, 3.1, Math.PI * .85, 21, false); box(cam, .22, .2, .5, -.28, 1.55, -.15, '#1d1d20'); cyl(cam, .07, .07, .14, -.28, 1.55, -.45, '#111').rotation.x = Math.PI / 2;
+  // luz de vídeo e flash dos fotógrafos
+  const key = new THREE.PointLight(0xfff2dd, 1.4, 9); key.position.set(-.8, 2.2, 2.4); g.add(key);
+  PR.flash = new THREE.PointLight(0xffffff, 0, 8); PR.flash.position.set(1.6, 2, 2.6); g.add(PR.flash);
+}
+function pressOn(T) {
+  if (!$s.CR || LV.on) return;
+  if (!PR.on) {
+    PR.saved = { mode: S.mode, pos: human.pos.clone(), pick: Object.assign({}, S.settings.pick), racket: S.settings.racket, menu: document.body.classList.contains('in-menu') };
+    crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters(); applyRackets(); applyPlayerStyle();
+    S.mode = 'press'; PR.on = true; document.body.classList.add('press'); document.body.classList.remove('in-menu'); document.getElementById('career').hidden = true;
+    [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
+  }
+  if (PR.T !== T) { PR.T = T; pressBuild(T); PR.shot = 'ask'; PR.t = 0; PR.cut = true; }
+  human.pos.copy(PR.base); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = Math.PI; human.liftY = 0;
+}
+function pressOff() {
+  if (!PR.on) return; PR.on = false; PR.T = null; const sv = PR.saved;
+  document.body.classList.remove('press'); if (PR.g) PR.g.visible = false;
+  [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
+  human.forceYaw = null;
+  if (sv) { S.settings.pick = sv.pick; S.settings.racket = sv.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); human.pos.copy(sv.pos); S.mode = sv.mode === 'press' ? 'menu' : sv.mode; if (sv.menu) document.body.classList.add('in-menu'); }
+  if ($s.CR) document.getElementById('career').hidden = false;
+}
+function pressCam(dt) {
+  if (S.mode !== 'press' || !PR.on) return false;
+  if (PR.g) PR.g.visible = true;
+  [partner, cpuA, cpuB].forEach(p => { if (p && p.model) { p.model.group.visible = false; if (p.skin) { p.skin.holder.visible = false; p.skin.racket.visible = false; } } });
+  if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
+  human.pos.copy(PR.base); human.forceYaw = Math.PI;
+  PR.t += dt; const b = PR.base, k = 1 - Math.exp(-dt * 2.2), drift = Math.sin(PR.t * .25) * .15;
+  if (PR.shot === 'answer') { _v.set(b.x + .5 + drift, 1.62, b.z + 3.1); _w.set(b.x + .15, 1.5, b.z); } else { _v.set(b.x + 2.1 + drift, 1.7, b.z + 3.4); _w.set(b.x + .35, 1.45, b.z); }
+  const cut = PR.cut; PR.cut = false; // troca de plano: corte seco, como na TV
+  camera.position.lerp(_v, cut ? 1 : k); PR.look = cut || !PR.look ? _w.clone() : PR.look.lerp(_w, k); camera.lookAt(PR.look);
+  if (camera.fov !== 40) { camera.fov = 40; camera.updateProjectionMatrix(); }
+  if (PR.flash) PR.flash.intensity = Math.random() < dt * .9 ? 6 : Math.max(0, PR.flash.intensity - dt * 30);
+  sun.target.position.copy(b); sun.position.copy(b).addScaledVector(SUN_DIR, 40);
+  return true;
+}
+HIST.pressOn = pressOn; HIST.pressOff = pressOff; HIST.pressShot = s2 => { if (PR.shot !== s2) PR.cut = true; PR.shot = s2; };
+
 // ---------- interface ----------
 function hud(on) {
   let el = document.getElementById('livreHud');
@@ -809,4 +867,4 @@ addEventListener('auxclick', e => { if (LV.on && e.button === 1) e.preventDefaul
 { let pin = 0; addEventListener('touchmove', e => { if (!LV.on || e.touches.length !== 2) { pin = 0; return; } const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (pin) LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * pin / d)); pin = d; }, { passive: true }); addEventListener('touchend', () => { pin = 0; }); }
 
 if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0, FAN_LINES };
-export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam };
+export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam, pressCam };

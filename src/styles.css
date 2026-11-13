@@ -1327,7 +1327,7 @@ body:not(.at-home) .am-btn { padding: 6px 8px 6px 6px; gap: 6px; opacity: .92; }
   #livreHud .lv-act { display: grid; place-items: center; position: absolute; right: 26px; bottom: 40px; width: 74px; height: 74px; border-radius: 50%; border: 0; background: rgba(4, 14, 40, .6); color: #fff; font: 800 26px var(--f-ui); pointer-events: auto; opacity: .5; }
   #livreHud .lv-act.on { opacity: 1; background: var(--ui-acc); color: #04122e; }
 }
-body.livre .hud, body.livre #scoreboard, body.livre .tag, body.livre #meter { display: none !important; }
+body.livre .hud, body.livre #scoreboard, body.livre .tag, body.livre #meter, body.press .hud, body.press #scoreboard, body.press .tag, body.press #meter { display: none !important; }
 
 /* modo livre bem visível: destaque na carreira */
 .cr-walk { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; text-align: left; padding: 12px 16px; min-height: 0; border-radius: 14px; border: 1px solid rgba(120, 230, 160, .45); color: #fff; cursor: pointer;
@@ -1363,3 +1363,6 @@ body.livre #menu { z-index: 70; }
 .lv-name { padding: 10px; border-radius: 8px; font-size: 16px; }
 .lv-look { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.06); }
 .lv-look span { display: flex; gap: 6px; }
+body.press #crTalk:not([hidden]) { display: flex; align-items: flex-end; justify-content: center; background: linear-gradient(transparent 50%, rgba(0,0,0,.55)); }
+body.press #crTalk .talk-card { margin: 0 0 16px; background: rgba(6, 16, 40, .86); max-width: min(820px, 94vw); padding: 14px 18px; }
+body.press #crTalk .talk-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
