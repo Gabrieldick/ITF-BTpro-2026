@@ -9,8 +9,9 @@ import { $s } from '../state';
 import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crTeamName, crNRounds, crRoundNames, crAddFama } from './14-carreira';
+import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crTeamName, crNRounds, crRoundNames, crAddFama } from './14-carreira';
 import { say } from './26-historias';
+import { assignCharacters } from './07-glb';
 import { mergeStatic } from './03-cenario';
 import { nameOf } from './00-base';
 
@@ -371,6 +372,9 @@ function enter() {
   document.body.classList.remove('in-menu'); document.body.classList.add('livre');
   document.getElementById('career').hidden = true;
   [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
+  // quem anda é o seu jogador da carreira (com a roupa, o rosto e a raquete dele), não o último boneco da partida rápida
+  LV.savedPick = Object.assign({}, S.settings.pick); LV.savedRacket = S.settings.racket;
+  crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters();
   human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9;
   hud(true); LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.');
   const t = $s.CR.tour; if (t && !t.pending && !t.done) goVenue(); // torneio em andamento: começa no local do torneio
@@ -383,6 +387,7 @@ function exit(toCareer = true) {
   LV.on = false; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
+  if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); } // volta o boneco da partida rápida
   hud(false);
   if (toCareer) { document.body.classList.add('in-menu'); document.getElementById('career').hidden = false; if (LV.actions.render) LV.actions.render(); }
 }
