@@ -1199,4 +1199,4 @@ function setSide(flip) {
   SUN_DIR.set(SUN_BASE.x * k, SUN_BASE.y, SUN_BASE.z * k);
   seaMat.uniforms.zs.value = k;
 }
-export { CROWD_SND, sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail, ULTRA_U, sea, setSunElev };
+export { mergeStatic, CROWD_SND, sandH, ENV, setSide, setNetHeight, setZoneLine, confetti, applyArena, cheerArena, updateArena, linesGroup, seaMat, sky, ROOF, setCourtSandDetail, ULTRA_U, sea, setSunElev };

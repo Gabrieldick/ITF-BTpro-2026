@@ -9,11 +9,12 @@ import { $s } from '../state';
 import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { crInv, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer } from './14-carreira';
+import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer } from './14-carreira';
+import { mergeStatic } from './03-cenario';
 import { nameOf } from './00-base';
 
 const H0 = new THREE.Vector3(320, 0, 40); // origem do bairro no mundo (longe da quadra, fora do cenário da praia)
-const LV = { on: false, group: null, spots: [], boxes: [], yaw: 0, camYaw: Math.PI, camPitch: .5, vel: new THREE.Vector3(), near: null, msgT: 0, saved: null, actions: {}, drag: null, keys: {}, built: '' };
+const LV = { zoom: 6.4, on: false, group: null, spots: [], boxes: [], yaw: 0, camYaw: Math.PI, camPitch: .5, vel: new THREE.Vector3(), near: null, msgT: 0, saved: null, actions: {}, drag: null, keys: {}, built: '' };
 const P = (x, z) => new THREE.Vector3(H0.x + x, 0, H0.z + z);
 
 // ---------- montagem ----------
@@ -32,79 +33,225 @@ function spot(g, id, x, z, title, sub, r = 1.1) {
   const l = label(title, sub); l.position.set(x, 2.5, z); g.add(l);
   LV.spots.push({ id, x, z, r: r + .3, ring, label: l, title });
 }
+// ---------- peças de cenário ----------
+const cyl = (g, rt, rb, h, x, y, z, color, o, seg = 14) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat(color, o)); m.position.set(x, y, z); m.castShadow = !(o && o.noShadow); m.receiveShadow = true; g.add(m); return m; };
+const glow = (color, k = 1.6) => ({ emissive: color, emissiveIntensity: k });
+// parede reta (eixo x ou z) com vãos (portas) e colisão; win: janelas de vidro no meio dos trechos
+function wall(g, x0, z0, x1, z1, h, color, gaps = [], win = false) {
+  const alongX = Math.abs(x1 - x0) >= Math.abs(z1 - z0), a0 = alongX ? Math.min(x0, x1) : Math.min(z0, z1), a1 = alongX ? Math.max(x0, x1) : Math.max(z0, z1), c = alongX ? z0 : x0, t = .18;
+  const segs = []; let s = a0; gaps.slice().sort((p, q) => p[0] - q[0]).forEach(([g0, g1]) => { if (g0 > s) segs.push([s, g0]); s = Math.max(s, g1); }); if (s < a1) segs.push([s, a1]);
+  segs.forEach(([p, q]) => { const L = q - p, m = (p + q) / 2; if (L < .05) return;
+    if (alongX) { box(g, L, h, t, m, h / 2, c, color); solid(p, c - t, q, c + t); } else { box(g, t, h, L, c, h / 2, m, color); solid(c - t, p, c + t, q); }
+    if (win && L > 2.2) { const ww = Math.min(L - 1, 2.4); if (alongX) { box(g, ww, 1.1, .2, m, 1.55, c, '#9fd3f5', { transparent: true, opacity: .55, metalness: .3, roughness: .1, noShadow: true }); box(g, ww + .12, .08, .26, m, 1, c, '#ffffff', { noShadow: true }); }
+      else { box(g, .2, 1.1, ww, c, 1.55, m, '#9fd3f5', { transparent: true, opacity: .55, metalness: .3, roughness: .1, noShadow: true }); box(g, .26, .08, ww + .12, c, 1, m, '#ffffff', { noShadow: true }); } } });
+  gaps.forEach(([g0, g1]) => { const m = (g0 + g1) / 2, L = g1 - g0; if (alongX) box(g, L, .35, t, m, h - .175, c, color, { noShadow: true }); else box(g, t, .35, L, c, h - .175, m, color, { noShadow: true }); });
+}
+const rug = (g, w, d, x, z, color) => box(g, w, .02, d, x, .1, z, color, { noShadow: true });
+function plant(g, x, z, s = 1) { cyl(g, .22 * s, .17 * s, .38 * s, x, .19 * s + .08, z, '#c97b4a'); for (let k = 0; k < 5; k++) { const l = new THREE.Mesh(new THREE.ConeGeometry(.12 * s, .8 * s, 5), mat('#3e8e4f')); l.position.set(x + Math.cos(k * 1.3) * .1 * s, .75 * s + .08, z + Math.sin(k * 1.3) * .1 * s); l.rotation.set(Math.sin(k) * .5, 0, Math.cos(k) * .5); l.castShadow = true; g.add(l); } solid(x - .25 * s, z - .25 * s, x + .25 * s, z + .25 * s); }
+function lamp(g, x, z, on = true) { cyl(g, .03, .03, 1.5, x, .83, z, '#2b2b2b'); cyl(g, .18, .26, .3, x, 1.65, z, '#f6ead2', on ? glow('#ffd9a0', .9) : {}); }
+function sofa(g, w, x, z, rot, color) { // rot: 0 = encosto atrás (−z), 1 = encosto na esquerda (−x)…
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = -rot * Math.PI / 2; g.add(o);
+  box(o, w, .42, .9, 0, .29, 0, color); box(o, w, .55, .22, 0, .62, -.38, color); box(o, .2, .3, .9, -w / 2 + .1, .55, 0, color); box(o, .2, .3, .9, w / 2 - .1, .55, 0, color);
+  for (let i = 0; i < Math.floor(w / .9); i++) box(o, .7, .14, .7, -w / 2 + .55 + i * .9, .57, .05, '#f3efe6');
+  const ex = rot % 2 ? .5 : w / 2, ez = rot % 2 ? w / 2 : .5; solid(x - ex, z - ez, x + ex, z + ez);
+}
+function bed(g, w, x, z, rot, cover) {
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = -rot * Math.PI / 2; g.add(o);
+  box(o, w + .1, .35, 2.2, 0, .25, 0, '#6b4f3a'); box(o, w, .25, 2, 0, .55, .05, '#f5f5f5'); box(o, w, .18, 1.3, 0, .7, .4, cover); box(o, w + .1, .9, .1, 0, .7, -1.1, '#6b4f3a');
+  for (const s of w > 1.6 ? [-1, 1] : [0]) box(o, .6, .14, .38, s * w / 4, .74, -.75, '#ffffff');
+  const ex = rot % 2 ? 1.15 : w / 2 + .05, ez = rot % 2 ? w / 2 + .05 : 1.15; solid(x - ex, z - ez, x + ex, z + ez);
+}
+function tvSet(g, w, x, z, rot, big) { // na parede (rot 0: parede de trás)
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = -rot * Math.PI / 2; g.add(o);
+  box(o, w + .6, .5, .5, 0, .25, .1, '#3b2f28'); box(o, w, w * .56, .06, 0, 1.15 + w * .1, -.1, '#0b0c0f'); box(o, w * .96, w * .52, .02, 0, 1.15 + w * .1, -.06, '#1c3f7a', glow('#3b8cff', .5));
+  if (big) [-1, 1].forEach(s => box(o, .3, 1.1, .3, s * (w / 2 + .5), .55, .1, '#1d1d20'));
+  const ex = rot % 2 ? .35 : w / 2 + .3, ez = rot % 2 ? w / 2 + .3 : .35; solid(x - ex, z - ez, x + ex, z + ez);
+}
+function shelfTrophies(g, x, z, rot, n, wide) {
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = -rot * Math.PI / 2; g.add(o); const W = wide ? 3.4 : 2.2;
+  box(o, W, 2.2, .45, 0, 1.1, 0, '#4a3628'); for (let k = 0; k < 4; k++) box(o, W - .1, .04, .4, 0, .3 + k * .55, .02, '#7a5a42');
+  for (let i = 0; i < Math.min(n, wide ? 24 : 12); i++) { const per = wide ? 6 : 4, r = Math.floor(i / per), c = i % per, gold = i % 5 !== 3;
+    const t = cyl(o, .07, .11, .28, -W / 2 + .35 + c * ((W - .5) / (per - 1)), .5 + r * .55, .05, gold ? '#e8b923' : '#c0c5cc', { metalness: .85, roughness: .25 }); cyl(o, .12, .12, .04, t.position.x, t.position.y + .17, .05, gold ? '#e8b923' : '#c0c5cc', { metalness: .85, roughness: .25 }); }
+  const ex = rot % 2 ? .3 : W / 2, ez = rot % 2 ? W / 2 : .3; solid(x - ex, z - ez, x + ex, z + ez);
+}
+function desk(g, x, z, rot, gamer) {
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = -rot * Math.PI / 2; g.add(o);
+  box(o, 1.6, .06, .75, 0, .75, 0, gamer ? '#121318' : '#6b4f3a'); [-1, 1].forEach(s => box(o, .06, .72, .7, s * .75, .37, 0, gamer ? '#121318' : '#5c4433'));
+  box(o, .7, .42, .04, gamer ? -.38 : 0, 1.05, -.25, '#0b0c0f'); box(o, .66, .38, .01, gamer ? -.38 : 0, 1.05, -.23, '#22406e', glow('#3b8cff', .6));
+  if (gamer) { box(o, .7, .42, .04, .38, 1.05, -.25, '#0b0c0f'); box(o, .66, .38, .01, .38, 1.05, -.23, '#6e2260', glow('#ff3bd1', .6)); box(o, 1.6, .03, .02, 0, .73, .37, '#ff3bd1', glow('#ff3bd1', 2.2)); box(o, .5, .5, .5, .55, .3, .05, '#111', glow('#00e1ff', .2)); }
+  box(o, .55, .5, .55, 0, .28, .6, gamer ? '#d1213b' : '#2b2b2b'); box(o, .55, .7, .08, 0, .85, .85, gamer ? '#d1213b' : '#2b2b2b');
+  const ex = rot % 2 ? .45 : .85, ez = rot % 2 ? .85 : .45; solid(x - ex, z - ez, x + ex, z + ez);
+}
+function kitchen(g, x0, z, len, level) { // bancada ao longo de x, de x0 até x0 + len, encostada em z (parede de trás)
+  box(g, len, .9, .65, x0 + len / 2, .45, z + .33, level >= 2 ? '#f2f2f2' : '#d9cfc0'); box(g, len, .05, .7, x0 + len / 2, .92, z + .33, level >= 2 ? '#2b2d31' : '#8a7a68');
+  box(g, len, .7, .38, x0 + len / 2, 1.85, z + .2, level >= 2 ? '#f2f2f2' : '#d9cfc0'); solid(x0, z, x0 + len, z + .7);
+  box(g, .75, 1.95, .7, x0 + len + .4, .98, z + .36, '#cfd3d8', { metalness: .5, roughness: .3 }); solid(x0 + len, z, x0 + len + .8, z + .72);
+  if (level >= 2) { box(g, 2.2, .92, .9, x0 + len / 2, .46, z + 2.1, '#2b2d31'); box(g, 2.3, .05, 1, x0 + len / 2, .94, z + 2.1, '#f2f2f2'); solid(x0 + len / 2 - 1.15, z + 1.6, x0 + len / 2 + 1.15, z + 2.6);
+    [-1, 0, 1].forEach(i => cyl(g, .17, .17, .7, x0 + len / 2 + i * .7, .35, z + 2.85, '#c97b4a')); }
+  cyl(g, .2, .14, .12, x0 + .6, .99, z + .35, '#ffffff'); [0, 1, 2].forEach(i => { const f = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), mat(['#ff6b3d', '#ffd23f', '#7cc95b'][i])); f.position.set(x0 + .55 + i * .06, 1.07, z + .35); g.add(f); });
+}
+function gym(g, x, z) { // esteira, banco e halteres
+  box(g, .8, .12, 1.9, x, .1, z, '#1d1f24'); box(g, .7, .03, 1.6, x, .18, z, '#33363d'); [-1, 1].forEach(s => box(g, .05, 1.1, .05, x + s * .38, .65, z - .8, '#9aa0a8')); box(g, .85, .1, .3, x, 1.2, z - .8, '#1d1f24'); solid(x - .45, z - 1, x + .45, z + 1);
+  box(g, .35, .45, 1.2, x + 1.5, .25, z, '#2b2b2b'); box(g, 1, .05, .4, x + 2.6, .4, z, '#9aa0a8'); for (let i = 0; i < 4; i++) cyl(g, .07, .07, .26, x + 2.25 + i * .24, .55, z, '#3a3a3a'); solid(x + 1.3, z - .65, x + 3.2, z + .65);
+}
+function iceBath(g, x, z) { box(g, 1.4, .6, .8, x, .3, z, '#e9edf2'); box(g, 1.25, .02, .65, x, .58, z, '#9fdcff', { transparent: true, opacity: .8, ...glow('#bfeaff', .3) }); solid(x - .7, z - .4, x + .7, z + .4); }
+function podcast(g, x, z) { box(g, 1.2, .74, .7, x, .37, z, '#2b2b2b'); [-1, 1].forEach(s => { cyl(g, .015, .015, .4, x + s * .35, .95, z, '#111'); cyl(g, .04, .04, .14, x + s * .35, 1.18, z, '#555', { metalness: .6 }); });
+  cyl(g, .02, .02, 1.7, x + 1.1, .85, z - .2, '#111'); const ring = new THREE.Mesh(new THREE.TorusGeometry(.28, .04, 8, 24), mat('#ffffff', glow('#ffffff', 1.8))); ring.position.set(x + 1.1, 1.75, z - .2); g.add(ring); solid(x - .6, z - .35, x + 1.2, z + .35); }
+function car(g, x, z, rot, color, van) {
+  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); const L = van ? 4.6 : 4, H = van ? 1.9 : 1.35;
+  box(o, L, H * .55, 1.8, 0, .25 + H * .27, 0, color); box(o, van ? L * .8 : L * .55, H * .45, 1.7, van ? -.3 : -.15, .25 + H * .55 + H * .22, 0, color); box(o, van ? .05 : L * .5, H * .38, 1.72, van ? L * .5 - .75 : -.15, .25 + H * .77, 0, '#25313f', { metalness: .4, roughness: .2 });
+  [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([a, b]) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(.34, .34, .24, 14), mat('#151515')); w.rotation.x = Math.PI / 2; w.position.set(a * (L / 2 - .7), .34, b * .82); o.add(w); });
+  const c = Math.cos(rot), s = Math.sin(rot), ex = Math.abs(c) * L / 2 + Math.abs(s) * .95, ez = Math.abs(s) * L / 2 + Math.abs(c) * .95; solid(x - ex, z - ez, x + ex, z + ez);
+}
+function palm(g, x, z, h = 5) { const tr = cyl(g, .13, .22, h, x, h / 2, z, '#8a6a45'); tr.rotation.z = .06; for (let k = 0; k < 7; k++) { const f = new THREE.Mesh(new THREE.ConeGeometry(.3, 2.6, 4), mat('#3f8f4a')); f.position.set(x + Math.cos(k * .9) * .95, h - .1, z + Math.sin(k * .9) * .95); f.rotation.set(Math.sin(k * .9) * 1.25, 0, -Math.cos(k * .9) * 1.25); f.castShadow = true; g.add(f); } solid(x - .25, z - .25, x + .25, z + .25); }
+function streetLamp(g, x, z) { cyl(g, .07, .09, 4.4, x, 2.2, z, '#3a3f47'); box(g, .9, .08, .14, x - .35, 4.35, z, '#3a3f47'); box(g, .4, .1, .3, x - .7, 4.28, z, '#fff6d8', glow('#ffe7a8', 1.2)); solid(x - .12, z - .12, x + .12, z + .12); }
+function bench(g, x, z) { box(g, 1.8, .08, .5, x, .48, z, '#8a6a45'); box(g, 1.8, .45, .08, x, .72, z + .24, '#8a6a45'); [-1, 1].forEach(s => box(g, .08, .45, .5, x + s * .8, .23, z, '#3a3f47')); solid(x - .9, z - .3, x + .9, z + .3); }
+function umbrella(g, x, z, color) { cyl(g, .03, .03, 2.3, x, 1.15, z, '#e9e9e9'); const c = new THREE.Mesh(new THREE.ConeGeometry(1.25, .45, 10), mat(color)); c.position.set(x, 2.35, z); c.castShadow = true; g.add(c); }
+function lounger(g, x, z, rot, color) { const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); box(o, .65, .1, 1.5, 0, .3, .2, color); box(o, .65, .08, .6, 0, .48, -.7, color); o.children[1].rotation.x = -.7; [-1, 1].forEach(s => box(o, .05, .26, 1.5, s * .3, .14, 0, '#e9e9e9')); }
+function neighborHouse(g, x, z, w, d, wall0, roof, face) { // casa do vizinho (com telhado; face: 1 frente para +z, −1 para −z)
+  box(g, w, 3, d, x, 1.5, z, wall0); solid(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+  const r = new THREE.Mesh(new THREE.CylinderGeometry(.01, Math.hypot(w, d) * .62, 1.6, 4), mat(roof)); r.rotation.y = Math.PI / 4; r.scale.set(w / Math.hypot(w, d) * 1.45, 1, d / Math.hypot(w, d) * 1.45); r.position.set(x, 3.8, z); r.castShadow = true; g.add(r);
+  box(g, 1, 2, .1, x, 1, z + face * (d / 2 + .02), '#6b4f3a'); [-1, 1].forEach(s => box(g, 1.2, .9, .1, x + s * w * .28, 1.6, z + face * (d / 2 + .03), '#9fd3f5', { metalness: .3, roughness: .15 }));
+  for (let i = -2; i <= 2; i++) box(g, .5, .7, .5, x + i * (w / 5), .35, z + face * (d / 2 + 1.4), '#4f9a52');
+}
+function sign(g, text, sub, x, y, z, sx = 3.6) { const s = label(text, sub); s.position.set(x, y, z); s.scale.set(sx, sx / 4, 1); g.add(s); return s; }
+
 function build() {
-  const key = [crInv('quadra'), crInv('moradia')].join('|');
+  const lvl = crInv('moradia'), key = ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0);
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   LV.built = key; LV.spots = []; LV.boxes = [];
   const g = new THREE.Group(); g.position.copy(H0); LV.group = g; scene.add(g);
-  const nice = crInv('moradia') >= 2;
-  // chão: areia, grama do quintal, calçada e rua
-  box(g, 200, .2, 200, 15, -.1, 10, '#e8d7ae', { noShadow: true });
-  box(g, 22, .04, 14, 0, .02, 12, '#7fb069', { noShadow: true });
-  box(g, 160, .05, 8, 10, .03, 24, '#3a3f47', { noShadow: true });
-  for (let i = -60; i < 80; i += 5) box(g, 2.2, .02, .18, i, .07, 24, '#f2f2f2', { noShadow: true });
-  box(g, 160, .1, 2.2, 10, .05, 19, '#c9c4b8', { noShadow: true });
-  // ---- casa (12 x 10, porta na frente) ----
-  const W = nice ? '#f4efe6' : '#e9e2d4', Hh = 2.6, t = .2;
-  box(g, 12, .08, 10, 0, .04, 0, nice ? '#b98b5e' : '#a77d55', { noShadow: true }); // piso de madeira
-  box(g, 12, Hh, t, 0, Hh / 2, -5, W); solid(-6, -5.2, 6, -4.8);                    // fundo
-  box(g, t, Hh, 10, -6, Hh / 2, 0, W); solid(-6.2, -5, -5.8, 5);                    // esquerda
-  box(g, t, Hh, 10, 6, Hh / 2, 0, W); solid(5.8, -5, 6.2, 5);                       // direita
-  box(g, 4.8, Hh, t, -3.6, Hh / 2, 5, W); solid(-6, 4.8, -1.2, 5.2);                // frente, à esquerda da porta
-  box(g, 4.8, Hh, t, 3.6, Hh / 2, 5, W); solid(1.2, 4.8, 6, 5.2);                   // frente, à direita da porta
-  box(g, t, Hh, 4.2, 1, Hh / 2, -2.9, W); solid(.9, -5, 1.1, -.8);                  // parede do quarto
-  box(g, 4.4, .1, .3, 0, Hh, 5, W, { noShadow: true });
-  // quarto: cama
-  box(g, 2, .45, 2.4, 3.6, .25, -3.4, '#3d5a80'); box(g, 2, .2, .6, 3.6, .55, -4.4, '#f5f5f5'); solid(2.6, -4.6, 4.6, -2.2);
-  spot(g, 'cama', 3.6, -1.5, 'Cama', 'Descansar', 1);
-  // sala: sofá, TV, estante de troféus, computador
-  box(g, 3, .45, 1, -3, .25, -1, '#e07a5f'); box(g, 3, .7, .3, -3, .5, -1.4, '#c45f46'); solid(-4.5, -1.6, -1.5, -.5);
-  box(g, 2.4, 1.3, .1, -3, 1.4, -4.85, '#111317'); box(g, 2.6, .5, .5, -3, .25, -4.6, '#5c4433'); solid(-4.3, -4.9, -1.7, -4.3);
-  spot(g, 'tv', -3, -3.2, 'TV', 'Notícias e entrevistas', .9);
-  box(g, .5, 2, 2.2, -5.6, 1, 2.6, '#6b4f3a'); solid(-5.9, 1.5, -5.3, 3.7);
+  const sp = new THREE.Group(); g.add(sp); sp.userData.dyn = true; // pontos de interação (fora da junção)
+  const S2 = (id, x, z, t, s, r) => spot(sp, id, x, z, t, s, r);
+  const court = crInv('quadra') >= 1 || lvl >= 3, lights = crInv('quadra') >= 2 || lvl >= 3;
+  // ---- chão: areia da praia ao norte, terrenos com grama, calçadas e a rua ----
+  box(g, 220, .2, 220, 15, -.12, 10, '#e8d7ae', { noShadow: true });
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(260, 120), mat('#1f8fb5', { roughness: .15, metalness: .2, transparent: true, opacity: .92 })); sea.rotation.x = -Math.PI / 2; sea.position.set(15, .02, -96); sea.receiveShadow = true; g.add(sea);
+  box(g, 260, .03, 3, 15, .03, -36.5, '#f4f8f8', { noShadow: true, transparent: true, opacity: .55 }); // espuma
+  solid(-60, -40, 90, -38);
+  const lotW = [14, 17, 22, 30][lvl], lotD = [12, 14, 18, 24][lvl];
+  box(g, lotW + 18, .05, lotD + 6, court ? 6 : 0, .02, 1, lvl >= 2 ? '#6aa65a' : '#7fb069', { noShadow: true });
+  box(g, 220, .06, 8, 15, .03, 24, '#3a3f47', { noShadow: true }); for (let i = -90; i < 120; i += 5) box(g, 2.2, .02, .18, i, .07, 24, '#f2f2f2', { noShadow: true });
+  [19.2, 28.8].forEach(z => { box(g, 220, .14, 2.4, 15, .07, z, '#cfcac0', { noShadow: true }); box(g, 220, .16, .12, 15, .08, z + (z < 24 ? 1.2 : -1.2), '#9e9a92', { noShadow: true }); });
+  box(g, 2.2, .05, 13, 0, .05, 12.5, '#cfcac0', { noShadow: true }); // caminho até a porta
+  // ---- casa ----
+  const W = [12, 14, 18, 24][lvl], D = [10, 11, 13, 16][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.3][lvl];
+  const wc = ['#e9e2d4', '#f1ece2', '#f6f3ee', '#fbfaf7'][lvl], floor = ['#a77d55', '#b98b5e', '#c49a6c', '#d6cdbf'][lvl];
+  box(g, W, .08, D, 0, .04, 0, floor, { noShadow: true, roughness: lvl >= 3 ? .3 : .8 });
+  if (lvl >= 1) box(g, W + .6, .3, D + .6, 0, -.05, 0, '#d8d2c6', { noShadow: true });
+  wall(g, -hW, -hD, hW, -hD, WH, wc, lvl >= 2 ? [[-1.4, 1.4]] : [], true);           // fundo (na mansão e na casa com piscina: porta para a área da piscina)
+  wall(g, -hW, -hD, -hW, hD, WH, wc, [], true); wall(g, hW, -hD, hW, hD, WH, wc, [], true);
+  wall(g, -hW, hD, hW, hD, WH, wc, [[-1.2, 1.2]], true);
+  if (lvl >= 2) [-1, 1].forEach(s => box(g, .25, WH + .1, .25, s * 1.5, (WH + .1) / 2, hD + .12, '#c9a97c')); // batentes da porta grandes
+  // quarto (fundo à direita)
+  const bx = hW - 4.6;
+  wall(g, bx, -hD, bx, -hD + 4.4, WH, wc, [[-hD + 3.2, -hD + 4.4]]);
+  bed(g, lvl >= 2 ? 1.9 : 1.4, hW - 2.2, -hD + 1.4, 0, ['#3d5a80', '#4a6fa5', '#7a5c8e', '#2b2d42'][lvl]);
+  box(g, .5, .5, .45, hW - .5, .25, -hD + .5, '#6b4f3a'); lamp(g, bx + .6, -hD + .6, true);
+  S2('cama', hW - 2.2, -hD + 3.2, 'Cama', 'Descansar', .9);
+  // sala: sofá e TV na parede do fundo, tapete
+  const tvx = -hW + (lvl >= 2 ? 6.5 : 3.6);
+  tvSet(g, [1.6, 2, 2.4, 3][lvl], tvx, -hD + .4, 0, lvl >= 3);
+  sofa(g, [2.4, 2.8, 3.4, 4.2][lvl], tvx, -hD + 3.5, 0, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
+  if (lvl >= 2) sofa(g, 2, tvx - 2.6, -hD + 2.2, 1, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
+  rug(g, 3.4 + lvl * .4, 2.2 + lvl * .2, tvx, -hD + 2.4, ['#c9b79c', '#8fb3c4', '#e9dcc6', '#6b2737'][lvl]);
+  S2('tv', tvx + 1.6, -hD + 2.2, 'TV', 'Notícias e entrevistas', .8);
+  // troféus (na mansão, parede inteira)
   const nT = Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0);
-  for (let i = 0; i < Math.min(nT, 12); i++) { const tr = new THREE.Mesh(new THREE.CylinderGeometry(.06, .1, .3, 10), mat('#e8b923', { metalness: .8, roughness: .3 })); tr.position.set(-5.45, .35 + Math.floor(i / 4) * .55 + .2, 1.8 + (i % 4) * .5); g.add(tr); }
-  spot(g, 'trofeus', -4.4, 2.6, 'Troféus', nT + ' títulos', .8);
-  box(g, 1.4, .75, .7, 3.8, .38, 3.6, '#5c4433'); box(g, .7, .45, .05, 3.8, 1, 3.4, '#1d2430'); solid(3.1, 3.2, 4.5, 4);
-  spot(g, 'pc', 3.8, 2.4, 'Computador', 'Agenda da carreira', .9);
-  // ---- quintal: quadra própria ou o espaço vazio ----
-  if (crInv('quadra') >= 1) {
-    const cw = 8, cl = 16, cx = 18, cz = 2; // quadra de beach (8 x 16) ao lado da casa
-    box(g, cw + 4, .06, cl + 4, cx, .04, cz, '#f1e2b8', { noShadow: true });
+  shelfTrophies(g, -hW + .35, hD - 2.4, 1, nT, lvl >= 3);
+  S2('trofeus', -hW + 1.6, hD - 2.4, 'Troféus', nT + ' títulos', .8);
+  // cozinha (a partir do apartamento)
+  if (lvl >= 1) kitchen(g, lvl >= 2 ? -hW + .4 : -hW + .3, -hD + .02, lvl >= 3 ? 4 : lvl >= 2 ? 3.2 : 2.4, lvl);
+  else { box(g, 1.6, .9, .6, -hW + 1, .45, -hD + .35, '#d9cfc0'); box(g, .7, 1.7, .6, -hW + 2.3, .85, -hD + .35, '#cfd3d8'); solid(-hW, -hD, -hW + 2.7, -hD + .7); }
+  S2('cozinha', -hW + 2, -hD + (lvl >= 2 ? 3.7 : 1.6), 'Cozinha', crLife('nutri') ? 'Cardápio do nutricionista' : 'Fazer um lanche', .8);
+  // canto do computador: comum, gamer (time de eSports) ou estúdio de podcast (mídia)
+  const pcx = hW - 1.6, pcz = hD - 1.6;
+  desk(g, pcx, pcz, 2, crInv('esports') >= 1);
+  S2('pc', pcx - 1.6, pcz, crInv('esports') >= 1 ? 'Setup gamer' : 'Computador', 'Agenda da carreira', .8);
+  if (crInv('midia') >= 1) { podcast(g, hW - 2.8, hD - 4.2); S2('podcast', hW - 3, hD - 3, 'Estúdio', crInv('midia') >= 2 ? 'Gravar o podcast' : 'Gravar vídeo', .7); }
+  // academia em casa (mansão ou CT) e banheira de gelo (crioterapia ou clínica)
+  if (lvl >= 3 || crInv('ct') >= 1) { gym(g, -hW + 2, 0); S2('academia', -hW + 3.5, 1.8, 'Academia', 'Treino físico', .8); }
+  if (crLife('crio') || crInv('saude') >= 1) { iceBath(g, hW - 1.2, -.6); S2('gelo', hW - 2.5, -.6, 'Banheira de gelo', 'Recuperar', .7); }
+  // mesa de jantar (a partir do apartamento): na frente, à esquerda
+  if (lvl >= 1) { const tx = -hW + (lvl >= 3 ? 6 : 4.2), tz = hD - (lvl >= 3 ? 5.2 : 3.6), n = lvl >= 3 ? 3 : 2;
+    box(g, n * 1 + .4, .06, 1.1, tx, .78, tz, lvl >= 3 ? '#2b2d31' : '#8a6a45'); [-1, 1].forEach(a => [-1, 1].forEach(b => box(g, .07, .75, .07, tx + a * (n * .5), .38, tz + b * .45, '#3a2d22')));
+    for (let i = 0; i < n; i++) [-1, 1].forEach(b => { const cx2 = tx - (n - 1) * .5 + i; box(g, .45, .45, .45, cx2, .23, tz + b * .85, lvl >= 3 ? '#f2f2f2' : '#c9a97c'); box(g, .45, .55, .06, cx2, .7, tz + b * 1.05, lvl >= 3 ? '#f2f2f2' : '#c9a97c'); });
+    cyl(g, .35, .25, .05, tx, .9, tz, '#ffffff'); solid(tx - n * .5 - .3, tz - 1.2, tx + n * .5 + .3, tz + 1.2);
+    if (lvl >= 2) { const c = new THREE.Mesh(new THREE.SphereGeometry(.35, 12, 10), mat('#fff3d6', glow('#ffe1a8', 1))); c.position.set(tx, WH - .5, tz); g.add(c); } }
+  // casa com piscina e mansão: estante de livros, aparador e mesa de centro; mansão: piano, bar e colunas
+  if (lvl >= 2) { box(g, .45, 2, 2.4, hW - .35 - (lvl >= 3 ? 0 : 0), 1, 2.2, '#4a3628'); for (let k = 0; k < 4; k++) for (let i = 0; i < 6; i++) box(g, .3, .36, .12, hW - .38, .35 + k * .5, 1.2 + i * .38, ['#c0392b', '#2457c5', '#f2c14e', '#2a9d8f', '#6b4f7a'][(i + k) % 5], { noShadow: true }); solid(hW - .6, 1, hW, 3.4);
+    box(g, 1.2, .38, .7, tvx, .2, -hD + 2.3, '#3a2d22'); solid(tvx - .6, -hD + 1.95, tvx + .6, -hD + 2.65); }
+  if (lvl >= 3) { box(g, 1.8, 1, 1.5, 4, .5, hD - 3.2, '#0d0d10', { roughness: .2, metalness: .2 }); box(g, 1.8, .06, 1.6, 4, 1.02, hD - 3.1, '#1a1a1e'); box(g, .6, .4, .4, 4, .2, hD - 1.9, '#0d0d10'); solid(3.1, hD - 4, 4.9, hD - 2.4);
+    box(g, 3.2, 1.1, .6, -1.5, .55, -1.2, '#2b2d31'); box(g, 3.3, .06, .7, -1.5, 1.12, -1.2, '#e9e4dc'); for (let i = 0; i < 3; i++) cyl(g, .17, .17, .75, -2.5 + i, .38, -.6, '#c9a97c'); solid(-3.1, -1.5, .1, -.9);
+    [[-4.5, 2.2], [1.5, 2.2]].forEach(([x, z]) => { cyl(g, .25, .25, WH, x, WH / 2, z, '#f3efe6'); solid(x - .25, z - .25, x + .25, z + .25); }); rug(g, 4, 3, 4, hD - 3, '#8b1e3f'); }
+  // plantas, luminárias e quadros
+  [[-hW + .5, -hD + .5 + (lvl >= 1 ? 4 : 1.5)], [hW - .5, hD - .5 - 3.5], [bx - .5, -hD + .5]].forEach(([x, z], i) => { if (i < 1 + lvl) plant(g, x, z, .9 + lvl * .1); });
+  if (lvl >= 1) lamp(g, tvx - 2.3, -hD + 4.4); if (lvl >= 2) lamp(g, tvx + 2.3, -hD + 4.4);
+  for (let i = 0; i < 1 + lvl; i++) box(g, 1, .7, .04, -hW + 3 + i * 2.6, 1.7, hD - .12, ['#ff6a00', '#33c3ff', '#b6ff3c', '#f2c14e'][i % 4], { noShadow: true });
+  // fora: jardim, cerca/muro, caixa de correio
+  [-1, 1].forEach(s => { for (let i = 0; i < 2 + lvl; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 8), mat('#4f9a52')); b.position.set(s * (2 + i * 1.3), .35, hD + 1.4); b.scale.y = .8; b.castShadow = true; g.add(b); } });
+  const fx = (lotW + 18) / 2 + (court ? 6 : 0), fx0 = (court ? 6 : 0) - (lotW + 18) / 2;
+  if (lvl >= 2) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, -hD - 9.6, '#f0ebe1'); } // muro do fundo (para a praia, com portão)
+  box(g, .3, 1, .3, 1.6, .5, hD + 6.2, '#3a3f47'); box(g, .5, .35, .3, 1.6, 1.15, hD + 6.2, '#c0392b');
+  // ---- garagem: carro, van (transporte) ----
+  if (crLife('carro')) car(g, -hW - 3, hD + 3, Math.PI / 2, lvl >= 3 ? '#111214' : '#2457c5');
+  if (crInv('jato') >= 1) car(g, -8, 22.2, 0, '#f2f2f2', true); else { box(g, .1, 2.4, .1, -8, 1.2, 20.2, '#3a3f47'); box(g, 1.2, .5, .06, -8, 2.4, 20.2, '#2457c5'); }
+  S2('torneio', -8, 19.6, crInv('jato') >= 1 ? 'Van da equipe' : 'Ponto de táxi', 'Ir ao torneio');
+  // ---- piscina (casa com piscina e mansão), atrás da casa ----
+  if (lvl >= 2) {
+    const pw = lvl >= 3 ? 10 : 7, pd = lvl >= 3 ? 4.5 : 3.6, pz = -hD - 4.6;
+    box(g, pw + 2.4, .06, pd + 2.4, 0, .05, pz, '#e9e2d4', { noShadow: true });
+    box(g, pw, .05, pd, 0, .07, pz, '#3fb6e8', { roughness: .1, metalness: .2, ...glow('#54c8ff', .25) }); solid(-pw / 2, pz - pd / 2, pw / 2, pz + pd / 2);
+    for (let i = 0; i < (lvl >= 3 ? 4 : 2); i++) { lounger(g, -pw / 2 + 1 + i * 2, pz + pd / 2 + 1.4, Math.PI, '#ffffff'); }
+    umbrella(g, pw / 2 + .2, pz + pd / 2 + 1.6, '#ff6a00');
+    S2('piscina', 0, pz + pd / 2 + .9, 'Piscina', 'Relaxar', 1);
+  }
+  // ---- quadra no quintal (comprada ou na mansão) ----
+  const cx = hW + 9, cz = 0;
+  if (court) {
+    const cw = 8, cl = 16;
+    box(g, cw + 5, .06, cl + 5, cx, .04, cz, '#f1e2b8', { noShadow: true });
     const line = (w, d, x, z) => box(g, w, .02, d, x, .08, z, '#1f4fb8', { noShadow: true });
     line(cw, .06, cx, cz - cl / 2); line(cw, .06, cx, cz + cl / 2); line(.06, cl, cx - cw / 2, cz); line(.06, cl, cx + cw / 2, cz);
-    box(g, cw + .6, .9, .03, cx, 1.25, cz, '#ffffff', { transparent: true, opacity: .45 }); box(g, .1, 1.75, .1, cx - cw / 2 - .3, .88, cz, '#1f4fb8'); box(g, .1, 1.75, .1, cx + cw / 2 + .3, .88, cz, '#1f4fb8');
+    box(g, cw + .6, .9, .03, cx, 1.25, cz, '#ffffff', { transparent: true, opacity: .45 }); box(g, cw + .6, .06, .05, cx, 1.72, cz, '#1f4fb8'); [-1, 1].forEach(s => box(g, .1, 1.75, .1, cx + s * (cw / 2 + .3), .88, cz, '#1f4fb8'));
     solid(cx - cw / 2 - .4, cz - .1, cx + cw / 2 + .4, cz + .1);
-    spot(g, 'quadraDesafio', cx, cz + 5, 'Sua quadra', 'Treino com desafio');
-    spot(g, 'quadraTreino', cx, cz - 5, 'Sua quadra', 'Treino físico e técnico');
-  } else {
-    const s = label('Quadra própria', 'Compre em Negócios'); s.position.set(18, 1.6, 2); s.scale.set(3.2, .8, 1); g.add(s);
-    box(g, .1, 1.2, .1, 18, .6, 2, '#6b4f3a');
-  }
-  // ---- rua: van para o torneio e ponto de táxi ----
-  box(g, 4.4, 1.9, 1.9, -8, 1.15, 22.4, '#f2f2f2'); box(g, 1.2, 1.2, 1.85, -6.2, 1.3, 22.4, '#2b3445'); solid(-10.2, 21.4, -5.8, 23.4);
-  [[-9.4, 21.5], [-9.4, 23.3], [-6.6, 21.5], [-6.6, 23.3]].forEach(([x, z]) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(.38, .38, .25, 16), mat('#1b1b1d')); w.rotation.x = Math.PI / 2; w.position.set(x, .38, z); g.add(w); });
-  spot(g, 'torneio', -8, 19.6, 'Van', 'Ir ao torneio');
+    if (lights) [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { const x = cx + a * (cw / 2 + 2), z = cz + b * (cl / 2 + 1.5); cyl(g, .08, .1, 6, x, 3, z, '#9aa0a8'); box(g, .9, .35, .25, x - a * .3, 6, z, '#f4f4f4', glow('#ffffff', 1.6)); solid(x - .15, z - .15, x + .15, z + .15); });
+    if (lights) { box(g, .6, 1.2, 6, cx + cw / 2 + 2.3, .6, cz, '#2457c5'); solid(cx + cw / 2 + 2, cz - 3, cx + cw / 2 + 2.6, cz + 3); }
+    S2('quadraDesafio', cx, cz + 5, lvl >= 3 && crInv('quadra') < 1 ? 'Quadra da mansão' : 'Sua quadra', 'Treino com desafio');
+    S2('quadraTreino', cx, cz - 5, lvl >= 3 && crInv('quadra') < 1 ? 'Quadra da mansão' : 'Sua quadra', 'Treino físico e técnico');
+  } else { sign(g, 'Quadra própria', 'Compre em Negócios', cx, 1.8, cz, 3.4); cyl(g, .05, .05, 1.4, cx, .7, cz, '#6b4f3a'); }
+  // ---- vizinhança ----
+  neighborHouse(g, -32, 4, 9, 8, '#f3d9b1', '#b4553c', 1); neighborHouse(g, -46, 4, 8, 8, '#cfe3e8', '#3d5a80', 1);
+  neighborHouse(g, -20, 36, 9, 8, '#e8d1e3', '#6b4f7a', -1); neighborHouse(g, -4, 36, 8, 7, '#f6eac2', '#9a5b2c', -1);
+  if (crInv('gastro') >= 2) { box(g, 12, 3.4, 8, 14, 1.7, 36, '#2b3445'); solid(8, 32, 20, 40); box(g, 12.4, .3, 1.6, 14, 3.4, 31.2, '#ff6a00'); sign(g, crInv('gastro') >= 3 ? 'Beach Club' : 'Restaurante', 'do ' + nameOf($s.CR.me).split(' ')[0], 14, 4.4, 31.6, 4.4); for (let i = 0; i < 3; i++) { cyl(g, .45, .45, .05, 10 + i * 4, .75, 30.6, '#f4f4f4'); cyl(g, .05, .05, .75, 10 + i * 4, .38, 30.6, '#3a3f47'); umbrella(g, 10 + i * 4, 30.6, '#ffd23f'); } }
+  else neighborHouse(g, 14, 36, 9, 8, '#d8efd2', '#2f6b3a', -1);
+  // CT ao lado da arena
+  if (crInv('ct') >= 1) { const tx = 70, tz = 36; box(g, 16, 5 + crInv('ct'), 12, tx, (5 + crInv('ct')) / 2, tz, '#1d2a4a'); solid(tx - 8, tz - 6, tx + 8, tz + 6); box(g, 16.2, .5, 12.2, tx, 5 + crInv('ct'), tz, '#33c3ff', glow('#33c3ff', .5));
+    sign(g, ['', 'CT', 'CT de alto rendimento', 'Academia de base'][crInv('ct')], nameOf($s.CR.me).split(' ')[0], tx, 7.6 + crInv('ct'), tz - 6.2, 5.6); S2('ct', tx, tz - 8, 'Centro de treinamento', 'Treino físico e técnico'); }
+  // quiosque na praia (gastronomia 1) e projeto social
+  if (crInv('gastro') >= 1) { const kx = 12, kz = -26; cyl(g, 1.8, 1.8, .9, kx, .45, kz, '#a77d55'); const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), mat('#e9c46a')); r.position.set(kx, 3.2, kz); r.castShadow = true; g.add(r); [0, 1, 2, 3].forEach(i => cyl(g, .07, .07, 2.4, kx + Math.cos(i * 1.57 + .78) * 1.6, 1.6, kz + Math.sin(i * 1.57 + .78) * 1.6, '#8a6a45')); solid(kx - 1.8, kz - 1.8, kx + 1.8, kz + 1.8); sign(g, 'Quiosque', nameOf($s.CR.me).split(' ')[0], kx, 4.6, kz, 3.2); }
+  if (crLife('social')) { box(g, 8, .05, 16, -20, .05, -22, '#f1e2b8', { noShadow: true }); box(g, 8.4, .8, .03, -20, 1.1, -22, '#ffffff', { transparent: true, opacity: .45 }); sign(g, 'Projeto social', 'Escolinha de beach tennis', -20, 2.6, -31, 4); }
+  // praia: guarda-sóis e cadeiras, palmeiras na orla
+  [[-30, -28, '#ff6a00'], [-14, -30, '#33c3ff'], [30, -27, '#ffd23f'], [44, -29, '#e63946'], [58, -26, '#2a9d8f']].forEach(([x, z, c]) => { umbrella(g, x, z, c); lounger(g, x + 1, z + .8, .3, '#ffffff'); });
+  // rua: palmeiras, postes, bancos, carros estacionados
+  for (let x = -40; x <= 80; x += 12) { palm(g, x, 17.4, 4.8 + (x % 3)); streetLamp(g, x + 6, 18.3); }
+  [[-26, 30.4], [6, 30.4], [32, 30.4]].forEach(([x, z]) => bench(g, x, z));
+  [[-30, 26.4, '#e63946'], [20, 21.6, '#f4f4f4'], [62, 26.4, '#2a9d8f'], [-46, 21.6, '#ffd23f']].forEach(([x, z, c]) => car(g, x, z, 0, c));
   // ---- arena de treino no fim da rua ----
-  const ax = 46, az = 34;
-  box(g, 24, .06, 18, ax, .04, az, '#f1e2b8', { noShadow: true });
-  [[-1, 1]].forEach(() => {});
-  box(g, 8, 4, .3, ax - 8, 2, az - 9, '#2457c5'); box(g, 8, 4, .3, ax + 8, 2, az - 9, '#2457c5'); // frente com entrada no meio
-  box(g, 24, 4, .3, ax, 2, az + 9, '#2457c5'); solid(ax - 12, az + 8.8, ax + 12, az + 9.2);
-  box(g, .3, 4, 18, ax - 12, 2, az, '#2457c5'); solid(ax - 12.2, az - 9, ax - 11.8, az + 9);
-  box(g, .3, 4, 18, ax + 12, 2, az, '#2457c5'); solid(ax + 11.8, az - 9, ax + 12.2, az + 9);
-  { const s = label('Arena de treino', 'Beach tennis'); s.position.set(ax, 5.2, az - 8.6); s.scale.set(5, 1.25, 1); g.add(s); }
-  box(g, 8, .02, 16, ax, .08, az + 1, '#ffffff', { noShadow: true, transparent: true, opacity: .25 });
-  box(g, 8.6, .9, .03, ax, 1.25, az + 1, '#ffffff', { transparent: true, opacity: .45 }); solid(ax - 4.4, az + .9, ax + 4.4, az + 1.1);
-  spot(g, 'arenaTreino', ax - 6, az - 5, 'Treinar', 'Físico e técnico');
-  spot(g, 'arenaDesafio', ax + 6, az - 5, 'Desafio', 'Curta, defesa, smash…');
-  spot(g, 'aulas', ax, az + 6.5, 'Dar aulas', 'Renda extra');
-  // palmeiras e postes ao longo da rua
-  for (let x = -40; x <= 70; x += 14) { const tr = new THREE.Mesh(new THREE.CylinderGeometry(.14, .22, 5, 8), mat('#8a6a45')); tr.position.set(x, 2.5, 17.6); tr.castShadow = true; g.add(tr);
-    for (let k = 0; k < 6; k++) { const f = new THREE.Mesh(new THREE.ConeGeometry(.35, 2.6, 4), mat('#3f8f4a')); f.position.set(x + Math.cos(k) * .9, 4.9, 17.6 + Math.sin(k) * .9); f.rotation.z = Math.cos(k) * 1.2; f.rotation.x = Math.sin(k) * 1.2; g.add(f); } }
+  const ax = 46, az = 38;
+  box(g, 24, .06, 16, ax, .04, az, '#f1e2b8', { noShadow: true });
+  box(g, 24, 4, .3, ax, 2, az + 8, '#2457c5'); solid(ax - 12, az + 7.8, ax + 12, az + 8.2);
+  box(g, 8, 4, .3, ax - 8, 2, az - 8, '#2457c5'); box(g, 8, 4, .3, ax + 8, 2, az - 8, '#2457c5'); solid(ax - 12, az - 8.2, ax - 4, az - 7.8); solid(ax + 4, az - 8.2, ax + 12, az - 7.8);
+  box(g, .3, 4, 16, ax - 12, 2, az, '#2457c5'); solid(ax - 12.2, az - 8, ax - 11.8, az + 8); box(g, .3, 4, 16, ax + 12, 2, az, '#2457c5'); solid(ax + 11.8, az - 8, ax + 12.2, az + 8);
+  sign(g, crInv('eventos') >= 1 ? 'Arena ' + nameOf($s.CR.me).split(' ')[0] : 'Arena de treino', crInv('eventos') >= 2 ? 'Sede da sua etapa ITF' : 'Beach tennis', ax, 5.3, az - 8.4, 5.6);
+  box(g, 8, .02, 16, ax, .08, az, '#ffffff', { noShadow: true, transparent: true, opacity: .2 });
+  box(g, 8.6, .9, .03, ax, 1.25, az, '#ffffff', { transparent: true, opacity: .45 }); solid(ax - 4.4, az - .1, ax + 4.4, az + .1);
+  S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra');
   // limites do bairro
-  solid(-50, -40, -49, 60); solid(80, -40, 81, 60); solid(-50, -40, 81, -39); solid(-50, 59, 81, 60); solid(ax - 12, az - 9.2, ax - 4, az - 8.8); solid(ax + 4, az - 9.2, ax + 12, az - 8.8);
+  solid(-60, -40, -59, 60); solid(89, -40, 90, 60); solid(-60, 59, 90, 60);
+  // junta o cenário parado em poucos desenhos (os pontos de interação ficam de fora)
+  mergeStatic(g);
 }
 
 // ---------- ações ----------
@@ -118,6 +265,12 @@ const ACT = {
   arenaTreino: { txt: () => 'Treinar na arena', run: () => crTrain() },
   arenaDesafio: { txt: () => 'Treino com desafio', run: () => LV.actions.drill() },
   aulas: { txt: () => 'Dar aulas hoje', run: () => crCoach() },
+  cozinha: { txt: () => 'Fazer um lanche (+3 energia)', run: () => { const C = $s.CR; if ((C.snackDay || '') === C.season + '-' + C.week + '-' + C.day) { LV.msg('Você já comeu hoje. Guarde a fome para o jantar.'); return; } C.snackDay = C.season + '-' + C.week + '-' + C.day; C.energy = Math.min(100, C.energy + (crLife('nutri') ? 6 : 3)); LV.msg(crLife('nutri') ? '🥗 Refeição do cardápio do nutricionista: +6 de energia.' : '🥪 Um lanche rápido: +3 de energia.'); } },
+  piscina: { txt: () => 'Relaxar na piscina (descansa o dia)', run: () => crRest() },
+  gelo: { txt: () => 'Banho de gelo (descansa o dia)', run: () => crRest() },
+  academia: { txt: () => 'Treinar na academia de casa', run: () => crTrain() },
+  ct: { txt: () => 'Treinar no seu CT', run: () => crTrain() },
+  podcast: { txt: () => 'Gravar conteúdo', run: () => { const C = $s.CR, k = C.season + '-' + C.week; if (C.podW === k) { LV.msg('Você já gravou esta semana.'); return; } C.podW = k; C.fama = Math.min(100, (C.fama || 0) + 1); C.energy = Math.max(0, C.energy - 3); LV.msg('🎙️ Episódio gravado: +1 de fama, −3 de energia.'); } },
   torneio: { txt: () => { const t = $s.CR.tour; return !t ? 'Ver os torneios da semana' : t.pending ? 'Ir ao torneio (descansa até sábado)' : t.done ? 'Voltar do torneio' : 'Ir para a quadra do torneio'; },
     run: () => { const t = $s.CR.tour; if (t && t.pending) crRestUntil(); LV.actions.openCareer(); } },
 };
@@ -131,7 +284,7 @@ function enter() {
   document.body.classList.remove('in-menu'); document.body.classList.add('livre');
   document.getElementById('career').hidden = true;
   [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
-  human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .62;
+  human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9;
   hud(true); LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.');
 }
 function exit(toCareer = true) {
@@ -174,7 +327,7 @@ function tick(dt) {
   if (near !== LV.near) { LV.near = near; prompt(); }
   LV.spots.forEach(s => { const d = Math.hypot(px - s.x, pz - s.z); s.label.visible = d < 16; });
   // nome do lugar onde está
-  { const where = px > -6 && px < 6 && pz > -5 && pz < 5 ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > 10 && px < 26 && pz > -8 && pz < 12 ? 'Quintal' : px > 33 && px < 59 && pz > 24 && pz < 44 ? 'Arena de treino' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
+  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 ? 'Área da piscina' : pz < -12 ? 'Praia' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
     if (where !== LV.where) { LV.where = where; const e = document.querySelector('#livreHud .lv-where'); if (e) e.textContent = where; } }
   if (LV.msgT > 0 && (LV.msgT -= dt) <= 0) { const m = document.getElementById('livreMsg'); if (m) m.hidden = true; }
 }
@@ -182,8 +335,10 @@ function tick(dt) {
 function cam(dt) {
   if (!LV.on) return false;
   const k = LV.keys; if (k.q) LV.camYaw += dt * 1.8; if (k.r) LV.camYaw -= dt * 1.8;
-  const lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, inside = lx > -6 && lx < 6 && lz > -5 && lz < 5;
-  const dist = inside ? 5.2 : 6.4, pitch = inside ? .95 : LV.camPitch, h = 1.2;
+  if (k.z) LV.zoom = Math.max(2.2, LV.zoom * (1 - dt * 1.4)); if (k.x) LV.zoom = Math.min(22, LV.zoom * (1 + dt * 1.4)); if (k.t) LV.camPitch = Math.min(1.45, LV.camPitch + dt * .9); if (k.g) LV.camPitch = Math.max(.08, LV.camPitch - dt * .9);
+  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, inside = lx > -hw && lx < hw && lz > -hd && lz < hd;
+  // zoom e inclinação escolhidos pelo jogador; dentro de casa a câmera nunca fica mais baixa que as paredes (vista de cima)
+  const dist = LV.zoom, pitch = inside ? Math.max(LV.camPitch, .78) : LV.camPitch, h = 1.2;
   _v.set(human.pos.x + Math.sin(LV.camYaw) * Math.cos(pitch) * dist, h + Math.sin(pitch) * dist, human.pos.z + Math.cos(LV.camYaw) * Math.cos(pitch) * dist);
   const kk = 1 - Math.exp(-dt * 6);
   camera.position.lerp(_v, kk); _w.set(human.pos.x, 1.1, human.pos.z);
@@ -200,7 +355,7 @@ function hud(on) {
     el = document.createElement('div'); el.id = 'livreHud';
     el.innerHTML = '<div class="lv-top"><b class="lv-where"></b><span class="lv-day"></span><button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div>'
       + '<div id="livrePrompt" class="lv-prompt" hidden><kbd>E</kbd><span></span></div><div id="livreMsg" class="lv-msg" hidden></div>'
-      + '<div class="lv-help">WASD ou setas: andar · Shift: correr · E: interagir · Q/R ou arrastar: girar a câmera</div>'
+      + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · arrastar: girar · rodinha: zoom · clique da rodinha (ou direito) arrastando: inclinação · Z/X: zoom · T/G: inclinação</div>'
       + '<div class="lv-joy" id="livreJoy"><i></i></div><button type="button" class="lv-act" id="livreAct">E</button>';
     document.body.appendChild(el);
     el.querySelector('#livreExit').addEventListener('click', () => exit(true));
@@ -239,9 +394,17 @@ addEventListener('keydown', e => {
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
 }, true);
 addEventListener('keyup', e => { const k = e.key.toLowerCase(); LV.keys[k] = false; if (k === 'shift') LV.keys.shift = false; }, true);
-addEventListener('pointerdown', e => { if (LV.on && e.target && e.target.tagName === 'CANVAS') LV.drag = e.clientX; });
-addEventListener('pointermove', e => { if (LV.on && LV.drag != null) { LV.camYaw -= (e.clientX - LV.drag) * .006; LV.drag = e.clientX; } });
+// mouse: arrastar com o botão esquerdo gira; com o botão do meio (clique da rodinha) ou o direito muda a inclinação; a rodinha
+// dá e tira zoom. No toque: um dedo gira, dois dedos (pinça) dão zoom
+addEventListener('pointerdown', e => { if (LV.on && e.target && e.target.tagName === 'CANVAS') { LV.drag = { x: e.clientX, y: e.clientY, b: e.button }; if (e.button === 1) e.preventDefault(); } });
+addEventListener('pointermove', e => { if (!LV.on || !LV.drag) return; const dx = e.clientX - LV.drag.x, dy = e.clientY - LV.drag.y; LV.drag.x = e.clientX; LV.drag.y = e.clientY;
+  if (LV.drag.b === 1 || LV.drag.b === 2 || e.shiftKey) LV.camPitch = Math.max(.08, Math.min(1.45, LV.camPitch + dy * .006));
+  else { LV.camYaw -= dx * .006; LV.camPitch = Math.max(.08, Math.min(1.45, LV.camPitch + dy * .003)); } });
 addEventListener('pointerup', () => { LV.drag = null; });
+addEventListener('wheel', e => { if (!LV.on || !e.target || e.target.tagName !== 'CANVAS') return; e.preventDefault(); LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * Math.exp(e.deltaY * .0012))); }, { passive: false });
+addEventListener('contextmenu', e => { if (LV.on && e.target && e.target.tagName === 'CANVAS') e.preventDefault(); });
+addEventListener('auxclick', e => { if (LV.on && e.button === 1) e.preventDefault(); });
+{ let pin = 0; addEventListener('touchmove', e => { if (!LV.on || e.touches.length !== 2) { pin = 0; return; } const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (pin) LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * pin / d)); pin = d; }, { passive: true }); addEventListener('touchend', () => { pin = 0; }); }
 
 if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0 };
 export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam };
