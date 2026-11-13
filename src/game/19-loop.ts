@@ -64,10 +64,10 @@ function frame(now) {
   // anda e os jogadores estão parados; a câmera girando não muda o mapa de sombra),
   // assim o fundo segue fluido e a página responde na hora (o hover dos botões demorava com o 3D pesado atrás)
   const inMenu = !NET.role && document.body.classList.contains('in-menu');
-  // tela inicial em telas largas e gráficos em Alto: o seu jogador aparece em destaque ao lado do menu (S.menuHero)
+  // tela inicial em telas de computador (largura ≥ 720 px lógicos, mais larga que alta): o seu jogador aparece em destaque ao lado do menu (S.menuHero)
   { const mE = document.getElementById('menu'), atHome = document.body.classList.contains('in-menu') && !!mE && !mE.hidden && mE.dataset.step === 'home';
     if (atHome !== !!S.atHome) { S.atHome = atHome; document.body.classList.toggle('at-home', atHome); } } // (fora da tela inicial, música e amigos ficam compactos)
-  { const mEl = document.getElementById('menu'), hero = inMenu && S.mode === 'menu' && !!mEl && !mEl.hidden && mEl.dataset.step === 'home' && S.settings.gfx !== 'leve' && innerWidth >= 980 && innerWidth / innerHeight >= 1.25;
+  { const mEl = document.getElementById('menu'), hero = inMenu && S.mode === 'menu' && !!mEl && !mEl.hidden && mEl.dataset.step === 'home' && innerWidth >= 720 && innerWidth / innerHeight >= 1.15; // (antes também exigia gráficos em Alto e 980 px: num notebook com escala do Windows em 125–150% ou no Leve caía no menu antigo)
     if (hero !== !!S.menuHero) { S.menuHero = hero; document.body.classList.toggle('hero-menu', hero); menuMode = !inMenu; } }
   if (inMenu !== menuMode) { menuMode = inMenu; setMenuRes(inMenu, !!S.menuHero); renderer.shadowMap.needsUpdate = true; }
   // sombra: refeita todo quadro em qualquer qualidade (a cada dois quadros ela ficava um quadro atrás do jogador correndo, e o

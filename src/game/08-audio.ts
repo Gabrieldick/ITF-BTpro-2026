@@ -21,7 +21,7 @@ const basePR = () => { const dpr = window.devicePixelRatio || 1, m = resMode();
 let menuScale = 1;
 function applyPR() { renderer.setPixelRatio(basePR() * (resMode() === 'auto' ? resScale : 1) * menuScale); }
 // hero: tela inicial com o jogador em destaque (precisa de mais resolução que o fundo desfocado dos outros menus)
-function setMenuRes(on, hero) { const v = !on ? 1 : hero ? .8 : .38; if (v === menuScale) return; menuScale = v; applyPR(); }
+function setMenuRes(on, hero) { const v = !on ? 1 : hero ? (S.settings.gfx === 'leve' ? .55 : .8) : .38; if (v === menuScale) return; menuScale = v; applyPR(); }
 function setResScale(v) { if (Math.abs(v - resScale) < .01) return; resScale = v; applyPR(); }
 const getResScale = () => resScale;
 function applyGfx() {

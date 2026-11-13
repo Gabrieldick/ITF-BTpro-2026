@@ -1242,3 +1242,19 @@ body.in-menu:not(.at-home) .mus-box { padding: 5px 6px 5px 10px; opacity: .78; }
 body.in-menu:not(.at-home) .mus-box:hover { opacity: 1; }
 body:not(.at-home) .am-btn .am-tx { display: none; }
 body:not(.at-home) .am-btn { padding: 6px 8px 6px 6px; gap: 6px; opacity: .92; }
+
+/* tela inicial em destaque em telas menores (notebook com escala alta): coluna do menu mais larga, título menor */
+@media (max-width: 1100px) {
+  body.hero-menu #menu[data-step="home"] .card { width: min(56vw, 560px); margin-left: clamp(18px, 3.5vw, 40px); gap: 18px; }
+  body.hero-menu #menu[data-step="home"] .title { font-size: clamp(46px, 7vw, 76px); }
+  body.hero-menu #menu[data-step="home"] .tile { min-height: 64px; font-size: 18px; }
+  body.hero-menu #menu[data-step="home"] .tile-main { min-height: 132px; font-size: 30px; }
+  body.hero-menu .hero-plate:not([hidden]) { right: 16px; bottom: 64px; transform: scale(.85); transform-origin: right bottom; }
+}
+@media (max-height: 560px) {
+  body.hero-menu #menu[data-step="home"] .title { font-size: clamp(40px, 9vh, 64px); }
+  body.hero-menu #menu[data-step="home"] .home-tag { margin-top: 2px; }
+  body.hero-menu #menu[data-step="home"] .title::after { margin-top: 8px; }
+  body.hero-menu #menu[data-step="home"] .card { gap: 12px; }
+  body.hero-menu #menu[data-step="home"] .tile-main { min-height: 104px; }
+}
