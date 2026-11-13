@@ -1314,7 +1314,7 @@ body:not(.at-home) .am-btn { padding: 6px 8px 6px 6px; gap: 6px; opacity: .92; }
 #livreHud .lv-dl.go { animation: lvDl 1.8s ease-out; }
 @keyframes lvDl { 0% { opacity: 0; transform: translate(0, -50%); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(0, -190%); } }
 @media (max-width: 700px) { #livreHud .lv-top { flex-wrap: wrap; gap: 8px; } #livreHud .lv-res { grid-auto-flow: column; } #livreHud .lv-bar { width: 50px; } #livreHud .lv-where { font-size: 17px; } #livreHud .lv-next { max-width: 200px; } #livreHud .lv-k { font-size: 13px; padding: 5px 10px; } }
-#livreHud .lv-top .ghost { margin-left: auto; }
+#livreHud .lv-btns { margin-left: auto; display: flex; gap: 6px; }
 #livreHud .lv-prompt { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 12px; background: rgba(4, 14, 40, .88); border: 1px solid var(--ui-acc); font: 800 18px var(--f-ui); text-transform: uppercase; letter-spacing: .03em; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
 #livreHud .lv-prompt kbd { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; background: var(--ui-acc); color: #04122e; font: 800 16px var(--f-ui); }
 #livreHud .lv-msg { position: absolute; left: 50%; top: 118px; transform: translateX(-50%); max-width: min(680px, 90vw); padding: 10px 16px; border-radius: 10px; background: rgba(4, 14, 40, .86); font-weight: 600; text-align: center; }
@@ -1344,3 +1344,14 @@ body.livre .hud, body.livre #scoreboard, body.livre .tag, body.livre #meter { di
 @media (prefers-reduced-motion: reduce) { .tw-ico { animation: none; } }
 @media (max-width: 700px) { #livreHud .lv-msg { top: 172px; } #livreHud .lv-help { display: none; } }
 #livreHud #livreExit { background: rgba(6, 20, 52, .88); color: #fff; border: 1px solid rgba(120, 160, 255, .3); opacity: 1; }
+/* modo livre: a música fica à vista (abaixo do painel de cima) */
+body.livre .mus-box:not([hidden]) { display: inline-flex; top: 118px; bottom: auto; }
+body.livre .mus-box.off [data-mus="next"] { display: none; }
+@media (max-width: 700px) { body.livre .mus-box:not([hidden]) { top: auto; bottom: 170px; } }
+#livreHud #livreCfg { background: rgba(6, 20, 52, .88); color: #fff; border: 1px solid rgba(120, 160, 255, .3); }
+body.livre #menu { z-index: 70; }
+#livreHud .lv-go { display: grid; justify-items: center; align-content: center; gap: 1px; min-width: 64px; padding: 2px 6px; border-left: 1px solid rgba(255, 255, 255, .12); }
+#livreHud .lv-go[hidden] { display: none; }
+#livreHud .lv-go i { display: block; font-style: normal; font-size: 26px; line-height: 1; color: #b6ff3c; text-shadow: 0 0 10px rgba(182, 255, 60, .7); transition: transform .12s linear; }
+#livreHud .lv-go small { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .75; }
+#livreHud .lv-go b { font-size: 13px; color: #b6ff3c; }

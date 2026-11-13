@@ -197,17 +197,17 @@ function musSet(step) {
 function musicNext() { if (MUS.el && MUS.list && MUS.list.length) { MUS.el.volume = 0; musSet(1); musBox(true); } }
 function musBox(inMenu) {
   const box = typeof document !== 'undefined' && document.getElementById('musBox'); if (!box) return;
-  const off = !!S.settings.musicOff || S.muted, txt = !inMenu || !MUS.cur ? '' : (off ? 'off|' : 'on|') + MUS.cur.titulo + '|' + MUS.cur.artista;
+  const off = !!S.settings.musicOff || S.muted, txt = !inMenu ? '' : off ? 'off' : !MUS.cur ? '' : 'on|' + MUS.cur.titulo + '|' + MUS.cur.artista; // desligada: continua à vista para religar fácil
   if (txt === MUS.shown) return; MUS.shown = txt;
   box.hidden = !txt; if (!txt) return;
-  box.querySelector('.mus-t').textContent = off ? 'Música desligada' : MUS.cur.titulo; box.querySelector('.mus-a').textContent = off ? '' : MUS.cur.artista + (MUS.cur.estilo ? ' · ' + MUS.cur.estilo : '');
+  box.querySelector('.mus-t').textContent = off ? 'Música desligada' : MUS.cur.titulo; box.querySelector('.mus-a').textContent = off ? 'toque em 🔇 para ligar' : MUS.cur.artista + (MUS.cur.estilo ? ' · ' + MUS.cur.estilo : '');
   box.querySelector('[data-mus="mute"]').textContent = off ? '🔇' : '🔊'; box.classList.toggle('off', off);
 }
 function musicTick(inMenu) {
   if (typeof Audio === 'undefined') return;
   const v = S.muted || S.settings.musicOff ? 0 : vol('master') * vol('music') * .3, on = inMenu && v > 0;
   if (inMenu && !MUS.list) musLoad();
-  if (!MUS.el) { if (!on || !MUS.list || !MUS.list.length) { musBox(inMenu && !!MUS.cur); return; }
+  if (!MUS.el) { if (!on || !MUS.list || !MUS.list.length) { musBox(inMenu); return; }
     MUS.el = new Audio(); MUS.el.preload = 'none'; MUS.el.volume = 0; MUS.el.addEventListener('ended', () => musSet(1)); MUS.el.addEventListener('error', () => { if (MUS.list.length > 1) setTimeout(() => musSet(1), 800); });
     musSet(0); MUS.tryT = performance.now(); }
   const m = MUS.el, cur = m.volume, tgt = on ? v : 0, nv = Math.abs(tgt - cur) < .004 ? tgt : cur + (tgt - cur) * .06; m.volume = Math.max(0, Math.min(1, nv));

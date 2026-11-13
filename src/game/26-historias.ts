@@ -299,7 +299,7 @@ const voiceOn = () => typeof speechSynthesis !== 'undefined' && S.settings.voice
 const REC_V = { idx: null, loading: false, cur: null, tok: 0 };
 function fnv(s) { let x = 0x811c9dc5; for (const b of new TextEncoder().encode(s)) x = Math.imul(x ^ b, 0x01000193) >>> 0; return x.toString(16).padStart(8, '0'); }
 function recIdx() { if (REC_V.idx || REC_V.loading) return; REC_V.loading = true; fetch(import.meta.env.BASE_URL + 'assets/voz/index.json').then(r => r.ok ? r.json() : null).then(j => { if (j) { REC_V.idx = {}; for (const k in j) REC_V.idx[k] = new Set(j[k]); } }).catch(() => {}); }
-if (typeof window !== 'undefined') recIdx();
+if (typeof window !== 'undefined' && typeof fetch !== 'undefined') recIdx();
 // toca os pedaços (abertura + frase) em sequência; devolve false se faltar algum (aí usa a voz do navegador)
 function sayRec(parts, pasta) {
   const I = REC_V.idx && REC_V.idx[pasta]; if (!I) return false;

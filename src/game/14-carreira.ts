@@ -1385,6 +1385,14 @@ function crBoardTitle() { const t = $s.CR && $s.CR.tour; if (!t) return ''; cons
 // semifinal ou final (jogos com árbitro de cadeira nos torneios grandes)
 const crIsSemiOrFinal = () => !!($s.CR && $s.CR.tour && !$s.CR.tour.done && $s.CR.tour.round >= crNRounds() - 2);
 const crIsFinal = () => !!($s.CR && $s.CR.tour && !$s.CR.tour.done && $s.CR.tour.round === crNRounds() - 1);
+// a sua partida vai para a quadra central? Semifinal e final, Mundial e seleções, ou quando uma das duplas é das mais
+// fortes da chave (cabeças de chave, seja você ou o adversário): o público quer ver os melhores
+function crIsCentral() {
+  const t = $s.CR && $s.CR.tour, mm = t && crMyMatch(); if (!mm) return false;
+  if (crIsSemiOrFinal() || t.tier >= 9 || (t.special && t.special !== 'estadual')) return true;
+  const ord = t.teams.map((x, i) => ({ i, o: x.o || 0 })).sort((a, b) => b.o - a.o).map(x => x.i), top = Math.max(2, Math.round(t.teams.length / 4));
+  return ord.indexOf(mm.a) < top || ord.indexOf(mm.b) < top;
+}
 function crMyMatch() { const t = $s.CR.tour; if (!t || t.done || t.round >= crNRounds()) return null; return t.rounds[t.round].find(m => m.w === null && (m.a === t.me || m.b === t.me)) || null; }
 function crScore(N, rnd) { const l = Math.floor((rnd || Math.random)() * (N - 1)); return N + '–' + l; }
 function crSimOne(m, isMine) {
@@ -1856,7 +1864,11 @@ function crDrillReward(ok, pass, rew) {
   crNextDay('Treino na quadra: ' + ok + ' acertos' + (pass ? ' (meta cumprida, +' + fmt1(pg) + ' de potencial)' : '') + ', +' + fmt1(g) + ' pontos de evolução.');
   return fmt1(g);
 }
+// dia de torneio (o torneio já começou e não acabou): não dá para descansar o dia, treinar ou dar aulas — o dia é do torneio
+const crTourDay = () => !!($s.CR && $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done);
+const TOUR_DAY_MSG = 'Hoje é dia de torneio: o dia é dos jogos. Treino, aulas e descanso ficam para depois.';
 function crTrain() {
+  if (crTourDay()) { $s.CR.lastMsg = TOUR_DAY_MSG; return; }
   if ($s.CR.injury) { $s.CR.lastMsg = 'Lesionado: nada de treino pesado. Descanse ou faça fisioterapia.'; return; }
   const cost = crInv('quadra') ? 0 : 20 * (crMaxTier() + 1);
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
@@ -1866,8 +1878,8 @@ function crTrain() {
   crWlog($s.CR.day, 'Treino');
   crNextDay('Dia de treino: +' + fmt1(g) + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
-function crCoach() { const g = Math.round(crLessonIncome() * .3 / 10) * 10; $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 2); crWlog($s.CR.day, 'Aulas'); crLoad(.25); const inj = crInjuryRoll(.2); crNextDay('Dia de aulas: +' + money(g) + '.' + (inj ? ' ' + inj : '')); }
-function crRest() { $s.CR.restDays = ($s.CR.restDays || 0) + 1; const g = 14 + (crLife('crio') ? 6 : 0); $s.CR.energy = Math.min(100, $s.CR.energy + g); crWlog($s.CR.day, 'Descanso'); crLoad(-.6); crNextDay('Dia de descanso: +' + g + ' de energia.'); }
+function crCoach() { if (crTourDay()) { $s.CR.lastMsg = TOUR_DAY_MSG; return; } const g = Math.round(crLessonIncome() * .3 / 10) * 10; $s.CR.money += g; $s.CR.energy = Math.max(0, $s.CR.energy - 2); crWlog($s.CR.day, 'Aulas'); crLoad(.25); const inj = crInjuryRoll(.2); crNextDay('Dia de aulas: +' + money(g) + '.' + (inj ? ' ' + inj : '')); }
+function crRest() { if (crTourDay()) { $s.CR.lastMsg = TOUR_DAY_MSG; return; } $s.CR.restDays = ($s.CR.restDays || 0) + 1; const g = 14 + (crLife('crio') ? 6 : 0); $s.CR.energy = Math.min(100, $s.CR.energy + g); crWlog($s.CR.day, 'Descanso'); crLoad(-.6); crNextDay('Dia de descanso: +' + g + ' de energia.'); }
 // descansa até o torneio começar (sábado) ou, sem torneio, até o fim da semana
 function crRestUntil() {
   const wk = $s.CR.week; let n = 0;
@@ -2252,7 +2264,7 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crIsSemiOrFinal };
+export { crIsSemiOrFinal, crIsCentral, crTourDay };
 export { crAddFama, crMood, crChemAdd, crMaybeSponsor, crNews };
 export { crRankingMode, crRankMode, crModePts, MODE_PAY };
 export { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };

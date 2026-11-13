@@ -9,7 +9,7 @@ import { $s } from '../state';
 import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crTeamName, crNRounds, crRoundNames, crAddFama } from './14-carreira';
+import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama } from './14-carreira';
 import { say } from './26-historias';
 import { assignCharacters } from './07-glb';
 import { mergeStatic } from './03-cenario';
@@ -178,13 +178,15 @@ function buildVenue(g, sp) {
   // painel com a chave
   box(g, 5, 3, .2, VX - 12, 1.9, VZ + 4, '#0d1b3a'); box(g, 4.6, 2.6, .05, VX - 12, 1.9, VZ + 4.12, '#183a7a', glow('#2b6cff', .35)); solid(VX - 14.5, VZ + 3.8, VX - 9.5, VZ + 4.2);
   S2('chave', VX - 12, VZ + 6, 'Chave do torneio', 'Ver jogos e resultados', .9);
-  // a sua partida: na central nas semifinais e finais (e em todo o Mundial e nas seleções), senão numa quadra lateral
+  // a sua partida: na central nas semifinais e finais, no Mundial e nas seleções, e quando joga uma dupla cabeça de chave; senão numa quadra lateral
   const mm = crMyMatch();
-  if (mm) { const opp = t.teams[mm.a === t.me ? mm.b : mm.a], imp = crIsSemiOrFinal() || t.tier >= 9 || (t.special && t.special !== 'estadual');
+  if (mm) { const opp = t.teams[mm.a === t.me ? mm.b : mm.a], imp = crIsCentral();
     const i = t.rounds[t.round].indexOf(mm), [mx, mz] = imp ? [VX, VZ - 22] : SIDE[i % 4];
     LV.myCourt = { x: mx, z: mz + (imp ? 10.5 : 10), vs: crTeamName(opp).replace(/^.* · /, ''), name: imp ? 'Quadra Central' : 'Quadra ' + (i % 4 + 1), round: crRoundNames(crNRounds())[t.round] };
     S2('partida', LV.myCourt.x, LV.myCourt.z, 'Sua partida · ' + LV.myCourt.round, 'vs ' + LV.myCourt.vs, 1.3);
     const arrow = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.1, 4), mat('#b6ff3c', glow('#b6ff3c', 1.4))); arrow.rotation.x = Math.PI; arrow.position.set(mx, 4.2, LV.myCourt.z); arrow.userData.spin = true; sp.add(arrow); LV.arrow = arrow;
+    // coluna de luz sobre a sua quadra: dá para ver de qualquer ponto do evento
+    { const bm = new THREE.MeshBasicMaterial({ color: '#b6ff3c', transparent: true, opacity: .22, depthWrite: false }); const beam = new THREE.Mesh(new THREE.CylinderGeometry(.9, .9, 40, 16, 1, true), bm); beam.position.set(mx, 20, LV.myCourt.z); beam.userData.dyn = true; sp.add(beam); }
   } else LV.myCourt = null;
   // fãs pelo local: parados (dá para tirar foto e dar autógrafo) e alguns andando
   LV.fans = [];
@@ -432,6 +434,10 @@ function tick(dt) {
   // nome do lugar onde está
   { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 ? 'Área da piscina' : pz < -12 ? 'Praia' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : px > 240 ? String(($s.CR.tour && $s.CR.tour.name) || 'Torneio').replace(/ · .*$/, '') : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
     if (where !== LV.where) { LV.where = where; const e = document.querySelector('#livreHud .lv-where'); if (e) e.textContent = where; } }
+  // bússola para a sua quadra (no painel de cima): direção em relação à câmera e distância
+  { const cp = document.getElementById('livreGo'); if (cp) { const mc = LV.myCourt && LV.nearVenue !== false ? LV.myCourt : null; cp.hidden = !mc;
+    if (mc) { const dx = mc.x - px, dz = mc.z - pz, d = Math.hypot(dx, dz); camera.getWorldDirection(_v); const ang = Math.atan2(dx * _v.z - dz * _v.x, dx * _v.x + dz * _v.z);
+      cp.querySelector('i').style.transform = 'rotate(' + (-ang * 180 / Math.PI - 90).toFixed(0) + 'deg)'; cp.querySelector('b').textContent = d < 4 ? 'Você chegou' : Math.round(d) + ' m'; } } }
   if (LV.msgT > 0 && (LV.msgT -= dt) <= 0) { const m = document.getElementById('livreMsg'); if (m) m.hidden = true; }
 }
 // câmera: atrás do jogador, girada pelo mouse (arrastando) ou Q/E… (E é interagir: gira com Q e R); dentro de casa sobe e olha de cima
@@ -456,14 +462,15 @@ function hud(on) {
   let el = document.getElementById('livreHud');
   if (!el) {
     el = document.createElement('div'); el.id = 'livreHud';
-    el.innerHTML = '<div class="lv-top"><div class="lv-stat"><div class="lv-cal"><small></small><b></b><span></span></div><div class="lv-info"><b class="lv-where"></b><div class="lv-week"></div><div class="lv-next"></div></div></div>'
+    el.innerHTML = '<div class="lv-top"><div class="lv-stat"><div class="lv-cal"><small></small><b></b><span></span></div><div class="lv-info"><b class="lv-where"></b><div class="lv-week"></div><div class="lv-next"></div></div><div id="livreGo" class="lv-go" hidden title="Direção da sua quadra"><i>➤</i><small>sua quadra</small><b></b></div></div>'
       + '<div class="lv-res"><div class="lv-k lv-en" title="Energia"><span class="lv-ico">⚡</span><span class="lv-bar"><i></i></span><b></b><em class="lv-dl"></em></div><div class="lv-k lv-mo" title="Dinheiro"><span class="lv-ico">💰</span><b></b><em class="lv-dl"></em></div></div>'
-      + '<button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div>'
+      + '<div class="lv-btns"><button type="button" class="ghost sm" id="livreCfg" title="Configurações">⚙️</button><button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div></div>'
       + '<div id="livrePrompt" class="lv-prompt" hidden><kbd>E</kbd><span></span></div><div id="livreMsg" class="lv-msg" hidden></div>'
       + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · arrastar: girar · rodinha: zoom · clique da rodinha arrastando: girar e inclinar · Z/X: zoom · T/G: inclinação</div>'
       + '<div class="lv-joy" id="livreJoy"><i></i></div><button type="button" class="lv-act" id="livreAct">E</button>';
     document.body.appendChild(el);
     el.querySelector('#livreExit').addEventListener('click', () => exit(true));
+    el.querySelector('#livreCfg').addEventListener('click', () => { if (LV.actions.cfg) LV.actions.cfg(); });
     el.querySelector('#livreAct').addEventListener('click', interact);
     // joystick de toque
     const J = el.querySelector('#livreJoy'), knob = J.querySelector('i');
@@ -501,8 +508,10 @@ function prompt() {
   const b = document.getElementById('livreAct'); if (b) b.classList.toggle('on', !!a);
 }
 LV.msg = t => { const m = document.getElementById('livreMsg'); if (!m) return; m.textContent = t; m.hidden = !t; LV.msgT = 5; };
+const DAY_ACTS = new Set(['cama', 'piscina', 'gelo', 'quadraTreino', 'quadraDesafio', 'arenaTreino', 'arenaDesafio', 'aulas', 'academia', 'ct', 'podcast']);
 function interact() {
   const s = LV.near, a = s && ACT[s.id]; if (!a || !$s.CR) return;
+  if (DAY_ACTS.has(s.id) && crTourDay()) { LV.msg('🏆 Hoje é dia de torneio: treino, aulas e descanso ficam para depois. Vá ao local do torneio (táxi/van na rua).'); return; }
   const before = $s.CR.lastMsg; a.run(); saveCareer();
   if (!LV.on) return; // a ação saiu do modo livre (carreira, desafio)
   if ($s.CR.lastMsg && $s.CR.lastMsg !== before) LV.msg($s.CR.lastMsg);
@@ -513,6 +522,7 @@ function interact() {
 // teclado e mouse (só no modo livre)
 addEventListener('keydown', e => {
   if (!LV.on) return; const k = e.key.toLowerCase();
+  const mo = document.getElementById('menu'); if (mo && !mo.hidden) { if (k === 'escape') { mo.hidden = true; e.preventDefault(); } return; } // configurações abertas por cima: teclas são do menu
   if (k === 'escape') { exit(true); return; }
   if (k === 'e' && !e.repeat) { interact(); e.preventDefault(); return; }
   LV.keys[k] = true; if (k === 'shift') LV.keys.shift = true;

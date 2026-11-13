@@ -14,7 +14,7 @@ import { applyGfx, sndWhistle } from './08-audio';
 import { handPos } from './11-mira';
 import { MTR, applyCam, setupLocal2 } from './12-controles';
 import { champBoardTitle, champIsFinal, champMatchEnded } from './13-campeonato';
-import { STATE_INFO, crBoardTitle, crIsFinal, crIsSemiOrFinal, careerMatchEnded, crPotBarHTML } from './14-carreira';
+import { STATE_INFO, crBoardTitle, crIsFinal, crIsSemiOrFinal, crIsCentral, careerMatchEnded, crPotBarHTML } from './14-carreira';
 import { humanPlan, receiveX } from './16-ia';
 import { sideOf } from './18-animacao';
 import { warmShaders } from './02-render';
@@ -745,11 +745,11 @@ const ARENA_PAL = {
   MUN: { line: '#111111', trim: '#e8a317', sand: '#fffaf0', seat: '#17324d', board: ['#111111', '#e8a317'] },
 };
 const TOUR_MASTERS = ['NUX', "HERUE'S", 'KUNA', 'ANA SPORT', 'MORMAJI', 'DROP SHUT', 'ZANB', 'VIZION'];
-function arenaFor() {
-  if (S.careerActive && $s.CR && $s.CR.tour) {
+function arenaFor(force) {
+  if ((S.careerActive || force) && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();
     const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier|saint-georges/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
-    const size = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3;
+    const size0 = t.special === 'estadual' ? 1 : t.tier <= 2 ? 0 : t.tier <= 4 ? 1 : t.tier <= 6 ? 2 : 3, size = crIsCentral() || force ? size0 : Math.max(0, size0 - 1); // quadra lateral: arquibancada menor
     const stPal = t.uf && STATE_INFO[t.uf] ? STATE_INFO[t.uf].pal : null; // amadores e estaduais: cores do estado
     const indoor = (t.tier <= 2 || t.special === 'estadual') && /\b(arena|point)\b/i.test(t.name || ''); // points e arenas: ambiente fechado
     // ginásio pequeno (só a quadra do jogo) em parte dos points; sempre o mesmo para o mesmo torneio
@@ -891,4 +891,4 @@ function showOver() {
   el.over.hidden = false;
 }
 
-export { perfServe, sideWalkStep, simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };
+export { arenaFor, perfServe, sideWalkStep, simulateRest, perfHitHook, DRILL_LVL, COURTS, showReview, shotFeedback, perfShot, matchRating, pointShow, serveBanner, renderMatchStats, banner, DRILLS, startDrill, drillNext, momentum, decisive, scoreText, $, configureMode, dupla, el, feedback, hideBanner, isTouch, newMatch, placeHeldBall, pointTo, renderBoard, setupPoint, shotBtns, showOver };

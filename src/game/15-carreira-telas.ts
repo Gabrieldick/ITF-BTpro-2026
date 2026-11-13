@@ -49,7 +49,7 @@ function renderCrSide() {
 { const lb = document.getElementById('crLivre'); if (lb) lb.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 { const w = document.getElementById('crWalk'); if (w) w.addEventListener('click', () => { if ($s.CR) livreEnter(); }); }
 HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
-LIVRE.actions = { play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
+LIVRE.actions = { cfg: () => { const m = $('menu'); m.hidden = false; menuStep('cfg'); menuPrev = 'livre'; }, play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -1105,6 +1105,7 @@ document.querySelectorAll('#menu input[name=local2]').forEach(r => r.addEventLis
 addEventListener('gamepadconnected', qmLocal2); addEventListener('gamepaddisconnected', qmLocal2);
 function menuStep(st) {
   const m = $('menu');
+  if (st === 'back' && menuPrev === 'livre') { m.hidden = true; menuPrev = 'home'; m.dataset.step = 'home'; return; } // configurações abertas do modo livre: volta a andar
   if (st === 'back') st = menuPrev; else if (st === 'cfg' && m.dataset.step !== 'cfg' && m.dataset.step !== 'keys') menuPrev = m.dataset.step || 'home';
   m.dataset.step = st;
   m.querySelectorAll('section[data-step]').forEach(sec => { sec.hidden = sec.dataset.step !== st; });

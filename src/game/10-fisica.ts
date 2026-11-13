@@ -111,15 +111,18 @@ function doHit(p, type, q, isServe, mod) {
   const pressure = isServe || key === 'smash' ? 0 : clamp((inSpeed - 12) / 9 + (ball.finisher ? .55 : 0) + (S.rally === 1 && ball.servePerf ? .35 : 0), 0, 1.5) * (S.rally === 1 ? (ball.servePerf ? .8 : .3) : 1); // devolução de saque: o saque ficou mais rápido, a pressão sobe bem menos
   if (pressure > 0) {
     // contra bola forte, o golpe de defesa é o mais seguro; a curta (toque) é uma aposta: levanta ou sai mais
-    const risk = key === 'defesa' ? .6 : key === 'curta' ? 1.45 : 1;
-    const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5 + (key === 'defesa' ? .06 : 0), 0, 1);
+    // voleio/drive batido contra pancada (em vez do golpe de defesa): golpe cheio contra bola rápida — arrisca bem mais
+    // (antes saía quase tão seguro quanto a defesa e ainda mais rápido)
+    const vDef = key === 'drive' || !!mod.volley;
+    const risk = key === 'defesa' ? .6 : key === 'curta' ? 1.45 : vDef ? 1.4 : 1;
+    const qq = clamp((mod.timing === undefined ? q : q * .6 + mod.timing * .4) + (attrK(p, 'def') - .7) * .5 + (key === 'defesa' ? .06 : 0) - (vDef ? .1 : 0), 0, 1);
     grade = qq;
     const wDef = 1 + weakK(p, 'def') * .9; // defesa fraca: bem mais erro e bola levantada
     const fpE = S.femPace ? lerp(1, .8, qq) : 1; // feminino: a pancada força menos o erro (mais trocas) — só com defesa boa; no tempo errado quase como no masculino
     let pOut = pressure * (1 - qq) * .45 * risk * wDef * fpE, pPop = pressure * (.06 + (1 - qq) * .85) * risk * wDef * fpE; // (defesa boa levanta bem menos: a que flutua na rede é exceção)
     // smash potente (força e smash altos, mais ainda o perfeito): a defesa espirra mais (menos para quem defende bem)
     // (vale para qualquer golpe de devolução: com curta ou lob espirra ainda mais que com a defesa)
-    if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : 1.25); pOut += .2 * ball.smashPow * dk * fpE; pPop += .14 * ball.smashPow * dk * fpE; }
+    if (ball.smashPow) { const dk = lerp(1, .6, Math.min(1, attrK(p, 'def'))) * (key === 'defesa' ? 1 : key === 'curta' ? 1.5 : vDef ? 1.45 : 1.25); pOut += .2 * ball.smashPow * dk * fpE; pPop += .14 * ball.smashPow * dk * fpE; }
     const r0 = Math.random();
     if (r0 < pOut) wild = true; else if (r0 < pOut + pPop) pop = true;
   }
