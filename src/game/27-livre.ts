@@ -724,9 +724,10 @@ function rideMesh(kind) {
 }
 
 // ---------- cena da entrevista (coletiva) ----------
+// montada dentro da quadra da arena (base), com a rede e a arquibancada em volta
 // longe de tudo: painel com as marcas (patrocinadores, master e o torneio), repórter com microfone, cinegrafista e flashes;
 // a câmera alterna entre quem pergunta e você respondendo
-const PR = { on: false, g: null, base: new THREE.Vector3(-250, 0, 200), shot: 'ask', t: 0, flash: null, saved: null };
+const PR = { on: false, g: null, base: new THREE.Vector3(2.6, 0, 6.2), shot: 'ask', t: 0, flash: null, saved: null };
 function pressBuild(T) {
   if (PR.g) { scene.remove(PR.g); PR.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   const g = new THREE.Group(); g.position.copy(PR.base); scene.add(g); PR.g = g;
