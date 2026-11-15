@@ -12,7 +12,7 @@ import { cpuA, cpuB, human, partner } from './06-modelos';
 import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, TIERS } from './14-carreira';
 import { say, HIST } from './26-historias';
 import { assignCharacters, applyRackets, applyPlayerStyle } from './07-glb';
-import { mergeStatic, sea as SEA } from './03-cenario';
+import { mergeStatic, sea as SEA, ENV } from './03-cenario';
 import { arenaFor } from './09-interface';
 import { nameOf } from './00-base';
 
@@ -400,30 +400,43 @@ function build() {
   const court = crInv('quadra') >= 1 || lvl >= 3, lights = crInv('quadra') >= 2 || lvl >= 3;
   // ---- chão: areia da praia ao norte, terrenos com grama, calçadas e a rua ----
   box(g, 400, .2, 213, 100, -.12, 18.5, '#e8d7ae', { noShadow: true }); // (a areia vai até o mar da cena, em z −88)
+  // horizonte: areia e terreno até longe (sem emenda com o cenário da quadra), a rua principal segue até sumir, morros ao fundo
+  box(g, 2400, .2, 900, 100, -.135, 362, '#dccb9f', { noShadow: true }); box(g, 2400, .06, 8, 100, .02, 24, '#3a3f47', { noShadow: true }); box(g, 2400, .06, 8, 100, .015, 64, '#3a3f47', { noShadow: true });
+  for (let i = 0; i < 9; i++) { const h = new THREE.Mesh(new THREE.ConeGeometry(70 + (i % 3) * 25, 40 + (i % 4) * 14, 7), mat(['#6f9b6a', '#5e8a5c', '#7aa673'][i % 3])); h.position.set(-600 + i * 170, 10, 420 + (i % 2) * 60); g.add(h); }
   solid(-60, -97, 290, -96); // dá para entrar no mar (até onde dá pé)
   // beira do mar (o mar é o da cena, o mesmo da quadra: some a emenda com o local do torneio)
-  const lotW = [14, 17, 22, 30][lvl], lotD = [12, 14, 18, 24][lvl];
+  const lotW = [14, 17, 22, 46][lvl], lotD = [12, 14, 18, 30][lvl];
   box(g, lotW + 18, .05, lotD + 6, court ? 6 : 0, .02, 1, lvl >= 2 ? '#6aa65a' : '#7fb069', { noShadow: true });
   box(g, 400, .06, 8, 100, .03, 24, '#3a3f47', { noShadow: true }); for (let i = -98; i < 300; i += 5) box(g, 2.2, .02, .18, i, .07, 24, '#f2f2f2', { noShadow: true });
   [19.2, 28.8].forEach(z => { box(g, 400, .14, 2.4, 100, .07, z, '#cfcac0', { noShadow: true }); box(g, 400, .16, .12, 100, .08, z + (z < 24 ? 1.2 : -1.2), '#9e9a92', { noShadow: true }); });
   box(g, 2.2, .05, 13, 0, .05, 12.5, '#cfcac0', { noShadow: true }); // caminho até a porta
   // ---- casa ----
-  const W = [12, 14, 18, 24][lvl], D = [10, 11, 13, 16][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.3][lvl];
+  const W = [12, 14, 18, 34][lvl], D = [10, 11, 13, 22][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.6][lvl]; // (a mansão é bem maior: suíte, sala de cinema, escritório)
   const wc = ['#e9e2d4', '#f1ece2', '#f6f3ee', '#fbfaf7'][lvl], floor = ['#a77d55', '#b98b5e', '#c49a6c', '#d6cdbf'][lvl];
   box(g, W, .08, D, 0, .04, 0, floor, { noShadow: true, roughness: lvl >= 3 ? .3 : .8 });
   if (lvl >= 1) box(g, W + .6, .3, D + .6, 0, -.05, 0, '#d8d2c6', { noShadow: true });
   wall(g, -hW, -hD, hW, -hD, WH, wc, lvl >= 2 ? [[-1.4, 1.4]] : [], true);           // fundo (na mansão e na casa com piscina: porta para a área da piscina)
-  wall(g, -hW, -hD, -hW, hD, WH, wc, [], true); wall(g, hW, -hD, hW, hD, WH, wc, [], true);
+  const tcz = -hD + 3.7; // sala de troféus (comprada): passagem direto da sala de estar
+  wall(g, -hW, -hD, -hW, hD, WH, wc, crLife('trofeus') ? [[tcz - 1, tcz + 1]] : [], true); wall(g, hW, -hD, hW, hD, WH, wc, [], true);
   wall(g, -hW, hD, hW, hD, WH, wc, [[-1.2, 1.2]], true);
   if (lvl >= 2) [-1, 1].forEach(s => box(g, .25, WH + .1, .25, s * 1.5, (WH + .1) / 2, hD + .12, '#c9a97c')); // batentes da porta grandes
   // quarto (fundo à direita)
-  const bx = hW - 4.6;
-  wall(g, bx, -hD, bx, -hD + 4.4, WH, wc, [[-hD + 3.2, -hD + 4.4]]);
+  // quarto fechado (duas paredes e a porta); na mansão, uma suíte bem maior
+  const bd = lvl >= 3 ? 7 : 4.4, bx = hW - (lvl >= 3 ? 8 : 4.6);
+  wall(g, bx, -hD, bx, -hD + bd, WH, wc, [[-hD + bd - 1.2, -hD + bd]]); wall(g, bx, -hD + bd, hW, -hD + bd, WH, wc);
   // portas: entrada (dupla), fundos para a piscina (dupla) e quarto
   const dc = ['#8a6a45', '#7a5a42', '#5a3a28', '#2b2d31'][lvl];
   door(sp, -1.2, hD, 1.2, 'x', 1, dc); door(sp, 1.2, hD, 1.2, 'x', -1, dc);
   if (lvl >= 2) { door(sp, -1.4, -hD, 1.4, 'x', 1, '#cfe8f5'); door(sp, 1.4, -hD, 1.4, 'x', -1, '#cfe8f5'); }
-  door(sp, bx, -hD + 3.2, 1.2, 'z', 1, dc);
+  door(sp, bx, -hD + bd - 1.2, 1.2, 'z', 1, dc);
+  if (lvl >= 3) { // sala de cinema (frente à direita): telão, poltronas em dois degraus, luz baixa
+    const c0 = hW - 9, z0 = hD - 8; wall(g, c0, z0, hW, z0, WH, '#2b2d31'); wall(g, c0, z0, c0, hD, WH, '#2b2d31', [[hD - 2.8, hD - 1.4]]); door(sp, c0, hD - 2.8, 1.4, 'z', 1, '#2b2d31');
+    box(g, 9, .06, 8, hW - 4.5, .09, hD - 4, '#3a1d2a', { noShadow: true });
+    box(g, 7, 3, .1, hW - 4.5, 2, z0 + .1, '#0a0a0c'); banner(g, nameOf($s.CR.me).split(' ')[0] + ' Cine', hW - 4.5, 2, z0 + .17, 6.6, 2.7, '#0b1a3a', '#e8b923', 0, 'sessão: melhores pontos da carreira');
+    for (let r = 0; r < 2; r++) { box(g, 8, .25 * r, 1.6, hW - 4.5, .12 * r, z0 + 3.4 + r * 2.1, '#2b1620'); for (let i = 0; i < 4; i++) { const sx = hW - 7.5 + i * 2, sz2 = z0 + 3.4 + r * 2.1, y0 = .25 * r; box(g, 1.1, .45, .9, sx, y0 + .25, sz2, '#7a1f2b'); box(g, 1.1, .8, .2, sx, y0 + .7, sz2 + .45, '#7a1f2b'); } solid(hW - 8.6, z0 + 2.6 + r * 2.1, hW - .4, z0 + 4.2 + r * 2.1); }
+    for (let i = 0; i < 4; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), mat('#ffe7b0', glow('#ffcf7a', 1.6))); l.position.set(c0 + .2, .4, z0 + 1 + i * 1.8); g.add(l); }
+    S2('cinema', hW - 4.5, hD - 1.1, 'Sala de cinema', 'Ver um filme ou seus jogos', .9);
+  }
   bed(g, lvl >= 2 ? 1.9 : 1.4, hW - 2.2, -hD + 1.4, 0, ['#3d5a80', '#4a6fa5', '#7a5c8e', '#2b2d42'][lvl]);
   box(g, .5, .5, .45, hW - .5, .25, -hD + .5, '#6b4f3a'); lamp(g, bx + .6, -hD + .6, true);
   S2('cama', hW - 2.2, -hD + 3.2, 'Cama', 'Descansar', .9);
@@ -448,13 +461,13 @@ function build() {
   else { box(g, 1.6, .9, .6, -hW + 1, .45, -hD + .35, '#d9cfc0'); box(g, .7, 1.7, .6, -hW + 2.3, .85, -hD + .35, '#cfd3d8'); solid(-hW, -hD, -hW + 2.7, -hD + .7); }
   S2('cozinha', -hW + 2, -hD + (lvl >= 2 ? 3.7 : 1.6), 'Cozinha', crLife('nutri') ? 'Cardápio do nutricionista' : 'Fazer um lanche', .8);
   // canto do computador: comum, gamer (time de eSports) ou estúdio de podcast (mídia)
-  const pcx = hW - 1.6, pcz = hD - 1.6;
+  const pcx = lvl >= 3 ? hW - 12 : hW - 1.6, pcz = hD - 1.6; // (na mansão o canto da direita é a sala de cinema)
   desk(g, pcx, pcz, 2, crInv('esports') >= 1);
   S2('pc', pcx - 1.6, pcz, crInv('esports') >= 1 ? 'Setup gamer' : 'Computador', 'Agenda da carreira', .8);
-  if (crInv('midia') >= 1) { podcast(g, hW - 2.8, hD - 4.2); S2('podcast', hW - 3, hD - 3, 'Estúdio', crInv('midia') >= 2 ? 'Gravar o podcast' : 'Gravar vídeo', .7); }
+  if (crInv('midia') >= 1) { const qx2 = lvl >= 3 ? hW - 12 : hW - 2.8, qz2 = lvl >= 3 ? hD - 5.5 : hD - 4.2; podcast(g, qx2, qz2); S2('podcast', qx2 - .2, qz2 + 1.2, 'Estúdio', crInv('midia') >= 2 ? 'Gravar o podcast' : 'Gravar vídeo', .7); }
   // academia em casa (mansão ou CT) e banheira de gelo (crioterapia ou clínica)
   if (lvl >= 3 || crInv('ct') >= 1) { gym(g, -hW + 2, 0); S2('academia', -hW + 3.5, 1.8, 'Academia', 'Treino físico', .8); }
-  if (crLife('crio') || crInv('saude') >= 1) { iceBath(g, hW - 1.2, -.6); S2('gelo', hW - 2.5, -.6, 'Banheira de gelo', 'Recuperar', .7); }
+  if (crLife('crio') || crInv('saude') >= 1) { iceBath(g, bx - 1.1, -hD + .8); S2('gelo', bx - 1.1, -hD + 2.1, 'Banheira de gelo', 'Recuperar', .7); }
   // mesa de jantar (a partir do apartamento): na frente, à esquerda
   if (lvl >= 1) { const tx = -hW + (lvl >= 3 ? 6 : 4.2), tz = hD - (lvl >= 3 ? 5.2 : 3.6), n = lvl >= 3 ? 3 : 2;
     box(g, n * 1 + .4, .06, 1.1, tx, .78, tz, lvl >= 3 ? '#2b2d31' : '#8a6a45'); [-1, 1].forEach(a => [-1, 1].forEach(b => box(g, .07, .75, .07, tx + a * (n * .5), .38, tz + b * .45, '#3a2d22')));
@@ -462,7 +475,8 @@ function build() {
     cyl(g, .35, .25, .05, tx, .9, tz, '#ffffff'); solid(tx - n * .5 - .3, tz - 1.2, tx + n * .5 + .3, tz + 1.2);
     if (lvl >= 2) { const c = new THREE.Mesh(new THREE.SphereGeometry(.35, 12, 10), mat('#fff3d6', glow('#ffe1a8', 1))); c.position.set(tx, WH - .5, tz); g.add(c); } }
   // casa com piscina e mansão: estante de livros, aparador e mesa de centro; mansão: piano, bar e colunas
-  if (lvl >= 2) { box(g, .45, 2, 2.4, hW - .35 - (lvl >= 3 ? 0 : 0), 1, 2.2, '#4a3628'); for (let k = 0; k < 4; k++) for (let i = 0; i < 6; i++) box(g, .3, .36, .12, hW - .38, .35 + k * .5, 1.2 + i * .38, ['#c0392b', '#2457c5', '#f2c14e', '#2a9d8f', '#6b4f7a'][(i + k) % 5], { noShadow: true }); solid(hW - .6, 1, hW, 3.4);
+  const sz = lvl >= 3 ? -4.4 : 0;
+  if (lvl >= 2) { box(g, .45, 2, 2.4, hW - .35, 1, 2.2 + sz, '#4a3628'); for (let k = 0; k < 4; k++) for (let i = 0; i < 6; i++) box(g, .3, .36, .12, hW - .38, .35 + k * .5, 1.2 + sz + i * .38, ['#c0392b', '#2457c5', '#f2c14e', '#2a9d8f', '#6b4f7a'][(i + k) % 5], { noShadow: true }); solid(hW - .6, 1 + sz, hW, 3.4 + sz);
     box(g, 1.2, .38, .7, tvx, .2, -hD + 2.3, '#3a2d22'); solid(tvx - .6, -hD + 1.95, tvx + .6, -hD + 2.65); }
   if (lvl >= 3) { box(g, 1.8, 1, 1.5, 4, .5, hD - 3.2, '#0d0d10', { roughness: .2, metalness: .2 }); box(g, 1.8, .06, 1.6, 4, 1.02, hD - 3.1, '#1a1a1e'); box(g, .6, .4, .4, 4, .2, hD - 1.9, '#0d0d10'); solid(3.1, hD - 4, 4.9, hD - 2.4);
     box(g, 3.2, 1.1, .6, -1.5, .55, -1.2, '#2b2d31'); box(g, 3.3, .06, .7, -1.5, 1.12, -1.2, '#e9e4dc'); for (let i = 0; i < 3; i++) cyl(g, .17, .17, .75, -2.5 + i, .38, -.6, '#c9a97c'); solid(-3.1, -1.5, .1, -.9);
@@ -533,7 +547,7 @@ function build() {
   if (crLife('trofeus')) { // sala de troféus ao lado da casa: um pedestal por título (os maiores no centro), luz de vitrine
     const x0 = -hW - 8.6, x1 = -hW - .2, z0 = -hD, z1 = -hD + 7.4, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     box(g, x1 - x0, .08, z1 - z0, cx, .04, cz, '#3a2a20', { noShadow: true });
-    wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a'); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); door(sp, cx - 1.1, z1, 1.1, 'x', 1, '#5a3a28'); door(sp, cx + 1.1, z1, 1.1, 'x', -1, '#5a3a28'); wall(g, x1, z0, x1, z1, WH, '#1d2a4a');
+    wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a'); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); door(sp, cx - 1.1, z1, 1.1, 'x', 1, '#5a3a28'); door(sp, cx + 1.1, z1, 1.1, 'x', -1, '#5a3a28'); wall(g, x1, z0, x1, z1, WH, '#1d2a4a', [[cz - 1, cz + 1]]); door(sp, x1, cz - 1, 2, 'z', 1, '#5a3a28');
     banner(g, 'Sala de Troféus', cx, WH - .45, z0 + .2, 5, .7, '#0b1a3a', '#e8b923');
     const L = trophyList(); L.slice(0, 18).forEach((t, i) => { const r = Math.floor(i / 6), c = i % 6, px2 = x0 + 1 + c * ((x1 - x0 - 2) / 5), pz2 = z0 + 1.6 + r * 2;
       box(g, .5, .9, .5, px2, .45, pz2, '#f2efe9'); cup(g, px2, .9, pz2, t); solid(px2 - .3, pz2 - .3, px2 + .3, pz2 + .3);
@@ -597,6 +611,7 @@ const ACT = {
   restaurante: { txt: () => 'Almoçar fora (+6 energia · $40)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.lunchDay === k) { LV.msg('Você já almoçou hoje.'); return; } C.lunchDay = k; C.money -= 40; C.energy = Math.min(100, C.energy + 6); LV.msg('🍽️ Peixe grelhado, salada e suco: +6 de energia.'); } },
   acai: { txt: () => 'Tomar um açaí ($15)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.acaiDay === k) { LV.msg('Um por dia já está bom.'); return; } C.acaiDay = k; C.money -= 15; C.energy = Math.min(100, C.energy + 2); LV.msg('🍧 Açaí com banana e granola: +2 de energia.'); } },
   loja: { txt: () => 'Entrar na loja', run: () => LV.actions.openCareer() },
+  cinema: { txt: () => 'Ver um filme no cinema de casa (+2 energia)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.cineDay === k) { LV.msg('Uma sessão por dia: já assistiu hoje.'); return; } C.cineDay = k; C.energy = Math.min(100, C.energy + 2); LV.msg('🍿 ' + ['Filme de ação com pipoca', 'Revendo a sua última final', 'Documentário do circuito', 'Comédia com a família'][Math.floor(Math.random() * 4)] + ': +2 de energia.'); } },
   armario: { txt: () => 'Abrir o ' + (crInv('moradia') >= 3 ? 'closet' : 'guarda-roupa'), run: () => wardrobe() },
   social: { txt: () => 'Dar aula e jogar com a garotada', run: () => { const C = $s.CR, k = C.season + '-' + C.week; if (C.socialW === k) { LV.msg('Você já foi ao projeto esta semana. A garotada manda um abraço!'); return; } C.socialW = k; crAddFama(.8); C.energy = Math.max(0, C.energy - 3); LV.msg('🤝 Aula no projeto: as crianças jogaram com você e postaram tudo (+0,8 de fama).'); } },
   salaTrofeus: { txt: () => 'Ver a sala de troféus', run: () => { const L = trophyList(); LV.msg(L.length ? '🏆 ' + L.length + ' títulos. O maior: ' + ((TIERS[L[0]] && TIERS[L[0]].nome) || '') + ' (' + TROPHY_LOOK[L[0]] + '). Cada torneio tem o seu troféu: ' + [...new Set(L)].map(t => TIERS[t].curto + ' = ' + TROPHY_LOOK[t]).join(', ') + '.' : 'Os pedestais estão esperando o primeiro título.'); } },
@@ -621,6 +636,8 @@ function enter() {
   if (!$s.CR || LV.on) return;
   build();
   LV.on = true; LV.saved = { mode: S.mode, pos: human.pos.clone(), sea: SEA.visible }; SEA.visible = true; // o mar da cena é o da praia do bairro
+  // o resto do cenário da quadra (prédios da orla, arquibancadas, ilha) some: o bairro tem o próprio horizonte
+  LV.envVis = ENV.children.map(o => [o, o.visible]); ENV.children.forEach(o => { if (o !== SEA) o.visible = false; });
   S.mode = 'livre';
   document.body.classList.remove('in-menu'); document.body.classList.add('livre');
   document.getElementById('career').hidden = true;
@@ -637,7 +654,7 @@ function goVenue() { build(); LV.snap = true; human.pos.copy(P(VX, VZ + 34)); hu
 function goHome() { LV.snap = true; human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
 function exit(toCareer = true) {
   if (!LV.on) return;
-  LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
+  LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; (LV.envVis || []).forEach(([o, v]) => { o.visible = v; }); LV.envVis = null; if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
   if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); applyRackets(); applyPlayerStyle(); } // volta o boneco da partida rápida
