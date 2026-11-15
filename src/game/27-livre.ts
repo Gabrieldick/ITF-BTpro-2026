@@ -22,6 +22,23 @@ const P = (x, z) => new THREE.Vector3(H0.x + x, 0, H0.z + z);
 
 // ---------- montagem ----------
 function box(g, w, h, d, x, y, z, color, o) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, o)); m.position.set(x, y, z); m.castShadow = !(o && o.noShadow); m.receiveShadow = true; g.add(m); return m; }
+// porta (folha presa na dobradiça): abre sozinha quando você chega perto. axis 'x': porta numa parede ao longo de x; dir: para que lado a folha vai
+function door(sp, hx, hz, w, axis, dir, col = '#8a6a45', h = 2.15) {
+  const piv = new THREE.Group(); piv.position.set(hx, 0, hz); piv.userData.dyn = true; sp.add(piv);
+  const leaf = box(piv, axis === 'x' ? w : .06, h, axis === 'x' ? .06 : w, axis === 'x' ? dir * w / 2 : 0, h / 2, axis === 'x' ? 0 : dir * w / 2, col);
+  box(piv, axis === 'x' ? .05 : .09, .05, axis === 'x' ? .09 : .05, axis === 'x' ? dir * (w - .12) : 0, 1.05, axis === 'x' ? 0 : dir * (w - .12), '#d9d9d9', { metalness: .7, roughness: .3 });
+  LV.doors.push({ piv, cx: axis === 'x' ? hx + dir * w / 2 : hx, cz: axis === 'x' ? hz : hz + dir * w / 2, open: 0, sign: dir }); return piv;
+}
+// rede de verdade: postes, malha escura e faixa de cima com a marca (do seu patrocinador, se tiver)
+function realNet(g, x, z, w, along, brand, bg = '#111214', fg = '#ffffff') {
+  const rot = along === 'x' ? 0 : Math.PI / 2, o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o);
+  [-1, 1].forEach(sd => { cyl(o, .06, .06, 1.85, sd * (w / 2 + .3), .92, 0, '#2b2d31'); });
+  const tex = canvasTex(256, 64, (c, W, H) => { c.strokeStyle = 'rgba(20,20,22,.9)'; c.lineWidth = 2; for (let i = 0; i <= W; i += 8) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, H); c.stroke(); } for (let j = 0; j <= H; j += 8) { c.beginPath(); c.moveTo(0, j); c.lineTo(W, j); c.stroke(); } });
+  tex.wrapS = THREE.RepeatWrapping; tex.repeat.set(w / 2, 1);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, .85), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: .3, side: THREE.DoubleSide })); mesh.position.y = 1.27; o.add(mesh);
+  banner(o, brand || 'Beach Tennis', 0, 1.74, .005, w, .12, bg, fg); banner(o, brand || 'Beach Tennis', 0, 1.74, -.005, w, .12, bg, fg, Math.PI);
+  box(o, w, .02, .02, 0, .85, 0, '#ffffff');
+}
 function dyn2(sp, o) { o.userData.dyn = true; sp.add(o); return o; }
 function blocked(x, z, m = 0) { return LV.boxes.some(([x0, z0, x1, z1]) => x > x0 - m && x < x1 + m && z > z0 - m && z < z1 + m); }
 function solid(x0, z0, x1, z1) { LV.boxes.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]); }
@@ -72,11 +89,25 @@ function tvSet(g, w, x, z, rot, big) { // na parede (rot 0: parede de trás)
   if (big) [-1, 1].forEach(s => box(o, .3, 1.1, .3, s * (w / 2 + .5), .55, .1, '#1d1d20'));
   const ex = rot % 2 ? .35 : w / 2 + .3, ez = rot % 2 ? w / 2 + .3 : .35; solid(x - ex, z - ez, x + ex, z + ez);
 }
-// troféu (taça): quanto maior o nível do torneio, maior e mais dourada
+// troféus com a cara de cada torneio: medalha (amador C), taças pequenas (B e A), cristal (BT10), prato (BT50), tigela (BT100),
+// taça com tampa (BT200), taça grande com a bola no topo (BT400), raquete dourada (Sand Series) e globo (Mundial)
+const TROPHY_LOOK = ['medalha', 'taça de prata', 'taça dourada', 'cristal', 'prato de prata', 'tigela de prata', 'taça com tampa', 'taça grande', 'raquete dourada', 'globo dourado'];
 function cup(o, x, y, z, tier) {
-  const k = .75 + tier * .07, col = tier >= 7 ? '#e8b923' : tier >= 4 ? '#d9b44a' : tier >= 2 ? '#c0c5cc' : '#b8803f', M = { metalness: .85, roughness: .22 };
-  box(o, .16 * k, .06 * k, .16 * k, x, y + .03 * k, z, '#2b2d31'); cyl(o, .025 * k, .03 * k, .14 * k, x, y + .13 * k, z, col, M);
-  cyl(o, .11 * k, .05 * k, .17 * k, x, y + .28 * k, z, col, M); [-1, 1].forEach(s => { const h = new THREE.Mesh(new THREE.TorusGeometry(.045 * k, .012 * k, 6, 12), mat(col, M)); h.position.set(x + s * .12 * k, y + .3 * k, z); h.rotation.y = Math.PI / 2; o.add(h); });
+  const GOLD = { metalness: .9, roughness: .2 }, g = new THREE.Group(); g.position.set(x, y, z); o.add(g);
+  const base = (w, h, c) => box(g, w, h, w, 0, h / 2, 0, c);
+  const C = (rt, rb, h, py, col, M = GOLD, seg = 16) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat(col, M)); m.position.y = py; m.castShadow = true; g.add(m); return m; };
+  const handles = (r, py, col) => [-1, 1].forEach(sd => { const h = new THREE.Mesh(new THREE.TorusGeometry(r, r * .22, 6, 12, Math.PI * 1.2), mat(col, GOLD)); h.position.set(sd * r * 1.9, py, 0); h.rotation.set(0, sd > 0 ? 0 : Math.PI, -Math.PI * .6); g.add(h); });
+  if (tier <= 0) { base(.14, .05, '#6b4f3a'); const m = C(.07, .07, .015, .13, '#b8803f'); m.rotation.x = Math.PI / 2; C(.012, .012, .08, .07, '#c0392b', {}); }
+  else if (tier <= 2) { const col = tier === 1 ? '#c0c5cc' : '#e8b923'; base(.14, .05, '#6b4f3a'); C(.02, .025, .08, .09, col); C(.07, .035, .12, .19, col); handles(.035, .2, col); }
+  else if (tier === 3) { base(.12, .04, '#1d1d20'); const cr = new THREE.Mesh(new THREE.OctahedronGeometry(.09, 0), mat('#bfe6ff', { transparent: true, opacity: .55, metalness: .1, roughness: .05 })); cr.scale.y = 1.9; cr.position.y = .21; g.add(cr); }
+  else if (tier === 4) { base(.14, .04, '#1d1d20'); C(.012, .012, .12, .1, '#9aa0a8'); const pl = C(.13, .13, .015, .26, '#d9dde2'); pl.rotation.x = Math.PI / 2; const in2 = C(.09, .09, .017, .26, '#b9c0c8'); in2.rotation.x = Math.PI / 2; }
+  else if (tier === 5) { base(.16, .06, '#111214'); C(.03, .05, .06, .09, '#d9dde2'); C(.13, .06, .1, .17, '#d9dde2'); handles(.04, .18, '#d9dde2'); }
+  else if (tier === 6) { base(.16, .07, '#111214'); C(.025, .03, .1, .12, '#e8b923'); C(.1, .045, .18, .26, '#e8b923'); C(.105, .105, .02, .36, '#e8b923'); C(.02, .04, .06, .4, '#e8b923'); handles(.045, .28, '#e8b923'); }
+  else if (tier === 7) { base(.2, .09, '#111214'); box(g, .21, .02, .21, 0, .1, 0, '#e8b923', GOLD); C(.03, .04, .14, .17, '#e8b923'); C(.14, .055, .26, .37, '#e8b923'); C(.145, .145, .02, .51, '#e8b923');
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(.05, 14, 12), mat('#ff7a1a', { roughness: .5 })); ball.position.y = .57; g.add(ball); handles(.06, .4, '#e8b923'); }
+  else if (tier === 8) { base(.16, .07, '#111214'); const fr = new THREE.Mesh(new THREE.CylinderGeometry(.11, .11, .025, 24), mat('#e8b923', GOLD)); fr.rotation.x = Math.PI / 2; fr.position.y = .33; fr.scale.y = 1.15; g.add(fr); C(.018, .02, .18, .14, '#e8b923'); }
+  else { base(.2, .08, '#111214'); C(.04, .07, .12, .14, '#e8b923'); const gl = new THREE.Mesh(new THREE.SphereGeometry(.12, 20, 16), mat('#e8b923', GOLD)); gl.position.y = .33; g.add(gl);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.15, .01, 6, 30), mat('#ffffff', GOLD)); ring.position.y = .33; ring.rotation.set(1.2, 0, .3); g.add(ring); }
 }
 // lista dos títulos (do maior nível para o menor), um troféu por título
 function trophyList() { const T = $s.CR.titles || {}, L = []; Object.keys(T).map(Number).sort((a, b) => b - a).forEach(t => { for (let i = 0; i < T[t]; i++) L.push(t); }); return L; }
@@ -321,11 +352,48 @@ function npcTick(dt, px, pz) {
       if (Math.abs(n.o.position.z - pz) < 1.6 && (n.v > 0 ? px - n.o.position.x : n.o.position.x - px) > 0 && Math.abs(px - n.o.position.x) < 6) n.o.position.x -= n.v * dt; }
   }
 }
+// mais bairro: segunda rua com casas dos dois lados, ruas transversais, praça (chafariz, parquinho, bancos, quiosque) e,
+// do lado da praia da rua principal, o calçadão com barracas, posto de salva-vidas, academia ao ar livre e bicicletário
+const HOUSE_COLS = [['#f3d9b1', '#b4553c'], ['#cfe3e8', '#3d5a80'], ['#e8d1e3', '#6b4f7a'], ['#f6eac2', '#9a5b2c'], ['#d8efd2', '#2f6b3a'], ['#f2c6b4', '#7a3b2e'], ['#e3e6ea', '#2b2d42'], ['#fde2a7', '#c0392b']];
+function city2(g, sp) {
+  const R = mulberry(($s.CR.seed || 5) * 7 + 3), road = (w, d, x, z) => box(g, w, .06, d, x, .03, z, '#3a3f47', { noShadow: true }), walk = (w, d, x, z) => box(g, w, .14, d, x, .07, z, '#cfcac0', { noShadow: true });
+  // segunda rua (z = 64), ligada à principal por ruas transversais
+  road(340, 8, 115, 64); walk(340, 2.4, 115, 59.2); walk(340, 2.4, 115, 68.8); for (let i = -50; i < 285; i += 5) box(g, 2.2, .02, .18, i, .07, 64, '#f2f2f2', { noShadow: true });
+  [-55, 25, 88].forEach(x => { road(8, 32, x, 44); walk(2.4, 32, x - 5.2, 44); walk(2.4, 32, x + 5.2, 44); for (let z = 30; z < 58; z += 5) box(g, .18, .02, 2.2, x, .07, z, '#f2f2f2', { noShadow: true }); });
+  // casas: lado de baixo da segunda rua e lado de cima onde não tem nada
+  let k = 0; for (let x = -46; x < 280; x += 14) { if (x > 18 && x < 64) continue; const c = HOUSE_COLS[k++ % HOUSE_COLS.length], w = 9 + R() * 3; neighborHouse(g, x, 77, w, 8, c[0], c[1], -1); if (R() < .45) car(g, x + w / 2 + 2, 71.6, 0, FAN_COLS[k % FAN_COLS.length]); }
+  for (let x = 100; x < 280; x += 16) { const c = HOUSE_COLS[k++ % HOUSE_COLS.length]; neighborHouse(g, x, 51, 10, 7, c[0], c[1], 1); }
+  for (let x = -40; x < 15; x += 15) { const c = HOUSE_COLS[k++ % HOUSE_COLS.length]; neighborHouse(g, x, 51, 9, 7, c[0], c[1], 1); }
+  // praça: chafariz, árvores, bancos, parquinho e quiosque de coco
+  { const px0 = 42, pz0 = 90; box(g, 40, .08, 30, px0, .05, pz0, '#7fb069', { noShadow: true }); box(g, 40, .1, 3, px0, .06, pz0, '#d8cdb5', { noShadow: true }); box(g, 3, .1, 30, px0, .06, pz0, '#d8cdb5', { noShadow: true });
+    cyl(g, 2.6, 2.8, .6, px0, .3, pz0, '#cfd3d8'); cyl(g, 2.3, 2.3, .05, px0, .58, pz0, '#3fb6e8', { metalness: .2, roughness: .1, ...glow('#54c8ff', .2) }); cyl(g, .25, .35, 1.6, px0, .8, pz0, '#cfd3d8'); solid(px0 - 2.8, pz0 - 2.8, px0 + 2.8, pz0 + 2.8);
+    for (let i = 0; i < 10; i++) { const tx = px0 - 17 + (i % 5) * 8.5, tz = pz0 + (i < 5 ? -10 : 10); cyl(g, .18, .25, 2.6, tx, 1.3, tz, '#7a5a42'); const c = new THREE.Mesh(new THREE.SphereGeometry(1.6, 10, 8), mat('#3f8f4a')); c.position.set(tx, 3.4, tz); c.castShadow = true; g.add(c); solid(tx - .3, tz - .3, tx + .3, tz + .3); }
+    [[-8, -4], [8, -4], [-8, 4], [8, 4]].forEach(([a, b2]) => bench(g, px0 + a, pz0 + b2));
+    { const qx = px0 + 13, qz = pz0 + 8; [-1, 1].forEach(sd => cyl(g, .06, .06, 2.4, qx + sd * 1.4, 1.2, qz, '#e63946')); box(g, 3, .08, .08, qx, 2.4, qz, '#e63946'); box(g, .5, .05, .3, qx - .5, .6, qz, '#ffd23f'); box(g, .5, .05, .3, qx + .5, .6, qz, '#2457c5');
+      const sl = box(g, .7, .06, 3, qx - 4, 1, qz, '#33c3ff'); sl.rotation.x = .5; box(g, .8, 2, .8, qx - 4, 1, qz - 1.6, '#ffd23f'); solid(qx - 4.5, qz - 2, qx + 1.6, qz + .3);
+      for (let i = 0; i < 3; i++) { const c = dyn2(sp, fan(new THREE.Group(), qx - 2 + i * 1.6, qz + 2, R() * 6, 500 + i, false)); c.scale.setScalar(.6); LV.npcs.push({ kind: 'walk', o: c, x: qx - 2 + i * 1.6, z: qz + 2 + i * .5, v: (i % 2 ? .6 : -.6), x0: qx - 6, x1: qx + 3 }); } }
+    cyl(g, 1.2, 1.2, 1, px0 - 13, .5, pz0 + 8, '#8a6a45'); const rf = new THREE.Mesh(new THREE.ConeGeometry(2, 1, 8), mat('#2a9d8f')); rf.position.set(px0 - 13, 2.6, pz0 + 8); g.add(rf); cyl(g, .06, .06, 2.2, px0 - 13, 1.2, pz0 + 8, '#3a3f47'); solid(px0 - 14.3, pz0 + 6.7, px0 - 11.7, pz0 + 9.3);
+    banner(g, 'Praça da Orla', px0, 2.6, pz0 - 15.2, 6, 1, '#2a9d8f', '#ffffff'); cyl(g, .06, .06, 2.6, px0 - 2.8, 1.3, pz0 - 15.2, '#3a3f47'); cyl(g, .06, .06, 2.6, px0 + 2.8, 1.3, pz0 - 15.2, '#3a3f47');
+    spot(sp, 'coco', px0 - 13, pz0 + 10.6, 'Quiosque de coco', 'Água de coco (+2 energia)');
+    for (let i = 0; i < 8; i++) { const o = dyn2(sp, fan(new THREE.Group(), px0 - 15 + R() * 30, pz0 - 12 + R() * 24, 0, 520 + i, false)); LV.npcs.push({ kind: 'walk', o, x: o.position.x, z: o.position.z, v: (i % 2 ? 1 : -1) * (.5 + R() * .4), x0: px0 - 18, x1: px0 + 18 }); } }
+  for (let i = 0; i < 12; i++) { const z = i % 2 ? 59.2 : 68.8, x0 = -50 + R() * 320, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 540 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: -55, x1: 285 }); }
+  for (let i = 0; i < 2; i++) { const tmp = new THREE.Group(); car(tmp, 0, 0, 0, ['#6b4f7a', '#2a9d8f'][i]); LV.boxes.pop(); const o = dyn2(sp, tmp); o.position.set(-40 + i * 150, 0, i ? 65.8 : 62.2); o.rotation.y = i ? Math.PI : 0; LV.npcs.push({ kind: 'car', o, v: i ? -8 : 8 }); }
+  // lado da praia da rua principal: calçadão de pedras portuguesas com barracas, salva-vidas, academia ao ar livre e bicicletário
+  box(g, 340, .08, 4, 115, .05, 14, '#e9d7b0', { noShadow: true }); for (let x = -50; x < 285; x += 2) box(g, .9, .02, 3.6, x, .1, 14, x % 4 ? '#f4f4f4' : '#2b2d31', { noShadow: true });
+  const kio = (x, z, col, nm) => { box(g, 3.2, 2.4, 2.4, x, 1.2, z, '#f4f0e6'); const aw = new THREE.Mesh(new THREE.BoxGeometry(3.8, .1, 1.6), mat(col)); aw.position.set(x, 2.5, z + 1.6); aw.rotation.x = .2; g.add(aw); banner(g, nm, x, 2.85, z + 1.22, 3, .45, col, '#ffffff'); solid(x - 1.6, z - 1.2, x + 1.6, z + 1.2);
+    for (let i = 0; i < 2; i++) { umbrella(g, x - 2.5 + i * 5, z + 4, col); chair(g, x - 2.5 + i * 5 + .6, z + 4.5, Math.PI, '#ffffff'); if (R() < .7) fan(g, x - 2.5 + i * 5 + .6, z + 4.5, Math.PI, 560 + i + Math.round(x), true).position.y = -.05; } };
+  [[36, 8, '#e63946', 'Barraca do Zé'], [70, 8, '#ff6a00', 'Pastel & Caldo'], [104, 8, '#2457c5', 'Milho & Pipoca'], [132, 8, '#2a9d8f', 'Coco Gelado'], [268, 8, '#ffd23f', 'Picolé Praia']].forEach(([x, z, c, n]) => kio(x, z, c, n));
+  spot(sp, 'barraca', 36, 12, 'Barraca do Zé', 'Petisco na praia (+3 energia)');
+  { const lx = 88, lz = -30; [-1, 1].forEach(a => [-1, 1].forEach(b2 => cyl(g, .08, .08, 3, lx + a * .9, 1.5, lz + b2 * .9, '#f4f4f4'))); box(g, 2.4, 1.6, 2.4, lx, 3.8, lz, '#e63946'); box(g, 2.6, .2, 2.6, lx, 4.7, lz, '#ffffff'); solid(lx - 1, lz - 1, lx + 1, lz + 1); fan(g, lx, lz + 1.6, Math.PI, 600, false); }
+  { const ox = 116, oz = 4; box(g, 10, .06, 6, ox, .04, oz, '#2b2d31', { noShadow: true }); for (let i = 0; i < 3; i++) { cyl(g, .05, .05, 2, ox - 3 + i * 3, 1, oz, '#ffd23f'); box(g, 1.4, .06, .06, ox - 3 + i * 3, 2, oz, '#ffd23f'); }
+    for (let i = 0; i < 2; i++) fan(g, ox - 3 + i * 3, oz + 1, Math.PI, 610 + i, false);
+    for (let i = 0; i < 6; i++) box(g, .06, .7, .06, ox + 7 + i * .7, .35, oz, '#9aa0a8'); }
+}
 function build() {
   const lvl = crInv('moradia'), key = ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social', 'skate', 'bike', 'cachorro', 'gato', 'trofeus'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  LV.built = key; LV.spots = []; LV.boxes = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
+  LV.built = key; LV.doors = []; LV.spots = []; LV.boxes = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
   const g = new THREE.Group(); g.position.copy(H0); LV.group = g; scene.add(g);
   const sp = new THREE.Group(); g.add(sp); sp.userData.dyn = true; // pontos de interação (fora da junção)
   const S2 = (id, x, z, t, s, r) => spot(sp, id, x, z, t, s, r);
@@ -351,6 +419,11 @@ function build() {
   // quarto (fundo à direita)
   const bx = hW - 4.6;
   wall(g, bx, -hD, bx, -hD + 4.4, WH, wc, [[-hD + 3.2, -hD + 4.4]]);
+  // portas: entrada (dupla), fundos para a piscina (dupla) e quarto
+  const dc = ['#8a6a45', '#7a5a42', '#5a3a28', '#2b2d31'][lvl];
+  door(sp, -1.2, hD, 1.2, 'x', 1, dc); door(sp, 1.2, hD, 1.2, 'x', -1, dc);
+  if (lvl >= 2) { door(sp, -1.4, -hD, 1.4, 'x', 1, '#cfe8f5'); door(sp, 1.4, -hD, 1.4, 'x', -1, '#cfe8f5'); }
+  door(sp, bx, -hD + 3.2, 1.2, 'z', 1, dc);
   bed(g, lvl >= 2 ? 1.9 : 1.4, hW - 2.2, -hD + 1.4, 0, ['#3d5a80', '#4a6fa5', '#7a5c8e', '#2b2d42'][lvl]);
   box(g, .5, .5, .45, hW - .5, .25, -hD + .5, '#6b4f3a'); lamp(g, bx + .6, -hD + .6, true);
   S2('cama', hW - 2.2, -hD + 3.2, 'Cama', 'Descansar', .9);
@@ -436,8 +509,19 @@ function build() {
   if (crInv('gastro') >= 2) { box(g, 12, 3.4, 8, 14, 1.7, 36, '#2b3445'); solid(8, 32, 20, 40); box(g, 12.4, .3, 1.6, 14, 3.4, 31.2, '#ff6a00'); sign(g, crInv('gastro') >= 3 ? 'Beach Club' : 'Restaurante', 'do ' + nameOf($s.CR.me).split(' ')[0], 14, 4.4, 31.6, 4.4); for (let i = 0; i < 3; i++) { cyl(g, .45, .45, .05, 10 + i * 4, .75, 30.6, '#f4f4f4'); cyl(g, .05, .05, .75, 10 + i * 4, .38, 30.6, '#3a3f47'); umbrella(g, 10 + i * 4, 30.6, '#ffd23f'); } }
   else neighborHouse(g, 14, 36, 9, 8, '#d8efd2', '#2f6b3a', -1);
   // CT ao lado da arena
-  if (crInv('ct') >= 1) { const tx = 70, tz = 36; box(g, 16, 5 + crInv('ct'), 12, tx, (5 + crInv('ct')) / 2, tz, '#1d2a4a'); solid(tx - 8, tz - 6, tx + 8, tz + 6); box(g, 16.2, .5, 12.2, tx, 5 + crInv('ct'), tz, '#33c3ff', glow('#33c3ff', .5));
-    sign(g, ['', 'CT', 'CT de alto rendimento', 'Academia de base'][crInv('ct')], nameOf($s.CR.me).split(' ')[0], tx, 7.6 + crInv('ct'), tz - 6.2, 5.6); S2('ct', tx - 3, tz - 8, 'Centro de treinamento', 'Treino físico e técnico'); S2('ctJogo', tx + 3.5, tz - 8, 'Jogo-treino', 'Escolha dupla e adversários'); }
+  if (crInv('ct') >= 1) { // CT: prédio com porta; dentro, quadra coberta, academia e vestiário
+    const lv = crInv('ct'), tx = 70, tz = 38, W2 = 22, D2 = 14, H2 = 4.6 + lv * .5, x0 = tx - W2 / 2, x1 = tx + W2 / 2, z0 = tz - D2 / 2, z1 = tz + D2 / 2, wc2 = '#1d2a4a';
+    box(g, W2, .08, D2, tx, .05, tz, '#cdb27a', { noShadow: true });
+    wall(g, x0, z0, x1, z0, H2, wc2, [[tx - 1.6, tx + 1.6]], true); wall(g, x0, z1, x1, z1, H2, wc2, [], true); wall(g, x0, z0, x0, z1, H2, wc2, [], true); wall(g, x1, z0, x1, z1, H2, wc2, [], true);
+    door(sp, tx - 1.6, z0, 1.6, 'x', 1, '#cfe8f5'); door(sp, tx + 1.6, z0, 1.6, 'x', -1, '#cfe8f5');
+    box(g, W2 + .2, .4, .3, tx, H2, z0, '#33c3ff', glow('#33c3ff', .5));
+    sign(g, ['', 'CT', 'CT de alto rendimento', 'Academia de base'][lv], nameOf($s.CR.me).split(' ')[0], tx, H2 + 1.4, z0 - .3, 5.6);
+    // quadra coberta (ao longo de x) com rede de verdade
+    const cxx = tx - 2.5, lc = '#ffffff'; box(g, 16, .02, 8, cxx, .1, tz, '#e6cf98', { noShadow: true }); [[16, .06, cxx, tz - 4], [16, .06, cxx, tz + 4], [.06, 8, cxx - 8, tz], [.06, 8, cxx + 8, tz]].forEach(([w, d, x, z]) => box(g, w, .02, d, x, .12, z, lc, { noShadow: true }));
+    realNet(g, cxx, tz, 8, 'z', ($s.CR.master && $s.CR.master.brand) || 'CT ' + nameOf($s.CR.me).split(' ')[0], '#0b1a3a'); solid(cxx - .1, tz - 4.4, cxx + .1, tz + 4.4);
+    if (lv >= 3) for (let k = 0; k < 4; k++) { const a = dyn2(sp, fan(new THREE.Group(), cxx - 5 + (k % 2) * 2, tz - 2 + Math.floor(k / 2) * 4, -Math.PI / 2, 400 + k, false)), b2 = dyn2(sp, fan(new THREE.Group(), cxx + 5 - (k % 2) * 2, tz - 2 + Math.floor(k / 2) * 4, Math.PI / 2, 410 + k, false)); a.scale.setScalar(.7); b2.scale.setScalar(.7); LV.npcs.push({ kind: 'fresco', a, b: b2, x: cxx, ph: k }); a.position.x = cxx - 4; b2.position.x = cxx + 4; } // academia de base: a garotada treinando
+    gym(g, x1 - 2.2, tz - 3.5); gym(g, x1 - 2.2, tz + 1); box(g, .1, 2, 3.5, x1 - .2, 1, tz + 4.5, '#cfe8f5', { metalness: .9, roughness: .05 });
+    S2('ct', x1 - 3.5, tz - 1.2, 'Centro de treinamento', 'Treino físico e técnico'); S2('ctJogo', cxx, tz + 5.2, 'Jogo-treino', 'Escolha dupla e adversários'); }
   // quiosque na praia (gastronomia 1) e projeto social
   if (crInv('gastro') >= 1) { const kx = 12, kz = -26; cyl(g, 1.8, 1.8, .9, kx, .45, kz, '#a77d55'); const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), mat('#e9c46a')); r.position.set(kx, 3.2, kz); r.castShadow = true; g.add(r); [0, 1, 2, 3].forEach(i => cyl(g, .07, .07, 2.4, kx + Math.cos(i * 1.57 + .78) * 1.6, 1.6, kz + Math.sin(i * 1.57 + .78) * 1.6, '#8a6a45')); solid(kx - 1.8, kz - 1.8, kx + 1.8, kz + 1.8); sign(g, 'Quiosque', nameOf($s.CR.me).split(' ')[0], kx, 4.6, kz, 3.2); }
   if (crLife('social')) { box(g, 8, .05, 16, -20, .05, -22, '#f1e2b8', { noShadow: true }); box(g, 8.4, .8, .03, -20, 1.1, -22, '#ffffff', { transparent: true, opacity: .45 }); sign(g, 'Projeto social', 'Escolinha de beach tennis', -20, 2.6, -31, 4);
@@ -449,11 +533,11 @@ function build() {
   if (crLife('trofeus')) { // sala de troféus ao lado da casa: um pedestal por título (os maiores no centro), luz de vitrine
     const x0 = -hW - 8.6, x1 = -hW - .2, z0 = -hD, z1 = -hD + 7.4, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     box(g, x1 - x0, .08, z1 - z0, cx, .04, cz, '#3a2a20', { noShadow: true });
-    wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a'); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); wall(g, x1, z0, x1, z1, WH, '#1d2a4a');
+    wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a'); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); door(sp, cx - 1.1, z1, 1.1, 'x', 1, '#5a3a28'); door(sp, cx + 1.1, z1, 1.1, 'x', -1, '#5a3a28'); wall(g, x1, z0, x1, z1, WH, '#1d2a4a');
     banner(g, 'Sala de Troféus', cx, WH - .45, z0 + .2, 5, .7, '#0b1a3a', '#e8b923');
     const L = trophyList(); L.slice(0, 18).forEach((t, i) => { const r = Math.floor(i / 6), c = i % 6, px2 = x0 + 1 + c * ((x1 - x0 - 2) / 5), pz2 = z0 + 1.6 + r * 2;
       box(g, .5, .9, .5, px2, .45, pz2, '#f2efe9'); cup(g, px2, .9, pz2, t); solid(px2 - .3, pz2 - .3, px2 + .3, pz2 + .3);
-      if (i < 6) banner(g, (TIERS[t] && TIERS[t].curto) || 'Título', px2, .55, pz2 + .26, .46, .16, '#0b1a3a', '#e8b923'); });
+      banner(g, (TIERS[t] && TIERS[t].curto) || 'Título', px2, .55, pz2 + .26, .46, .16, '#0b1a3a', '#e8b923'); });
     for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), mat('#fff3d6', glow('#ffe1a8', 1.4))); c.position.set(x0 + 1.5 + i * (x1 - x0 - 3) / 2, WH - .2, cz); g.add(c); }
     S2('salaTrofeus', cx, z1 - 1.2, 'Sala de troféus', L.length + ' títulos', .9); }
   // praia: guarda-sóis e cadeiras, palmeiras na orla
@@ -476,15 +560,16 @@ function build() {
     [-1, 1].forEach(sd => { const b = mine[(sd > 0 ? 1 : 0) % mine.length]; banner(g, b, ax + sd * 11.82, 1.1, az, 6, 1, '#ffffff', '#1d2a4a', -sd * Math.PI / 2); banner(g, b, ax + sd * 12.18, 2.4, az, 10, 1.6, cols[2][0], '#ffffff', sd * Math.PI / 2); });
     if ($s.CR.master) banner(g, $s.CR.master.brand, ax, 3.4, az - 8.6, 7, 1.1, '#111214', '#ffffff', Math.PI, 'patrocinador master'); }
   box(g, 8, .02, 16, ax, .08, az, '#ffffff', { noShadow: true, transparent: true, opacity: .2 });
-  box(g, 8.6, .9, .03, ax, 1.25, az, '#ffffff', { transparent: true, opacity: .45 }); solid(ax - 4.4, az - .1, ax + 4.4, az + .1);
-  S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra'); S2('arenaJogo', ax, az - 6, 'Jogo-treino', 'Alugar a quadra e chamar quem quiser');
+  { const own = crInv('eventos') >= 1, nb = ($s.CR.master && $s.CR.master.brand) || (($s.CR.sponsors || [])[0] || {}).brand || (own ? 'Arena ' + nameOf($s.CR.me).split(' ')[0] : 'Arena de treino'); realNet(g, ax, az, 8, 'x', nb, own ? '#e30613' : '#1f4fb8'); } solid(ax - 4.4, az - .1, ax + 4.4, az + .1);
+  { const lc = '#1f4fb8'; [[8, .06, ax, az - 8], [8, .06, ax, az + 8], [.06, 16, ax - 4, az], [.06, 16, ax + 4, az]].forEach(([w, d, x, z]) => box(g, w, .02, d, x, .09, z, lc, { noShadow: true })); }
+  S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra'); S2('arenaJogo', ax, az - 6, 'Jogo-treino', crInv('eventos') >= 1 ? 'Na sua arena, de graça' : 'Alugar a quadra e chamar quem quiser');
   // limites do bairro
-  solid(-60, -87, -59, 60); solid(289, -87, 290, 60); solid(-60, 59, 290, 60);
-  city(g, sp);
+  solid(-60, -97, -59, 112); solid(289, -97, 290, 112); solid(-60, 111, 290, 112);
+  city(g, sp); city2(g, sp);
   // pet (o cachorro passeia com você; o gato fica por perto da casa)
-  LV.pet = null; { const kind = crLife('cachorro') ? 'cachorro' : crLife('gato') ? 'gato' : null;
-    if (kind) { const o = dyn2(sp, petMesh(kind)); o.position.set(1.5, 0, 3); LV.pet = { o, kind, name: (($s.CR.pets || {})[kind]) || '', x: 1.5, z: 3, jump: 0 }; } }
-  LV.fans = []; LV.myCourt = null; LV.arrow = null;
+  // pets: o cachorro passeia com você (ou fica, se você mandar); o gato fica pela casa, andando à toa
+  LV.pets = []; ['cachorro', 'gato'].forEach((kind, i) => { if (!crLife(kind)) return; const o = dyn2(sp, petMesh(kind)), x = i ? -2 : 1.5, z = i ? -1 : 3; o.position.set(x, 0, z);
+    LV.pets.push({ o, kind, name: (($s.CR.pets || {})[kind]) || '', x, z, jump: 0, follow: kind === 'cachorro' && !($s.CR.petStay || {})[kind], tx: x, tz: z, wt: 0 }); });
   if ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) buildVenue(g, sp);
   // junta o cenário parado em poucos desenhos (os pontos de interação e os fãs ficam de fora)
   mergeStatic(g);
@@ -514,10 +599,12 @@ const ACT = {
   loja: { txt: () => 'Entrar na loja', run: () => LV.actions.openCareer() },
   armario: { txt: () => 'Abrir o ' + (crInv('moradia') >= 3 ? 'closet' : 'guarda-roupa'), run: () => wardrobe() },
   social: { txt: () => 'Dar aula e jogar com a garotada', run: () => { const C = $s.CR, k = C.season + '-' + C.week; if (C.socialW === k) { LV.msg('Você já foi ao projeto esta semana. A garotada manda um abraço!'); return; } C.socialW = k; crAddFama(.8); C.energy = Math.max(0, C.energy - 3); LV.msg('🤝 Aula no projeto: as crianças jogaram com você e postaram tudo (+0,8 de fama).'); } },
-  salaTrofeus: { txt: () => 'Ver a sala de troféus', run: () => { const L = trophyList(); LV.msg(L.length ? '🏆 ' + L.length + ' títulos. O maior: ' + ((TIERS[L[0]] && TIERS[L[0]].nome) || '') + '.' : 'Os pedestais estão esperando o primeiro título.'); } },
-  pet: { txt: () => { const P2 = LV.pet; return P2 && !P2.name ? 'Dar um nome ao ' + (P2.kind === 'gato' ? 'gato' : 'cachorro') : 'Brincar com ' + (P2 ? P2.name : ''); }, run: () => petInteract() },
+  salaTrofeus: { txt: () => 'Ver a sala de troféus', run: () => { const L = trophyList(); LV.msg(L.length ? '🏆 ' + L.length + ' títulos. O maior: ' + ((TIERS[L[0]] && TIERS[L[0]].nome) || '') + ' (' + TROPHY_LOOK[L[0]] + '). Cada torneio tem o seu troféu: ' + [...new Set(L)].map(t => TIERS[t].curto + ' = ' + TROPHY_LOOK[t]).join(', ') + '.' : 'Os pedestais estão esperando o primeiro título.'); } },
+  pet: { txt: () => { const P2 = LV.nearPet; if (!P2) return ''; return !P2.name ? 'Dar um nome ao ' + P2.kind : (P2.kind === 'cachorro' ? (P2.follow ? 'Brincar com ' + P2.name + ' · mandar ficar' : 'Brincar com ' + P2.name + ' · chamar') : 'Fazer carinho em ' + P2.name); }, run: () => petInteract() },
   ctJogo: { txt: () => 'Marcar um jogo-treino', run: () => friendlyPicker() },
-  arenaJogo: { txt: () => 'Marcar um jogo-treino ($80 a quadra)', run: () => friendlyPicker(80) },
+  arenaJogo: { txt: () => crInv('eventos') >= 1 ? 'Marcar um jogo-treino na sua arena' : 'Marcar um jogo-treino ($80 a quadra)', run: () => friendlyPicker(crInv('eventos') >= 1 ? 0 : 80) },
+  coco: { txt: () => 'Tomar água de coco ($8)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.cocoDay === k) { LV.msg('Já tomou o seu coco hoje.'); return; } C.cocoDay = k; C.money -= 8; C.energy = Math.min(100, C.energy + 2); LV.msg('🥥 Água de coco geladinha: +2 de energia.'); } },
+  barraca: { txt: () => 'Petisco na barraca ($25)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.barDay === k) { LV.msg('O Zé já te serviu hoje.'); return; } C.barDay = k; C.money -= 25; C.energy = Math.min(100, C.energy + 3); LV.msg('🍤 Isca de peixe e suco na barraca do Zé: +3 de energia.'); } },
   orla: { txt: () => 'Jogar com a galera (desafio)', run: () => LV.actions.drill() },
   casaVolta: { txt: () => 'Voltar para casa', run: () => goHome() },
   partida: { txt: () => LV.myCourt ? 'Entrar na ' + LV.myCourt.name + ' (vs ' + LV.myCourt.vs + ')' : 'Sem jogo agora', run: () => { if (crMyMatch()) LV.actions.play(); } },
@@ -572,7 +659,7 @@ function tick(dt) {
   const cy = Math.cos(LV.camYaw), sy = Math.sin(LV.camYaw), tx = ix * cy + iz * sy, tz = -ix * sy + iz * cy;
   const RV = { pe: 1, skate: 1.45, bike: 2.1, carro: 3.4 }[LV.ride || 'pe'] || 1, vmax = (run ? 5.2 : 1.9) * (LV.swim ? .5 : LV.ride && LV.ride !== 'pe' ? RV * (run ? 1 : 2) : 1), acc = il > .05 ? (LV.ride === 'carro' ? 4 : 9) : 12;
   LV.vel.x += (tx * vmax - LV.vel.x) * Math.min(1, dt * acc); LV.vel.z += (tz * vmax - LV.vel.z) * Math.min(1, dt * acc);
-  human.vel.set(LV.vel.x, 0, LV.vel.z);
+  human.vel.set(LV.vel.x, 0, LV.vel.z); if (LV.ride && LV.ride !== 'pe') human.vel.set(0, 0, 0); // em cima do skate/bike: o corpo não caminha
   human.pos.x += LV.vel.x * dt; human.pos.z += LV.vel.z * dt;
   // colisão com as paredes e móveis (círculo contra caixas)
   const lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, R = .32; let px = lx, pz = lz;
@@ -582,7 +669,7 @@ function tick(dt) {
   // para onde o corpo olha: para onde anda
   const sp = Math.hypot(LV.vel.x, LV.vel.z);
   if (sp > .3) { const want = Math.atan2(-LV.vel.x, -LV.vel.z); let d = want - LV.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); LV.yaw += d * Math.min(1, dt * 10); }
-  human.forceYaw = LV.yaw;
+  human.forceYaw = LV.ride === 'skate' ? LV.yaw + Math.PI / 2 : LV.yaw; // skate: de lado na prancha
   // ponto de interação mais perto
   let near = null, nd = 9;
   for (const s of LV.spots) { const d = Math.hypot(px - s.x, pz - s.z); s.ring.material.opacity = d < s.r ? .95 : .45; if (d < s.r && d < nd) { nd = d; near = s; } }
@@ -593,15 +680,26 @@ function tick(dt) {
     if (d < 4 && !f.walk) f.o.rotation.y += (Math.atan2(px - f.o.position.x, pz - f.o.position.z) - f.o.rotation.y) * Math.min(1, dt * 3); });
   LV.nearFan = nf; if (nf && !near) near = { id: 'fa' };
   npcTick(dt, px, pz);
-  // pet: segue a uns 1,5 m (o gato só dentro do terreno da casa); balança o rabo
-  if (LV.pet) { const P2 = LV.pet, home = P2.kind === 'gato', tx2 = home ? Math.max(-15, Math.min(15, px)) : px, tz2 = home ? Math.max(-14, Math.min(14, pz)) : pz, d = Math.hypot(tx2 - P2.x, tz2 - P2.z);
-    if (d > 1.6) { const sp2 = Math.min(d - 1.6, (d > 8 ? 9 : 4) * dt); P2.x += (tx2 - P2.x) / d * sp2; P2.z += (tz2 - P2.z) / d * sp2; P2.o.rotation.y = Math.atan2(-(tx2 - P2.x), -(tz2 - P2.z)); }
-    if (d > 40) { P2.x = px + 1; P2.z = pz + 1; }
-    P2.jump = Math.max(0, P2.jump - dt * 1.5); P2.o.position.set(P2.x, Math.abs(Math.sin(P2.jump * 9)) * .25 * P2.jump, P2.z); P2.o.userData.tail.rotation.z = Math.sin(performance.now() / 90) * .6;
-    if (!near && Math.hypot(px - P2.x, pz - P2.z) < 1.4) { near = { id: 'pet' }; } }
+  for (const D of LV.doors || []) { const want = Math.hypot(px - D.cx, pz - D.cz) < 2.3 || (LV.pets || []).some(q => Math.hypot(q.x - D.cx, q.z - D.cz) < 1.2) ? 1 : 0; D.open += (want - D.open) * Math.min(1, dt * 5); D.piv.rotation.y = -D.sign * D.open * 1.6; }
+  // pets: o cachorro segue a uns 1,5 m (se não mandou ficar); o gato passeia pela casa e pelo quintal. Na água eles nadam
+  LV.nearPet = null;
+  for (const P2 of LV.pets || []) {
+    let tx2, tz2;
+    if (P2.follow) { tx2 = px; tz2 = pz; }
+    else { P2.wt -= dt; if (P2.wt <= 0) { P2.wt = 3 + Math.random() * 5; const hm = P2.kind === 'gato'; P2.tx = (P2.home || 0) + (Math.random() - .5) * (hm ? 10 : 3); P2.tz = (Math.random() - .5) * (hm ? 8 : 3) + (P2.stayZ || 0); if (!hm && P2.stayX != null) P2.tx = P2.stayX + (Math.random() - .5) * 2; } tx2 = P2.tx; tz2 = P2.tz; }
+    const d = Math.hypot(tx2 - P2.x, tz2 - P2.z), keep = P2.follow ? 1.6 : .2, moving = d > keep;
+    if (moving) { const sp2 = Math.min(d - keep, (P2.follow ? (d > 8 ? 9 : 4.2) : 1.2) * dt); P2.x += (tx2 - P2.x) / d * sp2; P2.z += (tz2 - P2.z) / d * sp2; const want = Math.atan2(-(tx2 - P2.x), -(tz2 - P2.z)); let dy = want - P2.o.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P2.o.rotation.y += dy * Math.min(1, dt * 8); }
+    if (P2.follow && d > 40) { P2.x = px + 1; P2.z = pz + 1; }
+    const pl = LV.pool, wet = (pl && P2.x > pl[0] && P2.x < pl[2] && P2.z > pl[1] && P2.z < pl[3]) || P2.z < -87, tt = performance.now() / 1000;
+    P2.jump = Math.max(0, P2.jump - dt * 1.5);
+    P2.o.position.set(P2.x, wet ? -.33 + Math.sin(tt * 3) * .02 : Math.abs(Math.sin(P2.jump * 9)) * .25 * P2.jump, P2.z); P2.o.rotation.x = wet ? -.25 : 0;
+    P2.o.userData.legs.forEach((l, i) => { l.rotation.x = wet ? Math.sin(tt * 9 + i * 1.6) * .9 : moving ? Math.sin(tt * 12 + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI : 0)) * .5 : 0; }); // nadando: patinha; andando: passos
+    P2.o.userData.tail.rotation.z = Math.sin(tt * 11) * (P2.kind === 'gato' ? .25 : .6);
+    if (!near && Math.hypot(px - P2.x, pz - P2.z) < 1.4) { near = { id: 'pet' }; LV.nearPet = P2; }
+  }
   // nadar: na piscina ou no mar (onde não dá pé, o corpo afunda até o peito)
   { const pl = LV.pool, inPool = pl && px > pl[0] && px < pl[2] && pz > pl[1] && pz < pl[3], sea = Math.max(0, Math.min(1, (-86 - pz) / 6));
-    const want = inPool ? -.95 : sea > 0 ? -1.05 * sea : 0; human.liftY = (human.liftY || 0) + (want - (human.liftY || 0)) * Math.min(1, dt * 5); LV.swim = inPool || sea > .5; }
+    const want = inPool || sea > .5 ? 0 : sea > 0 ? -.6 * sea : 0; human.liftY = (human.liftY || 0) + (want - (human.liftY || 0)) * Math.min(1, dt * 5); LV.swim = inPool || sea > .5; }
   if (LV.arrow) { LV.arrow.rotation.y += dt * 2; LV.arrow.position.y = 4.2 + Math.sin(performance.now() / 300) * .25; }
   if ((near && near.id) !== (LV.near && LV.near.id)) { LV.near = near; prompt(); } else LV.near = near;
   LV.spots.forEach(s => { const d = Math.hypot(px - s.x, pz - s.z); s.label.visible = d < 16; });
@@ -635,6 +733,8 @@ function cam(dt) {
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
     const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * .16, 1.3 * hk, human.pos.z - fz * .16); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.6); LV.bag.scale.set(.72 * hk, .72 * hk, .6 * hk); }
   if (LV.rideMesh) { LV.rideMesh.position.set(human.pos.x, 0, human.pos.z); LV.rideMesh.rotation.y = LV.yaw; }
+  // nadando: o corpo deita na água (as pernas batem e os braços giram como no crawl) e a raqueteira fica guardada
+  if (LV.swim) { LV.bag.visible = false; swimPose(); }
   if (LV.ride === 'skate' || LV.ride === 'bike') human.liftY = LV.ride === 'skate' ? .1 : .3;
   return true;
 }
@@ -673,15 +773,22 @@ function petMesh(kind) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(.13 * k, 12, 10), mat(c)); head.position.set(0, .48 * k, -.3 * k); o.add(head);
   const snout = new THREE.Mesh(new THREE.SphereGeometry(.06 * k, 8, 8), mat(cat ? '#f2d2b0' : '#5a3a28')); snout.position.set(0, .45 * k, -.42 * k); o.add(snout);
   [-1, 1].forEach(sd => { const e = new THREE.Mesh(new THREE.ConeGeometry(.05 * k, .12 * k, 4), mat(cat ? c : '#5a3a28')); e.position.set(sd * .07 * k, .6 * k, -.28 * k); e.rotation.z = sd * (cat ? -.2 : .6); o.add(e); });
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(.035 * k, .035 * k, .26 * k, 6), mat(c)); l.position.set(a * .08 * k, .13 * k, b * .17 * k); o.add(l); });
+  o.userData.legs = []; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { const l = new THREE.Mesh(new THREE.CylinderGeometry(.035 * k, .035 * k, .26 * k, 6), mat(c)); l.geometry.translate(0, -.13 * k, 0); l.position.set(a * .08 * k, .26 * k, b * .17 * k); o.add(l); o.userData.legs.push(l); });
   const tail = new THREE.Mesh(new THREE.CylinderGeometry(.02 * k, .03 * k, .3 * k, 6), mat(c)); tail.position.set(0, .45 * k, .3 * k); tail.rotation.x = -.8; o.add(tail); o.userData.tail = tail;
   o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
 }
 function petInteract() {
-  const P2 = LV.pet; if (!P2) return; const C = $s.CR; C.pets = C.pets || {};
-  if (!P2.name) { askName('Nome do seu ' + (P2.kind === 'gato' ? 'gato' : 'cachorro'), '', nm => { if (!nm) return; nm = nm.slice(0, 16); C.pets[P2.kind] = nm; P2.name = nm; saveCareer(); LV.msg('🐾 Agora se chama ' + nm + '!'); }); return; }
-  const k = C.season + '-' + C.week + '-' + C.day; if (C.petDay === k) { LV.msg('🐾 ' + P2.name + ' já brincou bastante hoje e está cochilando.'); return; }
-  C.petDay = k; C.energy = Math.min(100, C.energy + 1); P2.jump = 1; LV.msg('🐾 Você brincou com ' + P2.name + '. Que alegria! (+1 de energia)');
+  const P2 = LV.nearPet; if (!P2) return; const C = $s.CR; C.pets = C.pets || {}; C.petStay = C.petStay || {};
+  if (!P2.name) { askName('Nome do seu ' + P2.kind, '', nm => { if (!nm) return; nm = nm.slice(0, 16); C.pets[P2.kind] = nm; P2.name = nm; saveCareer(); LV.msg('🐾 Agora se chama ' + nm + '!'); }); return; }
+  let el = document.getElementById('livreFriendly'); if (!el) { el = document.createElement('div'); el.id = 'livreFriendly'; el.className = 'overlay'; document.body.appendChild(el); }
+  const dog = P2.kind === 'cachorro';
+  el.innerHTML = '<div class="card lv-fr"><div class="eyebrow">' + (dog ? '🐕' : '🐈') + ' ' + P2.name.replace(/</g, '') + '</div><div class="cta-row"><button type="button" class="cta" data-a="play">' + (dog ? 'Brincar' : 'Fazer carinho') + '</button>'
+    + (dog ? '<button type="button" class="ghost" data-a="stay">' + (P2.follow ? 'Fica aqui' : 'Vem comigo') + '</button>' : '') + '<button type="button" class="ghost" data-a="name">Trocar o nome</button><button type="button" class="ghost" data-a="x">Fechar</button></div></div>';
+  el.hidden = false; LV.modal = true; const close = () => { el.hidden = true; LV.modal = false; };
+  el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; close();
+    if (a === 'play') { const k = C.season + '-' + C.week + '-' + C.day + P2.kind; if (C.petDay === k) { LV.msg('🐾 ' + P2.name + ' já brincou bastante hoje e está cochilando.'); return; } C.petDay = k; C.energy = Math.min(100, C.energy + 1); P2.jump = 1; LV.msg('🐾 Você brincou com ' + P2.name + '. Que alegria! (+1 de energia)'); }
+    else if (a === 'stay') { P2.follow = !P2.follow; C.petStay[P2.kind] = !P2.follow; if (!P2.follow) { P2.stayX = P2.x; P2.stayZ = P2.z; P2.home = P2.x; P2.wt = 0; } LV.msg(P2.follow ? '🐕 ' + P2.name + ' vem com você.' : '🐕 ' + P2.name + ' fica aqui esperando.'); saveCareer(); }
+    else if (a === 'name') askName('Novo nome', P2.name, nm => { if (!nm) return; C.pets[P2.kind] = nm.slice(0, 16); P2.name = C.pets[P2.kind]; saveCareer(); }); });
 }
 // jogo-treino: escolhe a dupla e os dois adversários (gente perto do seu nível, a sua dupla e os seus rivais)
 function friendlyPicker(fee = 0) {
@@ -701,6 +808,14 @@ function friendlyPicker(fee = 0) {
   el.querySelector('[data-go]').onclick = () => { const v = {}; el.querySelectorAll('select').forEach(x => { v[x.dataset.k] = x.value; });
     if (new Set([v.mate, v.o1, v.o2]).size < 3) { const e = el.querySelector('.lv-fr-err'); e.hidden = false; e.textContent = 'Escolha três pessoas diferentes.'; return; }
     el.hidden = true; LV.modal = false; if (fee) C.money -= fee; if (LV.actions.friendly) LV.actions.friendly(v); };
+}
+const _qs = new THREE.Quaternion(), _qf = new THREE.Quaternion(), _ax = new THREE.Vector3(1, 0, 0), _ay = new THREE.Vector3(0, 1, 0);
+function swimPose() {
+  const m = human.model; if (!m) return; const t = performance.now() / 1000, fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw);
+  _qs.setFromAxisAngle(_ax, -1.42 + Math.sin(t * 3) * .05); const roll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.sin(t * 2.4) * .25);
+  const y = .02 + Math.sin(t * 3) * .02, bx = human.pos.x - fx * .85, bz = human.pos.z - fz * .85;
+  m.group.quaternion.setFromAxisAngle(_ay, LV.yaw).multiply(_qs).multiply(roll); m.group.position.set(bx, y, bz);
+  const k = human.skin; if (k && human.skinOn) { _qf.setFromAxisAngle(_ay, k.faceFix || 0); k.holder.quaternion.copy(m.group.quaternion).multiply(_qf); k.holder.position.set(bx, y, bz); k.racket.visible = false; }
 }
 // jeito de andar: a pé, skate, bicicleta ou carro (os que você comprou em Negócios); tecla V troca
 function rides() { return ['pe'].concat(crLife('skate') ? ['skate'] : [], crLife('bike') ? ['bike'] : [], crLife('carro') ? ['carro'] : []); }
@@ -848,6 +963,7 @@ addEventListener('keydown', e => {
   if (!LV.on) return; const k = e.key.toLowerCase();
   if (LV.modal) { if (k === 'escape') { const f = document.getElementById('livreFriendly'); if (f) f.hidden = true; LV.modal = false; } return; }
   const mo = document.getElementById('menu'); if (mo && !mo.hidden) { if (k === 'escape') { mo.hidden = true; e.preventDefault(); } return; } // configurações abertas por cima: teclas são do menu
+  e.stopPropagation(); // as teclas do modo livre (V, E, Z/X, T/G…) não vão para os atalhos da partida (o V liga a mira lá)
   if (k === 'escape') { exit(true); return; }
   if (k === 'e' && !e.repeat) { interact(); e.preventDefault(); return; }
   if (k === 'v' && !e.repeat) { cycleRide(); e.preventDefault(); return; }
