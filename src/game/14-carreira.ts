@@ -157,7 +157,8 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
       do { let sur = pick(bank.s); if (g === 'f' && pais === 'RUS') sur += 'a'; name = pick(bank[g]) + ' ' + sur; } while (used.has(name) && ++tries < 20);
       used.add(name);
       // muitos jogadores fracos e poucos fortes (amadores até o topo do circuito)
-      const ovr = Math.round(35 + 51 * Math.pow(rnd(), 1.25)); // de ~35 (amador C) a ~86
+      let ovr = Math.round(35 + 51 * Math.pow(rnd(), 1.25)); // de ~35 (amador C) a ~86
+      if (pais === 'ARG') ovr = Math.min(ovr, 72 + Math.floor(rnd() * 4)); // Argentina: bom nível, mas longe do topo
       const style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']);
       const fem = g === 'f';
       const look = { skin: pick(SKINS), hair: pick(HAIRS_NPC), num: String(10 + Math.floor(rnd() * 89)) };
@@ -182,7 +183,7 @@ const NAT_BANK = {
   fr: { m: ['Yassine', 'Mehdi', 'Karim', 'Adam'], f: ['Salma', 'Yasmine', 'Imane', 'Sara'], s: ['El Amrani', 'Benali', 'Alaoui', 'Haddad'] },
 };
 // país: [banco de nomes, nível do melhor (masc), nível do melhor (fem)]
-const NAT_LIST = { VEN: ['es', 81, 79], URU: ['es', 75, 72], CHI: ['es', 73, 71], PAR: ['es', 70, 68], COL: ['es', 76, 74], PER: ['es', 72, 70], MEX: ['es', 78, 76], USA: ['en', 80, 78], CAN: ['en', 73, 72], ARU: ['nl', 82, 80],
+const NAT_LIST = { VEN: ['es', 84, 82], URU: ['es', 75, 72], CHI: ['es', 73, 71], PAR: ['es', 70, 68], COL: ['es', 80, 78], PER: ['es', 72, 70], MEX: ['es', 78, 76], USA: ['en', 80, 78], CAN: ['en', 73, 72], ARU: ['nl', 82, 80],
   GER: ['de', 77, 75], NED: ['nl', 75, 76], SUI: ['de', 72, 70], JPN: ['jp', 74, 77], AUS: ['en', 72, 71], RSA: ['en', 70, 69], MAR: ['fr', 70, 66], GRE: ['gr', 73, 72], HUN: ['hu', 76, 78], BEL: ['nl', 72, 71], GBR: ['en', 71, 70], AUT: ['de', 70, 70] };
 const NATS = { key: '', list: [], map: null };
 function crNationals() {
@@ -2058,6 +2059,8 @@ function careerMatchEnded(won, rating) {
 }
 // ---------- saves antigos ----------
 function crMigrate() {
+  // Argentina mais fraca: nas carreiras antigas, os argentinos acima de 75 viram espanhóis (os nomes já são em espanhol)
+  if ($s.CR && !$s.CR.argFix) { $s.CR.argFix = 1; ($s.CR.pool || []).forEach(c => { if (c.pais === 'ARG' && overall(c.a) > 75) c.pais = 'ESP'; }); }
   if (!$s.CR) return;
   crSanitize($s.CR);
   $s.CR.wardrobe = $s.CR.wardrobe || { tops: ['tee'], bots: ['short'], pats: ['liso'] }; // roupas compradas
