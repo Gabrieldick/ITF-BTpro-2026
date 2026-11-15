@@ -169,6 +169,32 @@ function genPool(seed, from = 0, to = POOL_N, used = new Set()) {
   });
   return out;
 }
+// seleções de países sem gente no circuito (Pan, Confederações, Mundial de seleções): 3 atletas por gênero, com nível
+// próprio do país (uns fortes, outros bem mais fracos), sempre os mesmos na carreira. Só entram nos torneios de seleção
+const NAT_BANK = {
+  es: { m: ['Diego', 'Andrés', 'Mateo', 'Sebastián', 'Nicolás', 'Tomás', 'Joaquín', 'Felipe', 'Gonzalo', 'Martín'], f: ['Valentina', 'Camila', 'Sofía', 'Isabela', 'Martina', 'Daniela', 'Gabriela', 'Paula', 'Antonella', 'Lucía'], s: ['González', 'Rodríguez', 'Pérez', 'Silva', 'Torres', 'Rojas', 'Castro', 'Vargas', 'Morales', 'Herrera', 'Mendoza', 'Ríos'] },
+  en: { m: ['Jake', 'Ryan', 'Tyler', 'Ethan', 'Logan', 'Mason', 'Connor', 'Liam'], f: ['Emma', 'Olivia', 'Madison', 'Ashley', 'Taylor', 'Chloe', 'Megan', 'Hannah'], s: ['Smith', 'Johnson', 'Miller', 'Davis', 'Walker', 'Carter', 'Brooks', 'Hayes', 'Turner', 'Reed'] },
+  nl: { m: ['Jeroen', 'Daan', 'Ruben', 'Jayden', 'Sem', 'Luuk'], f: ['Sanne', 'Lotte', 'Femke', 'Noor', 'Isa', 'Romy'], s: ['de Vries', 'Jansen', 'Bakker', 'Visser', 'Croes', 'Kock', 'Arends', 'Maduro'] },
+  de: { m: ['Lukas', 'Jonas', 'Felix', 'Leon', 'Niklas', 'Tim'], f: ['Lena', 'Laura', 'Anna', 'Lea', 'Hannah', 'Sophie'], s: ['Müller', 'Schmidt', 'Weber', 'Wagner', 'Becker', 'Hoffmann', 'Keller', 'Huber'] },
+  jp: { m: ['Haruto', 'Ren', 'Sota', 'Yuto', 'Kaito'], f: ['Yui', 'Hina', 'Aoi', 'Sakura', 'Mio'], s: ['Sato', 'Suzuki', 'Takahashi', 'Tanaka', 'Ito', 'Watanabe'] },
+  gr: { m: ['Nikos', 'Giorgos', 'Kostas', 'Dimitris'], f: ['Maria', 'Eleni', 'Katerina', 'Sofia'], s: ['Papadopoulos', 'Nikolaidis', 'Georgiou', 'Karalis'] },
+  hu: { m: ['Bence', 'Máté', 'Levente', 'Dániel'], f: ['Anna', 'Réka', 'Dóra', 'Lilla'], s: ['Nagy', 'Kovács', 'Szabó', 'Tóth', 'Horváth'] },
+  fr: { m: ['Yassine', 'Mehdi', 'Karim', 'Adam'], f: ['Salma', 'Yasmine', 'Imane', 'Sara'], s: ['El Amrani', 'Benali', 'Alaoui', 'Haddad'] },
+};
+// país: [banco de nomes, nível do melhor (masc), nível do melhor (fem)]
+const NAT_LIST = { VEN: ['es', 81, 79], URU: ['es', 75, 72], CHI: ['es', 73, 71], PAR: ['es', 70, 68], COL: ['es', 76, 74], PER: ['es', 72, 70], MEX: ['es', 78, 76], USA: ['en', 80, 78], CAN: ['en', 73, 72], ARU: ['nl', 82, 80],
+  GER: ['de', 77, 75], NED: ['nl', 75, 76], SUI: ['de', 72, 70], JPN: ['jp', 74, 77], AUS: ['en', 72, 71], RSA: ['en', 70, 69], MAR: ['fr', 70, 66], GRE: ['gr', 73, 72], HUN: ['hu', 76, 78], BEL: ['nl', 72, 71], GBR: ['en', 71, 70], AUT: ['de', 70, 70] };
+const NATS = { key: '', list: [], map: null };
+function crNationals() {
+  if (!$s.CR) return [];
+  if (NATS.key === String($s.CR.seed)) return NATS.list;
+  const out = [], rnd = mulberry($s.CR.seed + 4242), pick = arr => arr[Math.floor(rnd() * arr.length)];
+  for (const [pais, [bk, om, of]] of Object.entries(NAT_LIST)) for (const g of ['m', 'f']) { const fem = g === 'f', bank = NAT_BANK[bk];
+    for (let i = 0; i < 3; i++) { const ovr = Math.max(55, (fem ? of : om) - i * (2 + Math.floor(rnd() * 4))), style = pick(['atacante', 'defensor', 'tatico', 'completo', 'completo']);
+      const look = { skin: pick(SKINS), hair: pick(HAIRS_NPC), num: String(10 + Math.floor(rnd() * 89)), racket: pick(ovr < 72 ? ['duna', 'medusa', 'proteo'] : ['vela', 'tufao', 'atol', 'kronos']) }; if (fem) look.tank = true;
+      out.push({ id: 'n' + g + '_' + pais + i, name: pick(bank[g]) + ' ' + pick(bank.s), alt: Math.round(fem ? 170 + (rnd() - .5) * 14 : 184 + (rnd() - .5) * 16), pais, estilo: STYLES[style].nome, build: pick(['atletico', 'esguio', 'compacto', 'forte']), fem, canhoto: rnd() < .12 || undefined, age: 21 + Math.floor(rnd() * 12), a: makeAttrs(ovr, style, rnd), look }); } }
+  NATS.key = String($s.CR.seed); NATS.list = out; NATS.map = new Map(out.map(c => [c.id, c])); return out;
+}
 // atletas locais dos amadores (C, B e A) de cada estado: completam os rankings estaduais para ~30 por categoria.
 // Saem da semente da carreira (sempre os mesmos) e não vão no save: só os resultados deles ficam guardados
 const LOCALS = { key: '', list: [], map: null };
@@ -476,7 +502,7 @@ function crSyncChars() {
   // o parceiro joga melhor quando está contente e pior quando está insatisfeito
   const mb = $s.CR && $s.CR.partner ? crMoodBonus() + ([0, 0, 1, 2][crChemLv()] || 0) : 0, mbB = {}; if (mb) for (const [k] of ATTRS) mbB[k] = mb; // humor + química
   // na partida cada um joga com a sua fase (e os reais com a evolução da carreira)
-  $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER, crLocals()).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
+  $s.CAREER_CHARS = $s.CR ? $s.CR.pool.concat(ROSTER, crLocals(), crNationals()).map(c => { const fb = crFormB(c.id), on = Object.keys(fb).length || (mb && c.id === $s.CR.partner); return on ? Object.assign({}, c, { a: effA(c.a, fb, mb && c.id === $s.CR.partner ? mbB : null) }) : c; }).concat([crMeChar()]) : [];
 }
 // você em jogo: atributos + equipamentos (a raquete entra na hora da partida) - cansaço
 function crGearBonus() { return gearSum(gearOn($s.CR.gear, $s.CR.gearEq)); } // um por categoria; no máximo +3 por atributo somando tudo
@@ -592,7 +618,7 @@ function poolGet(id) {
   if (POOL_IDX.pool !== $s.CR.pool || POOL_IDX.len !== $s.CR.pool.length) { POOL_IDX.pool = $s.CR.pool; POOL_IDX.len = $s.CR.pool.length; POOL_IDX.map = new Map($s.CR.pool.map(c => [c.id, c])); }
   return POOL_IDX.map.get(id);
 }
-const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || (id[0] === 'l' && (crLocals(), LOCALS.map.get(id))) || (id[0] === 'c' && id[2] === '_' && (crCircuit(), CIRC.map.get(id))) || ROSTER.find(c => c.id === id));
+const crChar = id => id === 'crme' ? crMeChar() : (poolGet(id) || (id[0] === 'l' && (crLocals(), LOCALS.map.get(id))) || (id[0] === 'c' && id[2] === '_' && (crCircuit(), CIRC.map.get(id))) || (id[0] === 'n' && id[2] === '_' && (crNationals(), NATS.map.get(id))) || ROSTER.find(c => c.id === id));
 const absWeek = () => ($s.CR.season - 1) * SEASON_WEEKS + $s.CR.week;
 // cada pontuação vale só para a sua categoria: o ranking mundial (ITF) soma só o profissional (BT10 em diante); C, B e A
 // têm cada uma o seu ranking (crCatPts). resK: categoria de um resultado seu (os antigos, sem ela, pelo histórico)
@@ -1096,7 +1122,7 @@ function crTourT(t) {
 // duplas por grupo (país ou estado): os dois melhores de cada um (você entra no seu grupo)
 function crGroupTeams(groupOf, filter) {
   const g = {};
-  crWorld().concat([crMeChar()]).forEach(c => { const k = groupOf(c); if (k && (!filter || filter(k))) (g[k] = g[k] || []).push(c); });
+  crWorld().concat([crMeChar()], crNationals().filter(c => !!c.fem === !!$s.CR.me.fem)).forEach(c => { const k = groupOf(c); if (k && (!filter || filter(k))) (g[k] = g[k] || []).push(c); }); // (+ seleções dos países sem gente no circuito)
   return Object.entries(g).filter(([, l]) => l.length >= 2).map(([k, l]) => { l.sort((x, y) => crCharOvr(y) - crCharOvr(x)); return { key: k, a: l[0].id, b: l[1].id, rank: l.findIndex(c => c.id === 'crme') + 1, ovr: (crCharOvr(l[0]) + crCharOvr(l[1])) / 2 }; });
 }
 // convocação: você precisa estar entre os 2 melhores do seu país (ou estado)
@@ -2282,4 +2308,4 @@ export { crAddFama, crMood, crChemAdd, crMaybeSponsor, crNews };
 export { crRankingMode, crRankMode, crModePts, MODE_PAY };
 export { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
 // gancho de depuração (testes no navegador), como o window.__pdo do jogo
-if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), paisOf: id => id === 'crme' ? $s.CR.me.pais : (crChar(id) || {}).pais, charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
+if (typeof window !== 'undefined') window.__pdoCR = { get CR() { return $s.CR; }, callUp: k => crCallUp(k), willPartner: id => crWillPartner(crChar(id)), save: () => saveCareer(), charFromJSON: t => crCharFromJSON(t), create: o => crCreate(o), meOvr: () => crMeOvr(), importData: t => crImportData(t), loadSlot: id => crLoadSlot(id), enter: o => crEnter(o), playSim: () => crPlaySim(), playMatch: () => crPlayMatch(), ranking: () => crRanking(), pts: () => crPts(), weekOptions: w => crWeekOptions(w), cal: () => crSeasonCal($s.CR.season), squad: uf => crStateSquad(uf), squads: () => crStateSquads(), catN: id => crCatN(id), minCat: id => crMinCat(id), nextWeek: () => crNextWeek(), paisOf: id => id === 'crme' ? $s.CR.me.pais : (crChar(id) || {}).pais, charOvr: id => { const c = crWorld().find(x => x.id === id); return c ? crCharOvr(c) : null; }, forceEvent: id => { if (EVENTS[id].ok()) $s.CR.event = Object.assign({ id }, EVENTS[id].choice()); return $s.CR.event; }, resolveEvent: i => { crResolveEvent(i); return $s.CR.lastMsg; }, meOvr2: () => crMeOvr() };
