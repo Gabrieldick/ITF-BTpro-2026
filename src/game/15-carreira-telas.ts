@@ -773,7 +773,7 @@ function crTourHTML() {
     const rd = t.rounds[r] || [];
     return '<div class="rd"><h4>' + nm + '</h4>' + (rd.length ? rd.map((m, mi) => {
       const flags = tm => [...new Set([tm.a, tm.b].filter(Boolean).map(id => (crChar(id) || {}).pais).filter(Boolean))].map(c => flagSVG(c)).join('') + ' ';
-      const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const tm = t.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === t.me ? ' me' : ''); return '<div class="tm ' + cls + '">' + (i !== t.me && crRivalsIn(tm).length ? '🔥 ' : '') + (tm.label ? '' : flags(tm)) + crTeamName(tm) + (t.seeds && t.seeds[i] ? ' <i class="seed">[' + t.seeds[i] + ']</i>' : '') + '<b>' + crTeamOvr(tm) + '</b></div>'; };
+      const row = i => { if (i < 0) return '<div class="tm l">—<b></b></div>'; const tm = t.teams[i]; const cls = (m.w === null ? '' : m.w === i ? 'w' : 'l') + (i === t.me ? ' me' : ''); return '<div class="tm ' + cls + '"><span class="fl">' + (i !== t.me && crRivalsIn(tm).length ? '🔥' : '') + (tm.label ? '' : flags(tm)) + '</span><span class="nm">' + crTeamName(tm) + (t.seeds && t.seeds[i] ? ' <i class="seed">[' + t.seeds[i] + ']</i>' : '') + '</span><b>' + crTeamOvr(tm) + '</b></div>'; };
       // caminho até a final: os jogos que a sua dupla ainda pode jogar ficam marcados
       const r0 = t.rounds[0] || [], my0 = r0.findIndex(x => x.a === t.me || x.b === t.me), onPath = t.alive && my0 >= 0 && r > t.round && mi === (my0 >> r);
       return '<div class="m' + (m.a === t.me || m.b === t.me ? ' mine' : '') + (onPath ? ' path' : '') + '">' + row(m.a) + row(m.b) + (m.score ? '<div class="tm"><b>' + m.score + '</b></div>' : '') + '</div>';
@@ -799,9 +799,10 @@ function crTourHTML() {
       + '<p class="lede">' + names[t.round] + ': ' + (t.singles ? 'você' : 'vocês') + ' contra <b>' + crTeamName(opp) + '</b> (OVR ' + crTeamOvr(opp) + '): ' + esc(shortOf(crChar(opp.a))) + ' é ' + sty(opp.a) + (opp.b ? ', ' + esc(shortOf(crChar(opp.b))) + ' é ' + sty(opp.b) + '. Sua dupla: OVR ' : '. Você: OVR ') + crTeamOvr(t.teams[t.me]) + '.</p>';
   }
   const dayTxt = '<p class="cr-note"><b>Dia ' + (t.day || 1) + ' · ' + crDateTxt($s.CR.season, $s.CR.week, $s.CR.day) + '</b>' + (T.pro && !t.done ? (t.day === 2 ? ' · semifinal e final hoje' : ' · semifinal e final no domingo') : '') + '</p>';
-  if (t.night && !t.done) return '<div class="eyebrow">' + esc(t.name) + '</div>' + br + '<div class="cr-sum"><b>Fim do sábado: ' + (t.singles ? 'você está' : 'vocês estão') + ' na semifinal!</b><span>Amanhã (domingo) tem semifinal e, vencendo, a final. A noite de descanso recuperou 12 de energia.</span><span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div><div class="cta-row"><button class="cta" id="crSunday">Ir para o domingo</button><button class="ghost" id="crSimAll">Simular o resto do torneio</button></div>';
-  return dayTxt + '<div class="eyebrow">' + (t.special ? esc(T.nome) : (t.singles || t.mx) ? esc(t.name) + ' · ' + esc(TIERS[t.tier].nome) : esc(T.nome) + ' · ' + esc(t.name)) + (crIsFinalT(t) && T.pro ? ' · final em 2 sets de ' + $s.CR.games + ' games + super tie-break' : '') + '</div>' + br + msg
-    + '<div class="cta-row">' + (t.done ? '<button class="cta" id="crDone">Continuar</button>' : mm ? '<button class="cta" id="crPlay">Jogar partida</button><button class="ghost" id="crSim">Simular partida</button><button class="ghost" id="crSimAll">Simular o resto do torneio</button>' : '') + '</div>';
+  if (t.night && !t.done) return '<div class="eyebrow">' + esc(t.name) + '</div>' + '<div class="cr-sum"><b>Fim do sábado: ' + (t.singles ? 'você está' : 'vocês estão') + ' na semifinal!</b><span>Amanhã (domingo) tem semifinal e, vencendo, a final. A noite de descanso recuperou 12 de energia.</span><span class="cr-note">' + t.log.map(esc).join(' · ') + '</span></div><div class="cta-row"><button class="cta" id="crSunday">Ir para o domingo</button><button class="ghost" id="crSimAll">Simular o resto do torneio</button></div>' + br;
+  // o que fazer agora (jogar/simular, tática) fica em cima; a chave vem embaixo
+  return dayTxt + '<div class="eyebrow">' + (t.special ? esc(T.nome) : (t.singles || t.mx) ? esc(t.name) + ' · ' + esc(TIERS[t.tier].nome) : esc(T.nome) + ' · ' + esc(t.name)) + (crIsFinalT(t) && T.pro ? ' · final em 2 sets de ' + $s.CR.games + ' games + super tie-break' : '') + '</div>' + msg
+    + '<div class="cta-row cr-tour-go">' + (t.done ? '<button class="cta" id="crDone">Continuar</button>' : mm ? '<button class="cta" id="crPlay">Jogar partida</button><button class="ghost" id="crSim">Simular partida</button><button class="ghost" id="crSimAll">Simular o resto do torneio</button>' : '') + '</div>' + br;
 }
 function bindTour() {
   const b = id => $(id) && $(id).addEventListener('click', fn[id]);
@@ -1359,3 +1360,35 @@ function openProfile(id) {
 }
 const crAgeOfC = c => crAgeOf(c);
 document.addEventListener('click', e => { const el = e.target.closest && e.target.closest('[data-prof]'); if (!el || e.target.closest('button')) return; if (el.closest('#crBody') || el.closest('#crHead') || el.closest('#crSide')) openProfile(el.dataset.prof); });
+
+// ---------- menus em tela cheia (mesmo estilo da carreira): menu lateral para pular entre as telas ----------
+// vale para partida rápida, configurações, teclas, como jogar, campeonato, online, treino e tutorial (a pausa, o fim de
+// jogo e as caixinhas de conta/avisos continuam como cartões)
+const HUB_ITEMS = [['home', '🏠', 'Início'], ['q', '🎾', 'Partida rápida'], ['career', '🏆', 'Carreira'], ['champ', '🗂️', 'Campeonato'], ['online', '🌐', 'Online'], ['drill', '🎯', 'Treino'], ['tut', '🎓', 'Tutorial'], ['cfg', '⚙️', 'Configurações'], ['help', '❓', 'Como jogar']];
+const HUB_OV = { champ: 'champ', online: 'online', drill: 'drillPick', tut: 'tutPick' };
+const hubNav = document.createElement('nav'); hubNav.id = 'hubNav'; hubNav.className = 'cr-nav hub-nav';
+hubNav.innerHTML = '<div class="crn-brand"><span>🎾</span><b>ITF-BT</b><small>PRO 2026</small></div>' + HUB_ITEMS.map(([k, ic, n]) => '<button type="button" class="crn-it" data-hub="' + k + '"><i>' + ic + '</i>' + n + '</button>').join('') + '<div class="crn-foot"><small class="hub-ver"></small></div>';
+document.body.appendChild(hubNav);
+function hubPage() {
+  if (!S || (S.mode !== 'menu' && S.mode !== 'hub')) return null;
+  for (const k in HUB_OV) if (!$(HUB_OV[k]).hidden) return k;
+  const m = $('menu'); if (!m.hidden && ['q', 'cfg', 'keys', 'help'].includes(m.dataset.step)) return m.dataset.step === 'keys' ? 'cfg' : m.dataset.step;
+  return null;
+}
+function hubLeave() {
+  if (!$('champ').hidden) $('btnChampBack').click(); if (!$('online').hidden) $('onBack').click(); if (!$('drillPick').hidden) $('drillBack').click(); if (!$('tutPick').hidden) $('tutBack').click();
+}
+hubNav.addEventListener('click', e => { const b = e.target.closest('[data-hub]'); if (!b) return; const k = b.dataset.hub; if (k === hubPage()) return; ac(); hubLeave();
+  const m = $('menu'); m.hidden = false;
+  if (k === 'home' || k === 'q' || k === 'cfg' || k === 'help') { menuStep(k); return; }
+  menuStep('home'); ({ career: 'btnCareer', champ: 'btnChamp', online: 'btnOnline', drill: 'btnDrill', tut: 'btnTut' })[k] && $(({ career: 'btnCareer', champ: 'btnChamp', online: 'btnOnline', drill: 'btnDrill', tut: 'btnTut' })[k]).click(); });
+let hubLast = '';
+setInterval(() => {
+  const k = hubPage(), key = k || ''; if (key === hubLast) return; hubLast = key;
+  document.body.classList.toggle('hub-page', !!k);
+  hubNav.querySelectorAll('[data-hub]').forEach(b => b.classList.toggle('sel', b.dataset.hub === k));
+  document.querySelectorAll('.hub-card').forEach(c => c.classList.remove('hub-card'));
+  if (k) { const ov = HUB_OV[k] ? $(HUB_OV[k]) : $('menu'); const c = ov.querySelector(':scope > .card'); if (c) { c.classList.add('hub-card'); ov.classList.add('hub-ov'); c.scrollTop = 0; } }
+  document.querySelectorAll('.hub-ov').forEach(o => { if (!k || (HUB_OV[k] ? o.id !== HUB_OV[k] : o.id !== 'menu')) o.classList.remove('hub-ov'); });
+  const v = $('appVer'), hv = hubNav.querySelector('.hub-ver'); if (v && hv) hv.textContent = v.textContent;
+}, 150);
