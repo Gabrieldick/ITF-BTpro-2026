@@ -17,7 +17,7 @@ import { arenaFor } from './09-interface';
 import { nameOf } from './00-base';
 
 const H0 = new THREE.Vector3(320, 0, 40); // origem do bairro no mundo (longe da quadra, fora do cenário da praia)
-const LV = { zoom: 6.4, on: false, group: null, spots: [], boxes: [], yaw: 0, camYaw: Math.PI, camPitch: .5, vel: new THREE.Vector3(), near: null, msgT: 0, saved: null, actions: {}, drag: null, keys: {}, built: '' };
+const LV = { bagOff: .17, zoom: 6.4, on: false, group: null, spots: [], boxes: [], yaw: 0, camYaw: Math.PI, camPitch: .5, vel: new THREE.Vector3(), near: null, msgT: 0, saved: null, actions: {}, drag: null, keys: {}, built: '' };
 const P = (x, z) => new THREE.Vector3(H0.x + x, 0, H0.z + z);
 
 // ---------- montagem ----------
@@ -172,7 +172,7 @@ function fan(g, x, z, rot, seed, sit) { // pessoa simples (corpo, cabeça, braç
   box(o, .44, .6 * h, .26, 0, (sit ? .55 : .8 * h + .3 * h), 0, c); const hd = new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), mat(s)); hd.position.set(0, (sit ? .55 : 1.1 * h) + .5 * h, 0); hd.castShadow = true; o.add(hd);
   if (seed % 3 === 0) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .08, 10), mat(FAN_COLS[(seed + 3) % FAN_COLS.length])); cap.position.set(0, hd.position.y + .12, 0); o.add(cap); }
   [-1, 1].forEach(a => box(o, .1, .55 * h, .1, a * .28, (sit ? .55 : 1.1 * h) - .05, 0, s));
-  if (!sit && seed % 4 === 1) { const b = racketBag(BAG_COLS[seed % BAG_COLS.length]); b.position.set(0, 1.05 * h, .2); b.scale.setScalar(.85); o.add(b); } // raqueteira nas costas
+  if (!sit && seed % 4 === 1) { const b = racketBag(BAG_COLS[seed % BAG_COLS.length]); b.position.set(0, 1.08 * h, .2); b.scale.setScalar(.85); o.add(b); } // raqueteira nas costas
   return o;
 }
 // cores da raqueteira pela marca da raquete (enquanto não compra outra na loja)
@@ -180,12 +180,20 @@ function bagOfRacket() { const r = String(S.settings.racket || ''); let h = 0; f
 // raqueteira (bolsa de raquetes): corpo comprido com faixa e alça, usada nas costas na diagonal
 const BAG_COLS = [['#111214', '#e30613'], ['#1f4fb8', '#ffffff'], ['#ff6a00', '#111214'], ['#0a7d3c', '#ffd23f'], ['#e9e9e9', '#2457c5'], ['#6b2737', '#f2c14e']];
 function racketBag(c) {
-  const o = new THREE.Group(), [a, b] = c;
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(.13, .62, 4, 10), mat(a, { roughness: .6 })); body.scale.z = .55; o.add(body);
-  const st = new THREE.Mesh(new THREE.CylinderGeometry(.132, .132, .1, 12), mat(b)); st.scale.z = .56; st.position.y = .14; o.add(st);
-  const zip = new THREE.Mesh(new THREE.BoxGeometry(.02, .7, .02), mat('#d9d9d9', { metalness: .6, roughness: .3 })); zip.position.z = .075; o.add(zip);
-  const strap = new THREE.Mesh(new THREE.TorusGeometry(.32, .018, 6, 18, Math.PI * .9), mat('#1d1d20')); strap.rotation.set(0, Math.PI / 2, -.2); strap.position.set(0, .05, -.12); o.add(strap);
-  o.rotation.z = .55; o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
+  // mochila térmica de raquetes (como as de beach tennis): perfil com o topo arredondado (a cabeça da raquete), corpo
+  // achatado com borda arredondada, faixa do zíper na cor da marca, bolso na frente, etiqueta da marca e alças
+  const o = new THREE.Group(), [a, b] = c, W = .36, H = .74, R = .07;
+  const shp = new THREE.Shape(); shp.moveTo(-W / 2 + R, -H / 2); shp.lineTo(W / 2 - R, -H / 2); shp.quadraticCurveTo(W / 2, -H / 2, W / 2, -H / 2 + R); shp.lineTo(W / 2, H / 2 - W / 2);
+  shp.absarc(0, H / 2 - W / 2, W / 2, 0, Math.PI, false); shp.lineTo(-W / 2, -H / 2 + R); shp.quadraticCurveTo(-W / 2, -H / 2, -W / 2 + R, -H / 2);
+  const body = new THREE.ExtrudeGeometry(shp, { depth: .1, bevelEnabled: true, bevelThickness: .03, bevelSize: .025, bevelSegments: 3, curveSegments: 18 }); body.translate(0, 0, -.05);
+  o.add(new THREE.Mesh(body, mat(a, { roughness: .55 })));
+  const band = new THREE.ExtrudeGeometry(shp, { depth: .022, bevelEnabled: false, curveSegments: 18 }); band.translate(0, 0, -.011); const bm = new THREE.Mesh(band, mat(b, { roughness: .5 })); bm.scale.set(1.075, 1.04, 1); o.add(bm); // faixa do zíper em volta
+  const pk = new THREE.Shape(); const pw = .26, ph = .3, pr = .05; pk.moveTo(-pw / 2 + pr, -ph / 2); pk.lineTo(pw / 2 - pr, -ph / 2); pk.quadraticCurveTo(pw / 2, -ph / 2, pw / 2, -ph / 2 + pr); pk.lineTo(pw / 2, ph / 2 - pr); pk.quadraticCurveTo(pw / 2, ph / 2, pw / 2 - pr, ph / 2); pk.lineTo(-pw / 2 + pr, ph / 2); pk.quadraticCurveTo(-pw / 2, ph / 2, -pw / 2, ph / 2 - pr); pk.lineTo(-pw / 2, -ph / 2 + pr); pk.quadraticCurveTo(-pw / 2, -ph / 2, -pw / 2 + pr, -ph / 2);
+  const pg = new THREE.ExtrudeGeometry(pk, { depth: .03, bevelEnabled: true, bevelThickness: .012, bevelSize: .012, bevelSegments: 2 }); const pm = new THREE.Mesh(pg, mat(a, { roughness: .6 })); pm.position.set(0, -.13, .08); o.add(pm); // bolso da frente
+  box(o, .2, .045, .01, 0, .07, .116, b); box(o, .012, .26, .012, 0, -.13, .13, '#d9d9d9', { metalness: .6, roughness: .3 }); // etiqueta da marca e zíper do bolso
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.03, .008, 6, 12), mat('#d9d9d9', { metalness: .7 })); ring.position.set(0, H / 2 + .015, 0); o.add(ring); // alça de mão no topo
+  [-1, 1].forEach(sd => { box(o, .045, .5, .012, sd * .1, .02, -.088, '#1d1d20'); box(o, .045, .012, .1, sd * .1, .27, -.13, '#1d1d20'); }); // alças de mochila (do lado do corpo)
+  o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
 }
 // faixa/placa com marca (painel com o nome, nas cores da marca)
 function banner(g, text, x, y, z, w, h, bg, fg, rot = 0, sub) {
@@ -749,7 +757,7 @@ function cam(dt) {
   { const bc = crBagCols() || bagOfRacket();
     if (!LV.bag || LV.bagKey !== bc.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); LV.bagKey = bc.join(); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
-    const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * .16, 1.3 * hk, human.pos.z - fz * .16); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.6); LV.bag.scale.set(.72 * hk, .72 * hk, .6 * hk); }
+    const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.1); LV.bag.rotateX(-.06); LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
   if (LV.rideMesh) { LV.rideMesh.position.set(human.pos.x, 0, human.pos.z); LV.rideMesh.rotation.y = LV.yaw; }
   // nadando: o corpo deita na água (as pernas batem e os braços giram como no crawl) e a raqueteira fica guardada
   if (LV.swim) { LV.bag.visible = false; swimPose(); }
