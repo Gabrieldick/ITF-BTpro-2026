@@ -409,7 +409,7 @@ function build() {
   // ---- chão: areia da praia ao norte, terrenos com grama, calçadas e a rua ----
   box(g, 400, .2, 213, 100, -.12, 18.5, '#e8d7ae', { noShadow: true }); // (a areia vai até o mar da cena, em z −88)
   // horizonte: areia e terreno até longe (sem emenda com o cenário da quadra), a rua principal segue até sumir, morros ao fundo
-  box(g, 2400, .2, 900, 100, -.135, 362, '#dccb9f', { noShadow: true }); box(g, 2400, .06, 8, 100, .02, 24, '#3a3f47', { noShadow: true }); box(g, 2400, .06, 8, 100, .015, 64, '#3a3f47', { noShadow: true });
+  box(g, 2400, .2, 896, 100, -.085, 362, '#dccb9f', { noShadow: true }); // (acima do nível do mar da cena: senão a água aparecia por cima do terreno longe da praia) box(g, 2400, .06, 8, 100, .02, 24, '#3a3f47', { noShadow: true }); box(g, 2400, .06, 8, 100, .015, 64, '#3a3f47', { noShadow: true });
   for (let i = 0; i < 9; i++) { const h = new THREE.Mesh(new THREE.ConeGeometry(70 + (i % 3) * 25, 40 + (i % 4) * 14, 7), mat(['#6f9b6a', '#5e8a5c', '#7aa673'][i % 3])); h.position.set(-600 + i * 170, 10, 420 + (i % 2) * 60); g.add(h); }
   solid(-60, -97, 290, -96); // dá para entrar no mar (até onde dá pé)
   // beira do mar (o mar é o da cena, o mesmo da quadra: some a emenda com o local do torneio)
