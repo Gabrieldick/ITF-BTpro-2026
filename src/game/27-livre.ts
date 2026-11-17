@@ -937,11 +937,12 @@ function hubOn() {
   }
   const [hw, hd] = LV.house || [6, 5]; human.pos.copy(P(-2.6, hd + 3.4)); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = Math.PI * .94; human.liftY = 0; // no jardim da frente, de frente para a câmera (a casa ao fundo)
 }
-function hubOff() {
+function hubOff(keepPick) { // keepPick: a partida da carreira já escolheu os bonecos (não devolve os da partida rápida)
   if (!HB.on) return; HB.on = false; const sv = HB.saved;
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   (HB.envVis || []).forEach(([o, v]) => { o.visible = v; }); HB.envVis = null; human.forceYaw = null;
-  if (sv) { SEA.visible = sv.sea; S.settings.pick = sv.pick; S.settings.racket = sv.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); human.pos.copy(sv.pos); if (S.mode === 'hub') S.mode = sv.mode === 'hub' ? 'menu' : sv.mode; }
+  // keepPick: depois da partida da carreira volta o boneco da partida rápida (guardado em CR.prev)
+  if (sv) { SEA.visible = sv.sea; if (!keepPick) { S.settings.pick = sv.pick; S.settings.racket = sv.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); } else if ($s.CR && $s.CR.prev) { $s.CR.prev.pick = sv.pick; $s.CR.prev.racket = sv.racket; } human.pos.copy(sv.pos); if (S.mode === 'hub') S.mode = sv.mode === 'hub' ? 'menu' : sv.mode; }
 }
 S.hubOff = hubOff;
 function hubCam(dt) {

@@ -783,7 +783,7 @@ const COURTS = {
 };
 // guest: convidado do online (o estado vem do anfitrião: sem sorteio de saque/clima e sem montar o ponto)
 function newMatch(guest) {
-  if (S.hubOff) S.hubOff(); // (a cena do início da carreira devolve o boneco da partida)
+  if (S.hubOff) S.hubOff(true); // (sai da cena do início da carreira mantendo os bonecos que esta partida escolheu)
   S.drill = null; $s.players.forEach(q => { q.mErr = 0; q.mTend = null; q.sta = 1; q.staTired = 0; });
   S.tutorial = !!S.tutPending; S.tutPending = false; S.ceremonyDone = false; S.crowdFav = null; S.aiHist = null; // lição do tutorial: tudo em 1 estrela (só nesta partida)
   { const ar = arenaFor(); S.indoor = !!ar.indoor; applyArena(ar); } setBallStyle(S.settings.ballStyle || 'laranja');

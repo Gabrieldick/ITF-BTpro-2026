@@ -242,7 +242,7 @@ function animateAthlete(p, dt) {
   const away = ball.state === 'live' && S.lastTeam === p.team && ball.vel.z * fT < -3;
   // troca de lado: anda de frente para onde vai (o corpo vira inteiro, até de costas para a rede) e só no fim se vira
   const swk = !!(S.sideWalk && S.mode === 'dead');
-  const rlxT = busy || p.lowK > .2 ? 0 : swk && sp > .3 ? 1 : (ball.state !== 'live' || S.mode === 'dead' ? 1 : away ? .55 : 0) * clamp((sp - .4) / .8, 0, 1);
+  const rlxT = (S.mode === 'livre' || S.mode === 'hub' || S.mode === 'press') && p.isHuman ? 1 : busy || p.lowK > .2 ? 0 : swk && sp > .3 ? 1 : (ball.state !== 'live' || S.mode === 'dead' ? 1 : away ? .55 : 0) * clamp((sp - .4) / .8, 0, 1);
   p.rlx = (p.rlx || 0) + (rlxT - (p.rlx || 0)) * Math.min(1, dt * (rlxT > (p.rlx || 0) ? (swk ? 8 : 3) : 9));
   const hd = Math.atan2(latV, -back), r0 = p.rlxTurn || 0;
   const turnT = swk && sp > .5 ? r0 + Math.atan2(Math.sin(-hd - r0), Math.cos(-hd - r0)) : p.rlx > .3 && sp > 1 && Math.abs(hd) < 1.9 ? clamp(-hd, -1.5, 1.5) * p.rlx : 0;
@@ -548,6 +548,9 @@ function animateAthlete(p, dt) {
     if (idk === 'hang') { _e.set(shR.x + .06, shR.y - .52, -.03 + sw * .025); _b.set(.4, -.2, 1); }
     else { _e.set(shR.x - .03, shR.y - .44, -.24 + sw * .015); _b.set(.6, -.3, .8); }
     _c.lerp(_e, p.idl); }
+  // modo livre: sem raquete na mão (está na raqueteira): os dois braços soltos ao lado do corpo, balançando com o passo
+  const noRk = (S.mode === 'livre' || S.mode === 'hub' || S.mode === 'press') && p.isHuman && swingU < 0;
+  if (noRk && p.idl < .5) { const am = .06 + .14 * run; _e.set(.27 - .05 * run, -.02 + .1 * run, -.08 + Math.cos(p.gait) * am); _c.lerp(_e, 1 - p.idl); _b.set(.4, -.2, 1); }
   armIK(p, m.armR, shR, _c, _b);
   { const rl = swingU < 0 && !p.charging ? (p.rlx || 0) : 0; let wx = lerp(pose.wx, RLX_WX, rl), wr = lerp(pose.wr, RLX_WR, rl);
     if (p.idl > .01) { const tw = idk === 'twirl' ? Math.sin(p.gT * 5 + ph) * 1.4 : 0; wx = lerp(wx, idk === 'hang' ? IDL_WX : .9, p.idl); wr = lerp(wr, (idk === 'hang' ? IDL_WR : .4) + tw, p.idl); }
@@ -560,7 +563,8 @@ function animateAthlete(p, dt) {
   // braço livre balança ao contrário da perna do mesmo lado (mais na corrida para frente/trás que na lateral)
   if (swingU < 0 && !p.charging && run > .3 && !celPh) { _c.y += Math.sin(p.gait) * .04 * run; _c.z -= Math.cos(p.gait) * .17 * run * lvu; }
   // andando solto entre os pontos: a mão livre vai ao lado do corpo e balança com o passo (sem segurar a raquete no peito)
-  if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .06 + .12 * run; _e.set(-.27 + .05 * run, -.02 + .1 * run, -.08 - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); } // mão livre solta ao lado, balançando
+  if (noRk && p.idl < .5) { const am = .06 + .14 * run; _e.set(-.27 + .05 * run, -.02 + .1 * run, -.08 - Math.cos(p.gait) * am); _c.lerp(_e, 1 - p.idl); }
+  else if (swingU < 0 && !p.charging && p.rlx > .01 && !celPh && p.prep < .05) { const am = .06 + .12 * run; _e.set(-.27 + .05 * run, -.02 + .1 * run, -.08 - Math.cos(p.gait) * am); _c.lerp(_e, p.rlx); } // mão livre solta ao lado, balançando
   if (p.prep > .05 && ball.state === 'live' && !celPh) { // mão livre aponta a bola
     _e.copy(ball.pos); m.spine.worldToLocal(_e); _g.copy(_e).sub(shL);
     if (_g.lengthSq() > 1e-4) { _g.normalize(); _e.copy(shL).addScaledVector(_g, .5); _c.lerp(_e, p.prep * .85); }
