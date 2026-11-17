@@ -634,6 +634,7 @@ const ACT = {
 // ---------- entrar e sair ----------
 function enter() {
   if (!$s.CR || LV.on) return;
+  hubOff(); LV.spots.forEach(q => { q.ring.visible = true; });
   build();
   LV.on = true; LV.saved = { mode: S.mode, pos: human.pos.clone(), sea: SEA.visible }; SEA.visible = true; // o mar da cena é o da praia do bairro
   // o resto do cenário da quadra (prédios da orla, arquibancadas, ilha) some: o bairro tem o próprio horizonte
@@ -879,6 +880,7 @@ function pressBuild(T) {
 }
 function pressOn(T) {
   if (!$s.CR || LV.on) return;
+  if (HB.on) { hubOff(); PR.backToHub = true; }
   if (!PR.on) {
     PR.saved = { mode: S.mode, pos: human.pos.clone(), pick: Object.assign({}, S.settings.pick), racket: S.settings.racket, menu: document.body.classList.contains('in-menu') };
     crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters(); applyRackets(); applyPlayerStyle();
@@ -895,6 +897,7 @@ function pressOff() {
   human.forceYaw = null;
   if (sv) { S.settings.pick = sv.pick; S.settings.racket = sv.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); human.pos.copy(sv.pos); S.mode = sv.mode === 'press' ? 'menu' : sv.mode; if (sv.menu) document.body.classList.add('in-menu'); }
   if ($s.CR) document.getElementById('career').hidden = false;
+  if (PR.backToHub) { PR.backToHub = false; setTimeout(() => { if (LV.actions.render) LV.actions.render(); }, 0); }
 }
 function pressCam(dt) {
   if (S.mode !== 'press' || !PR.on) return false;
@@ -912,6 +915,42 @@ function pressCam(dt) {
   return true;
 }
 HIST.pressOn = pressOn; HIST.pressOff = pressOff; HIST.pressShot = s2 => { if (PR.shot !== s2) PR.cut = true; PR.shot = s2; };
+
+
+// ---------- cena da tela de início da carreira (o seu jogador em casa, ao fundo da tela) ----------
+const HB = { on: false, saved: null, t: 0 };
+function hubOn() {
+  if (!$s.CR || LV.on || PR.on || S.careerActive) return;
+  if (!HB.on) {
+    HB.saved = { mode: S.mode, pos: human.pos.clone(), pick: Object.assign({}, S.settings.pick), racket: S.settings.racket, sea: SEA.visible };
+    build(); crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters(); applyRackets(); applyPlayerStyle();
+    HB.envVis = ENV.children.map(o => [o, o.visible]); ENV.children.forEach(o => { if (o !== SEA) o.visible = false; }); SEA.visible = true;
+    S.mode = 'hub'; HB.on = true; HB.t = 0; [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
+  }
+  const [hw, hd] = LV.house || [6, 5]; human.pos.copy(P(-2.6, hd + 3.4)); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = Math.PI * .94; human.liftY = 0; // no jardim da frente, de frente para a câmera (a casa ao fundo)
+}
+function hubOff() {
+  if (!HB.on) return; HB.on = false; const sv = HB.saved;
+  [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
+  (HB.envVis || []).forEach(([o, v]) => { o.visible = v; }); HB.envVis = null; human.forceYaw = null;
+  if (sv) { SEA.visible = sv.sea; S.settings.pick = sv.pick; S.settings.racket = sv.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); human.pos.copy(sv.pos); if (S.mode === 'hub') S.mode = sv.mode === 'hub' ? 'menu' : sv.mode; }
+}
+S.hubOff = hubOff;
+function hubCam(dt) {
+  if (S.mode !== 'hub' || !HB.on) return false;
+  const cr = document.getElementById('career'); if (!cr || cr.hidden || S.careerActive) { hubOff(); return false; } // saiu da carreira: volta ao normal
+  [partner, cpuA, cpuB].forEach(p => { if (p && p.model) { p.model.group.visible = false; if (p.skin) { p.skin.holder.visible = false; p.skin.racket.visible = false; } } });
+  if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
+  HB.t += dt; const h = human.pos, sway = Math.sin(HB.t * .15) * .25, wide = innerWidth / Math.max(1, innerHeight) > 1.2;
+  LV.spots.forEach(q => { q.label.visible = false; q.ring.visible = false; }); // sem as placas dos lugares
+  // o jogador fica à direita da tela (o texto do início ocupa a esquerda); a câmera respira devagar
+  _v.set(h.x - (wide ? 2 : .4) + sway, 1.45, h.z + 5.8); _w.set(h.x - (wide ? 2.3 : .2), 1.15, h.z);
+  const k = HB.t < .1 ? 1 : 1 - Math.exp(-dt * 3); camera.position.lerp(_v, k); HB.look = HB.t < .1 || !HB.look ? _w.clone() : HB.look.lerp(_w, k); camera.lookAt(HB.look);
+  if (camera.fov !== 42) { camera.fov = 42; camera.updateProjectionMatrix(); }
+  sun.target.position.copy(h); sun.position.copy(h).addScaledVector(SUN_DIR, 40);
+  if (LV.bag) LV.bag.visible = false;
+  return true;
+}
 
 // ---------- interface ----------
 function hud(on) {
@@ -1001,4 +1040,4 @@ addEventListener('auxclick', e => { if (LV.on && e.button === 1) e.preventDefaul
 { let pin = 0; addEventListener('touchmove', e => { if (!LV.on || e.touches.length !== 2) { pin = 0; return; } const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (pin) LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * pin / d)); pin = d; }, { passive: true }); addEventListener('touchend', () => { pin = 0; }); }
 
 if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0, FAN_LINES };
-export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam, pressCam };
+export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam, pressCam, hubCam, hubOn, hubOff };

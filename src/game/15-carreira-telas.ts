@@ -7,7 +7,7 @@ import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { human } from './06-modelos';
 import { HIST, renderTalk, persHTML } from './26-historias';
-import { LIVRE, livreEnter, livreExit } from './27-livre';
+import { LIVRE, livreEnter, livreExit, hubOn, hubOff } from './27-livre';
 import { ac, applyGfx } from './08-audio';
 import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview, faceOf, EYE_COLS } from './07-glb';
 import * as THREE from 'three';
@@ -18,9 +18,9 @@ import { crRankingMode, crModePts, MODE_PAY, crAllPts, crCatRanking, crSigLv, cr
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
 // ---------- telas ----------
-let crTab = 'agenda';
+let crTab = 'inicio';
 // abas agrupadas: cada grupo tem as suas sub-abas (a primeira é a que abre)
-const CR_GROUPS = { agenda: [['agenda', 'Semana'], ['calendario', 'Calendário']], jogador: [['jogador', 'Atributos'], ['parceiros', 'Dupla'], ['ajustes', 'Ajustes']], loja: [['loja', 'Loja']], ranking: [['ranking', 'Ranking']], patrocinio: [['patrocinio', 'Patrocínios']], negocios: [['negocios', 'Negócios']], historico: [['historico', 'Histórico'], ['trofeus', 'Troféus']] };
+const CR_GROUPS = { inicio: [['inicio', 'Início']], agenda: [['agenda', 'Semana'], ['calendario', 'Calendário']], jogador: [['jogador', 'Atributos'], ['parceiros', 'Dupla'], ['ajustes', 'Ajustes']], loja: [['loja', 'Loja']], ranking: [['ranking', 'Ranking']], patrocinio: [['patrocinio', 'Patrocínios']], negocios: [['negocios', 'Negócios']], historico: [['historico', 'Histórico'], ['trofeus', 'Troféus']] };
 const crGroupOf = t => Object.keys(CR_GROUPS).find(g => CR_GROUPS[g].some(x => x[0] === t)) || 'agenda';
 const money = v => '$' + Math.round(v).toLocaleString('pt-BR');
 let crEntry = '';
@@ -65,6 +65,41 @@ function friendlyBack() {
   crTrain(); saveCareer(); openCareer(); livreEnter(); return true;
 }
 LIVRE.actions = { editLook: () => { livreExit(true); crTab = 'jogador'; renderCareer(); openEditor(); }, shopClothes: () => { livreExit(true); crTab = 'loja'; shopTab = 'cima'; renderCareer(); }, friendly: v => friendlyStart(v), cfg: () => { const m = $('menu'); m.hidden = false; menuStep('cfg'); menuPrev = 'livre'; }, play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
+// menu lateral (no lugar das abas): seções com ícone e sub-abas; no torneio, só o torneio
+const NAV_IC = { inicio: ['🏠', 'Início'], agenda: ['📅', 'Agenda'], jogador: ['👤', 'Jogador e dupla'], loja: ['🛒', 'Loja'], ranking: ['🏆', 'Ranking'], patrocinio: ['🤝', 'Patrocínios'], negocios: ['🏢', 'Negócios'], historico: ['📜', 'Histórico'] };
+function renderCrNav() {
+  const N = $('crNav'); if (!N) return; N.hidden = !$s.CR; if (!$s.CR) return;
+  const tourOn = $s.CR.tour && !$s.CR.tour.pending, g0 = crGroupOf(crTab), meO = overall($s.CR.me.a);
+  let h = '<div class="crn-brand"><span>🎾</span><b>Carreira</b><small>ITF-BT PRO 2026</small></div>'
+    + '<div class="crn-me"><span class="crn-ovr">' + meO + '<small>OVR</small></span><div><b>' + esc($s.CR.me.name) + '</b><small>' + crRank() + 'º no ranking · fama ' + Math.round($s.CR.fama || 0) + '</small></div></div>';
+  if (tourOn) h += '<p class="crn-sec">Agora</p><button type="button" class="crn-it sel"><i>🏆</i>' + esc(String($s.CR.tour.name).replace(/ · .*$/, '')) + '</button><p class="crn-note">Durante o torneio, as outras telas ficam para depois.</p>';
+  else for (const g of Object.keys(CR_GROUPS)) { const [ic, nm] = NAV_IC[g] || ['•', g], subs = CR_GROUPS[g];
+    h += '<button type="button" class="crn-it' + (g0 === g ? ' sel' : '') + '" data-nav-t="' + subs[0][0] + '"><i>' + ic + '</i>' + nm + '</button>';
+    if (subs.length > 1 && g0 === g) h += '<div class="crn-subs">' + subs.map(([t, n]) => '<button type="button" class="' + (t === crTab ? 'sel' : '') + '" data-nav-t="' + t + '">' + n + '</button>').join('') + '</div>'; }
+  h += '<div class="crn-foot"><button type="button" class="crn-walk" data-nav-walk>🚶 ' + (tourOn ? 'Andar pelo torneio' : 'Mundo livre') + '</button></div>';
+  N.innerHTML = h;
+  N.querySelectorAll('[data-nav-t]').forEach(b => b.addEventListener('click', () => { crTab = b.dataset.navT; $s.CR.lastMsg = ''; renderCareer(); const hb = $('crHub'); if (hb) hb.scrollTop = 0; }));
+  const w = N.querySelector('[data-nav-walk]'); if (w) w.addEventListener('click', () => livreEnter());
+}
+// início: título grande, o que fazer agora e o resumo (o jogador aparece em 3D à direita)
+function crHeroHTML(tour) {
+  const C = $s.CR, t = C.tour, meO = overall(C.me.a), pot = crCap(), p = C.partner ? crChar(C.partner) : null, nT = Object.values(C.titles || {}).reduce((a, b) => a + b, 0);
+  const now = t && !t.pending && !t.done ? '🏆 ' + esc(String(t.name).replace(/ · .*$/, '')) + ' em andamento' : t && t.pending ? '📝 Inscrito no ' + esc(String(t.name).replace(/ · .*$/, '')) + ' (começa no sábado)' : '📅 ' + crDateTxt(C.season, C.week, C.day) + ': escolha o que fazer hoje';
+  const tile = (lbl, big, sub, extra) => '<div class="ch-tile"><small>' + lbl + '</small><b>' + big + '</b><span>' + sub + '</span>' + (extra || '') + '</div>';
+  return '<section class="cr-hero' + (tour ? ' small' : '') + '"><div class="ch-txt"><div class="eyebrow">Carreira · temporada ' + C.season + ' · semana ' + C.week + '</div>'
+    + '<h1>' + esc(C.me.name) + '</h1><p class="ch-sub">' + esc(C.me.estilo || '') + ' · ' + C.age + ' anos' + (p ? ' · dupla com ' + esc(nameOf(p)) : '') + '</p><p class="ch-now">' + now + '</p>'
+    + '<div class="cta-row"><button type="button" class="cta ch-go" data-hero="walk">🚶 ' + (tour ? 'Andar pelo torneio' : 'Entrar no mundo livre') + '</button>' + (tour ? '' : '<button type="button" class="ghost" data-hero="agenda">📅 Ver a semana</button>') + '</div></div>'
+    + (tour ? '' : '<div class="ch-tiles">'
+      + tile('Hoje', C.tour && C.tour.pending ? 'Inscrito' : 'Dia livre', now.replace(/^\S+ /, ''))
+      + tile('Nível', meO + ' <em>/ ' + pot + '</em>', 'overall · potencial', '<span class="ch-bar"><i style="width:' + Math.round(meO / Math.max(1, pot) * 100) + '%"></i></span>')
+      + tile('Ranking', crRank() + 'º', crPts() + ' pts')
+      + tile('Fama', Math.round(C.fama || 0), C.sponsors && C.sponsors.length ? C.sponsors.length + ' patrocinador(es)' : 'sem patrocinador ainda')
+      + tile('Títulos', nT, nT ? 'na estante de casa' : 'o primeiro está perto')
+      + '</div>') + '</section>';
+}
+function bindHero() {
+  document.querySelectorAll('[data-hero]').forEach(b => b.addEventListener('click', () => { if (b.dataset.hero === 'walk') livreEnter(); else { crTab = 'agenda'; renderCareer(); } }));
+}
 function renderCareer() {
   // sem carreira aberta: três abas (conta, carregar, criar)
   if (!$s.CR && !crEntry) crEntry = crSlots().length || CL.sess ? 'load' : 'new';
@@ -105,7 +140,14 @@ function renderCareer() {
   const crm = crSaveErr() || $s.CR.lastMsg || ''; $('crMsg').textContent = crm; $('crMsg').hidden = !crm;
   const body = $('crBody');
   setTimeout(renderTalk, 0); // entrevistas e histórias na fila: aparecem por cima da carreira
-  if ($s.CR.tour && !$s.CR.tour.pending) { body.innerHTML = crTourHTML(); bindTour(); return; }
+  renderCrNav();
+  const tourOn = $s.CR.tour && !$s.CR.tour.pending;
+  // início (e o torneio em andamento): o seu jogador em 3D ao fundo, na casa
+  if (crTab === 'inicio' || tourOn) setTimeout(() => { if (!$('career').hidden && $s.CR) hubOn(); }, 0); else hubOff();
+  document.querySelector('.cr-card-main').classList.toggle('cr-home', crTab === 'inicio' || !!tourOn);
+  document.querySelector('.cr-card-main').classList.toggle('cr-tour', !!tourOn);
+  if (tourOn) { body.innerHTML = crHeroHTML(true) + crTourHTML(); bindTour(); bindHero(); return; }
+  if (crTab === 'inicio') { body.innerHTML = crHeroHTML(false); bindHero(); bindCareerBody(); return; }
   body.innerHTML = ({ agenda: crAgendaHTML, calendario: crCalendarHTML, jogador: crPlayerHTML, parceiros: crPartnersHTML, loja: crShopHTML, patrocinio: crSponsorHTML, ranking: crRankingHTML, historico: crHistoryHTML, negocios: crBizHTML, trofeus: crTrophyHTML, ajustes: crSettingsHTML }[crTab])();
   bindCareerBody();
   if (GD.i >= 0) guidePaint();
@@ -954,7 +996,7 @@ function renderCloud() {
     const id = b.dataset.clPull, r = rows.find(x => x.id === id), lt = clLocalTime(id);
     if (lt && r && clTime(r.updated_at) + 1000 < lt && !confirm('A versão deste aparelho é mais nova que a da nuvem. Substituir pela da nuvem mesmo assim?')) return;
     b.disabled = true; b.textContent = 'Baixando…';
-    try { const cid = await clPull(id); if (crLoadSlot(cid)) { crTab = 'agenda'; $s.CR.lastMsg = 'Carreira baixada da nuvem.'; } renderCareer(); }
+    try { const cid = await clPull(id); if (crLoadSlot(cid)) { crTab = 'inicio'; $s.CR.lastMsg = 'Carreira baixada da nuvem.'; } renderCareer(); }
     catch (e) { CL.msg = 'Falha ao baixar: ' + e.message; renderCloud(); }
   }));
   list.querySelectorAll('[data-cl-del]').forEach(b => b.addEventListener('click', async () => {
@@ -1003,14 +1045,14 @@ function renderSaves() {
     + '<div class="acts"><button class="cta sm" data-slot-load="' + esc(c.id) + '">Continuar</button><button class="ghost sm" data-slot-walk="' + esc(c.id) + '" title="Abrir a carreira já andando pela casa">🚶 Andar</button><button class="ghost sm" data-slot-exp="' + esc(c.id) + '">Exportar</button><button class="ghost sm" data-slot-del="' + esc(c.id) + '">Apagar</button></div></div>').join('')
     : '<p class="cr-note cr-wrap">Nenhuma carreira salva neste navegador. Crie uma na aba Criar carreira, baixe da nuvem ou importe um arquivo.</p>';
   const L = $('crSlotList');
-  L.querySelectorAll('[data-slot-load]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotLoad)) { crTab = 'agenda'; crSaveMsg(''); renderCareer(); } }));
-  L.querySelectorAll('[data-slot-walk]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotWalk)) { crTab = 'agenda'; crSaveMsg(''); renderCareer(); livreEnter(); } }));
+  L.querySelectorAll('[data-slot-load]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotLoad)) { crTab = 'inicio'; crSaveMsg(''); renderCareer(); } }));
+  L.querySelectorAll('[data-slot-walk]').forEach(b => b.addEventListener('click', () => { if (crLoadSlot(b.dataset.slotWalk)) { crTab = 'inicio'; crSaveMsg(''); renderCareer(); livreEnter(); } }));
   L.querySelectorAll('[data-slot-exp]').forEach(b => b.addEventListener('click', () => { const fn = crDownload(b.dataset.slotExp); if (fn) crSaveMsg('Baixado: ' + fn + '. Para abrir em outro lugar, coloque o arquivo na pasta ' + SAVE_DIR + '/ do repositório e use "Carregar do GitHub", ou use "Importar arquivo".'); }));
   L.querySelectorAll('[data-slot-del]').forEach(b => b.addEventListener('click', () => { if (b.dataset.sure) { crDeleteSlot(b.dataset.slotDel); crSaveMsg('Carreira apagada deste navegador.'); renderCareer(); } else { b.dataset.sure = '1'; b.textContent = 'Confirmar'; } }));
 }
 function crAfterImport(r) {
   crSaveMsg(r.msg);
-  if (r.ok && crLoadSlot(r.id)) { crTab = 'agenda'; $s.CR.lastMsg = r.msg; crSaveMsg(''); }
+  if (r.ok && crLoadSlot(r.id)) { crTab = 'inicio'; $s.CR.lastMsg = r.msg; crSaveMsg(''); }
   renderCareer();
 }
 $('crFile').addEventListener('change', e => {
