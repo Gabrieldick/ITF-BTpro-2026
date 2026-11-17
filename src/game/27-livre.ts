@@ -20,6 +20,11 @@ const H0 = new THREE.Vector3(320, 0, 40); // origem do bairro no mundo (longe da
 const LV = { bagOff: .17, zoom: 6.4, on: false, group: null, spots: [], boxes: [], yaw: 0, camYaw: Math.PI, camPitch: .5, vel: new THREE.Vector3(), near: null, msgT: 0, saved: null, actions: {}, drag: null, keys: {}, built: '' };
 const P = (x, z) => new THREE.Vector3(H0.x + x, 0, H0.z + z);
 
+// esconde o cenário da quadra (prédios, arquibancadas, linhas…) sem mexer na visibilidade de cada peça: o grupo inteiro
+// some e só o mar continua (é tirado do grupo enquanto isso). Assim a quadra volta exatamente como estava
+let envHid = 0;
+function envHide() { if (LV.group) LV.group.visible = true; if (envHid++) return; scene.attach(SEA); ENV.visible = false; }
+function envShow() { if (!envHid || --envHid) return; ENV.attach(SEA); ENV.visible = true; if (LV.group) LV.group.visible = false; } // (o bairro some: o terreno dele passa por baixo da quadra da partida)
 // ---------- montagem ----------
 function box(g, w, h, d, x, y, z, color, o) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, o)); m.position.set(x, y, z); m.castShadow = !(o && o.noShadow); m.receiveShadow = true; g.add(m); return m; }
 // porta (folha presa na dobradiça): abre sozinha quando você chega perto. axis 'x': porta numa parede ao longo de x; dir: para que lado a folha vai
@@ -646,7 +651,7 @@ function enter() {
   build();
   LV.on = true; LV.saved = { mode: S.mode, pos: human.pos.clone(), sea: SEA.visible }; SEA.visible = true; // o mar da cena é o da praia do bairro
   // o resto do cenário da quadra (prédios da orla, arquibancadas, ilha) some: o bairro tem o próprio horizonte
-  LV.envVis = ENV.children.map(o => [o, o.visible]); ENV.children.forEach(o => { if (o !== SEA) o.visible = false; });
+  envHide();
   S.mode = 'livre';
   document.body.classList.remove('in-menu'); document.body.classList.add('livre');
   document.getElementById('career').hidden = true;
@@ -663,7 +668,7 @@ function goVenue() { build(); LV.snap = true; human.pos.copy(P(VX, VZ + 34)); hu
 function goHome() { LV.snap = true; human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
 function exit(toCareer = true) {
   if (!LV.on) return;
-  LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; (LV.envVis || []).forEach(([o, v]) => { o.visible = v; }); LV.envVis = null; if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
+  LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; envShow(); if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
   if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); applyRackets(); applyPlayerStyle(); } // volta o boneco da partida rápida
@@ -932,7 +937,7 @@ function hubOn() {
   if (!HB.on) {
     HB.saved = { mode: S.mode, pos: human.pos.clone(), pick: Object.assign({}, S.settings.pick), racket: S.settings.racket, sea: SEA.visible };
     build(); crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters(); applyRackets(); applyPlayerStyle();
-    HB.envVis = ENV.children.map(o => [o, o.visible]); ENV.children.forEach(o => { if (o !== SEA) o.visible = false; }); SEA.visible = true;
+    envHide(); SEA.visible = true;
     S.mode = 'hub'; HB.on = true; HB.t = 0; [partner, cpuA, cpuB].forEach(p => { if (p) p.livreHide = true; });
   }
   const [hw, hd] = LV.house || [6, 5]; human.pos.copy(P(-2.6, hd + 3.4)); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = Math.PI * .94; human.liftY = 0; // no jardim da frente, de frente para a câmera (a casa ao fundo)
@@ -940,7 +945,7 @@ function hubOn() {
 function hubOff(keepPick) { // keepPick: a partida da carreira já escolheu os bonecos (não devolve os da partida rápida)
   if (!HB.on) return; HB.on = false; const sv = HB.saved;
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
-  (HB.envVis || []).forEach(([o, v]) => { o.visible = v; }); HB.envVis = null; human.forceYaw = null;
+  envShow(); human.forceYaw = null;
   // keepPick: depois da partida da carreira volta o boneco da partida rápida (guardado em CR.prev)
   if (sv) { SEA.visible = sv.sea; if (!keepPick) { S.settings.pick = sv.pick; S.settings.racket = sv.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); } else if ($s.CR && $s.CR.prev) { $s.CR.prev.pick = sv.pick; $s.CR.prev.racket = sv.racket; } human.pos.copy(sv.pos); if (S.mode === 'hub') S.mode = sv.mode === 'hub' ? 'menu' : sv.mode; }
 }
