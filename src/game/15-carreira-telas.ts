@@ -113,7 +113,7 @@ function renderCareer() {
       w.innerHTML = '<span class="tw-ico">🚶</span><span class="tw-txt"><small>Mundo livre</small><b>' + (on ? 'Andar pelo ' + esc(String(t.name).replace(/ · .*$/, '')) : 'Andar pela sua casa e pelo bairro') + '</b><em>' + (on ? 'Passeie pelo torneio, fale com os fãs e entre na sua quadra para jogar.' : 'Treine na sua quadra, cuide do corpo, dê entrevistas e vá até a arena.') + '</em></span><span class="tw-go">Entrar ›</span>'; } }
   { const cb = $('crCloudBtn'); cb.hidden = !$s.CR; cb.textContent = CL.sess ? '☁️ Nuvem ✓' : '☁️ Nuvem'; }
   crSideLayout(); document.querySelector('.cr-card-main').classList.toggle('in-hub', !!$s.CR);
-  if (!$s.CR) { renderSaves(); renderCrNew(); return; }
+  if (!$s.CR) { { const N = $('crNav'); if (N) N.hidden = true; } hubOff(); renderSaves(); renderCrNew(); return; } // (sem carreira aberta: sem o menu lateral nem a cena 3D)
   const meO = overall($s.CR.me.a), inGame = crMeOvr();
   // no amador: posição e pontos do ranking da sua categoria no estado (o mundial só conta o profissional)
   let rank = crRank(), pts = crPts(), rkLbl = '';
