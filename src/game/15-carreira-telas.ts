@@ -76,10 +76,11 @@ function renderCrNav() {
   else for (const g of Object.keys(CR_GROUPS)) { const [ic, nm] = NAV_IC[g] || ['•', g], subs = CR_GROUPS[g];
     h += '<button type="button" class="crn-it' + (g0 === g ? ' sel' : '') + '" data-nav-t="' + subs[0][0] + '"><i>' + ic + '</i>' + nm + '</button>';
     if (subs.length > 1 && g0 === g) h += '<div class="crn-subs">' + subs.map(([t, n]) => '<button type="button" class="' + (t === crTab ? 'sel' : '') + '" data-nav-t="' + t + '">' + n + '</button>').join('') + '</div>'; }
-  h += '<div class="crn-foot"><button type="button" class="crn-walk" data-nav-walk>🚶 ' + (tourOn ? 'Andar pelo torneio' : 'Mundo livre') + '</button></div>';
+  h += '<div class="crn-foot"><button type="button" class="crn-it" data-nav-cfg><i>⚙️</i>Configurações</button><button type="button" class="crn-walk" data-nav-walk>🚶 ' + (tourOn ? 'Andar pelo torneio' : 'Mundo livre') + '</button></div>';
   N.innerHTML = h;
   N.querySelectorAll('[data-nav-t]').forEach(b => b.addEventListener('click', () => { crTab = b.dataset.navT; $s.CR.lastMsg = ''; renderCareer(); const hb = $('crHub'); if (hb) hb.scrollTop = 0; }));
   const w = N.querySelector('[data-nav-walk]'); if (w) w.addEventListener('click', () => livreEnter());
+  const cf = N.querySelector('[data-nav-cfg]'); if (cf) cf.addEventListener('click', () => { ac(); $('career').hidden = true; const m = $('menu'); m.hidden = false; menuStep('cfg'); menuPrev = 'career'; });
 }
 // início: título grande, o que fazer agora e o resumo (o jogador aparece em 3D à direita)
 function crHeroHTML(tour) {
@@ -1169,6 +1170,7 @@ document.querySelectorAll('#menu input[name=local2]').forEach(r => r.addEventLis
 addEventListener('gamepadconnected', qmLocal2); addEventListener('gamepaddisconnected', qmLocal2);
 function menuStep(st) {
   const m = $('menu');
+  if (st === 'back' && menuPrev === 'career') { m.hidden = true; menuPrev = 'home'; m.dataset.step = 'home'; $('career').hidden = false; renderCareer(); return; } // configurações abertas da carreira: volta para ela
   if (st === 'back' && menuPrev === 'livre') { m.hidden = true; menuPrev = 'home'; m.dataset.step = 'home'; return; } // configurações abertas do modo livre: volta a andar
   if (st === 'back') st = menuPrev; else if (st === 'cfg' && m.dataset.step !== 'cfg' && m.dataset.step !== 'keys') menuPrev = m.dataset.step || 'home';
   m.dataset.step = st;
