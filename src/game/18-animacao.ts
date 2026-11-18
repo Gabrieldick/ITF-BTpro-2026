@@ -663,6 +663,7 @@ const CAM3 = {
   perto: { nome: 'Perto', h: [2.6, 2.75], back: [3.9, 4.3], fx: [.9, .85], lx: [.5, .4], ly: .85, lz: -6, zf: 1 },
 };
 function updateCamera(dt) {
+  if (S.mode === 'livre' || S.mode === 'hub' || S.mode === 'press') { fpArm.visible = false; setFpBody(false); } // (saindo de uma partida em 1ª pessoa: o corpo e a cabeça voltam, o braço da câmera some)
   if (S.mode === 'livre' && livreCam(dt)) return; // modo livre da carreira: câmera própria
   if (S.mode === 'press' && pressCam(dt)) return; // cena da entrevista
   if (S.mode === 'hub' && hubCam(dt)) return; // início da carreira: o seu jogador em casa

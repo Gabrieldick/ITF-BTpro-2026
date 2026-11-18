@@ -13,7 +13,7 @@ import { MALE, cpuA, cpuB, human, partner } from './06-modelos';
 import { PALM, CURL, GLB, applyPlayerStyle, applyRackets, assignCharacters, ball, ballMark, diveMark, fpArm, fpWrist, loadModels, makePreview } from './07-glb';
 import { livreTick } from './27-livre';
 import { HITS, applyGfx, audioTick, getResScale, setResScale, setMenuRes } from './08-audio';
-import { $, configureMode, el, renderBoard, setupPoint } from './09-interface';
+import { $, configureMode, el, renderBoard, setupPoint, showOver } from './09-interface';
 import { MTR, applyCam, inPlay, setPaused, syncMenu, saveSettings } from './12-controles';
 import { step } from './17-bola';
 import { doHit } from './10-fisica';
@@ -133,7 +133,7 @@ function start(data) {
     setupPoint(); setPaused(true);
   }
   renderBoard();
-  window.__pdo = { makePreview, vis: dt => updateVisuals(dt), NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, rpCam: replayCamera, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, PALM, GLB, makeRacket, RACKET_STATS, applyPlayerStyle, assignCharacters, charById, ballMark, diveMark };
+  window.__pdo = { showOver, makePreview, vis: dt => updateVisuals(dt), NET, MTR, doHit, step, MALE, READY_FP, updCam: dt => updateCamera(dt), HITS, scene, tick: dt => { if (S.mode === 'replay' && RP.list) updateVisuals(replayTick(dt)); else { step(dt); recordTick(dt); updateVisuals(dt); } }, replay: startReplay, rpCam: replayCamera, STEP, fpArm, get fpWrist() { return fpWrist; }, perf: { tick: perfTick, FPS }, arena: applyArena, camera, S, ball, human, partner, cpuA, cpuB, renderer, ACT, SERVE_KEYS, READY, CURL, PALM, GLB, makeRacket, RACKET_STATS, applyPlayerStyle, assignCharacters, charById, ballMark, diveMark };
   loadModels().then(ok => {
     assignCharacters(); configureMode();
     if (!ok) { const fs2 = document.getElementById('fsPlayers'); if (fs2) fs2.hidden = true; }

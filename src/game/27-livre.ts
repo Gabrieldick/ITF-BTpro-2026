@@ -26,7 +26,14 @@ let envHid = 0;
 function envHide() { if (LV.group) LV.group.visible = true; if (envHid++) return; scene.attach(SEA); ENV.visible = false; }
 function envShow() { if (!envHid || --envHid) return; ENV.attach(SEA); ENV.visible = true; if (LV.group) LV.group.visible = false; } // (o bairro some: o terreno dele passa por baixo da quadra da partida)
 // ---------- montagem ----------
-function box(g, w, h, d, x, y, z, color, o) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, o)); m.position.set(x, y, z); m.castShadow = !(o && o.noShadow); m.receiveShadow = true; g.add(m); return m; }
+function box(g, w, h, d, x, y, z, color, o) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, o)); m.position.set(x, y, z); m.castShadow = !(o && o.noShadow); m.receiveShadow = true; g.add(m);
+  if (g === LV.group && h <= .25 && y - h / 2 <= .03 && y + h / 2 > .02 && w * d >= .4 && !(o && o.transparent)) LV.gnd.push([x - w / 2, z - d / 2, x + w / 2, z + d / 2, y + h / 2]); // chão pisável (calçada, gramado…)
+  if (g === LV.group && color === '#3a3f47' && h <= .07 && Math.max(w, d) >= 7 && Math.min(w, d) >= 6) LV.roadR.push([x - w / 2, z - d / 2, x + w / 2, z + d / 2]); // rua (o carro só anda nelas)
+  return m; }
+// altura do chão onde se pisa (as calçadas e os gramados têm alguns centímetros: os pés ficam em cima, não dentro)
+function gndIndex() { const G = new Map(); LV.gnd.forEach((r, i) => { for (let a = Math.floor(r[0] / 10); a <= Math.floor(r[2] / 10); a++) for (let b = Math.floor(r[1] / 10); b <= Math.floor(r[3] / 10); b++) { const k = a * 1000 + b; if (!G.has(k)) G.set(k, []); G.get(k).push(r); } }); LV.gndG = G; }
+function groundY(x, z) { const L = LV.gndG && LV.gndG.get(Math.floor(x / 10) * 1000 + Math.floor(z / 10)); let y = 0; if (L) for (const r of L) if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3] && r[4] > y) y = r[4]; return y; }
+function roadDist(x, z) { let best = 1e9; for (const [x0, z0, x1, z1] of LV.roadR) { const dx = Math.max(x0 - x, 0, x - x1), dz = Math.max(z0 - z, 0, z - z1), d = Math.hypot(dx, dz); if (d < best) best = d; } return best; }
 // porta (folha presa na dobradiça): abre sozinha quando você chega perto. axis 'x': porta numa parede ao longo de x; dir: para que lado a folha vai
 function door(sp, hx, hz, w, axis, dir, col = '#8a6a45', h = 2.15) {
   const piv = new THREE.Group(); piv.position.set(hx, 0, hz); piv.userData.dyn = true; sp.add(piv);
@@ -205,7 +212,9 @@ function banner(g, text, x, y, z, w, h, bg, fg, rot = 0, sub) {
   const t = canvasTex(512, Math.round(512 * h / w), (c, W, H) => { c.fillStyle = bg; c.fillRect(0, 0, W, H); c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.font = '900 italic ' + Math.round(H * (sub ? .46 : .62)) + 'px Barlow Condensed, Arial Narrow, Arial'; c.fillText(String(text).toUpperCase(), W / 2, H * (sub ? .4 : .52), W * .92);
     if (sub) { c.font = '700 ' + Math.round(H * .2) + 'px Arial'; c.globalAlpha = .85; c.fillText(sub, W / 2, H * .8, W * .9); } }, true);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, roughness: .7, side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.y = rot; g.add(m); return m;
+  // frente e verso legíveis (uma face só ficava espelhada de um dos lados)
+  const o = new THREE.Group(), M = new THREE.MeshStandardMaterial({ map: t, roughness: .7 }), geo = new THREE.PlaneGeometry(w, h);
+  const f = new THREE.Mesh(geo, M), bk = new THREE.Mesh(geo, M); bk.rotation.y = Math.PI; bk.position.z = -.004; o.add(f, bk); o.position.set(x, y, z); o.rotation.y = rot; g.add(o); return o;
 }
 // cadeira de plástico (de frente para rot)
 function chair(g, x, z, rot, col = '#f4f4f4') { const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); box(o, .46, .05, .44, 0, .44, 0, col); box(o, .46, .46, .05, 0, .68, -.2, col); [-1, 1].forEach(a => [-1, 1].forEach(b => box(o, .04, .44, .04, a * .2, .22, b * .18, col))); return o; }
@@ -357,7 +366,7 @@ function npcTick(dt, px, pz) {
     if (n.kind === 'walk') { if (n.pause) { n.o.rotation.y = Math.atan2(px - n.o.position.x, pz - n.o.position.z); continue; } n.x += n.v * dt; if (n.x > n.x1 || n.x < n.x0) { n.v = -n.v; n.x = Math.max(n.x0, Math.min(n.x1, n.x)); }
       // desvia do jogador
       const dz = Math.abs(n.x - px) < 1.2 && Math.abs(n.z - pz) < 1.2 ? (n.z > pz ? .8 : -.8) : 0;
-      n.o.position.set(n.x, Math.abs(Math.sin(t * 7 + n.z)) * .04, n.z + dz); n.o.rotation.y = n.v > 0 ? -Math.PI / 2 : Math.PI / 2; }
+      n.o.position.set(n.x, Math.abs(Math.sin(t * 7 + n.z)) * .04 + groundY(n.x, n.z + dz), n.z + dz); n.o.rotation.y = n.v > 0 ? -Math.PI / 2 : Math.PI / 2; }
     else if (n.kind === 'duck') { const a = t * .3 + n.ph; n.o.position.x = n.cx + Math.cos(a) * 3; n.o.position.z = n.cz + Math.sin(a) * 1.8; n.o.rotation.y = -a; }
     else if (n.kind === 'kids') { const sw = Math.sin(t * 2.6 + n.ph); n.a.position.z = n.z0 + sw * .4; n.b.position.z = n.z1 + sw * .4; n.a.position.x += Math.cos(t * 1.3 + n.ph) * dt * .4; n.b.position.x -= Math.cos(t * 1.3 + n.ph) * dt * .4; }
     else if (n.kind === 'fresco') { const sw = Math.sin(t * 2.2 + n.ph); n.a.position.x = n.x - 3 + sw * .3; n.b.position.x = n.x + 3 + sw * .3; }
@@ -408,7 +417,8 @@ const PLAZAS = [{ id: 'sol', name: 'Praça do Sol', x: 10, z: 160 }, { id: 'gaiv
 const PRACA_LV = [{ n: 'Iniciante', ovr: [45, 58], diff: 'facil', money: 150, fama: .3 }, { n: 'Médio', ovr: [58, 70], diff: 'medio', money: 400, fama: .6 }, { n: 'Forte', ovr: [70, 80], diff: 'dificil', money: 900, fama: 1 }, { n: 'Fera', ovr: [80, 88], diff: 'dificil', money: 1600, fama: 1.5 }];
 const dayKey = () => { const C = $s.CR; return C.season + '-' + C.week + '-' + C.day; };
 // nível da galera em cada praça hoje (muda todo dia, sempre o mesmo no mesmo dia)
-function pracaLevel(pl) { const C = $s.CR; let h = (C.seed || 1) * 31 + C.season * 997 + C.week * 53 + C.day * 7; for (const ch of pl.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0; return h % PRACA_LV.length; }
+function pracaLevel(pl, ci = 0) { const C = $s.CR; let h = (C.seed || 1) * 31 + C.season * 997 + C.week * 53 + C.day * 7; for (const ch of pl.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0; const b = h % PRACA_LV.length;
+  return ci ? (b + 1 + ((h >>> 5) % (PRACA_LV.length - 1))) % PRACA_LV.length : b; } // (quadras diferentes da mesma praça: níveis diferentes)
 function city3(g, sp) {
   const R = mulberry(($s.CR.seed || 9) * 13 + 5), road = (w, d, x, z) => box(g, w, .06, d, x, .03, z, '#3a3f47', { noShadow: true }), walk = (w, d, x, z) => box(g, w, .14, d, x, .07, z, '#cfcac0', { noShadow: true });
   road(340, 8, 115, 124); walk(340, 2.4, 115, 119.2); walk(340, 2.4, 115, 128.8); for (let i = -50; i < 285; i += 5) box(g, 2.2, .02, .18, i, .07, 124, '#f2f2f2', { noShadow: true });
@@ -417,7 +427,7 @@ function city3(g, sp) {
   // casas entre a segunda e a terceira rua (de frente para a terceira)
   let k = 0; for (let x = -44; x < 280; x += 15) { if ((x > 18 && x < 66) || Math.abs(x - 88) < 10 || Math.abs(x + 55) < 10) continue; const c = HOUSE_COLS[(k++ + 3) % HOUSE_COLS.length]; neighborHouse(g, x, 108, 10, 7, c[0], c[1], 1); if (R() < .35) car(g, x + 7, 115.6, 0, FAN_COLS[k % FAN_COLS.length]); }
   // praças ao norte da terceira rua: grama, caminhos, árvores, bancos e a quadra pública com rede de verdade
-  LV.plazas = [];
+  LV.plazas = [{ id: 'orla', name: 'Praça da Orla', x: 42, z: 90, w: 40, d: 30 }];
   PLAZAS.filter(q => !q.extra).forEach((pl, i) => {
     const { x, z } = pl, lv = PRACA_LV[pracaLevel(pl)]; LV.plazas.push(Object.assign({ w: 46, d: 36 }, pl));
     box(g, 46, .08, 36, x, .05, z, '#7fb069', { noShadow: true }); box(g, 46, .1, 2.6, x, .06, z - 16, '#d8cdb5', { noShadow: true });
@@ -440,31 +450,35 @@ function city3(g, sp) {
   givers(g, sp);
 }
 // jogar na praça: a galera do nível do dia (você escolhe só se topa); vale dinheiro e fama vencendo, uma vez por praça por dia
-function pracaPlay(pl) {
-  const C = $s.CR; C.pracaDay = C.pracaDay || {};
-  if (C.pracaDay[pl.id] === dayKey()) { LV.msg('🎾 Você já jogou na ' + pl.name + ' hoje. A galera pede revanche amanhã!'); return; }
-  const L = PRACA_LV[pracaLevel(pl)], fem = !!C.me.fem, pool = crWorld().filter(c => c.id !== 'crme' && c.id !== C.partner && !!c.fem === fem).map(c => ({ c, o: crCharOvr(c) })).filter(x => x.o >= L.ovr[0] && x.o <= L.ovr[1]);
+function pracaPlay(pl, ci = 0) {
+  const C = $s.CR; C.pracaDay = C.pracaDay || {}; const dk = pl.id + (ci ? ':' + ci : '');
+  if (C.pracaDay[dk] === dayKey()) { LV.msg('🎾 Você já jogou na ' + pl.name + ' hoje. A galera pede revanche amanhã!'); return; }
+  const L = PRACA_LV[pracaLevel(pl, ci)], fem = !!C.me.fem, pool = crWorld().filter(c => c.id !== 'crme' && c.id !== C.partner && !!c.fem === fem).map(c => ({ c, o: crCharOvr(c) })).filter(x => x.o >= L.ovr[0] && x.o <= L.ovr[1]);
   if (pool.length < 3) { LV.msg('A quadra está vazia agora. Volte mais tarde.'); return; }
   const pick3 = []; while (pick3.length < 3) { const x = pool[Math.floor(Math.random() * pool.length)]; if (!pick3.includes(x)) pick3.push(x); }
-  const ovrAvg = Math.round((pick3[1].o + pick3[2].o) / 2);
-  let el = document.getElementById('livreFriendly'); if (!el) { el = document.createElement('div'); el.id = 'livreFriendly'; el.className = 'overlay'; document.body.appendChild(el); }
-  el.innerHTML = '<div class="card lv-fr"><div class="eyebrow">' + pl.name + ' · quadra pública</div><h3>Galera nível ' + L.n + '</h3>'
-    + '<p>' + pick(['"Tá faltando um pra fechar a dupla, entra aí!"', '"Ó quem chegou! Bora um jogo?"', '"Aqui a regra é: quem perde paga o coco."', '"Joga com a gente? Só não vale smash na cabeça."']) + '</p>'
-    + '<p class="cr-note">Sua dupla: <b>' + esc2(nameOf(pick3[0].c)) + '</b> (OVR ' + pick3[0].o + ') · Adversários: <b>' + esc2(nameOf(pick3[1].c)) + '</b> e <b>' + esc2(nameOf(pick3[2].c)) + '</b> (OVR ~' + ovrAvg + ')</p>'
+  const weakPool = crWorld().filter(c => c.id !== 'crme' && !!c.fem === fem).map(c => ({ c, o: crCharOvr(c) })).filter(x => x.o <= 55), weak = weakPool.length ? weakPool[Math.floor(Math.random() * weakPool.length)] : null;
+  const ovrAvg = Math.round((pick3[1].o + pick3[2].o) / 2), ch = (C.missions || []).filter(m => /^ch/.test(m.type));
+  const el = talkBox();
+  el.innerHTML = '<div class="card lv-fr"><div class="eyebrow">' + pl.name + (LV.near && LV.near.multi ? ' · quadra ' + (ci + 1) : ' · quadra pública') + '</div><h3>Galera nível ' + L.n + '</h3>'
+    + '<p>' + pick(['"Tá faltando um pra fechar a dupla, entra aí!"', '"Ó quem chegou! Bora um jogo?"', '"Aqui a regra é: quem perde paga o coco."', '"Joga com a gente? Só não vale smash na cabeça."', '"Simples ou dupla? Aqui a gente topa tudo."']) + '</p>'
+    + '<p class="cr-note">Dupla: você e <b>' + esc2(nameOf(pick3[0].c)) + '</b> (OVR ' + pick3[0].o + ') contra <b>' + esc2(nameOf(pick3[1].c)) + '</b> e <b>' + esc2(nameOf(pick3[2].c)) + '</b> (OVR ~' + ovrAvg + ').<br>Simples: você contra <b>' + esc2(nameOf(pick3[1].c)) + '</b> (OVR ' + pick3[1].o + ').'
+    + (weak ? '<br>Com um iniciante: você e <b>' + esc2(nameOf(weak.c)) + '</b> (OVR ' + weak.o + ') contra a dupla deles (prêmio +50%).' : '') + '</p>'
+    + (ch.length ? '<p class="cr-note">📋 Desafios ativos: ' + ch.map(m => m.text).join(' · ') + '</p>' : '')
     + '<p class="cr-note">Vencendo: +$' + L.money + ' e +' + String(L.fama).replace('.', ',') + ' de fama. Conta como o treino do dia.</p>'
-    + '<div class="cta-row"><button type="button" class="cta" data-go>Jogar</button><button type="button" class="ghost" data-x>Agora não</button></div></div>';
+    + '<div class="cta-row"><button type="button" class="cta" data-go="dupla">Jogar em dupla</button><button type="button" class="ghost" data-go="simples">Jogar simples</button>' + (weak ? '<button type="button" class="ghost" data-go="fraco">Dupla com o iniciante</button>' : '') + '<button type="button" class="ghost" data-x>Agora não</button></div></div>';
   el.hidden = false; LV.modal = true;
   el.querySelector('[data-x]').onclick = () => { el.hidden = true; LV.modal = false; };
-  el.querySelector('[data-go]').onclick = () => { el.hidden = true; LV.modal = false; C.pracaDay[pl.id] = dayKey(); saveCareer();
-    if (LV.actions.friendly) LV.actions.friendly({ mate: pick3[0].c.id, o1: pick3[1].c.id, o2: pick3[2].c.id, kind: 'praca', level: pracaLevel(pl), diff: L.diff, place: pl.id }); };
+  el.querySelectorAll('[data-go]').forEach(bt => bt.onclick = () => { const md = bt.dataset.go; el.hidden = true; LV.modal = false; C.pracaDay[dk] = dayKey(); saveCareer();
+    if (LV.actions.friendly) LV.actions.friendly({ mate: md === 'fraco' ? weak.c.id : pick3[0].c.id, o1: pick3[1].c.id, o2: pick3[2].c.id, kind: 'praca', level: pracaLevel(pl, ci), diff: L.diff, place: pl.id, mode: md === 'simples' ? 'simples' : 'dupla', weak: md === 'fraco', venue: pl.kind === 'arena' || pl.kind === 'coberta' ? { indoor: true, hall: 'small', text: pl.name.toUpperCase() } : { urban: true, text: pl.name.toUpperCase() } }); });
 }
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const esc2 = t => String(t).replace(/[<>&]/g, '');
 LV.onFriendlyEnd = r => {
   const C = $s.CR; if (!r || !r.played) return;
   if (r.kind === 'praca') { const L = PRACA_LV[r.level || 0];
-    if (r.won) { C.money += L.money; crAddFama(L.fama); LV.msg('🏆 Vitória na praça! +$' + L.money + ' e +' + String(L.fama).replace('.', ',') + ' de fama. A galera já quer revanche.'); missionEvent('praca', { level: r.level }); }
+    if (r.won) { const k = r.weak ? 1.5 : 1, mo = Math.round(L.money * k); C.money += mo; crAddFama(L.fama * k); LV.msg('🏆 Vitória na praça' + (r.mode === 'simples' ? ' (simples)' : r.weak ? ' com o iniciante' : '') + '! +$' + mo + ' e +' + String(Math.round(L.fama * k * 10) / 10).replace('.', ',') + ' de fama.'); missionEvent('praca', { level: r.level, weak: !!r.weak }); }
     else LV.msg('😅 A galera da praça venceu dessa vez. Amanhã tem mais!');
+    missionEvent('match', r);
     saveCareer(); setTimeout(() => hud(true), 0); }
 };
 
@@ -486,7 +500,7 @@ const STORY = [
     ask: 'O movimento caiu muito, meu filho. Se o Zé vender meus cocos lá no calçadão, eu respiro. Leva pra ele?', end: 'O Zé disse que vendeu tudo! E ainda falou de um tal festival…', rw: { money: 300, cosm: 'adesivoCoco' } },
   { id: 's3a', req: ['s2a'], giver: 'leo', title: 'Reforma da quadra', m: { type: 'pay', cost: 2000, text: 'Bancar a reforma da quadra da Praça Iemanjá ($2.000)' },
     ask: 'A prefeitura não ajuda. Se você bancar a reforma, a quadra fica nova e com o seu nome na rede. Topa?', end: 'Ficou linda! A molecada já tá jogando lá. Seu nome tá na rede, viu?', rw: { fama: 2, cosm: 'redeNome' } },
-  { id: 's3b', req: ['s2b'], giver: 'ze', title: 'Festival de verão', m: { type: 'praca', need: 1, text: 'Abrir o festival vencendo um jogo em qualquer praça' },
+  { id: 's3b', req: ['s2b'], giver: 'ze', title: 'Festival de verão', m: { type: 'chSmash', need: 1, n: 3, text: 'Abrir o festival com um show: vencer na praça com 3 smashes vencedores' },
     ask: 'Vou fazer um festival pra salvar o quiosque do Jorge, mas preciso de atração. Abre o festival ganhando um jogo na praça!', end: 'Que abertura! O calçadão lotou. O Jorge até chorou.', rw: { money: 600, cosm: 'mural' } },
   { id: 's4', req: ['s3a', 's3b'], giver: 'bia', title: 'Copa do Bairro: inscrições', m: { type: 'talk', need: 5, text: 'Divulgar a Copa do Bairro: conversar com 5 pessoas' },
     ask: 'Com a quadra nova e o festival, todo mundo tá falando em fazer uma Copa do Bairro! Me ajuda a divulgar?', end: 'Chave fechada! 16 duplas inscritas. Você é o cabeça de chave, claro.', rw: { fama: 1, mat: 'viseira' } },
@@ -518,7 +532,7 @@ const STORY = [
     ask: 'A ressaca destruiu metade do calçadão… e minha barraca. Passa lá comigo? Não tenho coragem de ver sozinho.', end: 'Sobrou pouco… Mas o bairro já tá se mexendo. A Bia teve uma ideia.', rw: { fama: .5 } },
   { id: 's16', req: ['s15'], giver: 'bia', title: 'Mutirão', m: { type: 'talk', need: 6, text: 'Chamar 6 pessoas para o mutirão do calçadão' },
     ask: 'Vamos fazer um mutirão pra reconstruir o calçadão. Você chamando, todo mundo vem. Bora?', end: 'Mais de cem pessoas apareceram! Tô sem palavras.', rw: { fama: 1.5, mat: 'protetor' } },
-  { id: 's17', req: ['s15'], giver: 'jorge', title: 'Torneio beneficente', m: { type: 'praca', need: 2, text: 'Vencer 2 jogos nas praças no torneio beneficente' },
+  { id: 's17', req: ['s15'], giver: 'jorge', title: 'Torneio beneficente', m: { type: 'chSimples', need: 1, text: 'Torneio beneficente de simples: vencer uma simples numa praça' },
     ask: 'Pra reconstruir a barraca do Zé, vamos fazer um torneio beneficente nas praças. Cada vitória sua vale doação dobrada!', end: 'Arrecadamos tudo! A barraca do Zé volta maior.', rw: { money: 1000 } },
   { id: 's18', req: ['s16', 's17'], giver: 'ze', title: 'Barraca nova', m: { type: 'pay', cost: 3000, text: 'Ajudar a comprar o toldo e o freezer da barraca nova ($3.000)' },
     ask: 'Falta o toldo e o freezer. Se você ajudar, a barraca nova vai ter o seu nome. Fechado?', end: 'Barraca do Zé & ' + 'amigos, reaberta! O calçadão tá mais bonito que antes.', rw: { fama: 2, cosm: 'barracaNova' } },
@@ -545,7 +559,7 @@ const STORY = [
     ask: 'Depois de tudo isso, a gente merece um luau. Chama três pessoas e vem ver o pôr do sol comigo.', end: 'Melhor luau da história. Valeu por tudo, irmão.', rw: { fama: 1, cosm: 'fogueira' } },
   { id: 's29', req: ['s27', 's28'], giver: 'cida', title: 'Embaixador da cidade', m: { type: 'visit', need: 5, text: 'Percorrer as cinco praças da cidade na cerimônia de embaixador' },
     ask: 'A prefeitura quer te nomear embaixador da cidade! A cerimônia passa pelas cinco praças. Faz o percurso?', end: 'Agora é oficial: embaixador da cidade! Mas o Léo tem uma última surpresa.', rw: { fama: 3, money: 3000 } },
-  { id: 's30', req: ['s29'], giver: 'leo', title: 'A próxima geração', m: { type: 'pracaLvl', need: 1, minLv: 2, text: 'Jogar a última partida do capítulo: vencer a galera Forte ou Fera ao lado da molecada' },
+  { id: 's30', req: ['s29'], giver: 'leo', title: 'A próxima geração', m: { type: 'chFraco', need: 1, text: 'A última partida: vencer em dupla com um iniciante da escolinha (Dupla com o iniciante) contra a galera Médio ou mais' },
     ask: 'Lembra do menino que aprendeu na quadra da Iemanjá? Hoje é você que inspira. Joga uma última com a galera forte e mostra pra molecada como se faz.', end: 'Fim da história… ou só o começo. O bairro tem um campeão, e agora muitos outros vão vir. Obrigado.', rw: { fama: 5, cosm: 'legado' } },
 ];
 const COSM = { adesivoBairro: '🏷️ Adesivo "Cria do bairro"', adesivoCoco: '🏷️ Adesivo do Quiosque do Jorge', adesivoMare: '🏷️ Adesivo do Restaurante Maré', redeNome: '🎾 Rede com o seu nome na Praça Iemanjá', mural: '🎨 Mural com o seu nome na frente de casa',
@@ -568,31 +582,60 @@ function givers(g, sp) {
 }
 // tipos de missão: o que fazer, quanto, e o texto de quem pede
 const MS_TEMPL = {
-  cida: [() => ({ type: 'visit1', place: 'sol', text: 'Levar o tricô da Dona Cida para a Praça do Sol', ask: 'Esqueci meu tricô no banco da Praça do Sol! Passa lá e dá uma olhada pra mim?' }),
+  cida: [...(['chFraco']).map(k => () => { const m = CH[k](); m.ask = 'O filho da vizinha tá começando no beach tennis. ' + m.text + ', pra ele ganhar confiança?'; return m; }), () => ({ type: 'visit1', place: 'sol', text: 'Levar o tricô da Dona Cida para a Praça do Sol', ask: 'Esqueci meu tricô no banco da Praça do Sol! Passa lá e dá uma olhada pra mim?' }),
     () => ({ type: 'deliver', target: { spot: 'acai' }, text: 'Comprar um açaí para a neta da Dona Cida', ask: 'Minha neta só fala em açaí. Passa no Açaí da Praia e pega um pra ela? Eu pago.' }),
     () => ({ type: 'deliver', target: { giver: 'jorge' }, text: 'Levar o bolo de fubá da Dona Cida para o Seu Jorge (quiosque de coco)', ask: 'Meu filho, fiz um bolo de fubá pro Jorge do quiosque, mas o joelho não ajuda. Leva pra mim?' }),
     () => ({ type: 'talk', need: 4, text: 'Conversar com 4 pessoas do bairro', ask: 'O bairro anda tão calado… Puxa conversa com o pessoal, vai. Quatro pessoas já me deixam feliz.' })],
-  jorge: [() => ({ type: 'talk', need: 2, text: 'Recomendar o quiosque para 2 pessoas', ask: 'Fala bem do meu coco pro pessoal? Duas pessoas já ajudam.' }),
+  jorge: [...(['chFraco', 'chCurta']).map(k => () => { const m = CH[k](); m.ask = 'A molecada do quiosque duvida de você: ' + m.text.charAt(0).toLowerCase() + m.text.slice(1) + '.'; return m; }), () => ({ type: 'talk', need: 2, text: 'Recomendar o quiosque para 2 pessoas', ask: 'Fala bem do meu coco pro pessoal? Duas pessoas já ajudam.' }),
     () => ({ type: 'deliver', target: { giver: 'kai' }, text: 'Levar coco gelado para o Kai na praia', ask: 'O Kai tá lá na praia faz horas. Leva um coco pra ele não desmaiar?' }),
     () => ({ type: 'deliver', target: { spot: 'barraca' }, text: 'Levar 10 cocos para a Barraca do Zé (calçadão)', ask: 'O Zé ficou sem coco lá na barraca. Leva esse saco pra ele? Te pago bem.' }),
     () => ({ type: 'swim', need: 15, text: 'Nadar 15 segundos no mar', ask: 'Atleta de areia não sabe nadar, é o que dizem por aí. Prova o contrário: 15 segundos no mar!' })],
-  leo: [() => ({ type: 'talk', need: 3, text: 'Convidar 3 crianças para a escolinha', ask: 'Tem muita criança na rua sem fazer nada. Convida três pra escolinha?' }),
+  leo: [...(['chSmash', 'chCurta', 'chVoleio', 'chLimpo']).map(k => () => { const m = CH[k](); m.ask = 'Hoje o treino é na praça. Te dou um desafio: ' + m.text.charAt(0).toLowerCase() + m.text.slice(1) + '.'; return m; }), () => ({ type: 'talk', need: 3, text: 'Convidar 3 crianças para a escolinha', ask: 'Tem muita criança na rua sem fazer nada. Convida três pra escolinha?' }),
     () => ({ type: 'praca', need: 1, text: 'Vencer um jogo em qualquer praça', ask: 'A molecada da escolinha quer te ver jogando na praça. Ganha um jogo lá que eu trago todo mundo pra assistir.' }),
     () => ({ type: 'pracaLvl', need: 1, minLv: 2, text: 'Vencer na praça com a galera Forte ou Fera', ask: 'Desafio de treinador: vence a galera forte de alguma praça. Nível Forte ou Fera, hein!' }),
     () => ({ type: 'train', need: 1, text: 'Fazer um treino (arena, CT ou sua quadra)', ask: 'Ninguém chega lá sem treino. Faz uma sessão hoje e me conta como foi.' })],
-  bia: [() => ({ type: 'train', need: 1, text: 'Testar a raquete nova da loja num treino', ask: 'Chegou um modelo novo. Testa num treino e me diz o que achou?' }),
+  bia: [...(['chForte', 'chSmash']).map(k => () => { const m = CH[k](); m.ask = 'Pra foto da campanha da loja: ' + m.text.charAt(0).toLowerCase() + m.text.slice(1) + '.'; return m; }), () => ({ type: 'train', need: 1, text: 'Testar a raquete nova da loja num treino', ask: 'Chegou um modelo novo. Testa num treino e me diz o que achou?' }),
     () => ({ type: 'praca', need: 1, text: 'Vencer na praça usando o grip novo da loja', ask: 'Quero uma foto sua ganhando na praça com o grip da loja. Marketing, né!' }),
     () => ({ type: 'deliver', target: { giver: 'leo' }, text: 'Levar a caixa de overgrips da Bia para o Professor Léo (Praça das Gaivotas)', ask: 'Chegou a encomenda de overgrips da escolinha do Léo. Leva pra ele na Praça das Gaivotas?' }),
     () => ({ type: 'visit', need: 3, text: 'Conhecer as três praças da cidade', ask: 'Tô montando um mapa das quadras públicas pra loja. Passa nas três praças e me diz como estão?' })],
-  ze: [() => ({ type: 'swim', need: 20, text: 'Buscar a boia que voou para o mar (nadar 20 s)', ask: 'O vento levou a boia da barraca pro mar! Nada lá e traz pra mim?' }),
+  ze: [...(['chPneu', 'chSimples']).map(k => () => { const m = CH[k](); m.ask = 'Aposta comigo? ' + m.text + '. Se conseguir, o petisco é por minha conta.'; return m; }), () => ({ type: 'swim', need: 20, text: 'Buscar a boia que voou para o mar (nadar 20 s)', ask: 'O vento levou a boia da barraca pro mar! Nada lá e traz pra mim?' }),
     () => ({ type: 'visit1', place: 'gaivotas', text: 'Levar o cardápio da barraca para a Praça das Gaivotas', ask: 'Quero fixar meu cardápio na Praça das Gaivotas. Leva lá?' }),
     () => ({ type: 'deliver', target: { spot: 'restaurante' }, text: 'Levar o peixe fresco do Zé para o Restaurante Maré', ask: 'Pesquei demais hoje! Leva esse peixe pro Restaurante Maré antes que estrague?' }),
     () => ({ type: 'praca', need: 2, text: 'Vencer dois jogos em praças', ask: 'Apostei com o pessoal que você ganha dois jogos seguidos na praça. Não me deixa na mão!' })],
-  kai: [() => ({ type: 'visit', need: 3, text: 'Dar um rolê pelas três praças', ask: 'Bora conhecer a cidade inteira? Passa nas três praças, cada uma tem uma vibe.' }),
+  kai: [...(['chAce', 'chSimples']).map(k => () => { const m = CH[k](); m.ask = 'Desafio da galera, irmão: ' + m.text.charAt(0).toLowerCase() + m.text.slice(1) + '.'; return m; }), () => ({ type: 'visit', need: 3, text: 'Dar um rolê pelas três praças', ask: 'Bora conhecer a cidade inteira? Passa nas três praças, cada uma tem uma vibe.' }),
     () => ({ type: 'deliver', target: { spot: 'coco' }, text: 'Buscar água de coco para a galera do surf (quiosque da praça)', ask: 'A galera do surf tá desidratada. Passa no quiosque de coco da praça pra gente?' }),
     () => ({ type: 'swim', need: 30, text: 'Nadar 30 segundos no mar', ask: 'Mar tá liso hoje, irmão! Cai na água comigo: 30 segundos e você entende a vibe.' }),
     () => ({ type: 'talk', need: 3, text: 'Conversar com 3 pessoas na praia ou na cidade', ask: 'Tô juntando gente pro luau. Chama três pessoas pra mim? É só puxar papo.' })],
 };
+// desafios de jogo (vencer na praça de um jeito específico): conferidos com as estatísticas da partida
+const CH = {
+  chSimples: n => ({ type: 'chSimples', need: 1, text: 'Vencer uma partida de simples numa praça' }),
+  chFraco: () => ({ type: 'chFraco', need: 1, text: 'Vencer em dupla com um iniciante (OVR até 55) contra a galera Médio ou mais' }),
+  chSmash: () => { const n = 3 + Math.floor(Math.random() * 3); return { type: 'chSmash', need: 1, n, text: 'Vencer na praça com ' + n + ' smashes vencedores' }; },
+  chCurta: () => { const n = 2 + Math.floor(Math.random() * 2); return { type: 'chCurta', need: 1, n, text: 'Vencer na praça com ' + n + ' curtas vencedoras' }; },
+  chAce: () => ({ type: 'chAce', need: 1, n: 2, text: 'Vencer na praça com 2 aces' }),
+  chVoleio: () => ({ type: 'chVoleio', need: 1, n: 4, text: 'Vencer na praça com 4 voleios vencedores' }),
+  chLimpo: () => ({ type: 'chLimpo', need: 1, n: 4, text: 'Vencer na praça com no máximo 4 erros não forçados' }),
+  chPneu: () => ({ type: 'chPneu', need: 1, text: 'Vencer um set na praça sem perder nenhum game' }),
+  chForte: () => ({ type: 'chForte', need: 1, text: 'Vencer a galera Forte ou Fera em simples' }),
+};
+// quanto mais adiante na história, mais difícil: mais caro, mais conversas/treinos, galera mais forte, menos smashes de graça, e no fim até com a dupla iniciante
+function storyHard(n, m) {
+  const k = STORY.indexOf(n), t = Math.max(0, k) / (STORY.length - 1), LVN = ['Iniciante', 'Médio', 'Forte', 'Fera'];
+  if (m.type === 'pay') { m.cost = Math.round(m.cost * (1 + t * 2.5) / 500) * 500; m.text = m.text.replace(/\(\$[\d.]+\)/, '($' + m.cost.toLocaleString('pt-BR') + ')'); }
+  if (m.type === 'talk' || m.type === 'train') { const add = Math.floor(t * (m.type === 'talk' ? 4 : 2)); if (add) { m.need += add; m.text = m.text.replace(/\d+/, String(m.need)); } }
+  if (m.type === 'swim') { m.need = Math.round(m.need * (1 + t)); m.text = m.text.replace(/\d+ s\)/, m.need + ' s)'); }
+  if (m.type === 'praca') { m.need += Math.floor(t * 2); m.minLv = t > .5 ? (t > .8 ? 2 : 1) : 0; m.text = m.text.replace(/\d+/, String(m.need)) + (m.minLv ? ' (galera ' + LVN[m.minLv] + ' ou mais forte)' : ''); }
+  if (/^ch/.test(m.type)) { if (m.n && m.type !== 'chLimpo') { m.n += Math.floor(t * 4); m.text = m.text.replace(/\d+/, String(m.n)); } const lv = t > .66 ? 2 : t > .33 ? 1 : 0; if (lv > (m.minLv || 0)) { m.minLv = lv; m.text += ' (galera ' + LVN[lv] + ' ou mais forte)'; } }
+  if (m.type === 'pracaLvl' && t > .75) { m.weak = true; m.text += ' — jogando com a dupla iniciante'; }
+  return m;
+}
+function chOk(m, r) {
+  if (!r.won) return false; const st = r.st || {}; if (m.minLv && (r.level || 0) < m.minLv) return false;
+  switch (m.type) { case 'chSimples': return r.mode === 'simples'; case 'chFraco': return !!r.weak && (r.level || 0) >= 1; case 'chSmash': return (st.smash || 0) >= m.n; case 'chCurta': return (st.curta || 0) >= m.n;
+    case 'chAce': return (st.saque || 0) >= m.n; case 'chVoleio': return (st.voleio || 0) >= m.n; case 'chLimpo': return (st.ue || 0) <= m.n; case 'chPneu': return (r.games || [0, 1])[1] === 0; case 'chForte': return r.mode === 'simples' && (r.level || 0) >= 2; }
+  return false;
+}
 function missionReward() { const r = { money: 150 + Math.floor(Math.random() * 6) * 75, fama: Math.random() < .6 ? .5 + Math.floor(Math.random() * 3) * .5 : 0, pe: Math.random() < .4 ? 1 + Math.floor(Math.random() * 2) : 0 };
   if (Math.random() < .7) { const ks = Object.keys(MATS); r.mat = ks[Math.floor(Math.random() * ks.length)]; } return r; }
 const rwTxt = r => [r.cosm ? COSM[r.cosm] : '', r.money ? '$' + r.money : '', r.fama ? '+' + String(r.fama).replace('.', ',') + ' de fama' : '', r.pe ? '+' + r.pe + ' de evolução' : '', r.mat ? MATS[r.mat][2] + ' ' + MATS[r.mat][0] : ''].filter(Boolean).join(' · ');
@@ -610,9 +653,11 @@ function missionEvent(type, data) {
   const C = $s.CR; if (!C || !C.missions) return;
   for (const m of C.missions.slice()) {
     if (m.type === 'deliver' && type === 'deliver' && ((m.target.giver && m.target.giver === data.giver) || (m.target.spot && m.target.spot === data.spot))) { missionDone(m); continue; }
+    if (m.type === 'praca' && type === 'praca' && (data.level || 0) < (m.minLv || 0)) { LV.msg('📋 Para a missão, precisa ser contra a galera mais forte.'); continue; }
     if (m.type === type && ['talk', 'praca', 'train'].includes(type)) { m.have = (m.have || 0) + 1; if (m.have >= m.need) missionDone(m); else LV.msg('📋 ' + m.text + ': ' + m.have + '/' + m.need); }
-    if (m.type === 'pracaLvl' && type === 'praca' && (data.level || 0) >= m.minLv) missionDone(m);
+    if (m.type === 'pracaLvl' && type === 'praca' && (data.level || 0) >= m.minLv) { if (m.weak && !data.weak) LV.msg('📋 ' + m.text + ': tem que ser com a dupla iniciante.'); else missionDone(m); }
     if (m.type === 'swim' && type === 'swim') { m.have = (m.have || 0) + data.dt; if (m.have >= m.need) missionDone(m); }
+    if (/^ch/.test(m.type) && type === 'match') { if (data.kind === 'praca' && chOk(m, data)) missionDone(m); else if (data.won) LV.msg('📋 Faltou para o desafio: ' + m.text + '.'); continue; }
     if (m.type === 'visit1' && type === 'visit' && data.id === m.place) { missionDone(m); continue; }
     if (m.type === 'visit' && type === 'visit') { m.seen = m.seen || []; if (!m.seen.includes(data.id)) { m.seen.push(data.id); if (m.seen.length >= m.need) missionDone(m); else LV.msg('📋 ' + m.text + ': ' + m.seen.length + '/' + m.need); } }
   }
@@ -639,7 +684,7 @@ function giverTalk(G) {
     if (act) { el.innerHTML = '<div class="card lv-fr lv-talk lv-story"><div class="eyebrow">★ ' + N.title + ' · ' + G.name + '</div><p class="lv-line">"' + hi + 'Lembra: ' + act.text.charAt(0).toLowerCase() + act.text.slice(1) + '."</p><div class="cta-row"><button type="button" class="ghost" data-x>Tá bom!</button></div></div>'; el.hidden = false; LV.modal = true; el.querySelector('[data-x]').onclick = close; return; }
     el.innerHTML = '<div class="card lv-fr lv-talk lv-story"><div class="eyebrow">★ História do bairro · ' + novo.title + '</div><p class="lv-line"><b>' + G.name + ':</b> "' + hi + novo.ask + '"</p><p class="cr-note">Missão: ' + novo.m.text + '<br>Recompensa: ' + rwTxt(novo.rw) + '</p><div class="cta-row"><button type="button" class="cta" data-ok>Aceitar</button><button type="button" class="ghost" data-x>Agora não</button></div></div>';
     el.hidden = false; LV.modal = true; say(hi + novo.ask, G.f ? 'f' : 'm', 3); el.querySelector('[data-x]').onclick = close;
-    el.querySelector('[data-ok]').onclick = () => { close(); C.missions.unshift(Object.assign({}, novo.m, { story: novo.id, giver: G.id, have: 0, reward: novo.rw })); saveCareer(); refreshMarkers(); LV.msg('★ Capítulo novo: ' + novo.title + ' (M abre a lista).'); }; return;
+    el.querySelector('[data-ok]').onclick = () => { close(); C.missions.unshift(storyHard(novo, Object.assign({}, novo.m, { story: novo.id, giver: G.id, have: 0, reward: novo.rw }))); saveCareer(); refreshMarkers(); LV.msg('★ Capítulo novo: ' + novo.title + ' (M abre a lista).'); }; return;
   }
   // 2) missões do dia (até 3 ao mesmo tempo)
   const side = C.missions.filter(m => !m.story), mine = side.find(m => m.giver === G.id), canGive = !mine && side.length < 3 && C.giverDay[G.id] !== dayKey();
@@ -661,7 +706,15 @@ function refreshMarkers() {
     G.mk.visible = st || sd; G.mk.material.color.set(st ? '#ffd23f' : '#ffffff'); G.mk.scale.setScalar(st ? .75 : .5); });
   if (LV.mkBeams) LV.mkBeams.forEach(b => b.parent && b.parent.remove(b)); LV.mkBeams = [];
   C.missions.forEach(m => { if (m.type !== 'deliver') return; let x, z; if (m.target.giver) { const G = LV.givers.find(q => q.id === m.target.giver); if (!G) return; x = G.x; z = G.z; } else { const S3 = LV.spots.find(q => q.id === m.target.spot); if (!S3) return; x = S3.x; z = S3.z; }
-    const bm = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 30, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: .25, depthWrite: false })); bm.position.set(x, 15, z); LV.group.add(bm); LV.mkBeams.push(bm); });
+    const bm = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 30, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#b44dff', transparent: true, opacity: .28, depthWrite: false })); bm.position.set(x, 15, z); LV.group.add(bm); LV.mkBeams.push(bm);
+    const st = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex(), depthTest: false, transparent: true })); st.scale.set(2.4, 2.4, 1); st.position.set(x, 4.6, z); st.renderOrder = 9; LV.group.add(st); LV.mkBeams.push(st); });
+}
+let STAR_T = null; // estrela roxa: onde entregar
+function starTex() {
+  if (STAR_T) return STAR_T; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 26 : 58; x.lineTo(64 + Math.cos(a) * r, 68 + Math.sin(a) * r); } x.closePath();
+  x.fillStyle = '#b44dff'; x.fill(); x.lineWidth = 7; x.strokeStyle = '#fff'; x.stroke();
+  STAR_T = new THREE.CanvasTexture(c); STAR_T.colorSpace = THREE.SRGBColorSpace; return STAR_T;
 }
 // lista das missões (tecla M ou o botão 📋)
 function missionsPanel() {
@@ -820,10 +873,10 @@ function cityExtras(g, sp) {
     for (let k = 0; k < 4; k++) box(g, 2, .5, 22, px + (k < 2 ? -24 : 24) + (k % 2) * (k < 2 ? -1 : 1), .25 + (k % 2) * .5, pz, '#2457c5'); // arquibancadinhas
     for (let i = 0; i < 10; i++) { const sx = i < 5 ? -24 : 24, ff = fan(g, px + sx + (i % 2 ? (sx < 0 ? -1 : 1) : 0), pz - 8 + (i % 5) * 4, sx < 0 ? Math.PI / 2 : -Math.PI / 2, 1060 + i, true); ff.position.y = .5 + (i % 2) * .5; }
     for (let i = 0; i < 8; i++) palm(g, px - 28 + i * 8, pz + 18, 5);
-    banner(g, ($s.CR.cosm || {}).centro ? 'Centro Comunitário ' + nameOf($s.CR.me) : pl.name, px, 2.6, pz - 20.5, 8, 1.1, '#0a7d3c', '#ffffff', 0, (($s.CR.cosm || {}).legado ? 'Embaixador do bairro · ' : '') + 'galera ' + PRACA_LV[pracaLevel(pl)].n);
+    banner(g, ($s.CR.cosm || {}).centro ? 'Centro Comunitário ' + nameOf($s.CR.me) : pl.name, px, 2.6, pz - 20.5, 8, 1.1, '#0a7d3c', '#ffffff', 0, (($s.CR.cosm || {}).legado ? 'Embaixador do bairro · ' : '') + 'níveis ' + PRACA_LV[pracaLevel(pl, 0)].n + ' e ' + PRACA_LV[pracaLevel(pl, 1)].n);
     if (($s.CR.cosm || {}).centro) { box(g, 16, 4, 8, px, 2, pz + 26, '#f6f3ee'); solid(px - 8, pz + 22, px + 8, pz + 30); banner(g, 'Centro Comunitário', px, 3.2, pz + 21.95, 10, 1.2, '#0a7d3c', '#ffffff', 0, nameOf($s.CR.me)); } cyl(g, .06, .06, 2.6, px - 3.6, 1.3, pz - 20.5, '#3a3f47'); cyl(g, .06, .06, 2.6, px + 3.6, 1.3, pz - 20.5, '#3a3f47');
     LV.plazas.push(Object.assign({ w: 60, d: 40 }, pl));
-    spot(sp, 'praca', px, pz - 13, pl.name, 'Galera nível ' + PRACA_LV[pracaLevel(pl)].n + ' hoje'); LV.spots[LV.spots.length - 1].plaza = pl; }
+    [-14, 14].forEach((dx, ci) => { spot(sp, 'praca', px + dx, pz - 10.5, 'Palmeiras · quadra ' + (ci + 1), 'Galera nível ' + PRACA_LV[pracaLevel(pl, ci)].n + ' hoje'); const q = LV.spots[LV.spots.length - 1]; q.plaza = pl; q.ci = ci; q.multi = true; }); }
   // casas e lojinhas na quarta rua, entre os prédios e as praças
   let k = 0; for (let x = -10; x < 280; x += 14) { if (x > 8 && x < 74) continue; if (x > 152 && x < 228) continue; if (Math.abs(x - 120) < 14 || Math.abs(x - 262) < 14 || Math.abs(x - 88) < 10) continue; const c = HOUSE_COLS[(k++ + 5) % HOUSE_COLS.length]; neighborHouse(g, x, 205, 10, 7, c[0], c[1], -1); }
 }
@@ -838,11 +891,147 @@ function plazaTheme(g, sp, pl, x, z) {
     for (let i = 0; i < 4; i++) { const d = dyn2(sp, new THREE.Group()); const b2 = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), mat('#ffffff')); b2.scale.set(1.3, .8, 1); d.add(b2); const hd = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat('#ffffff')); hd.position.set(.2, .15, 0); d.add(hd); d.position.set(x + 14 + i * 1.3, .2, z + 2 + (i % 2)); LV.npcs.push({ kind: 'duck', o: d, cx: x + 16, cz: z + 3, ph: i * 1.6 }); }
     box(g, 1, 1.2, 1, x + 16, .6, z - 2, '#f4f4f4'); const st = fan(g, x + 16, z - 2, 0, 1100, false); st.position.y = 1.2; st.traverse(o => { if (o.isMesh) o.material = mat('#cfe8f5', { metalness: .3, roughness: .3 }); }); spot(sp, 'lago', x + 16, z + 7.5, 'Lago dos patos', 'Dar pipoca aos patos'); }
 }
+// ---------- bairros oeste e leste: mais praças, arenas e parques (cada um com cara própria) ----------
+const PLACES2 = [
+  { id: 'vila', name: 'Arena da Vila', x: -125, z: 94, kind: 'arena', court: true, col: '#c0392b' },
+  { id: 'clube', name: 'Clube Atlântico', x: -205, z: 94, kind: 'clube', court: true, col: '#1f4fb8' },
+  { id: 'lagoa', name: 'Parque da Lagoa', x: -160, z: 160, kind: 'parque', court: true, col: '#2a9d8f' },
+  { id: 'bosque', name: 'Bosque dos Ipês', x: -235, z: 165, kind: 'bosque' },
+  { id: 'farol', name: 'Mirante do Farol', x: -205, z: -45, kind: 'mirante' },
+  { id: 'mercado', name: 'Quadra do Mercado', x: 345, z: 94, kind: 'coberta', court: true, col: '#ff6a00' },
+  { id: 'porsol', name: 'Arena Pôr do Sol', x: 425, z: 94, kind: 'arena', court: true, col: '#6b2fb8' },
+  { id: 'esporte', name: 'Parque Esportivo', x: 385, z: 160, kind: 'esportivo', court: true, col: '#0a7d3c' },
+  { id: 'jardim', name: 'Jardim Botânico', x: 455, z: 165, kind: 'jardim' },
+];
+function courtLines(g, cx, cz, col = '#1f4fb8', rot = 0) { box(g, rot ? 22 : 14, .02, rot ? 14 : 22, cx, .09, cz, '#f1e2b8', { noShadow: true });
+  (rot ? [[.06, 8, cx - 8, cz], [.06, 8, cx + 8, cz], [16, .06, cx, cz - 4], [16, .06, cx, cz + 4]] : [[8, .06, cx, cz - 8], [8, .06, cx, cz + 8], [.06, 16, cx - 4, cz], [.06, 16, cx + 4, cz]]).forEach(([w, d, a, b]) => box(g, w, .02, d, a, .12, b, col, { noShadow: true })); }
+function placeBuild(g, sp, pl, R) {
+  const { x, z } = pl, lvT = pl.court && !['clube', 'esportivo'].includes(pl.kind) ? ' · galera ' + PRACA_LV[pracaLevel(pl)].n : pl.court ? ' · um nível em cada quadra' : '';
+  const sign2 = (zz) => { banner(g, pl.name, x, 2.6, zz, 7.5, 1.1, pl.col || '#2a9d8f', '#ffffff', 0, ({ arena: 'arena de bairro', clube: 'clube de beach tennis', parque: 'parque com quadra', coberta: 'quadra coberta', esportivo: 'complexo esportivo', bosque: 'trilha e sombra', mirante: 'vista do mar', jardim: 'flores e estufa' })[pl.kind] + lvT); cyl(g, .06, .06, 2.6, x - 3.4, 1.3, zz, '#3a3f47'); cyl(g, .06, .06, 2.6, x + 3.4, 1.3, zz, '#3a3f47'); };
+  const playSpot = (sx, sz, ci) => { const L2 = PRACA_LV[pracaLevel(pl, ci || 0)]; spot(sp, 'praca', sx, sz, ci != null ? pl.name.replace(/^(Clube|Parque) /, '') + ' · quadra ' + (ci + 1) : pl.name, 'Galera nível ' + L2.n + ' hoje'); const q = LV.spots[LV.spots.length - 1]; q.plaza = pl; q.ci = ci || 0; q.multi = ci != null; };
+  const players = (cx, cz, seed) => [-1, 1].forEach(sd => [-1, 1].forEach(q => fan(g, cx + q * 1.8, cz + sd * 5, sd > 0 ? Math.PI : 0, seed + q + sd, false)));
+  if (pl.kind === 'arena') { // arena de bairro: muro com faixas, arquibancada de um lado, refletores
+    box(g, 30, .08, 26, x, .05, z, '#d9cfb8', { noShadow: true }); courtLines(g, x, z, pl.col); realNet(g, x, z, 8, 'x', pl.name, pl.col); solid(x - 4.4, z - .1, x + 4.4, z + .1);
+    [[30, .3, x, z - 13], [30, .3, x, z + 13], [.3, 26, x - 15, z], [.3, 26, x + 15, z]].forEach(([w, d, a, b], i) => { const gap = i === 0; if (gap) { box(g, 12, 2.4, .3, x - 9, 1.2, z - 13, pl.col); box(g, 12, 2.4, .3, x + 9, 1.2, z - 13, pl.col); solid(x - 15, z - 13.2, x - 3, z - 12.8); solid(x + 3, z - 13.2, x + 15, z - 12.8); } else { box(g, w, 2.4, d, a, 1.2, b, pl.col); solid(a - w / 2, b - d / 2, a + w / 2, b + d / 2); } });
+    for (let k = 0; k < 3; k++) box(g, 1, .5, 20, x + 10 + k, .25 + k * .5, z, '#2457c5'); for (let i = 0; i < 9; i++) fan(g, x + 10 + (i % 3), z - 8 + Math.floor(i / 3) * 6 + (i % 2), -Math.PI / 2, 1300 + i, true).position.y = .5 + (i % 3) * .5;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { cyl(g, .1, .12, 7, x + a * 14, 3.5, z + b * 12, '#9aa0a8'); box(g, 1.2, .5, .3, x + a * 13.6, 7, z + b * 12, '#f4f4f4', glow('#ffffff', 1.2)); });
+    players(x, z, 1320); sign2(z - 15); playSpot(x, z - 10.5); }
+  else if (pl.kind === 'clube') { // clube: cerca baixa, duas quadras, sede com varanda e piscina pequena
+    box(g, 44, .08, 34, x, .05, z, '#6aa65a', { noShadow: true }); [-9, 9].forEach((dx, i) => { courtLines(g, x + dx, z + 2, pl.col); realNet(g, x + dx, z + 2, 8, 'x', 'Clube ' + (i + 1), pl.col); solid(x + dx - 4.4, z + 1.9, x + dx + 4.4, z + 2.1); players(x + dx, z + 2, 1340 + i * 5); });
+    box(g, 14, 3.4, 6, x, 1.7, z - 13, '#f6f3ee'); box(g, 15, .3, 7.5, x, 3.5, z - 12.5, '#1f4fb8'); solid(x - 7, z - 16, x + 7, z - 10); for (let i = 0; i < 4; i++) { chair(g, x - 5 + i * 3.3, z - 8.8, Math.PI, '#ffffff'); fan(g, x - 5 + i * 3.3, z - 8.8, Math.PI, 1360 + i, true).position.y = -.05; }
+    box(g, 6, .05, 3, x + 15, .07, z - 13, '#3fb6e8', { metalness: .2, roughness: .1 }); [[44, .5, x, z + 17], [.5, 34, x - 22, z], [.5, 34, x + 22, z]].forEach(([w, d, a, b]) => { box(g, w, .8, d, a, .4, b, '#ffffff'); solid(a - w / 2, b - d / 2, a + w / 2, b + d / 2); });
+    sign2(z - 18.5); playSpot(x - 9, z - 7, 0); playSpot(x + 9, z - 7, 1); }
+  else if (pl.kind === 'parque') { // parque: gramado grande, lagoa com pedalinhos, árvores e a quadra no meio
+    box(g, 50, .08, 40, x, .05, z, '#7fb069', { noShadow: true }); const lk = new THREE.Mesh(new THREE.CircleGeometry(8, 30), mat('#3fb6e8', { roughness: .1, metalness: .2 })); lk.rotation.x = -Math.PI / 2; lk.scale.set(1.3, .8, 1); lk.position.set(x - 12, .1, z + 8); g.add(lk); solid(x - 22, z + 2, x - 2, z + 14);
+    for (let i = 0; i < 3; i++) { const pd = dyn2(sp, new THREE.Group()); box(pd, 1, .4, .7, 0, .2, 0, ['#ffd23f', '#e63946', '#2a9d8f'][i]); const sw = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), mat('#ffffff')); sw.position.set(.35, .55, 0); pd.add(sw); LV.npcs.push({ kind: 'duck', o: pd, cx: x - 12, cz: z + 8, ph: i * 2.1 }); }
+    courtLines(g, x + 12, z - 4, pl.col); realNet(g, x + 12, z - 4, 8, 'x', pl.name, pl.col); solid(x + 7.6, z - 4.1, x + 16.4, z - 3.9); players(x + 12, z - 4, 1380);
+    for (let t = 0; t < 10; t++) { const tx = x - 23 + (t % 5) * 11.5, tz = z + (t < 5 ? -18 : 18); cyl(g, .18, .25, 2.6, tx, 1.3, tz, '#7a5a42'); const c = new THREE.Mesh(new THREE.SphereGeometry(1.6, 10, 8), mat('#3f8f4a')); c.position.set(tx, 3.4, tz); g.add(c); solid(tx - .3, tz - .3, tx + .3, tz + .3); }
+    sign2(z - 20.5); playSpot(x + 12, z - 14.5); }
+  else if (pl.kind === 'coberta') { // quadra coberta ao lado do mercado: telhado em arco, bancos e o mercado municipal
+    box(g, 28, .08, 30, x, .05, z, '#bfb6a5', { noShadow: true }); courtLines(g, x, z, pl.col); realNet(g, x, z, 8, 'x', pl.name, pl.col); solid(x - 4.4, z - .1, x + 4.4, z + .1);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { cyl(g, .2, .2, 6, x + a * 8, 3, z + b * 12, '#3a3f47'); solid(x + a * 8 - .2, z + b * 12 - .2, x + a * 8 + .2, z + b * 12 + .2); });
+    box(g, 18, .15, 26, x, 6.1, z, '#e9e9e9', { transparent: true, opacity: .55 }); for (let i = -2; i <= 2; i++) box(g, 18.4, .25, .3, x, 6, z + i * 6, '#3a3f47'); [-1, 1].forEach(a => box(g, .3, .25, 26, x + a * 8, 6, z, '#3a3f47'));
+    [-1, 1].forEach(sd => { for (let i = 0; i < 4; i++) { bench(g, x + sd * 10.5, z - 7 + i * 4.5); if (R() < .6) fan(g, x + sd * 10.5, z - 7 + i * 4.5, -sd * Math.PI / 2, 1400 + i + (sd > 0 ? 9 : 0), true).position.y = 0; } });
+    box(g, 26, 5, 10, x, 2.5, z - 21, '#e9c46a'); solid(x - 13, z - 26, x + 13, z - 16); banner(g, 'Mercado Municipal', x, 4.2, z - 15.97, 10, 1, '#c0392b', '#ffffff');
+    players(x, z, 1420); sign2(z + 16); playSpot(x, z + 12.5); }
+  else if (pl.kind === 'esportivo') { // parque esportivo: duas quadras de areia, uma de vôlei e pista de corrida em volta
+    box(g, 60, .08, 40, x, .05, z, '#c45a3a', { noShadow: true }); box(g, 54, .09, 34, x, .06, z, '#7fb069', { noShadow: true });
+    [-14, 14].forEach((dx, i) => { courtLines(g, x + dx, z, pl.col); realNet(g, x + dx, z, 8, 'x', 'Esportivo ' + (i + 1), pl.col); solid(x + dx - 4.4, z - .1, x + dx + 4.4, z + .1); players(x + dx, z, 1440 + i * 5); });
+    for (let i = 0; i < 6; i++) { const o = dyn2(sp, fan(new THREE.Group(), x - 28, z - 18 + i * 6, 0, 1460 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x - 28 + i * 9, z: z + (i % 2 ? -18.5 : 18.5), v: (i % 2 ? 2.4 : -2.4), x0: x - 28, x1: x + 28 }); } // corredores na pista
+    sign2(z - 21.5); playSpot(x - 14, z - 11.5, 0); playSpot(x + 14, z - 11.5, 1); }
+  else if (pl.kind === 'bosque') { // bosque: muitos ipês (amarelos e roxos), trilha de terra e bancos
+    box(g, 40, .08, 40, x, .05, z, '#5e8a5c', { noShadow: true }); box(g, 3, .09, 40, x, .06, z, '#b8996a', { noShadow: true });
+    for (let t = 0; t < 26; t++) { const tx = x - 18 + R() * 36, tz = z - 18 + R() * 36; if (Math.abs(tx - x) < 2.5) continue; cyl(g, .16, .22, 3.2, tx, 1.6, tz, '#6b4f3a'); const c = new THREE.Mesh(new THREE.SphereGeometry(1.5 + R(), 10, 8), mat(R() < .5 ? '#f2c14e' : '#b07ac9')); c.position.set(tx, 4, tz); g.add(c); solid(tx - .3, tz - .3, tx + .3, tz + .3); }
+    for (let i = 0; i < 4; i++) bench(g, x + 2.6, z - 12 + i * 8); sign2(z - 21); LV.plazas.push(Object.assign({ w: 40, d: 40 }, pl)); return; }
+  else if (pl.kind === 'mirante') { // mirante do farol na ponta da praia
+    cyl(g, 8, 9, .8, x, .4, z, '#9aa0a8'); solid(x - 1.6, z - 1.6, x + 1.6, z + 1.6);
+    for (let k = 0; k < 6; k++) cyl(g, 1.5 - k * .12, 1.6 - k * .12, 2, x, 1.8 + k * 2, z, k % 2 ? '#ffffff' : '#c0392b'); const lt = new THREE.Mesh(new THREE.SphereGeometry(.9, 12, 10), mat('#fff3d6', glow('#ffe1a8', 2))); lt.position.set(x, 13.6, z); g.add(lt);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; cyl(g, .05, .05, 1, x + Math.cos(a) * 7.6, 1.3, z + Math.sin(a) * 7.6, '#3a3f47'); }
+    for (let i = 0; i < 3; i++) fan(g, x - 4 + i * 2.5, z - 5, Math.PI, 1480 + i, false).position.y = .8;
+    sign2(z + 10); spot(sp, 'farol', x, z + 7, 'Mirante do Farol', 'Ver o pôr do sol (+2 energia)'); LV.plazas.push(Object.assign({ w: 20, d: 20 }, pl)); return; }
+  else if (pl.kind === 'jardim') { // jardim botânico: canteiros coloridos, estufa de vidro e fonte
+    box(g, 40, .08, 40, x, .05, z, '#6aa65a', { noShadow: true });
+    for (let i = 0; i < 12; i++) box(g, 4, .35, 2, x - 14 + (i % 4) * 9, .2, z - 12 + Math.floor(i / 4) * 6, ['#e63946', '#ffd23f', '#b07ac9', '#ff8fab'][i % 4]);
+    box(g, 12, 4, 8, x, 2, z + 13, '#cfe8f5', { transparent: true, opacity: .5, metalness: .4, roughness: .1 }); solid(x - 6, z + 9, x + 6, z + 17);
+    cyl(g, 2.2, 2.4, .5, x, .25, z + 3, '#cfd3d8'); cyl(g, 2, 2, .05, x, .5, z + 3, '#3fb6e8'); solid(x - 2.4, z + .6, x + 2.4, z + 5.4);
+    sign2(z - 21); spot(sp, 'jardim', x, z - 2, 'Jardim Botânico', 'Passear entre as flores (+1 energia)'); LV.plazas.push(Object.assign({ w: 40, d: 40 }, pl)); return; }
+  LV.plazas.push(Object.assign({ w: 44, d: 36 }, pl));
+}
+// ---------- loteamento: todo terreno vazio entre as ruas ganha casa, comércio ou prédio (sem buracos na cidade) ----------
+const FILL_SHOPS = [['Padaria Pão Quente', '#c98b3a'], ['Farmácia Bem-Estar', '#2a9d8f'], ['Mercadinho da Esquina', '#e63946'], ['Barbearia do Tonho', '#264653'], ['Pet Shop Au-Au', '#f4a261'],
+  ['Lanchonete X-Praia', '#ff8c00'], ['Papelaria Lápis', '#457b9d'], ['Salão Bela Onda', '#d16ba5'], ['Hortifrúti Verdinho', '#4f9a52'], ['Ótica Visão', '#3a3f47'], ['Lavanderia Bolha', '#5fa8d3'],
+  ['Pizzaria Forno a Lenha', '#b5332e'], ['Loja de Surf Maral', '#1d7fa6'], ['Açougue Boi Bom', '#8b1e2d'], ['Academia Ferro', '#222831'], ['Floricultura Ipê', '#b07ac9'], ['Bicicletaria Pedal', '#2b9348'],
+  ['Chaveiro 24h', '#e9c46a'], ['Livraria Maré', '#6d597a'], ['Brechó da Vó', '#a26769'], ['Sushi Onda', '#c1121f'], ['Café Grão', '#6f4e37'], ['Doceria Brigadeiro', '#d4a5a5'], ['Clínica do Pé', '#0081a7']];
+function cityFill(g, sp) {
+  const R = mulberry(($s.CR.seed || 4) * 41 + 13), occ = [], bb = new THREE.Box3();
+  g.updateMatrixWorld(true);
+  g.traverse(o => { if (!o.isMesh || o.parent === sp) return; bb.setFromObject(o, true); if (bb.isEmpty()) return; const h = bb.max.y - Math.max(0, bb.min.y), w = bb.max.x - bb.min.x, d = bb.max.z - bb.min.z;
+    if (h < .35 || (w > 120 && d > 120)) return; occ.push([bb.min.x - H0.x, bb.min.z - H0.z, bb.max.x - H0.x, bb.max.z - H0.z]); });
+  LV.boxes.forEach(b => occ.push(b.slice())); (LV.plazas || []).forEach(q => occ.push([q.x - q.w / 2 - 3, q.z - q.d / 2 - 3, q.x + q.w / 2 + 3, q.z + q.d / 2 + 3]));
+  LV.spots.forEach(q => occ.push([q.x - 5, q.z - 5, q.x + 5, q.z + 5]));
+  occ.push([22, 75, 62, 105], [46, 152, 70, 172], [155, 147, 209, 173], [32, 28, 82, 48]); // gramado, lagoinha, mercado, quadras de casa
+  const VR = [[-55, 24, 192], [25, 24, 64], [88, 24, 192], [290, 128, 188], [-165, 24, 192], [385, 24, 192]];
+  const free = (x0, z0, x1, z1) => !occ.some(([a, b, c, d]) => x0 < c && x1 > a && z0 < d && z1 > b) && !VR.some(([vx, a, b]) => x0 < vx + 7.5 && x1 > vx - 7.5 && z0 < b + 7 && z1 > a - 7);
+  // ruas novas ligando as ruas grandes (onde o quarteirão está livre): mais caminhos para o carro
+  [[24, 64], [64, 124], [124, 192], [192, 246]].forEach(([za, zb], bi) => { const z0 = za + 4, z1 = bi === 3 ? 240 : zb - 4;
+    for (const x of [-235, -205, -130, -95, 0, 55, 125, 165, 235, 260, 330, 355, 420, 450]) { if (VR.some(([vx, a, b]) => Math.abs(vx - x) < 30 && a < z1 && b > z0)) continue;
+      if (!free(x - 6.5, z0 + 1, x + 6.5, z1 - 1)) continue;
+      box(g, 8, .06, z1 - z0, x, .03, (z0 + z1) / 2, '#3a3f47', { noShadow: true }); [-1, 1].forEach(sd => box(g, 2.4, .14, z1 - z0 - 8, x + sd * 5.2, .07, (z0 + z1) / 2 - (bi === 3 ? 0 : 0), '#cfcac0', { noShadow: true }));
+      for (let zz = z0 + 6; zz < z1 - 6; zz += 5) box(g, .18, .02, 2.2, x, .07, zz, '#f2f2f2', { noShadow: true });
+      if (bi === 3) box(g, 14, .06, 8, x, .03, z1 - 4, '#3a3f47', { noShadow: true }); // retorno no fim da rua
+      VR.push([x, z0, z1]); LV.xRoads.push([x, z0, z1]); } });
+  const ROADS = [24, 64, 124, 192, 246], cols = ['#f1e3c6', '#e8c9a0', '#cfe0e8', '#f6d6d6', '#dfe8cf', '#f3efe6', '#e9d8f0', '#fbe7b5', '#d9cbb5'], roofs = ['#b5523b', '#8a4a32', '#5d4037', '#7a7f87', '#a0522d'];
+  let LOT_SIDE = 0, LOT_I = 0; LV.lots = []; let si = Math.floor(R() * FILL_SHOPS.length);
+  for (let i = 0; i < 4; i++) { const zA = ROADS[i] + 6.5, zB = ROADS[i + 1] - (i === 3 ? 2 : 6.5);
+    for (const side of [0, 1]) { LOT_SIDE = side; LOT_I = i; // uma fileira de frente para cada rua do quarteirão
+      if (zB - zA < 14 && side) continue; const face = side ? 1 : -1, dep = Math.min(26, (zB - zA) / (side ? 2 : 1) - .5); let bd = 0;
+      for (let x = -258; x < 480; ) { const w = 9 + Math.floor(R() * 5), z0 = side ? zB - dep : zA, z1 = side ? zB : zA + dep, cx = x + w / 2;
+        if (!free(x - .8, z0 - .8, x + w + .8, z1 + .8)) { const d2 = Math.min(dep, 11.5), za2 = side ? zB - d2 : zA, zb2 = side ? zB : zA + d2; // terreno raso, se o fundo não estiver livre
+          if (dep > 12 && free(x - .8, za2 - .8, x + w + .8, zb2 + .8)) { lot(x, w, za2, zb2, d2); x += w + 1.2; } else x += 3; continue; }
+        lot(x, w, z0, z1, dep); x += w + 1.2; } } }
+  function lot(x, w, z0, z1, dep) { const cx = x + w / 2, side = LOT_SIDE, i = LOT_I; let bd = 0;
+        const r = R(), cz = (z0 + z1) / 2, near = (side ? 1 : -1), shop = r < .38 && i < 3, apt = !shop && r < .55 && i !== 3, fz = side ? z1 : z0; // fachada virada para a rua
+        if (shop) { const [nm, c] = FILL_SHOPS[si++ % FILL_SHOPS.length], h = 4 + Math.floor(R() * 2) * 3, d = Math.min(dep, 9);
+          const zc = side ? z1 - d / 2 : z0 + d / 2; box(g, w - .6, h, d, cx, h / 2, zc, cols[Math.floor(R() * cols.length)]); solid(cx - w / 2 + .3, zc - d / 2, cx + w / 2 - .3, zc + d / 2);
+          const fr = side ? zc + d / 2 : zc - d / 2, o = side ? .06 : -.06; box(g, w - 2.4, 2.2, .08, cx, 1.4, fr + o, '#9fd3ea', { metalness: .35, roughness: .15 }); box(g, 1.3, 2.3, .1, cx + w / 2 - 2, 1.15, fr + o * 1.5, '#5b4636');
+          const aw = new THREE.Mesh(new THREE.BoxGeometry(w - .8, .08, 1.6), mat(c)); aw.position.set(cx, 2.85, fr + (side ? .8 : -.8)); aw.rotation.x = side ? .18 : -.18; aw.castShadow = true; g.add(aw);
+          banner(g, nm, cx, 3.6, fr + o * 2, Math.min(w - 1.5, 7.5), .7, c, '#ffffff', side ? 0 : Math.PI); box(g, w - .4, .25, d + .2, cx, h + .12, zc, '#cfcac0');
+          if (R() < .5) { bench(g, cx - w / 2 + 2, fr + (side ? 2.4 : -2.4)); } LV.lots.push([cx, zc, w, d, 's']); bd = d; }
+        else if (apt) { const h = 6 + Math.floor(R() * 4) * 3, d = Math.min(dep, 10), zc = side ? z1 - d / 2 : z0 + d / 2; aptBlock(g, cx, zc, w - .6, d, h, cols[Math.floor(R() * cols.length)]);
+          if (side) for (let f = 0; f * 3 + 1.6 < h; f++) for (let k = 0; k < Math.floor((w - .6) / 2.4); k++) box(g, 1.2, 1.1, .06, cx - (w - .6) / 2 + 1.4 + k * 2.4, 1.6 + f * 3, zc + d / 2 + .03, '#9fd3ea', { metalness: .3, roughness: .2 });
+          LV.lots.push([cx, zc, w, d, 'a']); bd = d; }
+        else { const hw = w - 3, hd = Math.min(dep - 3.5, 8), zc = side ? z1 - 3 - hd / 2 : z0 + 3 + hd / 2; neighborHouse(g, cx, zc, hw, hd, cols[Math.floor(R() * cols.length)], roofs[Math.floor(R() * roofs.length)], side ? 1 : -1);
+          const fy = side ? z1 - .1 : z0 + .1; for (let k = 0; k < w - 1; k += 1.2) box(g, .9, .8, .06, x + .6 + k, .4, fy, '#f4f4f4'); // cerquinha
+          if (R() < .35) car(g, cx + hw / 2 - 1, side ? z1 - 2 : z0 + 2, Math.PI / 2, ['#e63946', '#f4f4f4', '#264653', '#ffd23f'][Math.floor(R() * 4)]);
+          LV.lots.push([cx, zc, w, hd, 'h']); bd = hd + 3; }
+        if (dep - bd > 4) { const ya = side ? z0 : z0 + bd + .5, yb = side ? z1 - bd - .5 : z1, ym = (ya + yb) / 2; // quintal / fundos do terreno
+          box(g, w - .4, .05, yb - ya, cx, .025, ym, R() < .5 ? '#7fb069' : '#8cbf6a', { noShadow: true });
+          const fzB = side ? ya + .05 : yb - .05; box(g, w, 1.7, .15, cx, .85, fzB, '#d9d2c3'); solid(x, fzB - .1, x + w, fzB + .1);
+          const r2 = R(); if (r2 < .3 && yb - ya > 7) { box(g, 4, .1, 2.6, cx, .06, ym, '#3fb6e8', { transparent: true, opacity: .8 }); box(g, 4.6, .12, 3.2, cx, .04, ym, '#e9e9e9'); }
+          else if (r2 < .55) { cyl(g, .15, .2, 2.4, cx - w / 4, 1.2, ym, '#8a6a45'); const tc = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8), mat(['#4f9a52', '#5e8a5c', '#6aa65a'][Math.floor(R() * 3)])); tc.position.set(cx - w / 4, 3, ym); tc.castShadow = true; g.add(tc); solid(cx - w / 4 - .25, ym - .25, cx - w / 4 + .25, ym + .25); }
+          else if (r2 < .75) { box(g, 3, 2.2, 2.4, cx + w / 4, 1.1, ym, '#b9a58a'); solid(cx + w / 4 - 1.5, ym - 1.2, cx + w / 4 + 1.5, ym + 1.2); } // edícula
+          else { for (let k = 0; k < 3; k++) box(g, 1.6, .35, .8, cx - 2 + k * 2, .18, ym, ['#e63946', '#ffd23f', '#b07ac9'][k]); } } // horta / canteiros
+        occ.push([x, z0, x + w, z1]); }
+
+}
+function cityWide(g, sp) {
+  const R = mulberry(($s.CR.seed || 4) * 19 + 7), road = (w, d, x, z) => box(g, w, .06, d, x, .03, z, '#3a3f47', { noShadow: true }), walk = (w, d, x, z) => box(g, w, .14, d, x, .07, z, '#cfcac0', { noShadow: true });
+  // as ruas seguem para oeste e leste
+  [24, 64, 124, 192].forEach(z => { road(205, 8, -157, z); walk(205, 2.4, -157, z - 4.8); walk(205, 2.4, -157, z + 4.8); road(190, 8, 390, z); walk(190, 2.4, 390, z - 4.8); walk(190, 2.4, 390, z + 4.8);
+    for (let i = -258; i < -55; i += 5) box(g, 2.2, .02, .18, i, .07, z, '#f2f2f2', { noShadow: true }); for (let i = 297; i < 483; i += 5) box(g, 2.2, .02, .18, i, .07, z, '#f2f2f2', { noShadow: true }); });
+  [-165, 385].forEach(x => { road(8, 168, x, 108); walk(2.4, 168, x - 5.2, 108); walk(2.4, 168, x + 5.2, 108); });
+  for (let x = -250; x <= 475; x += 14) { if (x > -58 && x < 298) continue; if (Math.abs(x + 165) < 8 || Math.abs(x - 385) < 8) continue; palm(g, x, 17.4, 4.6); streetLamp(g, x + 7, 18.3); }
+  // casas e prédios entre as praças novas
+  let k = 0; for (let x = -250; x < 480; x += 15) { if (x > -60 && x < 300) continue; if (Math.abs(x + 165) < 10 || Math.abs(x - 385) < 10) continue; const c = HOUSE_COLS[(k++ + 2) % HOUSE_COLS.length]; neighborHouse(g, x, 38, 10, 7, c[0], c[1], 1); if (R() < .5) neighborHouse(g, x + 2, 206, 9, 7, c[0], c[1], -1); }
+  aptBlock(g, -95, 50, 16, 12, 12, '#e3d5c1'); aptBlock(g, 455, 50, 16, 12, 15, '#cfe3e8');
+  for (let i = 0; i < 16; i++) { const z = [19.2, 28.8, 59.2, 68.8][i % 4], left = i < 8, x0 = left ? -250 + R() * 190 : 300 + R() * 180, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 1500 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: left ? -255 : 298, x1: left ? -60 : 480 }); }
+  PLACES2.forEach(pl => placeBuild(g, sp, pl, R));
+}
 function build() {
   const lvl = crInv('moradia'), key = Object.keys($s.CR.cosm || {}).join() + ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social', 'skate', 'bike', 'cachorro', 'gato', 'trofeus'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  LV.built = key; LV.doors = []; LV.spots = []; LV.boxes = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
+  LV.built = key; LV.doors = []; LV.spots = []; LV.boxes = []; LV.gnd = []; LV.roadR = []; LV.xRoads = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
   const g = new THREE.Group(); g.position.copy(H0); LV.group = g; scene.add(g);
   const sp = new THREE.Group(); g.add(sp); sp.userData.dyn = true; // pontos de interação (fora da junção)
   const S2 = (id, x, z, t, s, r) => spot(sp, id, x, z, t, s, r);
@@ -1033,15 +1222,15 @@ function build() {
   { const lc = '#1f4fb8'; [[8, .06, ax, az - 8], [8, .06, ax, az + 8], [.06, 16, ax - 4, az], [.06, 16, ax + 4, az]].forEach(([w, d, x, z]) => box(g, w, .02, d, x, .09, z, lc, { noShadow: true })); }
   S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra'); S2('arenaJogo', ax, az - 6, 'Jogo-treino', crInv('eventos') >= 1 ? 'Na sua arena, de graça' : 'Alugar a quadra e chamar quem quiser');
   // limites do bairro
-  solid(-60, -97, -59, 252); solid(296, -97, 297, 252); solid(-60, 251, 297, 252);
-  city(g, sp); city2(g, sp); city3(g, sp); cityExtras(g, sp);
+  solid(-262, -97, -261, 252); solid(484, -97, 485, 252); solid(-262, 251, 485, 252);
+  city(g, sp); city2(g, sp); city3(g, sp); cityExtras(g, sp); cityWide(g, sp); cityFill(g, sp);
   // pet (o cachorro passeia com você; o gato fica por perto da casa)
   // pets: o cachorro passeia com você (ou fica, se você mandar); o gato fica pela casa, andando à toa
   LV.pets = []; ['cachorro', 'gato'].forEach((kind, i) => { if (!crLife(kind)) return; const o = dyn2(sp, petMesh(kind)), x = i ? -2 : 1.5, z = i ? -1 : 3; o.position.set(x, 0, z);
     LV.pets.push({ o, kind, name: (($s.CR.pets || {})[kind]) || '', x, z, jump: 0, follow: kind === 'cachorro' && !($s.CR.petStay || {})[kind], tx: x, tz: z, wt: 0 }); });
   if ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) buildVenue(g, sp);
   // junta o cenário parado em poucos desenhos (os pontos de interação e os fãs ficam de fora)
-  mergeStatic(g);
+  gndIndex(); mergeStatic(g);
   refreshMarkers();
 }
 
@@ -1067,7 +1256,7 @@ const ACT = {
   restaurante: { txt: () => 'Almoçar fora (+6 energia · $40)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.lunchDay === k) { LV.msg('Você já almoçou hoje.'); return; } C.lunchDay = k; C.money -= 40; C.energy = Math.min(100, C.energy + 6); LV.msg('🍽️ Peixe grelhado, salada e suco: +6 de energia.'); } },
   acai: { txt: () => 'Tomar um açaí ($15)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.acaiDay === k) { LV.msg('Um por dia já está bom.'); return; } C.acaiDay = k; C.money -= 15; C.energy = Math.min(100, C.energy + 2); LV.msg('🍧 Açaí com banana e granola: +2 de energia.'); } },
   loja: { txt: () => 'Entrar na loja (Bia compra materiais)', run: () => { const M = $s.CR.mats || {}; if (Object.values(M).some(v => v > 0)) matsSell(); else LV.actions.openCareer(); } },
-  praca: { txt: () => { const S3 = LV.near && LV.near.plaza, L = S3 && PRACA_LV[pracaLevel(S3)]; return L ? 'Jogar com a galera (nível ' + L.n + ')' : 'Jogar'; }, run: () => { if (LV.near && LV.near.plaza) pracaPlay(LV.near.plaza); } },
+  praca: { txt: () => { const S3 = LV.near && LV.near.plaza, L = S3 && PRACA_LV[pracaLevel(S3, LV.near.ci || 0)]; return L ? 'Jogar com a galera' + (LV.near.multi ? ' da quadra ' + ((LV.near.ci || 0) + 1) : '') + ' (nível ' + L.n + ')' : 'Jogar'; }, run: () => { if (LV.near && LV.near.plaza) pracaPlay(LV.near.plaza, LV.near.ci || 0); } },
   npc: { txt: () => 'Conversar' + (LV.nearNpc && LV.nearNpc.name ? ' com ' + LV.nearNpc.name : ''), run: () => { if (LV.nearNpc) npcTalk(LV.nearNpc); } },
   giver: { txt: () => (LV.nearGiver ? 'Falar com ' + LV.nearGiver.name : 'Falar'), run: () => { if (!LV.nearGiver) return; missionEvent('deliver', { giver: LV.nearGiver.id }); if (!LV.modal) giverTalk(LV.nearGiver); } },
   cinema: { txt: () => 'Ver um filme no cinema de casa (+2 energia)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.cineDay === k) { LV.msg('Uma sessão por dia: já assistiu hoje.'); return; } C.cineDay = k; C.energy = Math.min(100, C.energy + 2); LV.msg('🍿 ' + ['Filme de ação com pipoca', 'Revendo a sua última final', 'Documentário do circuito', 'Comédia com a família'][Math.floor(Math.random() * 4)] + ': +2 de energia.'); } },
@@ -1080,6 +1269,8 @@ const ACT = {
   feira: { txt: () => 'Pastel e caldo de cana ($12)', run: () => { const C = $s.CR, k = dayKey(); if (C.feiraDay === k) { LV.msg('Já comeu na feira hoje. Volta amanhã!'); return; } C.feiraDay = k; C.money -= 12; C.energy = Math.min(100, C.energy + 3); LV.msg('🥟 Pastel de queijo e caldo de cana gelado: +3 de energia.'); } },
   coreto: { txt: () => 'Ouvir a banda no coreto', run: () => { const C = $s.CR, k = dayKey(); if (C.coretoDay === k) { LV.msg('🎺 A banda tá repetindo o repertório. Volta amanhã!'); return; } C.coretoDay = k; C.energy = Math.min(100, C.energy + 2); LV.msg('🎺 A banda tocou um chorinho e dedicou a última música a você: +2 de energia.'); } },
   sorvete: { txt: () => 'Comprar um picolé ($6)', run: () => { const C = $s.CR, k = dayKey(); if (C.sorvDay === k) { LV.msg('Um picolé por dia, atleta!'); return; } C.sorvDay = k; C.money -= 6; C.energy = Math.min(100, C.energy + 1); LV.msg('🍦 Picolé de limão: +1 de energia.'); } },
+  farol: { txt: () => 'Ver o pôr do sol do mirante', run: () => { const C = $s.CR, k = dayKey(); if (C.farolDay === k) { LV.msg('🌅 O sol já se pôs por hoje.'); return; } C.farolDay = k; C.energy = Math.min(100, C.energy + 2); LV.msg('🌅 Que pôr do sol! O mar todo laranja: +2 de energia.'); } },
+  jardim: { txt: () => 'Passear entre as flores', run: () => { const C = $s.CR, k = dayKey(); if (C.jardimDay === k) { LV.msg('🌺 As flores continuam lindas. Volte amanhã.'); return; } C.jardimDay = k; C.energy = Math.min(100, C.energy + 1); LV.msg('🌺 Cheiro de jasmim e silêncio: +1 de energia.'); } },
   lago: { txt: () => 'Dar pipoca aos patos', run: () => { LV.msg(pick(['🦆 Os patos fizeram fila. Um deles tentou levar o saco inteiro.', '🦆 Quá! Um pato te seguiu até a borda do lago.', '🦆 Os patos adoraram. Uma criança aplaudiu.'])); } },
   coco: { txt: () => 'Tomar água de coco ($8)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.cocoDay === k) { LV.msg('Já tomou o seu coco hoje.'); return; } C.cocoDay = k; C.money -= 8; C.energy = Math.min(100, C.energy + 2); LV.msg('🥥 Água de coco geladinha: +2 de energia.'); } },
   barraca: { txt: () => 'Petisco na barraca ($25)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.barDay === k) { LV.msg('O Zé já te serviu hoje.'); return; } C.barDay = k; C.money -= 25; C.energy = Math.min(100, C.energy + 3); LV.msg('🍤 Isca de peixe e suco na barraca do Zé: +3 de energia.'); } },
@@ -1110,14 +1301,23 @@ function enter() {
   LV.savedPick = Object.assign({}, S.settings.pick); LV.savedRacket = S.settings.racket;
   crSyncChars(); S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme' }); S.settings.racket = $s.CR.racket; assignCharacters(); applyRackets(); applyPlayerStyle(); // (sem reaplicar o estilo, o boneco novo ficava invisível)
   human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9;
-  LV.snap = true; hud(true); LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.');
-  const t = $s.CR.tour; if (t && !t.pending && !t.done) goVenue(); // torneio em andamento: começa no local do torneio
+  // volta para onde você estava (sair e entrar no mundo aberto não te leva de volta para casa)
+  const sv = $s.CR.livrePos, t = $s.CR.tour, tourOn = t && !t.pending && !t.done, tKey = tourOn ? String(t.name) : '';
+  const slept = sv && sv.day && sv.day !== dayKey() && !LV.keepPos; LV.keepPos = false;
+  const back = sv && !slept && (sv.tour || '') === tKey && !blocked(sv.x, sv.z, .2) && sv.x > -258 && sv.x < 482 && sv.z > -95 && sv.z < 248;
+  LV.snap = true; hud(true);
+  if (back) { human.pos.copy(P(sv.x, sv.z)); LV.yaw = sv.yaw || 0; LV.camYaw = sv.camYaw || 0; LV.camPitch = sv.camPitch || .9; LV.zoom = sv.zoom || 9;
+    if (sv.ride && sv.ride !== 'pe' && rides().includes(sv.ride)) { LV.ride = sv.ride; LV.rideMesh = rideMesh(LV.ride); scene.add(LV.rideMesh); human.model.group.visible = LV.ride !== 'carro'; }
+    LV.msg('De volta ao bairro. WASD anda, Shift corre, E interage, Esc volta.'); }
+  else if (slept && !tourOn) { const bd = LV.spots.find(q => q.id === 'cama'); if (bd) human.pos.copy(P(bd.x + .9, bd.z + .9)); LV.camPitch = 1.1; LV.zoom = 7; LV.msg('☀️ Bom dia! Um novo dia começou: você acordou em casa.'); }
+  else { LV.msg('Bem-vindo em casa. WASD para andar, Shift corre, E interage, Esc volta.'); if (tourOn) goVenue(); } // torneio novo em andamento: começa no local do torneio
 }
 function goVenue() { build(); LV.snap = true; human.pos.copy(P(VX, VZ + 34)); human.vel.set(0, 0, 0); human.feet = null; LV.yaw = 0; LV.camYaw = 0; LV.camPitch = .7; LV.zoom = 11; LV.where = '';
   LV.msg(LV.myCourt ? 'Você chegou ao ' + String($s.CR.tour.name).replace(/ · .*$/, '') + '. Sua partida (' + LV.myCourt.round + ') é na ' + LV.myCourt.name + ': siga a seta verde.' : 'Você chegou ao local do torneio.'); }
 function goHome() { LV.snap = true; human.pos.copy(P(0, 1.5)); human.vel.set(0, 0, 0); human.feet = null; LV.camYaw = 0; LV.camPitch = .9; LV.zoom = 9; LV.where = ''; LV.msg('De volta para casa.'); }
 function exit(toCareer = true) {
   if (!LV.on) return;
+  { const t = $s.CR && $s.CR.tour; if ($s.CR) $s.CR.livrePos = { x: +(human.pos.x - H0.x).toFixed(2), z: +(human.pos.z - H0.z).toFixed(2), yaw: LV.yaw || 0, camYaw: LV.camYaw || 0, camPitch: LV.camPitch, zoom: LV.zoom, ride: LV.ride || 'pe', day: dayKey(), tour: t && !t.pending && !t.done ? String(t.name) : '' }; }
   LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; envShow(); if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
@@ -1146,7 +1346,9 @@ function tick(dt) {
   const lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, R = .32; let px = lx, pz = lz;
   for (const [x0, z0, x1, z1] of LV.boxes) { const cx = Math.max(x0, Math.min(px, x1)), cz = Math.max(z0, Math.min(pz, z1)), dx = px - cx, dz = pz - cz, d = Math.hypot(dx, dz);
     if (d < R) { if (d > 1e-4) { px = cx + dx / d * R; pz = cz + dz / d * R; } else { px += R; } } }
-  human.pos.x = H0.x + px; human.pos.z = H0.z + pz;
+  if (LV.ride === 'carro' && LV.roadR.length) { const d0 = roadDist(lx - LV.vel.x * dt, lz - LV.vel.z * dt), d1 = roadDist(px, pz); // o carro não sai da rua (fora dela, só volta para a rua)
+    if (d1 > .6 && d1 > d0 - 1e-4) { px = lx - LV.vel.x * dt; pz = lz - LV.vel.z * dt; LV.vel.x *= -.2; LV.vel.z *= -.2; if (!LV.roadMsgT || LV.roadMsgT < performance.now()) { LV.roadMsgT = performance.now() + 4000; LV.msg('🚗 O carro só anda na rua.'); } } }
+  human.pos.x = H0.x + px; human.pos.z = H0.z + pz; LV.gy = LV.swim ? 0 : groundY(px, pz);
   // para onde o corpo olha: para onde anda
   const sp = Math.hypot(LV.vel.x, LV.vel.z);
   if (sp > .3) { const want = Math.atan2(-LV.vel.x, -LV.vel.z); let d = want - LV.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); LV.yaw += d * Math.min(1, dt * 10); }
@@ -1217,15 +1419,16 @@ function cam(dt) {
   if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix(); }
   sun.target.position.set(human.pos.x, 0, human.pos.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 40);
   // andando pelo mundo: raquete guardada na raqueteira, nas costas
+  if (human.model) human.model.group.visible = LV.ride !== 'carro'; if (human.model && human.model.armR) { human.model.armR.el.visible = true; human.model.armL.el.visible = true; }
   if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
   { const bc = ($s.CR.cosm && $s.CR.cosm.bagOuro && $s.CR.bagGold !== false) ? ['#c9a227', '#111214'] : crBagCols() || bagOfRacket();
     if (!LV.bag || LV.bagKey !== bc.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); LV.bagKey = bc.join(); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
     const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.1); LV.bag.rotateX(-.06); LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
-  if (LV.rideMesh) { LV.rideMesh.position.set(human.pos.x, 0, human.pos.z); LV.rideMesh.rotation.y = LV.yaw; }
+  if (LV.rideMesh) { LV.rideMesh.position.set(human.pos.x, LV.gy || 0, human.pos.z); LV.rideMesh.rotation.y = LV.yaw; }
   // nadando: o corpo deita na água (as pernas batem e os braços giram como no crawl) e a raqueteira fica guardada
   if (LV.swim) { LV.bag.visible = false; swimPose(); }
-  if (LV.ride === 'skate' || LV.ride === 'bike') human.liftY = LV.ride === 'skate' ? .1 : .3;
+  human.liftY = (LV.gy || 0) + (LV.ride === 'skate' ? .1 : LV.ride === 'bike' ? .3 : 0);
   return true;
 }
 
@@ -1434,11 +1637,11 @@ function missionTargets() {
     if (m.type === 'deliver') pts = [m.target.giver ? giverXY(m.target.giver) : spotXY(m.target.spot)];
     else if (m.type === 'visit1') pts = [plazaXY(m.place)];
     else if (m.type === 'visit') pts = (LV.plazas || []).filter(q => !(m.seen || []).includes(q.id)).map(q => [q.x, q.z]);
-    else if (m.type === 'praca' || m.type === 'pracaLvl') pts = LV.spots.filter(q => q.id === 'praca').map(q => [q.x, q.z]);
+    else if (m.type === 'praca' || m.type === 'pracaLvl' || /^ch/.test(m.type)) pts = LV.spots.filter(q => q.id === 'praca').map(q => [q.x, q.z]);
     else if (m.type === 'swim') pts = [[60, -92]];
     else if (m.type === 'train') pts = [[46, 34]];
     else if (m.type === 'pay') pts = [giverXY(m.giver)];
-    pts.filter(Boolean).forEach(p2 => out.push({ x: p2[0], z: p2[1], st }));
+    pts.filter(Boolean).forEach(p2 => out.push({ x: p2[0], z: p2[1], st, dl: m.type === 'deliver' }));
   }
   return out;
 }
@@ -1450,20 +1653,23 @@ function minimap() {
   if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
   const px = human.pos.x - H0.x, pz = human.pos.z - H0.z, cy = LV.camYaw || 0, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy);
-  const cxw = MM.big ? 118 : px, czw = MM.big ? 78 : pz, sc = MM.big ? W / 380 : W / 180; // grande: centrado na cidade
+  const cxw = MM.big ? 112 : px, czw = MM.big ? 78 : pz, sc = MM.big ? W / 760 : W / 180; // grande: centrado na cidade
   const T = (wx, wz) => { const dx = wx - cxw, dz = wz - czw; return [W / 2 + (dx * rx + dz * rz) * sc, H / 2 - (dx * fx + dz * fz) * sc]; };
   const poly = (x0, z0, x1, z1, c) => { const a = [T(x0, z0), T(x1, z0), T(x1, z1), T(x0, z1)]; x.beginPath(); x.moveTo(a[0][0], a[0][1]); for (let i = 1; i < 4; i++) x.lineTo(a[i][0], a[i][1]); x.closePath(); x.fillStyle = c; x.fill(); };
   x.fillStyle = '#e8dcbc'; x.fillRect(0, 0, W, H);
   poly(-2000, -2000, 2000, -87, '#4aa8d8'); poly(-2000, -87, 2000, 12, '#f3ead2');
-  [24, 64, 124, 192].forEach(z => poly(-55, z - 4, 295, z + 4, '#5b6170'));
+  [24, 64, 124, 192].forEach(z => poly(-260, z - 4, 482, z + 4, '#5b6170')); [-165, 385].forEach(vx => poly(vx - 4, 24, vx + 4, 192, '#5b6170'));
+  (LV.xRoads || []).forEach(([vx, a, b]) => poly(vx - 4, a, vx + 4, b, '#5b6170'));
   [[-55, 24, 192], [25, 24, 64], [88, 24, 192], [290, 128, 188]].forEach(([vx, a, b]) => poly(vx - 4, a, vx + 4, b, '#5b6170'));
   (LV.plazas || []).forEach(q => poly(q.x - q.w / 2, q.z - q.d / 2, q.x + q.w / 2, q.z + q.d / 2, '#8cc47a'));
   poly(22, 75, 62, 105, '#8cc47a'); poly(VX - 52, VZ - 50, VX + 52, VZ + 44, $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? '#ffb02e' : '#d7c9a0');
   poly(46, 152, 70, 172, '#f2e6c9'); poly(155, 147, 209, 173, '#e9b872'); [[-38, 214, 20, 12], [120, 214, 18, 12], [262, 214, 22, 12]].forEach(([a, b, w, d]) => poly(a - w / 2, b - d / 2, a + w / 2, b + d / 2, '#b9bec6'));
+  (LV.lots || []).forEach(([a, b, w, d, k]) => poly(a - w / 2, b - d / 2, a + w / 2, b + d / 2, k === 's' ? '#e3b5a0' : k === 'a' ? '#b9bec6' : '#d6c3a5'));
   const [hw, hd] = LV.house || [6, 5]; poly(-hw - 1, -hd - 1, hw + 1, hd + 1, '#c0392b'); poly(34, 30, 58, 46, '#2457c5'); if (crInv('ct') >= 1) poly(59, 31, 81, 45, '#1d2a4a');
   MM.t += .15; const pulse = 3 + Math.sin(MM.t) * 1.2;
   const edge = ([sx, sy]) => [Math.max(8, Math.min(W - 8, sx)), Math.max(8, Math.min(H - 8, sy))]; // fora do mapa pequeno: fica na borda, apontando o caminho
-  for (const t of missionTargets()) { const [sx, sy] = edge(T(t.x, t.z)); x.beginPath(); x.arc(sx, sy, pulse + (MM.big ? 3 : 1), 0, Math.PI * 2); x.fillStyle = t.st ? 'rgba(255,210,63,.9)' : 'rgba(255,255,255,.9)'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); }
+  const star = (sx, sy, r) => { x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; x.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } x.closePath(); x.fillStyle = '#b44dff'; x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.stroke(); };
+  for (const t of missionTargets()) { const [sx, sy] = edge(T(t.x, t.z)); if (t.dl) { star(sx, sy, (MM.big ? 9 : 7) + pulse * .4); continue; } x.beginPath(); x.arc(sx, sy, pulse + (MM.big ? 3 : 1), 0, Math.PI * 2); x.fillStyle = t.st ? 'rgba(255,210,63,.9)' : 'rgba(255,255,255,.9)'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); }
   const C = $s.CR, open = storyOpen(), side = (C.missions || []).filter(m => !m.story);
   x.textAlign = 'center'; x.textBaseline = 'middle';
   for (const G of GIVERS) { const st = open.some(n => n.giver === G.id && !(C.missions || []).some(m => m.story === n.id)), sd = !side.some(m => m.giver === G.id) && side.length < 3 && (C.giverDay || {})[G.id] !== dayKey(); if (!st && !sd) continue;

@@ -746,6 +746,8 @@ const ARENA_PAL = {
 };
 const TOUR_MASTERS = ['NUX', "HERUE'S", 'KUNA', 'ANA SPORT', 'MORMAJI', 'DROP SHUT', 'ZANB', 'VIZION'];
 function arenaFor(force) {
+  // jogo marcado no modo livre (praça da cidade, arena do bairro): o cenário é o do lugar, com pouca torcida
+  if (S.venueOverride && !force) return Object.assign({ loc: 'BRA', size: 0, master: '' }, ARENA_PAL.BRA, S.venueOverride);
   if ((S.careerActive || force) && $s.CR && $s.CR.tour) {
     const t = $s.CR.tour, n = (t.name || '').toLowerCase();
     const loc = t.tier >= 8 ? 'MUN' : /aruba/.test(n) ? 'ARU' : /cervia|ravenna|lignano|riccione|terracina/.test(n) ? 'ITA' : /barcelona|valência|valencia|canaria/.test(n) ? 'ESP' : /montpellier|saint-georges/.test(n) ? 'FRA' : /cascais/.test(n) ? 'POR' : 'BRA';
@@ -887,7 +889,8 @@ function showOver() {
   }
   // nível da conta: XP por partida da carreira e do online (quem só assiste não ganha)
   if (S.onMatchEnd && !S.spectate && (inCareer || NET.role)) try { S.onMatchEnd({ won: w === 0, career: inCareer, online: !!NET.role, rating, pts: S.stats.pts, addLine: prependStats }); } catch (e) { console.error('xp', e); }
-  $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer; $('btnAgain').hidden = inChamp || inCareer;
+  $('btnOverChamp').hidden = !inChamp; $('btnOverCareer').hidden = !inCareer && !S.inFriendly; $('btnAgain').hidden = inChamp || inCareer || !!S.inFriendly;
+  $('btnOverCareer').textContent = S.inFriendly ? 'Voltar ao mundo' : 'Voltar à carreira'; // jogo marcado no modo livre: volta a andar
   $('btnReplay').hidden = !(S.highlights && S.highlights.length);
   el.over.hidden = false;
 }
