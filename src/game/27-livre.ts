@@ -191,6 +191,16 @@ function fan(g, x, z, rot, seed, sit) { // pessoa simples (corpo, cabeça, braç
 function bagOfRacket() { const r = String(S.settings.racket || ''); let h = 0; for (const ch of r) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return BAG_COLS[h % BAG_COLS.length]; }
 // raqueteira (bolsa de raquetes): corpo comprido com faixa e alça, usada nas costas na diagonal
 const BAG_COLS = [['#111214', '#e30613'], ['#1f4fb8', '#ffffff'], ['#ff6a00', '#111214'], ['#0a7d3c', '#ffd23f'], ['#e9e9e9', '#2457c5'], ['#6b2737', '#f2c14e']];
+// adesivos ganhos na história: colados na raqueteira (frente da mochila), cada um com o seu desenho
+const STICKERS = { adesivoBairro: ['#ff6a00', '#ffffff', 'CRIA DO', 'BAIRRO'], adesivoCoco: ['#2a9d8f', '#ffffff', '🥥', 'JORGE'], adesivoMare: ['#1d3557', '#a8dadc', '🌊', 'MARÉ'], adesivoPalmeiras: ['#0a7d3c', '#ffd23f', '🌴', 'PALMEIRAS'],
+  adesivoTiaguinho: ['#ffffff', '#e63946', '☺', 'TIAGUINHO'], adesivoMatriz: ['#f1e3c6', '#6b4f3a', '⛪', 'MATRIZ'], adesivoCida: ['#ff8fab', '#ffffff', '🎉', 'D. CIDA'] };
+function stickBag(o, keys) {
+  const pos = [[-.085, .2, .09], [.085, .22, .09], [0, .05, .1], [-.09, -.29, .135], [.09, -.3, .135], [-.1, .33, .085], [.1, .33, .085]];
+  keys.slice(0, pos.length).forEach((k, i) => { const [bg, fg, a, b] = STICKERS[k];
+    const t = canvasTex(128, 128, (c, W, H) => { c.fillStyle = bg; c.beginPath(); c.arc(64, 64, 62, 0, Math.PI * 2); c.fill(); c.lineWidth = 6; c.strokeStyle = '#ffffff'; c.stroke(); c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = 'bold ' + (a.length > 3 ? 26 : 46) + 'px sans-serif'; c.fillText(a, 64, 50); c.font = 'bold ' + (b.length > 7 ? 17 : 22) + 'px sans-serif'; c.fillText(b, 64, 92); });
+    const m = new THREE.Mesh(new THREE.CircleGeometry(.07, 24), new THREE.MeshStandardMaterial({ map: t, roughness: .5, polygonOffset: true, polygonOffsetFactor: -2 })); const [x, y, z] = pos[i]; m.position.set(x, y, z + .005); m.rotation.z = (i % 2 ? -1 : 1) * .2; o.add(m); });
+}
 function racketBag(c) {
   // mochila térmica de raquetes (como as de beach tennis): perfil com o topo arredondado (a cabeça da raquete), corpo
   // achatado com borda arredondada, faixa do zíper na cor da marca, bolso na frente, etiqueta da marca e alças
@@ -1154,25 +1164,32 @@ function build() {
   // fora: jardim, cerca/muro, caixa de correio
   [-1, 1].forEach(s => { for (let i = 0; i < 2 + lvl; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 8), mat('#4f9a52')); b.position.set(s * (2 + i * 1.3), .35, hD + 1.4); b.scale.y = .8; b.castShadow = true; g.add(b); } });
   const fx = (lotW + 18) / 2 + (court ? 6 : 0), fx0 = (court ? 6 : 0) - (lotW + 18) / 2;
-  if (lvl >= 2) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, -hD - 9.6, '#f0ebe1'); } // muro do fundo (para a praia, com portão)
+  const wallZ = lvl >= 3 ? -hD - 15 : -hD - 9.6; LV.backWall = lvl >= 2 ? wallZ : null;
+  if (lvl >= 2) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, wallZ, '#f0ebe1'); box(g, fx - fx0, .05, -hD - wallZ, (fx + fx0) / 2, .03, (wallZ - hD) / 2, lvl >= 3 ? '#5f9e52' : '#6aa65a', { noShadow: true }); } // muro do fundo (para a praia) e o gramado do quintal
   box(g, .3, 1, .3, 1.6, .5, hD + 6.2, '#3a3f47'); box(g, .5, .35, .3, 1.6, 1.15, hD + 6.2, '#c0392b');
   // conquistas da história do bairro
   { const CS = $s.CR.cosm || {};
     if (CS.prancha) { const pr = new THREE.Mesh(new THREE.CapsuleGeometry(.28, 1.7, 4, 10), mat('#ff6a00')); pr.scale.z = .18; pr.position.set(hW + .35, 1.1, hD - 1.2); pr.rotation.z = .12; pr.castShadow = true; g.add(pr); }
     if (CS.fogueira) { const fx = 6, fz = -60; for (let i = 0; i < 5; i++) { const l = cyl(g, .08, .08, 1.2, fx, .15, fz, '#6b4f3a'); l.rotation.set(Math.PI / 2, i * 1.2, 0); } const fl = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.2, 8), new THREE.MeshBasicMaterial({ color: '#ffb02e' })); fl.position.set(fx, .7, fz); g.add(fl); for (let i = 0; i < 4; i++) { const a = i * 1.57; fan(g, fx + Math.cos(a) * 2, fz + Math.sin(a) * 2, -a - Math.PI / 2, 1200 + i, true).position.y = -.05; } } }
   if (($s.CR.cosm || {}).mural) banner(g, nameOf($s.CR.me).split(' ')[0], -hW / 2, WH * .55, hD + .03, W * .4, WH * .7, '#ff6a00', '#ffffff', 0, 'cria do bairro · campeão do festival');
-  if (($s.CR.cosm || {}).bandeira) { cyl(g, .05, .05, 6, hW + 2, 3, hD + 3, '#cfd3d8'); const fl = banner(g, 'BAIRRO', hW + 3, 5.2, hD + 3, 2, 1.2, '#2a9d8f', '#ffd23f', 0, 'Copa do Bairro'); fl.userData.dyn = true; }
+  if (($s.CR.cosm || {}).bandeira) { const bx = hW - 1.5, bz = hD + 4.2; cyl(g, .08, .1, 8, bx, 4, bz, '#cfd3d8'); cyl(g, .14, .14, .14, bx, 8.05, bz, '#ffd23f'); const fl = banner(g, 'BAIRRO', bx + 2.05, 6.8, bz, 4, 2.4, '#2a9d8f', '#ffd23f', 0, 'Copa do Bairro'); fl.userData.dyn = true; LV.flag = fl; solid(bx - .15, bz - .15, bx + .15, bz + .15); } // bandeira grande na frente, do lado da entrada
   // ---- garagem: carro, van (transporte) ----
   if (crLife('carro')) car(g, -hW - 3, hD + 3, Math.PI / 2, lvl >= 3 ? '#111214' : '#2457c5');
   if (crInv('jato') >= 1) car(g, -8, 22.2, 0, '#f2f2f2', true); else { box(g, .1, 2.4, .1, -8, 1.2, 20.2, '#3a3f47'); box(g, 1.2, .5, .06, -8, 2.4, 20.2, '#2457c5'); }
   S2('torneio', -8, 19.6, crInv('jato') >= 1 ? 'Van da equipe' : 'Ponto de táxi', 'Ir ao torneio');
   // ---- piscina (casa com piscina e mansão), atrás da casa ----
   if (lvl >= 2) {
-    const pw = lvl >= 3 ? 10 : 7, pd = lvl >= 3 ? 4.5 : 3.6, pz = -hD - 4.6;
+    const pw = lvl >= 3 ? 18 : 8, pd = lvl >= 3 ? 6.5 : 4, pz = lvl >= 3 ? -hD - 7 : -hD - 4.6;
     box(g, pw + 2.4, .06, pd + 2.4, 0, .05, pz, '#e9e2d4', { noShadow: true });
     box(g, pw, .05, pd, 0, .07, pz, '#3fb6e8', { roughness: .1, metalness: .2, transparent: true, opacity: .8, ...glow('#54c8ff', .25) }); LV.pool = [-pw / 2, pz - pd / 2, pw / 2, pz + pd / 2]; // dá para entrar e nadar
-    for (let i = 0; i < (lvl >= 3 ? 4 : 2); i++) { lounger(g, -pw / 2 + 1 + i * 2, pz + pd / 2 + 1.4, Math.PI, '#ffffff'); }
+    for (let i = 0; i < (lvl >= 3 ? 8 : 2); i++) { lounger(g, -pw / 2 + 1 + i * 2, pz + pd / 2 + 1.4, Math.PI, '#ffffff'); }
     umbrella(g, pw / 2 + .2, pz + pd / 2 + 1.6, '#ff6a00');
+    if (lvl >= 3) { // mansão: deque grande, espreguiçadeiras dos dois lados, área gourmet, coqueiros e hidromassagem
+      for (let i = 0; i < 6; i++) lounger(g, -pw / 2 + 2 + i * 2.6, pz - pd / 2 - 1.4, 0, '#f4f4f4'); umbrella(g, -pw / 2 - .4, pz + pd / 2 + 1.6, '#2457c5'); umbrella(g, 0, pz - pd / 2 - 1.8, '#ff6a00');
+      cyl(g, 1.4, 1.4, .5, pw / 2 + 3.2, .25, pz - 1.5, '#e9e2d4'); cyl(g, 1.2, 1.2, .05, pw / 2 + 3.2, .5, pz - 1.5, '#7fd8ff', { transparent: true, opacity: .85 }); solid(pw / 2 + 1.8, pz - 2.9, pw / 2 + 4.6, pz - .1);
+      const gx = -pw / 2 - 6.5; box(g, 7, .12, 6, gx, .06, pz, '#c9b79c'); box(g, 5, 1, .8, gx, .5, pz - 2.2, '#3a3f47'); box(g, 5.2, .08, 1, gx, 1.04, pz - 2.2, '#e9e9e9'); box(g, 7.4, .2, 6.4, gx, 3, pz, '#8a6a45'); [-1, 1].forEach(a => [-1, 1].forEach(b => cyl(g, .1, .1, 3, gx + a * 3.4, 1.5, pz + b * 3, '#8a6a45')));
+      solid(gx - 2.5, pz - 2.6, gx + 2.5, pz - 1.8); for (let i = 0; i < 3; i++) chair(g, gx - 1.5 + i * 1.5, pz + 1, Math.PI); banner(g, 'Área gourmet', gx, 2.6, pz - 2.65, 3, .5, '#8a6a45', '#ffffff');
+      [[-pw / 2 - 2, wallZ + 1.5], [pw / 2 + 2, wallZ + 1.5], [pw / 2 + 6, pz + 3], [-pw / 2 - 11, wallZ + 1.5]].forEach(([x, z]) => palm(g, x, z, 6)); }
     S2('piscina', pw / 2 + 1.4, pz, 'Piscina', 'Relaxar (ou entre e nade)', 1);
   }
   // ---- quadra no quintal (comprada ou na mansão) ----
@@ -1209,13 +1226,14 @@ function build() {
     gym(g, x1 - 2.2, tz - 3.5); gym(g, x1 - 2.2, tz + 1); box(g, .1, 2, 3.5, x1 - .2, 1, tz + 4.5, '#cfe8f5', { metalness: .9, roughness: .05 });
     S2('ct', x1 - 3.5, tz - 1.2, 'Centro de treinamento', 'Treino físico e técnico'); S2('ctJogo', cxx, tz + 5.2, 'Jogo-treino', 'Escolha dupla e adversários'); }
   // quiosque na praia (gastronomia 1) e projeto social
-  if (crInv('gastro') >= 1) { const kx = 12, kz = -26; cyl(g, 1.8, 1.8, .9, kx, .45, kz, '#a77d55'); const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), mat('#e9c46a')); r.position.set(kx, 3.2, kz); r.castShadow = true; g.add(r); [0, 1, 2, 3].forEach(i => cyl(g, .07, .07, 2.4, kx + Math.cos(i * 1.57 + .78) * 1.6, 1.6, kz + Math.sin(i * 1.57 + .78) * 1.6, '#8a6a45')); solid(kx - 1.8, kz - 1.8, kx + 1.8, kz + 1.8); sign(g, 'Quiosque', nameOf($s.CR.me).split(' ')[0], kx, 4.6, kz, 3.2); }
-  if (crLife('social')) { box(g, 8, .05, 16, -20, .05, -22, '#f1e2b8', { noShadow: true }); box(g, 8.4, .8, .03, -20, 1.1, -22, '#ffffff', { transparent: true, opacity: .45 }); sign(g, 'Projeto social', 'Escolinha de beach tennis', -20, 2.6, -31, 4);
-    banner(g, 'Projeto ' + nameOf($s.CR.me).split(' ')[0], -20, 1.2, -30.3, 6, 1, '#2a9d8f', '#ffffff', 0, 'beach tennis para todos'); solid(-24.2, -22.1, -15.8, -21.9);
+  if (crInv('gastro') >= 1) { const kx = 12, kz = lvl >= 2 ? Math.min(-26, wallZ - 5) : -26; cyl(g, 1.8, 1.8, .9, kx, .45, kz, '#a77d55'); const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), mat('#e9c46a')); r.position.set(kx, 3.2, kz); r.castShadow = true; g.add(r); [0, 1, 2, 3].forEach(i => cyl(g, .07, .07, 2.4, kx + Math.cos(i * 1.57 + .78) * 1.6, 1.6, kz + Math.sin(i * 1.57 + .78) * 1.6, '#8a6a45')); solid(kx - 1.8, kz - 1.8, kx + 1.8, kz + 1.8); sign(g, 'Quiosque', nameOf($s.CR.me).split(' ')[0], kx, 4.6, kz, 3.2); }
+  const sdz = lvl >= 2 ? Math.min(0, wallZ - 10 + 22) : 0; // (o projeto social fica fora do muro da casa, na areia)
+  if (crLife('social')) { box(g, 8, .05, 16, -20, .05, (-22 + sdz), '#f1e2b8', { noShadow: true }); box(g, 8.4, .8, .03, -20, 1.1, (-22 + sdz), '#ffffff', { transparent: true, opacity: .45 }); sign(g, 'Projeto social', 'Escolinha de beach tennis', -20, 2.6, (-31 + sdz), 4);
+    banner(g, 'Projeto ' + nameOf($s.CR.me).split(' ')[0], -20, 1.2, (-30.3 + sdz), 6, 1, '#2a9d8f', '#ffffff', 0, 'beach tennis para todos'); solid(-24.2, (-22.1 + sdz), -15.8, (-21.9 + sdz));
     // crianças treinando (trocam bola dos dois lados da rede) e o professor
-    for (let k = 0; k < 4; k++) { const a = dyn2(sp, fan(new THREE.Group(), -22 + (k % 2) * 4, -25.5, 0, 300 + k, false)), b = dyn2(sp, fan(new THREE.Group(), -22 + (k % 2) * 4, -18.5, Math.PI, 310 + k, false)); a.scale.setScalar(.66); b.scale.setScalar(.66); LV.npcs.push({ kind: 'kids', a, b, z0: -25.5, z1: -18.5, ph: k * 1.3 }); }
-    fan(g, -15.2, -22, -Math.PI / 2, 333, false);
-    S2('social', -14.5, -17.5, 'Projeto social', 'Dar aula e jogar com a garotada'); }
+    for (let k = 0; k < 4; k++) { const a = dyn2(sp, fan(new THREE.Group(), -22 + (k % 2) * 4, (-25.5 + sdz), 0, 300 + k, false)), b = dyn2(sp, fan(new THREE.Group(), -22 + (k % 2) * 4, (-18.5 + sdz), Math.PI, 310 + k, false)); a.scale.setScalar(.66); b.scale.setScalar(.66); LV.npcs.push({ kind: 'kids', a, b, z0: (-25.5 + sdz), z1: (-18.5 + sdz), ph: k * 1.3 }); }
+    fan(g, -15.2, (-22 + sdz), -Math.PI / 2, 333, false);
+    S2('social', -14.5, (-17.5 + sdz), 'Projeto social', 'Dar aula e jogar com a garotada'); }
   if (crLife('trofeus')) { // sala de troféus ao lado da casa: um pedestal por título (os maiores no centro), luz de vitrine
     const x0 = -hW - 8.6, x1 = -hW - .2, z0 = -hD, z1 = -hD + 7.4, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     box(g, x1 - x0, .08, z1 - z0, cx, .04, cz, '#3a2a20', { noShadow: true });
@@ -1390,7 +1408,7 @@ function tick(dt) {
     const d = Math.hypot(px - f.o.position.x, pz - f.o.position.z); if (!f.done && d < nfd) { nfd = d; nf = f; }
     if (d < 4 && !f.walk) f.o.rotation.y += (Math.atan2(px - f.o.position.x, pz - f.o.position.z) - f.o.rotation.y) * Math.min(1, dt * 3); });
   LV.nearFan = nf; if (nf && !near) near = { id: 'fa' };
-  npcTick(dt, px, pz);
+  npcTick(dt, px, pz); if (LV.flag) LV.flag.rotation.y = Math.sin(performance.now() / 650) * .14; // a bandeira balança com o vento
   // gente com quem dá para conversar (quem passa) e os moradores que dão missões
   LV.nearNpc = null; LV.nearGiver = null;
   if (!near && !LV.modal) { let bd = 1.6; for (const G of LV.givers || []) { const d = Math.hypot(px - G.x, pz - G.z); if (d < bd) { bd = d; LV.nearGiver = G; } }
@@ -1450,7 +1468,7 @@ function cam(dt) {
   if (human.model) human.model.group.visible = LV.ride !== 'carro'; if (human.model && human.model.armR) { human.model.armR.el.visible = true; human.model.armL.el.visible = true; }
   if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
   { const bc = ($s.CR.cosm && $s.CR.cosm.bagOuro && $s.CR.bagGold !== false) ? ['#c9a227', '#111214'] : crBagCols() || bagOfRacket();
-    if (!LV.bag || LV.bagKey !== bc.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); LV.bagKey = bc.join(); scene.add(LV.bag); }
+    const stk = Object.keys($s.CR.cosm || {}).filter(k => STICKERS[k]); if (!LV.bag || LV.bagKey !== bc.join() + stk.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); stickBag(LV.bag, stk); LV.bagKey = bc.join() + stk.join(); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
     const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.1); LV.bag.rotateX(-.06); LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
   if (LV.rideMesh) { LV.rideMesh.position.set(human.pos.x, LV.gy || 0, human.pos.z); LV.rideMesh.rotation.y = LV.yaw; }
