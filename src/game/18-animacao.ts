@@ -469,7 +469,7 @@ function animateAthlete(p, dt) {
     if (RD) { // pés nos pedais (girando) ou na prancha (o de trás rema no chão para dar impulso; no ar, os joelhos encolhem)
       if (RD.k === 'bike') { const a = RD.ph + (i ? Math.PI : 0); fx = s * .13; fy = .33 + Math.sin(a) * .17 + RD.air * .02; fz = -.04 + Math.cos(a) * .17; }
       else { const back = s * mx < 0; fx = s * .25; fz = .02; fy = .07 + RD.air * .22;
-        if (back && RD.push > .05 && RD.air < .05) { const c = RD.ph % (Math.PI * 2); fx = s * (.08 + .3 * (.5 + .5 * Math.cos(c))); fz = -.2; fy = .07 - .1 * RD.push + Math.max(0, Math.sin(c)) * .12 * RD.push; } } }
+        if (back && RD.push > .05 && RD.air < .05) { const c = RD.ph % (Math.PI * 2), plant = Math.sin(c) < 0; fx = s * (.05 + .38 * (.5 - .5 * Math.cos(c))); fz = -.2 * RD.push; fy = .07 - .1 * RD.push + (plant ? 0 : Math.sin(c) * .1 * RD.push); } } }
     _a.set(fx - m.hips.position.x, fy - m.hips.position.y, fz - m.hips.position.z).applyQuaternion(_hq);
     _b.set(s * (.12 + .55 * clamp((Math.abs(fx) - .17) / .25, 0, 1)), 0, -1).applyQuaternion(_hq); // base aberta: joelho aponta para fora (sobre o pé), não para dentro
     ik2(L.thigh, L.knee, L.thigh.position, _a, _b, .42, .43);

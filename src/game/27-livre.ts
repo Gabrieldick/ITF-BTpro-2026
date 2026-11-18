@@ -1387,7 +1387,7 @@ function tick(dt) {
   const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
   // direção relativa à câmera
   const cy = Math.cos(LV.camYaw), sy = Math.sin(LV.camYaw), tx = ix * cy + iz * sy, tz = -ix * sy + iz * cy;
-  const RV = { pe: 1, skate: 1.45, bike: 2.1, carro: 3.4 }[LV.ride || 'pe'] || 1, vmax = (run ? 5.2 : 1.9) * (LV.swim ? .5 : LV.ride && LV.ride !== 'pe' ? RV * (run ? 1 : 2) : 1), acc = il > .05 ? (LV.ride === 'carro' ? 4 : 9) : 12;
+  const RV = ({ pe: 1, skate: 1.45, bike: 2.1, carro: 3.4 }[LV.ride || 'pe'] || 1) * (LV.ride === 'skate' ? (LV.skK ?? 1) : 1), vmax = (run ? 5.2 : 1.9) * (LV.swim ? .5 : LV.ride && LV.ride !== 'pe' ? RV * (run ? 1 : 2) : 1), acc = il > .05 ? (LV.ride === 'carro' ? 4 : 9) : 12;
   LV.vel.x += (tx * vmax - LV.vel.x) * Math.min(1, dt * acc); LV.vel.z += (tz * vmax - LV.vel.z) * Math.min(1, dt * acc);
   human.vel.set(LV.vel.x, 0, LV.vel.z); if (LV.ride && LV.ride !== 'pe') human.vel.set(0, 0, 0); // em cima do skate/bike: o corpo não caminha
   human.pos.x += LV.vel.x * dt; human.pos.z += LV.vel.z * dt;
@@ -1492,8 +1492,14 @@ function cam(dt) {
   const yawRate = ((LV.yaw - (LV.lastYaw ?? LV.yaw) + Math.PI * 3) % (Math.PI * 2) - Math.PI) / Math.max(dt, 1e-3); LV.lastYaw = LV.yaw;
   LV.leanS = (LV.leanS || 0) + (Math.max(-1, Math.min(1, yawRate * sp * .08)) - (LV.leanS || 0)) * Math.min(1, dt * 6);
   if (RK === 'bike' || RK === 'skate') { const R2 = human.ride || (human.ride = { k: RK, ph: 0, t: 0, push: 0, air: 0, lean: 0 }); R2.k = RK; R2.t += dt;
-    const accel = il > .05 && sp < vmax * .8; R2.push += ((RK === 'skate' && accel ? 1 : 0) - R2.push) * Math.min(1, dt * 4);
-    R2.ph += dt * (RK === 'bike' ? sp * 2.6 : (R2.push > .05 ? 6 : 0)); R2.air = airT; R2.lean = LV.leanS; R2.stand = RK === 'bike' && run && il > .05 ? 1 : 0; }
+    if (RK === 'skate') { // remada: um pé vai ao chão e empurra (1 a 2 vezes) para ganhar embalo; depois desliza perdendo velocidade aos poucos
+      LV.skK = LV.skK ?? 1;
+      const start = il > .05 && !R2.wasIn; R2.wasIn = il > .05;
+      if (!R2.pushing && il > .05 && LV.jy <= 0 && (start || sp < 2 || LV.skK < .8)) { R2.pushing = true; R2.ph = 0; R2.strokes = start || sp < 2 ? 2 : 1; }
+      if (R2.pushing) { R2.ph += dt * 7; LV.skK = Math.min(1, LV.skK + dt * .45); if (R2.ph >= Math.PI * 2 * R2.strokes || LV.jy > 0) { R2.pushing = false; R2.ph = 0; } }
+      else LV.skK = Math.max(.62, LV.skK - dt * (il > .05 ? .12 : .25));
+      R2.push += ((R2.pushing ? 1 : 0) - R2.push) * Math.min(1, dt * 9); }
+    else R2.ph += dt * sp * 2.6; R2.air = airT; R2.lean = LV.leanS; R2.stand = RK === 'bike' && run && il > .05 ? 1 : 0; }
   else human.ride = null;
   if (LV.rideMesh) { const RM = LV.rideMesh; RM.position.set(human.pos.x, (LV.gy || 0) + LV.jy, human.pos.z); RM.rotation.set(0, LV.yaw, 0);
     (RM.userData.wheels || []).forEach(w => { w.rotation.x -= sp * dt / (w.userData.r || .3); }); if (RM.userData.crank && human.ride) RM.userData.crank.rotation.x = -human.ride.ph; // (pedivela no mesmo giro dos pés)
