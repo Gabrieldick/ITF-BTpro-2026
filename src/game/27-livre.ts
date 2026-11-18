@@ -1443,34 +1443,40 @@ function missionTargets() {
   return out;
 }
 function minimap() {
+  // o mapa gira com a câmera: para cima é para onde a câmera olha, a direita da tela é a sua direita (pequeno: ~180 m em volta; grande: a cidade toda)
   let cv = document.getElementById('livreMap');
   if (!cv) { cv = document.createElement('canvas'); cv.id = 'livreMap'; cv.title = 'Clique para aumentar ou diminuir'; cv.addEventListener('click', () => { MM.big = !MM.big; cv.classList.toggle('big', MM.big); minimap(); }); document.getElementById('livreHud').appendChild(cv); }
-  const W = MM.big ? 460 : 210, H = Math.round(W * (MM.z1 - MM.z0) / (MM.x1 - MM.x0)), dpr = Math.min(2, devicePixelRatio || 1);
-  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+  const W = MM.big ? 480 : 210, H = MM.big ? 480 : 210, dpr = Math.min(2, devicePixelRatio || 1);
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const sx = W / (MM.x1 - MM.x0), sz = H / (MM.z1 - MM.z0), X = v => (v - MM.x0) * sx, Z = v => (v - MM.z0) * sz;
-  // norte para cima no mapa = longe do mar (o mar fica embaixo)
-  const Y = v => H - Z(v);
+  const px = human.pos.x - H0.x, pz = human.pos.z - H0.z, cy = LV.camYaw || 0, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy);
+  const cxw = MM.big ? 118 : px, czw = MM.big ? 78 : pz, sc = MM.big ? W / 380 : W / 180; // grande: centrado na cidade
+  const T = (wx, wz) => { const dx = wx - cxw, dz = wz - czw; return [W / 2 + (dx * rx + dz * rz) * sc, H / 2 - (dx * fx + dz * fz) * sc]; };
+  const poly = (x0, z0, x1, z1, c) => { const a = [T(x0, z0), T(x1, z0), T(x1, z1), T(x0, z1)]; x.beginPath(); x.moveTo(a[0][0], a[0][1]); for (let i = 1; i < 4; i++) x.lineTo(a[i][0], a[i][1]); x.closePath(); x.fillStyle = c; x.fill(); };
   x.fillStyle = '#e8dcbc'; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#4aa8d8'; x.fillRect(0, Y(-87), W, H - Y(-87)); // mar
-  x.fillStyle = '#f3ead2'; x.fillRect(0, Y(12), W, Y(-87) - Y(12)); // praia
-  const rect = (x0, z0, x1, z1, c) => { x.fillStyle = c; x.fillRect(X(x0), Y(z1), X(x1) - X(x0), Y(z0) - Y(z1)); };
-  [24, 64, 124, 192].forEach(z => rect(-55, z - 4, 295, z + 4, '#5b6170'));
-  [[-55, 24, 192], [25, 24, 64], [88, 24, 192], [290, 128, 188]].forEach(([vx, a, b]) => rect(vx - 4, a, vx + 4, b, '#5b6170'));
-  (LV.plazas || []).forEach(q => rect(q.x - q.w / 2, q.z - q.d / 2, q.x + q.w / 2, q.z + q.d / 2, '#8cc47a'));
-  rect(22, 75, 62, 105, '#8cc47a'); rect(VX - 52, VZ - 50, VX + 52, VZ + 44, $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? '#ffb02e' : '#d7c9a0'); // praça da orla e local do torneio/quadras da orla
-  rect(46, 152, 70, 172, '#f2e6c9'); rect(155, 147, 209, 173, '#e9b872'); [[-38, 214, 20, 12], [120, 214, 18, 12], [262, 214, 22, 12]].forEach(([a, b, w, d]) => rect(a - w / 2, b - d / 2, a + w / 2, b + d / 2, '#b9bec6')); // escola, feira e prédios
-  const [hw, hd] = LV.house || [6, 5]; rect(-hw - 1, -hd - 1, hw + 1, hd + 1, '#c0392b'); rect(34, 30, 58, 46, '#2457c5'); if (crInv('ct') >= 1) rect(59, 31, 81, 45, '#1d2a4a');
-  // missões: alvos (círculo pulsando) e quem tem missão (★ amarela / ! branco)
+  poly(-2000, -2000, 2000, -87, '#4aa8d8'); poly(-2000, -87, 2000, 12, '#f3ead2');
+  [24, 64, 124, 192].forEach(z => poly(-55, z - 4, 295, z + 4, '#5b6170'));
+  [[-55, 24, 192], [25, 24, 64], [88, 24, 192], [290, 128, 188]].forEach(([vx, a, b]) => poly(vx - 4, a, vx + 4, b, '#5b6170'));
+  (LV.plazas || []).forEach(q => poly(q.x - q.w / 2, q.z - q.d / 2, q.x + q.w / 2, q.z + q.d / 2, '#8cc47a'));
+  poly(22, 75, 62, 105, '#8cc47a'); poly(VX - 52, VZ - 50, VX + 52, VZ + 44, $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? '#ffb02e' : '#d7c9a0');
+  poly(46, 152, 70, 172, '#f2e6c9'); poly(155, 147, 209, 173, '#e9b872'); [[-38, 214, 20, 12], [120, 214, 18, 12], [262, 214, 22, 12]].forEach(([a, b, w, d]) => poly(a - w / 2, b - d / 2, a + w / 2, b + d / 2, '#b9bec6'));
+  const [hw, hd] = LV.house || [6, 5]; poly(-hw - 1, -hd - 1, hw + 1, hd + 1, '#c0392b'); poly(34, 30, 58, 46, '#2457c5'); if (crInv('ct') >= 1) poly(59, 31, 81, 45, '#1d2a4a');
   MM.t += .15; const pulse = 3 + Math.sin(MM.t) * 1.2;
-  for (const t of missionTargets()) { x.beginPath(); x.arc(X(t.x), Y(t.z), pulse + (MM.big ? 3 : 1), 0, Math.PI * 2); x.fillStyle = t.st ? 'rgba(255,210,63,.85)' : 'rgba(255,255,255,.85)'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); }
+  const edge = ([sx, sy]) => [Math.max(8, Math.min(W - 8, sx)), Math.max(8, Math.min(H - 8, sy))]; // fora do mapa pequeno: fica na borda, apontando o caminho
+  for (const t of missionTargets()) { const [sx, sy] = edge(T(t.x, t.z)); x.beginPath(); x.arc(sx, sy, pulse + (MM.big ? 3 : 1), 0, Math.PI * 2); x.fillStyle = t.st ? 'rgba(255,210,63,.9)' : 'rgba(255,255,255,.9)'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); }
   const C = $s.CR, open = storyOpen(), side = (C.missions || []).filter(m => !m.story);
+  x.textAlign = 'center'; x.textBaseline = 'middle';
   for (const G of GIVERS) { const st = open.some(n => n.giver === G.id && !(C.missions || []).some(m => m.story === n.id)), sd = !side.some(m => m.giver === G.id) && side.length < 3 && (C.giverDay || {})[G.id] !== dayKey(); if (!st && !sd) continue;
-    x.font = '900 ' + (MM.big ? 18 : 12) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 3; x.strokeStyle = '#04122e'; x.strokeText(st ? '★' : '!', X(G.x), Y(G.z)); x.fillStyle = st ? '#ffd23f' : '#ffffff'; x.fillText(st ? '★' : '!', X(G.x), Y(G.z)); }
-  if (MM.big) { x.font = '700 11px Arial'; x.fillStyle = '#04122e'; x.textAlign = 'center'; (LV.plazas || []).forEach(q => x.fillText(q.name.replace('Praça ', ''), X(q.x), Y(q.z) - 0)); x.fillText('Casa', X(0), Y(-8)); x.fillText('Arena', X(46), Y(48)); x.fillText('Escola', X(58), Y(162)); x.fillText('Feira', X(182), Y(160)); x.fillText('Praia', X(120), Y(-40)); }
-  // você: seta na direção para onde anda
-  const px = human.pos.x - H0.x, pz = human.pos.z - H0.z; x.save(); x.translate(X(px), Y(pz)); x.rotate(-LV.yaw + Math.PI);
+    const [sx, sy] = T(G.x, G.z); if (!MM.big && (sx < 0 || sy < 0 || sx > W || sy > H)) continue;
+    x.font = '900 ' + (MM.big ? 18 : 13) + 'px Arial'; x.lineWidth = 3; x.strokeStyle = '#04122e'; x.strokeText(st ? '★' : '!', sx, sy); x.fillStyle = st ? '#ffd23f' : '#ffffff'; x.fillText(st ? '★' : '!', sx, sy); }
+  if (MM.big) { x.font = '700 11px Arial'; x.fillStyle = '#04122e'; const lbl = (t, wx, wz) => { const [sx, sy] = T(wx, wz); x.fillText(t, sx, sy); };
+    (LV.plazas || []).forEach(q => lbl(q.name.replace('Praça ', ''), q.x, q.z)); lbl('Casa', 0, -8); lbl('Arena', 46, 48); lbl('Escola', 58, 162); lbl('Feira', 182, 160); lbl('Praia', 120, -40); }
+  // você: seta para onde o corpo anda (relativa à câmera)
+  const [mx, my] = T(px, pz), wf = [-Math.sin(LV.yaw), -Math.cos(LV.yaw)], ang = Math.atan2(wf[0] * rx + wf[1] * rz, wf[0] * fx + wf[1] * fz);
+  x.save(); x.translate(mx, my); x.rotate(ang);
   x.beginPath(); x.moveTo(0, -7); x.lineTo(5, 6); x.lineTo(0, 3); x.lineTo(-5, 6); x.closePath(); x.fillStyle = '#33c3ff'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); x.restore();
+  // norte (o mar fica ao sul): uma letra N na borda indica para onde fica o lado da cidade
+  { const nx = -fx * 0 + 0, ang2 = Math.atan2(rz, fz); const r2 = W / 2 - 10; x.font = '900 12px Arial'; x.fillStyle = '#c0392b'; x.fillText('N', W / 2 + Math.sin(-ang2) * r2 * 0 + (0 * rx + 1 * rz) * r2, H / 2 - (0 * fx + 1 * fz) * r2); }
 }
 
 // ---------- interface ----------
