@@ -358,6 +358,7 @@ function npcTick(dt, px, pz) {
       // desvia do jogador
       const dz = Math.abs(n.x - px) < 1.2 && Math.abs(n.z - pz) < 1.2 ? (n.z > pz ? .8 : -.8) : 0;
       n.o.position.set(n.x, Math.abs(Math.sin(t * 7 + n.z)) * .04, n.z + dz); n.o.rotation.y = n.v > 0 ? -Math.PI / 2 : Math.PI / 2; }
+    else if (n.kind === 'duck') { const a = t * .3 + n.ph; n.o.position.x = n.cx + Math.cos(a) * 3; n.o.position.z = n.cz + Math.sin(a) * 1.8; n.o.rotation.y = -a; }
     else if (n.kind === 'kids') { const sw = Math.sin(t * 2.6 + n.ph); n.a.position.z = n.z0 + sw * .4; n.b.position.z = n.z1 + sw * .4; n.a.position.x += Math.cos(t * 1.3 + n.ph) * dt * .4; n.b.position.x -= Math.cos(t * 1.3 + n.ph) * dt * .4; }
     else if (n.kind === 'fresco') { const sw = Math.sin(t * 2.2 + n.ph); n.a.position.x = n.x - 3 + sw * .3; n.b.position.x = n.x + 3 + sw * .3; }
     else if (n.kind === 'car') { n.o.position.x += n.v * dt; if (n.o.position.x > 298) n.o.position.x = -98; if (n.o.position.x < -98) n.o.position.x = 298;
@@ -395,7 +396,7 @@ function city2(g, sp) {
   box(g, 340, .08, 4, 115, .05, 14, '#e9d7b0', { noShadow: true }); for (let x = -50; x < 285; x += 2) box(g, .9, .02, 3.6, x, .1, 14, x % 4 ? '#f4f4f4' : '#2b2d31', { noShadow: true });
   const kio = (x, z, col, nm) => { box(g, 3.2, 2.4, 2.4, x, 1.2, z, '#f4f0e6'); const aw = new THREE.Mesh(new THREE.BoxGeometry(3.8, .1, 1.6), mat(col)); aw.position.set(x, 2.5, z + 1.6); aw.rotation.x = .2; g.add(aw); banner(g, nm, x, 2.85, z + 1.22, 3, .45, col, '#ffffff'); solid(x - 1.6, z - 1.2, x + 1.6, z + 1.2);
     for (let i = 0; i < 2; i++) { umbrella(g, x - 2.5 + i * 5, z + 4, col); chair(g, x - 2.5 + i * 5 + .6, z + 4.5, Math.PI, '#ffffff'); if (R() < .7) fan(g, x - 2.5 + i * 5 + .6, z + 4.5, Math.PI, 560 + i + Math.round(x), true).position.y = -.05; } };
-  [[36, 8, '#e63946', 'Barraca do Zé'], [70, 8, '#ff6a00', 'Pastel & Caldo'], [104, 8, '#2457c5', 'Milho & Pipoca'], [132, 8, '#2a9d8f', 'Coco Gelado'], [268, 8, '#ffd23f', 'Picolé Praia']].forEach(([x, z, c, n]) => kio(x, z, c, n));
+  [[36, 8, '#e63946', ($s.CR.cosm || {}).barracaNova ? 'Barraca do Zé & ' + nameOf($s.CR.me).split(' ')[0] : 'Barraca do Zé'], [70, 8, '#ff6a00', 'Pastel & Caldo'], [104, 8, '#2457c5', 'Milho & Pipoca'], [132, 8, '#2a9d8f', 'Coco Gelado'], [268, 8, '#ffd23f', 'Picolé Praia']].forEach(([x, z, c, n]) => kio(x, z, c, n));
   spot(sp, 'barraca', 36, 12, 'Barraca do Zé', 'Petisco na praia (+3 energia)');
   { const lx = 88, lz = -30; [-1, 1].forEach(a => [-1, 1].forEach(b2 => cyl(g, .08, .08, 3, lx + a * .9, 1.5, lz + b2 * .9, '#f4f4f4'))); box(g, 2.4, 1.6, 2.4, lx, 3.8, lz, '#e63946'); box(g, 2.6, .2, 2.6, lx, 4.7, lz, '#ffffff'); solid(lx - 1, lz - 1, lx + 1, lz + 1); fan(g, lx, lz + 1.6, Math.PI, 600, false); }
   { const ox = 116, oz = 4; box(g, 10, .06, 6, ox, .04, oz, '#2b2d31', { noShadow: true }); for (let i = 0; i < 3; i++) { cyl(g, .05, .05, 2, ox - 3 + i * 3, 1, oz, '#ffd23f'); box(g, 1.4, .06, .06, ox - 3 + i * 3, 2, oz, '#ffd23f'); }
@@ -403,7 +404,7 @@ function city2(g, sp) {
     for (let i = 0; i < 6; i++) box(g, .06, .7, .06, ox + 7 + i * .7, .35, oz, '#9aa0a8'); }
 }
 // ---------- cidade norte: terceira rua, casas e as praças com quadra pública (jogar com a galera, nível do dia) ----------
-const PLAZAS = [{ id: 'sol', name: 'Praça do Sol', x: 10, z: 160 }, { id: 'gaivotas', name: 'Praça das Gaivotas', x: 125, z: 160 }, { id: 'iemanja', name: 'Praça Iemanjá', x: 240, z: 160 }];
+const PLAZAS = [{ id: 'sol', name: 'Praça do Sol', x: 10, z: 160 }, { id: 'gaivotas', name: 'Praça das Gaivotas', x: 125, z: 160 }, { id: 'iemanja', name: 'Praça Iemanjá', x: 240, z: 160 }, { id: 'palmeiras', name: 'Praça das Palmeiras', x: 190, z: 230, extra: true }];
 const PRACA_LV = [{ n: 'Iniciante', ovr: [45, 58], diff: 'facil', money: 150, fama: .3 }, { n: 'Médio', ovr: [58, 70], diff: 'medio', money: 400, fama: .6 }, { n: 'Forte', ovr: [70, 80], diff: 'dificil', money: 900, fama: 1 }, { n: 'Fera', ovr: [80, 88], diff: 'dificil', money: 1600, fama: 1.5 }];
 const dayKey = () => { const C = $s.CR; return C.season + '-' + C.week + '-' + C.day; };
 // nível da galera em cada praça hoje (muda todo dia, sempre o mesmo no mesmo dia)
@@ -417,11 +418,12 @@ function city3(g, sp) {
   let k = 0; for (let x = -44; x < 280; x += 15) { if ((x > 18 && x < 66) || Math.abs(x - 88) < 10 || Math.abs(x + 55) < 10) continue; const c = HOUSE_COLS[(k++ + 3) % HOUSE_COLS.length]; neighborHouse(g, x, 108, 10, 7, c[0], c[1], 1); if (R() < .35) car(g, x + 7, 115.6, 0, FAN_COLS[k % FAN_COLS.length]); }
   // praças ao norte da terceira rua: grama, caminhos, árvores, bancos e a quadra pública com rede de verdade
   LV.plazas = [];
-  PLAZAS.forEach((pl, i) => {
+  PLAZAS.filter(q => !q.extra).forEach((pl, i) => {
     const { x, z } = pl, lv = PRACA_LV[pracaLevel(pl)]; LV.plazas.push(Object.assign({ w: 46, d: 36 }, pl));
     box(g, 46, .08, 36, x, .05, z, '#7fb069', { noShadow: true }); box(g, 46, .1, 2.6, x, .06, z - 16, '#d8cdb5', { noShadow: true });
     box(g, 14, .02, 22, x, .09, z + 2, '#f1e2b8', { noShadow: true }); [[8, .06, x, z - 6], [8, .06, x, z + 10], [.06, 16, x - 4, z + 2], [.06, 16, x + 4, z + 2]].forEach(([w, d, a, b]) => box(g, w, .02, d, a, .12, b, '#1f4fb8', { noShadow: true }));
     realNet(g, x, z + 2, 8, 'x', pl.id === 'iemanja' && ($s.CR.cosm || {}).redeNome ? 'Quadra ' + nameOf($s.CR.me) : pl.name, ['#e63946', '#2457c5', '#2a9d8f'][i]);
+    if (pl.id === 'sol' && ($s.CR.cosm || {}).estatuaOuro) { const rk = new THREE.Mesh(new THREE.TorusGeometry(.25, .05, 8, 16), mat('#ffd23f', { metalness: .9, roughness: .2 })); rk.position.set(x + 12.4, 4.1, z - 13); g.add(rk); }
     if (pl.id === 'sol' && ($s.CR.cosm || {}).estatua) { box(g, 2, 1.2, 2, x + 12, .6, z - 13, '#d9d4c7'); const st = fan(g, x + 12, z - 13, 0, 17, false); st.position.y = 1.2; st.scale.setScalar(1.25); st.traverse(o => { if (o.isMesh) o.material = mat('#c9a227', { metalness: .8, roughness: .3 }); }); banner(g, 'Lenda do Bairro', x + 12, .7, z - 11.98, 1.8, .5, '#1d1d20', '#e8b923', 0, nameOf($s.CR.me)); solid(x + 11, z - 14, x + 13, z - 12); } solid(x - 4.4, z + 1.9, x + 4.4, z + 2.1);
     for (let t = 0; t < 8; t++) { const tx = x - 20 + (t % 4) * 13.3, tz = z + (t < 4 ? -12 : 15); cyl(g, .18, .25, 2.6, tx, 1.3, tz, '#7a5a42'); const c = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8), mat(['#3f8f4a', '#4f9a52', '#2f7a3f'][t % 3])); c.position.set(tx, 3.3, tz); c.castShadow = true; g.add(c); solid(tx - .3, tz - .3, tx + .3, tz + .3); }
     [[-14, -4], [-14, 8], [14, -4], [14, 8]].forEach(([a, b]) => bench(g, x + a, z + b));
@@ -431,6 +433,7 @@ function city3(g, sp) {
     [-1, 1].forEach(sd => [-1, 1].forEach(q => fan(g, x + q * 1.8, z + 2 + sd * 5, sd > 0 ? Math.PI : 0, 720 + i * 4 + q + sd, false)));
     for (let w2 = 0; w2 < 3 + pracaLevel(pl) * 2; w2++) { const o = dyn2(sp, fan(new THREE.Group(), x - 18 + R() * 36, z - 13 + R() * 4, 0, 740 + i * 11 + w2, false)); LV.npcs.push({ kind: 'walk', o, x: o.position.x, z: o.position.z, v: (w2 % 2 ? 1 : -1) * (.5 + R() * .5), x0: x - 21, x1: x + 21 }); }
     spot(sp, 'praca', x, z - 8.6, pl.name, 'Galera nível ' + lv.n + ' hoje'); LV.spots[LV.spots.length - 1].plaza = pl;
+    plazaTheme(g, sp, pl, x, z);
   });
   // gente andando na terceira rua
   for (let i = 0; i < 10; i++) { const z = i % 2 ? 119.2 : 128.8, x0 = -50 + R() * 320, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 760 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: -55, x1: 285 }); }
@@ -495,9 +498,60 @@ const STORY = [
     ask: 'Irmão, a semifinal é contra a galera brava das praças. Nível Forte pra cima. Vai com tudo!', end: 'Que jogo! Tô arrepiado. Toma, a raqueteira dourada da Copa é sua.', rw: { fama: 1.5, cosm: 'bagOuro' } },
   { id: 's7', req: ['s6'], giver: 'cida', title: 'A grande final', m: { type: 'pracaLvl', need: 1, minLv: 3, text: 'Final da Copa do Bairro: vencer a galera Fera numa praça' },
     ask: 'A final é contra a galera Fera. O bairro inteiro vai estar lá, até eu, com meu joelho. Vai lá e ganha pra gente!', end: 'CAMPEÃO DO BAIRRO! Fizemos uma estátua sua na Praça do Sol. Você é lenda aqui, pra sempre.', rw: { fama: 4, money: 2000, cosm: 'estatua' } },
+  // ----- Parte 2: O Centro Comunitário (capítulos 11–16) -----
+  { id: 's8', req: ['s7'], giver: 'leo', title: 'Um sonho maior', m: { type: 'visit1', place: 'palmeiras', text: 'Conhecer a Praça das Palmeiras, onde o Léo quer o centro de treinamento comunitário' },
+    ask: 'Depois da Copa, a molecada não para de chegar. Tenho um sonho: um centro de treinamento na Praça das Palmeiras. Vai lá ver o espaço comigo?', end: 'Imagina isso cheio de criança jogando… Vamos precisar de ajuda pra tirar do papel.', rw: { pe: 1, cosm: 'adesivoPalmeiras' } },
+  { id: 's9', req: ['s8'], giver: 'bia', title: 'Patrocínio de verdade', m: { type: 'talk', need: 4, text: 'Conversar com 4 pessoas para juntar apoio ao centro' },
+    ask: 'Uma marca grande topa bancar o centro, mas quer ver o bairro engajado. Conversa com o pessoal, mostra que todo mundo quer isso!', end: 'A marca topou! Mas impôs uma condição… o Kai explica.', rw: { money: 800 } },
+  { id: 's10', req: ['s8'], giver: 'cida', title: 'O neto da Dona Cida', m: { type: 'deliver', target: { spot: 'sorvete' }, text: 'Levar o Tiaguinho (neto da Dona Cida) para tomar sorvete na Praça do Sol' },
+    ask: 'Meu neto, o Tiaguinho, tá tristinho porque não entrou no time da escola. Leva ele pra tomar um sorvete na Praça do Sol e conversa com ele?', end: 'Ele voltou sorrindo e disse que vai ser atleta igual você! Obrigada, meu filho.', rw: { fama: 1, cosm: 'adesivoTiaguinho' } },
+  { id: 's11', req: ['s9'], giver: 'kai', title: 'A condição da marca', m: { type: 'pracaLvl', need: 1, minLv: 3, text: 'Vencer a galera Fera para provar que o bairro forma campeões' },
+    ask: 'A marca quer um jogo-exibição: você contra a galera mais brava das praças. Nível Fera. Se ganhar, o centro sai!', end: 'GANHOU! O contrato tá assinado, irmão. O centro vai sair!', rw: { fama: 2, money: 1500 } },
+  { id: 's12', req: ['s10', 's11'], giver: 'leo', title: 'Primeira pedra', m: { type: 'pay', cost: 5000, text: 'Completar o dinheiro da obra do centro ($5.000)' },
+    ask: 'Falta pouco pra fechar a obra. Se você completar com $5.000, a gente começa amanhã. O centro vai ter seu nome.', end: 'Tá pronto! Centro Comunitário com o seu nome na entrada. Olha a placa!', rw: { fama: 3, cosm: 'centro' } },
+  { id: 's13', req: ['s12'], giver: 'ze', title: 'Inauguração', m: { type: 'talk', need: 5, text: 'Convidar 5 pessoas para a inauguração do centro' },
+    ask: 'Inauguração tem que ter gente! Chama o povo, que eu levo o pastel e o caldo de cana.', end: 'Que festa! Até a TV veio. O bairro nunca esteve tão bonito.', rw: { money: 600, mat: 'garrafa' } },
+  // ----- Parte 3: A tempestade (capítulos 17–22) -----
+  { id: 's14', req: ['s13'], giver: 'kai', title: 'O mar avisou', m: { type: 'swim', need: 20, text: 'Ajudar o Kai a recolher as boias antes da tempestade (nadar 20 s)' },
+    ask: 'O mar tá estranho, irmão. Vem tempestade. Me ajuda a tirar as boias da água antes que leve tudo?', end: 'Bem a tempo! Mas a ressaca vai pegar o calçadão… se prepara.', rw: { pe: 1, cosm: 'prancha' } },
+  { id: 's15', req: ['s14'], giver: 'ze', title: 'Depois da ressaca', m: { type: 'deliver', target: { spot: 'barraca' }, text: 'Ver o estrago na Barraca do Zé depois da tempestade' },
+    ask: 'A ressaca destruiu metade do calçadão… e minha barraca. Passa lá comigo? Não tenho coragem de ver sozinho.', end: 'Sobrou pouco… Mas o bairro já tá se mexendo. A Bia teve uma ideia.', rw: { fama: .5 } },
+  { id: 's16', req: ['s15'], giver: 'bia', title: 'Mutirão', m: { type: 'talk', need: 6, text: 'Chamar 6 pessoas para o mutirão do calçadão' },
+    ask: 'Vamos fazer um mutirão pra reconstruir o calçadão. Você chamando, todo mundo vem. Bora?', end: 'Mais de cem pessoas apareceram! Tô sem palavras.', rw: { fama: 1.5, mat: 'protetor' } },
+  { id: 's17', req: ['s15'], giver: 'jorge', title: 'Torneio beneficente', m: { type: 'praca', need: 2, text: 'Vencer 2 jogos nas praças no torneio beneficente' },
+    ask: 'Pra reconstruir a barraca do Zé, vamos fazer um torneio beneficente nas praças. Cada vitória sua vale doação dobrada!', end: 'Arrecadamos tudo! A barraca do Zé volta maior.', rw: { money: 1000 } },
+  { id: 's18', req: ['s16', 's17'], giver: 'ze', title: 'Barraca nova', m: { type: 'pay', cost: 3000, text: 'Ajudar a comprar o toldo e o freezer da barraca nova ($3.000)' },
+    ask: 'Falta o toldo e o freezer. Se você ajudar, a barraca nova vai ter o seu nome. Fechado?', end: 'Barraca do Zé & ' + 'amigos, reaberta! O calçadão tá mais bonito que antes.', rw: { fama: 2, cosm: 'barracaNova' } },
+  { id: 's19', req: ['s18'], giver: 'cida', title: 'Missa de agradecimento', m: { type: 'visit1', place: 'matriz', text: 'Ir à missa de agradecimento na Praça da Matriz' },
+    ask: 'O padre vai fazer uma missa de agradecimento pela reconstrução. Ele pediu pra você estar lá. Vai?', end: 'O padre agradeceu você no altar. Eu chorei de novo, viu?', rw: { fama: 1, cosm: 'adesivoMatriz' } },
+  // ----- Parte 4: Legado (capítulos 23–30) -----
+  { id: 's20', req: ['s19'], giver: 'leo', title: 'Aula na escola', m: { type: 'train', need: 2, text: 'Preparar a aula da escola municipal: treinar 2 vezes' },
+    ask: 'A Escola Municipal quer beach tennis na educação física. Me ajuda a montar a aula? Treina comigo pra gente acertar o método.', end: 'Aprovado! Toda segunda tem aula de beach tennis na escola agora.', rw: { pe: 2, cosm: 'grafite' } },
+  { id: 's21', req: ['s19'], giver: 'kai', title: 'Campeonato de surfe', m: { type: 'swim', need: 40, text: 'Treinar com o Kai para o campeonato de surfe (nadar 40 s)' },
+    ask: 'Vai ter campeonato de surfe e eu quero você na minha equipe de apoio. Treina na água comigo!', end: 'Fiquei em segundo! Você deu sorte, irmão. Volta sempre.', rw: { fama: 1, mat: 'garrafa' } },
+  { id: 's22', req: ['s20', 's21'], giver: 'bia', title: 'O documentário', m: { type: 'talk', need: 5, text: 'Dar depoimentos com 5 pessoas do bairro para o documentário' },
+    ask: 'Uma produtora quer fazer um documentário sobre você e o bairro! Precisam de depoimentos. Conversa com o pessoal?', end: 'O trailer saiu e já tem um milhão de visualizações!', rw: { fama: 3 } },
+  { id: 's23', req: ['s22'], giver: 'cida', title: 'A festa da Matriz', m: { type: 'deliver', target: { spot: 'coreto' }, text: 'Pedir à banda do coreto para tocar na festa da Dona Cida' },
+    ask: 'Vou fazer 80 anos e queria a banda do coreto na minha festa. Pede pra eles? Por você eles tocam.', end: 'Que festa linda! A banda tocou a música do meu casamento. Obrigada por tudo.', rw: { fama: 1, cosm: 'adesivoCida' } },
+  { id: 's24', req: ['s22'], giver: 'jorge', title: 'Feira do bairro', m: { type: 'deliver', target: { spot: 'feira' }, text: 'Divulgar o coco do Jorge na feira livre' },
+    ask: 'A feira cresceu tanto que quero uma barraca lá. Passa na feira e conversa com o pessoal pra mim?', end: 'Consegui a barraca! O coco do Jorge agora tem filial.', rw: { money: 700 } },
+  { id: 's25', req: ['s23', 's24'], giver: 'leo', title: 'Copa Internacional do Bairro', m: { type: 'praca', need: 3, text: 'Vencer 3 jogos nas praças na Copa Internacional do Bairro' },
+    ask: 'A Copa do Bairro virou internacional! Vem gente da Argentina, da Itália… Ganha três jogos e você é o anfitrião campeão.', end: 'Tricampeão em casa! A imprensa do mundo inteiro falou do nosso bairro.', rw: { fama: 3, money: 2000 } },
+  { id: 's26', req: ['s25'], giver: 'ze', title: 'A grande final internacional', m: { type: 'pracaLvl', need: 1, minLv: 3, text: 'Final internacional: vencer a galera Fera' },
+    ask: 'Final contra uma dupla italiana fortíssima. Galera Fera. O calçadão inteiro vai estar lá!', end: 'CAMPEÃO INTERNACIONAL! O calçadão ficou em festa até de madrugada.', rw: { fama: 3, cosm: 'estatuaOuro' } },
+  { id: 's27', req: ['s26'], giver: 'bia', title: 'Coleção do bairro', m: { type: 'pay', cost: 4000, text: 'Bancar a coleção de camisetas "Cria do Bairro" para a escolinha ($4.000)' },
+    ask: 'Quero lançar uma coleção de camisetas com a sua história e doar a renda pra escolinha. Topa investir?', end: 'Esgotou em um dia! Toda criança da escolinha ganhou uma.', rw: { fama: 2, mat: 'viseira' } },
+  { id: 's28', req: ['s26'], giver: 'kai', title: 'Pôr do sol na praia', m: { type: 'talk', need: 3, text: 'Juntar 3 amigos para o luau de comemoração' },
+    ask: 'Depois de tudo isso, a gente merece um luau. Chama três pessoas e vem ver o pôr do sol comigo.', end: 'Melhor luau da história. Valeu por tudo, irmão.', rw: { fama: 1, cosm: 'fogueira' } },
+  { id: 's29', req: ['s27', 's28'], giver: 'cida', title: 'Embaixador da cidade', m: { type: 'visit', need: 5, text: 'Percorrer as cinco praças da cidade na cerimônia de embaixador' },
+    ask: 'A prefeitura quer te nomear embaixador da cidade! A cerimônia passa pelas cinco praças. Faz o percurso?', end: 'Agora é oficial: embaixador da cidade! Mas o Léo tem uma última surpresa.', rw: { fama: 3, money: 3000 } },
+  { id: 's30', req: ['s29'], giver: 'leo', title: 'A próxima geração', m: { type: 'pracaLvl', need: 1, minLv: 2, text: 'Jogar a última partida do capítulo: vencer a galera Forte ou Fera ao lado da molecada' },
+    ask: 'Lembra do menino que aprendeu na quadra da Iemanjá? Hoje é você que inspira. Joga uma última com a galera forte e mostra pra molecada como se faz.', end: 'Fim da história… ou só o começo. O bairro tem um campeão, e agora muitos outros vão vir. Obrigado.', rw: { fama: 5, cosm: 'legado' } },
 ];
 const COSM = { adesivoBairro: '🏷️ Adesivo "Cria do bairro"', adesivoCoco: '🏷️ Adesivo do Quiosque do Jorge', adesivoMare: '🏷️ Adesivo do Restaurante Maré', redeNome: '🎾 Rede com o seu nome na Praça Iemanjá', mural: '🎨 Mural com o seu nome na frente de casa',
-  bandeira: '🚩 Bandeira do bairro no quintal', bagOuro: '🎒 Raqueteira dourada da Copa (liga e desliga aqui em Missões)', estatua: '🗿 Estátua na Praça do Sol + título "Lenda do Bairro"' };
+  bandeira: '🚩 Bandeira do bairro no quintal', adesivoPalmeiras: '🏷️ Adesivo da Praça das Palmeiras', adesivoTiaguinho: '🏷️ Desenho do Tiaguinho', centro: '🏟️ Centro Comunitário com o seu nome (Praça das Palmeiras)',
+  prancha: '🏄 Prancha do Kai encostada na sua casa', barracaNova: '⛱️ Barraca do Zé reconstruída com o seu nome', adesivoMatriz: '🏷️ Santinho da Matriz', grafite: '🎨 Grafite seu no muro da escola', adesivoCida: '🏷️ Foto da festa da Dona Cida',
+  estatuaOuro: '🏆 Estátua ganha a raquete dourada da Copa Internacional', fogueira: '🔥 Fogueira de luau na praia de casa', legado: '🌟 Título "Embaixador do bairro" e placa no Centro', bagOuro: '🎒 Raqueteira dourada da Copa (liga e desliga aqui em Missões)', estatua: '🗿 Estátua na Praça do Sol + título "Lenda do Bairro"' };
 const storyDone = id => !!(($s.CR.story || {})[id]);
 const storyOpen = () => STORY.filter(n => !storyDone(n.id) && n.req.every(storyDone));
 // ---------- moradores que dão missões (com "!" em cima) ----------
@@ -642,7 +696,7 @@ function talkLine(per, X) {
   const add = (cond, txt, opts) => { if (cond) L.push([txt, opts]); };
   const foto = ['Claro, bora!', 'Valeu demais! Vou postar agora.', { fama: .15 }], depois = ['Agora não dá, foi mal', 'Tranquilo, fica pra próxima!', {}];
   if (per === 'fa') {
-    add(X.won, 'Ei, ' + X.me + '! Vi você ser campe' + 'ão no ' + X.ult + '! Que final foi aquela! Tira uma foto comigo?', [foto, depois]);
+    add(X.won, 'Ei, ' + X.me + '! Vi você ser ' + (X.fem ? 'campeã' : 'campeão') + ' no ' + X.ult + '! Que final foi aquela! Tira uma foto comigo?', [foto, depois]);
     add(X.ult && !X.won, 'Acompanhei o ' + X.ult + '. ' + X.pos + ' ainda é muito bom, viu? Próxima é sua!', [['Valeu pela força!', 'Tô torcendo sempre!', { fama: .1 }], ['Doeu, mas faz parte', 'Cabeça erguida!', {}]]);
     add(X.prox, 'Vai jogar o ' + X.prox + ' no sábado? Já comprei ingresso!', [['Vou sim, aparece lá!', 'Vou levar faixa com seu nome!', { fama: .1 }], ['Tô me preparando', 'Arrebenta!', {}]]);
     add(X.rank && X.rank <= 20, 'Top ' + X.rank + ' do mundo andando no meu bairro… isso é real?', [foto, ['Sou gente como a gente', 'Haha, humilde ainda!', { fama: .05 }]]);
@@ -709,6 +763,80 @@ function npcTalk(n) {
     const first = !n.talked; n.talked = true;
     el.querySelector('.lv-opts').outerHTML = '<p class="lv-reply">' + n.name + ': "' + esc2(o[1]) + '"</p><div class="cta-row"><button type="button" class="ghost" data-x>Tchau!</button></div>';
     say(o[1], n.g, 2); el.querySelector('[data-x]').onclick = () => { close(); if (first) missionEvent('talk', {}); }; saveCareer(); }); // (a missão conta ao se despedir)
+}
+// ---------- cidade ainda maior: o que tem entre as praças, a quarta rua e mais duas praças (cada praça com cara própria) ----------
+function aptBlock(g, x, z, w, d, h, col) { // prédio baixo com janelas e varandas
+  box(g, w, h, d, x, h / 2, z, col); solid(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+  const fl = Math.floor(h / 3); for (let f = 0; f < fl; f++) for (let i = 0; i < Math.floor(w / 2.4); i++) { const wx = x - w / 2 + 1.4 + i * 2.4; box(g, 1.2, 1.1, .06, wx, 1.6 + f * 3, z - d / 2 - .03, '#9fd3ea', { metalness: .3, roughness: .2 }); box(g, 1.5, .1, .5, wx, 1, z - d / 2 - .25 + 0 * f, '#e9e9e9'); }
+  box(g, w + .3, .3, d + .3, x, h + .15, z, '#cfcac0');
+}
+function stall(g, x, z, col, nm, R) { // barraca de feira com toldo, mercadoria e feirante
+  box(g, 2.4, .9, 1.2, x, .45, z, '#8a6a45'); const aw = new THREE.Mesh(new THREE.BoxGeometry(2.8, .08, 1.8), mat(col)); aw.position.set(x, 2.3, z); aw.rotation.x = -.15; aw.castShadow = true; g.add(aw);
+  [-1, 1].forEach(s2 => cyl(g, .04, .04, 2.3, x + s2 * 1.3, 1.15, z + .7, '#cfd3d8'));
+  for (let i = 0; i < 5; i++) { const fr = new THREE.Mesh(new THREE.SphereGeometry(.13, 8, 6), mat(['#e63946', '#ffd23f', '#7fb069', '#ff8c00', '#6b2fb8'][(i + Math.floor(R() * 5)) % 5])); fr.position.set(x - .8 + i * .4, .98, z - .1); g.add(fr); }
+  banner(g, nm, x, 2.6, z + .92, 2.4, .35, col, '#ffffff'); fan(g, x, z - 1, 0, 900 + Math.floor(R() * 50), false); solid(x - 1.3, z - .7, x + 1.3, z + .7);
+}
+function cityExtras(g, sp) {
+  const R = mulberry(($s.CR.seed || 3) * 17 + 21), road = (w, d, x, z) => box(g, w, .06, d, x, .03, z, '#3a3f47', { noShadow: true }), walk = (w, d, x, z) => box(g, w, .14, d, x, .07, z, '#cfcac0', { noShadow: true });
+  // ---- entre a Praça do Sol e a das Gaivotas: escola, banca de jornal e ponto de ônibus ----
+  { const ex = 58, ez = 160; box(g, 24, 6, 16, ex, 3, ez + 4, '#f2e6c9'); solid(ex - 12, ez - 4, ex + 12, ez + 12); box(g, 24.4, .4, 16.4, ex, 6.2, ez + 4, '#c0392b');
+    for (let i = 0; i < 6; i++) box(g, 2, 1.4, .06, ex - 10 + i * 4, 3.6, ez - 4.03, '#9fd3ea', { metalness: .3 });
+    if (($s.CR.cosm || {}).grafite) banner(g, nameOf($s.CR.me).split(' ')[0], ex + 12.03, 3, ez + 4, 14, 4.5, '#6b2fb8', '#b6ff3c', Math.PI / 2, 'beach tennis é pra todo mundo'); box(g, 3, 2.4, .1, ex, 1.2, ez - 4.05, '#5a3a28');
+    banner(g, 'Escola Municipal', ex, 5.2, ez - 4.1, 9, 1, '#1f4fb8', '#ffffff', Math.PI, 'Prof.ª Maria do Carmo');
+    box(g, 20, .06, 6, ex, .04, ez - 8, '#d98c4a', { noShadow: true }); // pátio
+    for (let i = 0; i < 6; i++) { const c = dyn2(sp, fan(new THREE.Group(), ex - 8 + i * 3, ez - 8, R() * 6, 920 + i, false)); c.scale.setScalar(.62); LV.npcs.push({ kind: 'walk', o: c, x: ex - 8 + i * 3, z: ez - 8 + (i % 2), v: (i % 2 ? .7 : -.7), x0: ex - 10, x1: ex + 10 }); }
+    // banca de jornal e ponto de ônibus na calçada da terceira rua
+    box(g, 2.6, 2.4, 2, 78, 1.2, 134, '#2a9d8f'); box(g, 3, .12, 2.4, 78, 2.5, 134, '#1d6b62'); banner(g, 'Banca', 78, 2.1, 132.97, 2, .4, '#ffd23f', '#111214', Math.PI); solid(76.7, 133, 79.3, 135);
+    box(g, 4, .1, 1.4, 40, 2.4, 131.6, '#cfd3d8'); [-1, 1].forEach(s2 => cyl(g, .05, .05, 2.4, 40 + s2 * 1.8, 1.2, 132.2, '#9aa0a8')); box(g, 3.6, .08, .5, 40, .5, 132, '#8a6a45'); banner(g, 'Ponto de ônibus', 40, 2.75, 131.5, 2.6, .35, '#1f4fb8', '#ffffff');
+    for (let i = 0; i < 2; i++) fan(g, 39 + i * 1.4, 132, Math.PI, 960 + i, true).position.y = -.05; }
+  // ---- entre as Gaivotas e a Iemanjá: feira livre com barracas e gente ----
+  { const fx = 182, fz = 160; box(g, 54, .06, 26, fx, .04, fz, '#bfb6a5', { noShadow: true });
+    const ST = [['#e63946', 'Frutas'], ['#ffd23f', 'Pastel'], ['#2a9d8f', 'Verduras'], ['#ff6a00', 'Caldo de cana'], ['#6b2fb8', 'Artesanato'], ['#1f4fb8', 'Peixe fresco'], ['#7fb069', 'Flores'], ['#c0392b', 'Queijos']];
+    ST.forEach(([c, n], i) => stall(g, fx - 21 + (i % 4) * 14, fz + (i < 4 ? -6 : 6), c, n, R));
+    for (let i = 0; i < 12; i++) { const o = dyn2(sp, fan(new THREE.Group(), fx - 24 + R() * 48, fz - 1 + R() * 2, 0, 980 + i, false)); LV.npcs.push({ kind: 'walk', o, x: o.position.x, z: o.position.z, v: (i % 2 ? 1 : -1) * (.4 + R() * .4), x0: fx - 26, x1: fx + 26 }); }
+    spot(sp, 'feira', fx, fz + 1, 'Feira livre', 'Pastel e caldo de cana (+3 energia)'); }
+  // ---- quarta rua (z 192) e as ruas que sobem até ela ----
+  road(340, 8, 115, 192); walk(340, 2.4, 115, 187.2); walk(340, 2.4, 115, 196.8); for (let i = -50; i < 285; i += 5) box(g, 2.2, .02, .18, i, .07, 192, '#f2f2f2', { noShadow: true });
+  [-55, 88, 290].forEach(x => { road(8, 60, x, 158); walk(2.4, 60, x - 5.2, 158); walk(2.4, 60, x + 5.2, 158); });
+  for (let x = -40; x <= 280; x += 16) { if (Math.abs(x + 55) < 8 || Math.abs(x - 88) < 8) continue; streetLamp(g, x, 185.8); }
+  for (let i = 0; i < 10; i++) { const z = i % 2 ? 187.2 : 196.8, x0 = -50 + R() * 320, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 1000 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: -55, x1: 285 }); }
+  for (let k = 0; k < 3; k++) { const tmp = new THREE.Group(), east = k % 2 === 0; car(tmp, 0, 0, 0, ['#2457c5', '#ffd23f', '#e63946'][k]); LV.boxes.pop(); const o = dyn2(sp, tmp); o.position.set(-60 + k * 120, 0, east ? 190.6 : 193.4); o.rotation.y = east ? 0 : Math.PI; LV.npcs.push({ kind: 'car', o, v: east ? 8 : -8 }); }
+  // ---- além da quarta rua: prédios, a Praça da Matriz (igreja, coreto) e a Praça das Palmeiras (complexo de quadras) ----
+  aptBlock(g, -38, 214, 20, 12, 12, '#e3d5c1'); aptBlock(g, 120, 214, 18, 12, 15, '#cfe3e8'); aptBlock(g, 262, 214, 22, 12, 9, '#f2c6b4');
+  { const mx = 40, mz = 228; box(g, 50, .08, 40, mx, .05, mz, '#7fb069', { noShadow: true }); box(g, 3, .1, 40, mx, .06, mz, '#d8cdb5', { noShadow: true });
+    box(g, 14, 8, 18, mx, 4, mz + 12, '#f6f3ee'); solid(mx - 7, mz + 3, mx + 7, mz + 21); const rf = new THREE.Mesh(new THREE.CylinderGeometry(.01, 10, 4, 4), mat('#8a3b2e')); rf.rotation.y = Math.PI / 4; rf.scale.set(.75, 1, 1.3); rf.position.set(mx, 10, mz + 12); g.add(rf);
+    box(g, 4, 16, 4, mx, 8, mz + 3, '#f6f3ee'); box(g, .3, 2.2, .3, mx, 17.1, mz + 3, '#c9a227'); box(g, 1.4, .3, .3, mx, 17.5, mz + 3, '#c9a227'); box(g, 2.4, 3.6, .1, mx, 1.8, mz + .97, '#5a3a28'); // torre, cruz e porta
+    banner(g, 'Igreja Matriz', mx, 6, mz + .9, 6, .8, '#1d2a4a', '#e8b923', Math.PI);
+    const cz = mz - 8; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; cyl(g, .1, .1, 3, mx + 15 + Math.cos(a) * 3, 1.5, cz + Math.sin(a) * 3, '#f4f4f4'); } cyl(g, 3.3, 3.3, .4, mx + 15, .2, cz, '#d8d2c6'); const ct = new THREE.Mesh(new THREE.ConeGeometry(4, 2, 8), mat('#2a9d8f')); ct.position.set(mx + 15, 4, cz); g.add(ct); // coreto
+    for (let i = 0; i < 3; i++) fan(g, mx + 14 + i, cz, Math.PI, 1020 + i, false).position.y = .4; // banda no coreto
+    for (let t = 0; t < 6; t++) { const tx = mx - 20 + (t % 3) * 6, tz = mz - 12 + Math.floor(t / 3) * 12; cyl(g, .18, .25, 2.6, tx, 1.3, tz, '#7a5a42'); const c = new THREE.Mesh(new THREE.SphereGeometry(1.4, 10, 8), mat('#3f8f4a')); c.position.set(tx, 3.2, tz); g.add(c); solid(tx - .3, tz - .3, tx + .3, tz + .3); }
+    [[-8, -2], [-8, 6], [8, -2]].forEach(([a, b]) => bench(g, mx + a, mz + b));
+    LV.plazas.push({ id: 'matriz', name: 'Praça da Matriz', x: mx, z: mz, w: 50, d: 40 });
+    spot(sp, 'coreto', mx + 15, cz - 4.2, 'Coreto', 'Ouvir a banda (+2 energia)'); }
+  { const px = 190, pz = 230, pl = PLAZAS.find(q => q.id === 'palmeiras'); box(g, 60, .08, 40, px, .05, pz, '#7fb069', { noShadow: true });
+    [-14, 14].forEach((dx, i) => { const cx = px + dx; box(g, 14, .02, 22, cx, .09, pz, '#f1e2b8', { noShadow: true }); [[8, .06, cx, pz - 8], [8, .06, cx, pz + 8], [.06, 16, cx - 4, pz], [.06, 16, cx + 4, pz]].forEach(([w, d, a, b]) => box(g, w, .02, d, a, .12, b, '#1f4fb8', { noShadow: true }));
+      realNet(g, cx, pz, 8, 'x', i ? 'Palmeiras 2' : 'Palmeiras 1', '#0a7d3c'); solid(cx - 4.4, pz - .1, cx + 4.4, pz + .1);
+      [-1, 1].forEach(sd => [-1, 1].forEach(q => fan(g, cx + q * 1.8, pz + sd * 5, sd > 0 ? Math.PI : 0, 1040 + i * 4 + q + sd, false))); });
+    for (let k = 0; k < 4; k++) box(g, 2, .5, 22, px + (k < 2 ? -24 : 24) + (k % 2) * (k < 2 ? -1 : 1), .25 + (k % 2) * .5, pz, '#2457c5'); // arquibancadinhas
+    for (let i = 0; i < 10; i++) { const sx = i < 5 ? -24 : 24, ff = fan(g, px + sx + (i % 2 ? (sx < 0 ? -1 : 1) : 0), pz - 8 + (i % 5) * 4, sx < 0 ? Math.PI / 2 : -Math.PI / 2, 1060 + i, true); ff.position.y = .5 + (i % 2) * .5; }
+    for (let i = 0; i < 8; i++) palm(g, px - 28 + i * 8, pz + 18, 5);
+    banner(g, ($s.CR.cosm || {}).centro ? 'Centro Comunitário ' + nameOf($s.CR.me) : pl.name, px, 2.6, pz - 20.5, 8, 1.1, '#0a7d3c', '#ffffff', 0, (($s.CR.cosm || {}).legado ? 'Embaixador do bairro · ' : '') + 'galera ' + PRACA_LV[pracaLevel(pl)].n);
+    if (($s.CR.cosm || {}).centro) { box(g, 16, 4, 8, px, 2, pz + 26, '#f6f3ee'); solid(px - 8, pz + 22, px + 8, pz + 30); banner(g, 'Centro Comunitário', px, 3.2, pz + 21.95, 10, 1.2, '#0a7d3c', '#ffffff', 0, nameOf($s.CR.me)); } cyl(g, .06, .06, 2.6, px - 3.6, 1.3, pz - 20.5, '#3a3f47'); cyl(g, .06, .06, 2.6, px + 3.6, 1.3, pz - 20.5, '#3a3f47');
+    LV.plazas.push(Object.assign({ w: 60, d: 40 }, pl));
+    spot(sp, 'praca', px, pz - 13, pl.name, 'Galera nível ' + PRACA_LV[pracaLevel(pl)].n + ' hoje'); LV.spots[LV.spots.length - 1].plaza = pl; }
+  // casas e lojinhas na quarta rua, entre os prédios e as praças
+  let k = 0; for (let x = -10; x < 280; x += 14) { if (x > 8 && x < 74) continue; if (x > 152 && x < 228) continue; if (Math.abs(x - 120) < 14 || Math.abs(x - 262) < 14 || Math.abs(x - 88) < 10) continue; const c = HOUSE_COLS[(k++ + 5) % HOUSE_COLS.length]; neighborHouse(g, x, 205, 10, 7, c[0], c[1], -1); }
+}
+// toques próprios de cada praça do norte (a do Sol tem sorveteria e parquinho, a das Gaivotas pista de skate, a Iemanjá lago com patos)
+function plazaTheme(g, sp, pl, x, z) {
+  if (pl.id === 'sol') { box(g, 1.6, 1, 1, x + 17, .5, z + 3, '#ff8fab'); const um = new THREE.Mesh(new THREE.ConeGeometry(1.1, .5, 10), mat('#ffffff')); um.position.set(x + 17, 2.2, z + 3); g.add(um); cyl(g, .03, .03, 1.8, x + 17, 1.3, z + 3, '#cfd3d8'); banner(g, 'Sorvete', x + 17, 1.15, z + 2.48, 1.2, .3, '#ff8fab', '#ffffff'); solid(x + 16.2, z + 2.5, x + 17.8, z + 3.5);
+    spot(sp, 'sorvete', x + 17, z + 5, 'Carrinho de sorvete', 'Picolé ($6)'); for (let i = 0; i < 2; i++) { cyl(g, .05, .05, 2, x - 18 + i * 3, 1, z + 4, '#e63946'); } box(g, 3.2, .08, .08, x - 16.5, 2, z + 4, '#e63946'); }
+  else if (pl.id === 'gaivotas') { const ramp = (rx, rz, rot) => { const r = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 4, 12, 1, true, 0, Math.PI / 2), mat('#9aa0a8', { side: THREE.DoubleSide })); r.rotation.set(0, rot, Math.PI / 2); r.position.set(rx, 2.2, rz); g.add(r); };
+    box(g, 10, .1, 8, x - 17, .08, z + 3, '#b9bec6', { noShadow: true }); ramp(x - 21, z + 3, 0); ramp(x - 13, z + 3, Math.PI); box(g, 2, .5, .3, x - 17, .25, z + 3, '#ffd23f');
+    for (let i = 0; i < 2; i++) { const sk = dyn2(sp, fan(new THREE.Group(), x - 17, z + 2 + i * 2, Math.PI / 2, 1080 + i, false)); LV.npcs.push({ kind: 'walk', o: sk, x: x - 17, z: z + 2 + i * 2, v: i ? 3 : -3, x0: x - 20.5, x1: x - 13.5 }); } banner(g, 'Pista de skate', x - 17, 2.6, z - 1.4, 3.6, .5, '#111214', '#ffd23f'); }
+  else if (pl.id === 'iemanja') { const lk = new THREE.Mesh(new THREE.CircleGeometry(4.5, 28), mat('#3fb6e8', { roughness: .1, metalness: .2 })); lk.rotation.x = -Math.PI / 2; lk.scale.set(1, .7, 1); lk.position.set(x + 16, .1, z + 3); g.add(lk); solid(x + 11.5, z, x + 20.5, z + 6);
+    for (let i = 0; i < 4; i++) { const d = dyn2(sp, new THREE.Group()); const b2 = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), mat('#ffffff')); b2.scale.set(1.3, .8, 1); d.add(b2); const hd = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat('#ffffff')); hd.position.set(.2, .15, 0); d.add(hd); d.position.set(x + 14 + i * 1.3, .2, z + 2 + (i % 2)); LV.npcs.push({ kind: 'duck', o: d, cx: x + 16, cz: z + 3, ph: i * 1.6 }); }
+    box(g, 1, 1.2, 1, x + 16, .6, z - 2, '#f4f4f4'); const st = fan(g, x + 16, z - 2, 0, 1100, false); st.position.y = 1.2; st.traverse(o => { if (o.isMesh) o.material = mat('#cfe8f5', { metalness: .3, roughness: .3 }); }); spot(sp, 'lago', x + 16, z + 7.5, 'Lago dos patos', 'Dar pipoca aos patos'); }
 }
 function build() {
   const lvl = crInv('moradia'), key = Object.keys($s.CR.cosm || {}).join() + ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social', 'skate', 'bike', 'cachorro', 'gato', 'trofeus'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
@@ -811,7 +939,10 @@ function build() {
   const fx = (lotW + 18) / 2 + (court ? 6 : 0), fx0 = (court ? 6 : 0) - (lotW + 18) / 2;
   if (lvl >= 2) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, -hD - 9.6, '#f0ebe1'); } // muro do fundo (para a praia, com portão)
   box(g, .3, 1, .3, 1.6, .5, hD + 6.2, '#3a3f47'); box(g, .5, .35, .3, 1.6, 1.15, hD + 6.2, '#c0392b');
-  // conquistas da história do bairro: mural na frente de casa e a bandeira do bairro no quintal
+  // conquistas da história do bairro
+  { const CS = $s.CR.cosm || {};
+    if (CS.prancha) { const pr = new THREE.Mesh(new THREE.CapsuleGeometry(.28, 1.7, 4, 10), mat('#ff6a00')); pr.scale.z = .18; pr.position.set(hW + .35, 1.1, hD - 1.2); pr.rotation.z = .12; pr.castShadow = true; g.add(pr); }
+    if (CS.fogueira) { const fx = 6, fz = -60; for (let i = 0; i < 5; i++) { const l = cyl(g, .08, .08, 1.2, fx, .15, fz, '#6b4f3a'); l.rotation.set(Math.PI / 2, i * 1.2, 0); } const fl = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.2, 8), new THREE.MeshBasicMaterial({ color: '#ffb02e' })); fl.position.set(fx, .7, fz); g.add(fl); for (let i = 0; i < 4; i++) { const a = i * 1.57; fan(g, fx + Math.cos(a) * 2, fz + Math.sin(a) * 2, -a - Math.PI / 2, 1200 + i, true).position.y = -.05; } } }
   if (($s.CR.cosm || {}).mural) banner(g, nameOf($s.CR.me).split(' ')[0], -hW / 2, WH * .55, hD + .03, W * .4, WH * .7, '#ff6a00', '#ffffff', 0, 'cria do bairro · campeão do festival');
   if (($s.CR.cosm || {}).bandeira) { cyl(g, .05, .05, 6, hW + 2, 3, hD + 3, '#cfd3d8'); const fl = banner(g, 'BAIRRO', hW + 3, 5.2, hD + 3, 2, 1.2, '#2a9d8f', '#ffd23f', 0, 'Copa do Bairro'); fl.userData.dyn = true; }
   // ---- garagem: carro, van (transporte) ----
@@ -902,8 +1033,8 @@ function build() {
   { const lc = '#1f4fb8'; [[8, .06, ax, az - 8], [8, .06, ax, az + 8], [.06, 16, ax - 4, az], [.06, 16, ax + 4, az]].forEach(([w, d, x, z]) => box(g, w, .02, d, x, .09, z, lc, { noShadow: true })); }
   S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra'); S2('arenaJogo', ax, az - 6, 'Jogo-treino', crInv('eventos') >= 1 ? 'Na sua arena, de graça' : 'Alugar a quadra e chamar quem quiser');
   // limites do bairro
-  solid(-60, -97, -59, 182); solid(289, -97, 290, 182); solid(-60, 181, 290, 182);
-  city(g, sp); city2(g, sp); city3(g, sp);
+  solid(-60, -97, -59, 252); solid(296, -97, 297, 252); solid(-60, 251, 297, 252);
+  city(g, sp); city2(g, sp); city3(g, sp); cityExtras(g, sp);
   // pet (o cachorro passeia com você; o gato fica por perto da casa)
   // pets: o cachorro passeia com você (ou fica, se você mandar); o gato fica pela casa, andando à toa
   LV.pets = []; ['cachorro', 'gato'].forEach((kind, i) => { if (!crLife(kind)) return; const o = dyn2(sp, petMesh(kind)), x = i ? -2 : 1.5, z = i ? -1 : 3; o.position.set(x, 0, z);
@@ -946,6 +1077,10 @@ const ACT = {
   pet: { txt: () => { const P2 = LV.nearPet; if (!P2) return ''; return !P2.name ? 'Dar um nome ao ' + P2.kind : (P2.kind === 'cachorro' ? (P2.follow ? 'Brincar com ' + P2.name + ' · mandar ficar' : 'Brincar com ' + P2.name + ' · chamar') : 'Fazer carinho em ' + P2.name); }, run: () => petInteract() },
   ctJogo: { txt: () => 'Marcar um jogo-treino', run: () => friendlyPicker() },
   arenaJogo: { txt: () => crInv('eventos') >= 1 ? 'Marcar um jogo-treino na sua arena' : 'Marcar um jogo-treino ($80 a quadra)', run: () => friendlyPicker(crInv('eventos') >= 1 ? 0 : 80) },
+  feira: { txt: () => 'Pastel e caldo de cana ($12)', run: () => { const C = $s.CR, k = dayKey(); if (C.feiraDay === k) { LV.msg('Já comeu na feira hoje. Volta amanhã!'); return; } C.feiraDay = k; C.money -= 12; C.energy = Math.min(100, C.energy + 3); LV.msg('🥟 Pastel de queijo e caldo de cana gelado: +3 de energia.'); } },
+  coreto: { txt: () => 'Ouvir a banda no coreto', run: () => { const C = $s.CR, k = dayKey(); if (C.coretoDay === k) { LV.msg('🎺 A banda tá repetindo o repertório. Volta amanhã!'); return; } C.coretoDay = k; C.energy = Math.min(100, C.energy + 2); LV.msg('🎺 A banda tocou um chorinho e dedicou a última música a você: +2 de energia.'); } },
+  sorvete: { txt: () => 'Comprar um picolé ($6)', run: () => { const C = $s.CR, k = dayKey(); if (C.sorvDay === k) { LV.msg('Um picolé por dia, atleta!'); return; } C.sorvDay = k; C.money -= 6; C.energy = Math.min(100, C.energy + 1); LV.msg('🍦 Picolé de limão: +1 de energia.'); } },
+  lago: { txt: () => 'Dar pipoca aos patos', run: () => { LV.msg(pick(['🦆 Os patos fizeram fila. Um deles tentou levar o saco inteiro.', '🦆 Quá! Um pato te seguiu até a borda do lago.', '🦆 Os patos adoraram. Uma criança aplaudiu.'])); } },
   coco: { txt: () => 'Tomar água de coco ($8)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.cocoDay === k) { LV.msg('Já tomou o seu coco hoje.'); return; } C.cocoDay = k; C.money -= 8; C.energy = Math.min(100, C.energy + 2); LV.msg('🥥 Água de coco geladinha: +2 de energia.'); } },
   barraca: { txt: () => 'Petisco na barraca ($25)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.barDay === k) { LV.msg('O Zé já te serviu hoje.'); return; } C.barDay = k; C.money -= 25; C.energy = Math.min(100, C.energy + 3); LV.msg('🍤 Isca de peixe e suco na barraca do Zé: +3 de energia.'); } },
   orla: { txt: () => 'Jogar com a galera (desafio)', run: () => LV.actions.drill() },
@@ -1058,12 +1193,13 @@ function tick(dt) {
   if ((near && near.id) !== (LV.near && LV.near.id)) { LV.near = near; prompt(); } else LV.near = near;
   LV.spots.forEach(s => { const d = Math.hypot(px - s.x, pz - s.z); s.label.visible = d < 16; });
   // nome do lugar onde está
-  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : crLife('trofeus') && px > -hw - 8.6 && px < -hw && pz > -hd && pz < -hd + 7.4 ? 'Sala de troféus' : LV.swim ? 'Nadando' : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 && px > -15 && px < 15 ? 'Área da piscina' : LV.inPlaza ? (PLAZAS.find(q => q.id === LV.inPlaza) || {}).name : px > VX - 53 && px < VX + 53 && pz > VZ - 51 && pz < VZ + 45 ? ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? String($s.CR.tour.name).replace(/ · .*$/, '') : 'Quadras da Orla') : pz < -12 ? 'Praia' : pz > 30 && px > 92 ? 'Comércio' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
+  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : crLife('trofeus') && px > -hw - 8.6 && px < -hw && pz > -hd && pz < -hd + 7.4 ? 'Sala de troféus' : LV.swim ? 'Nadando' : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 && px > -15 && px < 15 ? 'Área da piscina' : LV.inPlaza ? ((LV.plazas || []).find(q => q.id === LV.inPlaza) || {}).name : px > VX - 53 && px < VX + 53 && pz > VZ - 51 && pz < VZ + 45 ? ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? String($s.CR.tour.name).replace(/ · .*$/, '') : 'Quadras da Orla') : pz < -12 ? 'Praia' : pz > 30 && px > 92 ? 'Comércio' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
     if (where !== LV.where) { LV.where = where; const e = document.querySelector('#livreHud .lv-where'); if (e) e.textContent = where; } }
   // bússola para a sua quadra (no painel de cima): direção em relação à câmera e distância
   { const cp = document.getElementById('livreGo'); if (cp) { const mc = LV.myCourt && LV.nearVenue !== false ? LV.myCourt : null; cp.hidden = !mc;
     if (mc) { const dx = mc.x - px, dz = mc.z - pz, d = Math.hypot(dx, dz); camera.getWorldDirection(_v); const ang = Math.atan2(dx * _v.z - dz * _v.x, dx * _v.x + dz * _v.z);
       cp.querySelector('i').style.transform = 'rotate(' + (-ang * 180 / Math.PI - 90).toFixed(0) + 'deg)'; cp.querySelector('b').textContent = d < 4 ? 'Você chegou' : Math.round(d) + ' m'; } } }
+  LV.mmT = (LV.mmT || 0) - dt; if (LV.mmT <= 0) { LV.mmT = .2; try { minimap(); } catch (e) {} }
   if (LV.msgT > 0 && (LV.msgT -= dt) <= 0) { const m = document.getElementById('livreMsg'); if (m) m.hidden = true; }
 }
 // câmera: atrás do jogador, girada pelo mouse (arrastando) ou Q/E… (E é interagir: gira com Q e R); dentro de casa sobe e olha de cima
@@ -1287,6 +1423,54 @@ function hubCam(dt) {
   sun.target.position.copy(h); sun.position.copy(h).addScaledVector(SUN_DIR, 40);
   if (LV.bag) LV.bag.visible = false;
   return true;
+}
+
+// ---------- minimapa (canto da tela): ruas, praças, você, quem tem missão (★ história, ! do dia) e onde levar cada coisa ----------
+const MM = { x0: -62, x1: 300, z0: -100, z1: 255, big: false, t: 0 };
+function missionTargets() {
+  const C = $s.CR, out = []; if (!C) return out;
+  const spotXY = id => { const q = LV.spots.find(s2 => s2.id === id); return q ? [q.x, q.z] : null; }, giverXY = id => { const G = GIVERS.find(q => q.id === id); return G ? [G.x, G.z] : null; }, plazaXY = id => { const q = (LV.plazas || []).find(p2 => p2.id === id); return q ? [q.x, q.z] : null; };
+  for (const m of C.missions || []) { const st = !!m.story; let pts = [];
+    if (m.type === 'deliver') pts = [m.target.giver ? giverXY(m.target.giver) : spotXY(m.target.spot)];
+    else if (m.type === 'visit1') pts = [plazaXY(m.place)];
+    else if (m.type === 'visit') pts = (LV.plazas || []).filter(q => !(m.seen || []).includes(q.id)).map(q => [q.x, q.z]);
+    else if (m.type === 'praca' || m.type === 'pracaLvl') pts = LV.spots.filter(q => q.id === 'praca').map(q => [q.x, q.z]);
+    else if (m.type === 'swim') pts = [[60, -92]];
+    else if (m.type === 'train') pts = [[46, 34]];
+    else if (m.type === 'pay') pts = [giverXY(m.giver)];
+    pts.filter(Boolean).forEach(p2 => out.push({ x: p2[0], z: p2[1], st }));
+  }
+  return out;
+}
+function minimap() {
+  let cv = document.getElementById('livreMap');
+  if (!cv) { cv = document.createElement('canvas'); cv.id = 'livreMap'; cv.title = 'Clique para aumentar ou diminuir'; cv.addEventListener('click', () => { MM.big = !MM.big; cv.classList.toggle('big', MM.big); minimap(); }); document.getElementById('livreHud').appendChild(cv); }
+  const W = MM.big ? 460 : 210, H = Math.round(W * (MM.z1 - MM.z0) / (MM.x1 - MM.x0)), dpr = Math.min(2, devicePixelRatio || 1);
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sx = W / (MM.x1 - MM.x0), sz = H / (MM.z1 - MM.z0), X = v => (v - MM.x0) * sx, Z = v => (v - MM.z0) * sz;
+  // norte para cima no mapa = longe do mar (o mar fica embaixo)
+  const Y = v => H - Z(v);
+  x.fillStyle = '#e8dcbc'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#4aa8d8'; x.fillRect(0, Y(-87), W, H - Y(-87)); // mar
+  x.fillStyle = '#f3ead2'; x.fillRect(0, Y(12), W, Y(-87) - Y(12)); // praia
+  const rect = (x0, z0, x1, z1, c) => { x.fillStyle = c; x.fillRect(X(x0), Y(z1), X(x1) - X(x0), Y(z0) - Y(z1)); };
+  [24, 64, 124, 192].forEach(z => rect(-55, z - 4, 295, z + 4, '#5b6170'));
+  [[-55, 24, 192], [25, 24, 64], [88, 24, 192], [290, 128, 188]].forEach(([vx, a, b]) => rect(vx - 4, a, vx + 4, b, '#5b6170'));
+  (LV.plazas || []).forEach(q => rect(q.x - q.w / 2, q.z - q.d / 2, q.x + q.w / 2, q.z + q.d / 2, '#8cc47a'));
+  rect(22, 75, 62, 105, '#8cc47a'); rect(VX - 52, VZ - 50, VX + 52, VZ + 44, $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? '#ffb02e' : '#d7c9a0'); // praça da orla e local do torneio/quadras da orla
+  rect(46, 152, 70, 172, '#f2e6c9'); rect(155, 147, 209, 173, '#e9b872'); [[-38, 214, 20, 12], [120, 214, 18, 12], [262, 214, 22, 12]].forEach(([a, b, w, d]) => rect(a - w / 2, b - d / 2, a + w / 2, b + d / 2, '#b9bec6')); // escola, feira e prédios
+  const [hw, hd] = LV.house || [6, 5]; rect(-hw - 1, -hd - 1, hw + 1, hd + 1, '#c0392b'); rect(34, 30, 58, 46, '#2457c5'); if (crInv('ct') >= 1) rect(59, 31, 81, 45, '#1d2a4a');
+  // missões: alvos (círculo pulsando) e quem tem missão (★ amarela / ! branco)
+  MM.t += .15; const pulse = 3 + Math.sin(MM.t) * 1.2;
+  for (const t of missionTargets()) { x.beginPath(); x.arc(X(t.x), Y(t.z), pulse + (MM.big ? 3 : 1), 0, Math.PI * 2); x.fillStyle = t.st ? 'rgba(255,210,63,.85)' : 'rgba(255,255,255,.85)'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); }
+  const C = $s.CR, open = storyOpen(), side = (C.missions || []).filter(m => !m.story);
+  for (const G of GIVERS) { const st = open.some(n => n.giver === G.id && !(C.missions || []).some(m => m.story === n.id)), sd = !side.some(m => m.giver === G.id) && side.length < 3 && (C.giverDay || {})[G.id] !== dayKey(); if (!st && !sd) continue;
+    x.font = '900 ' + (MM.big ? 18 : 12) + 'px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 3; x.strokeStyle = '#04122e'; x.strokeText(st ? '★' : '!', X(G.x), Y(G.z)); x.fillStyle = st ? '#ffd23f' : '#ffffff'; x.fillText(st ? '★' : '!', X(G.x), Y(G.z)); }
+  if (MM.big) { x.font = '700 11px Arial'; x.fillStyle = '#04122e'; x.textAlign = 'center'; (LV.plazas || []).forEach(q => x.fillText(q.name.replace('Praça ', ''), X(q.x), Y(q.z) - 0)); x.fillText('Casa', X(0), Y(-8)); x.fillText('Arena', X(46), Y(48)); x.fillText('Escola', X(58), Y(162)); x.fillText('Feira', X(182), Y(160)); x.fillText('Praia', X(120), Y(-40)); }
+  // você: seta na direção para onde anda
+  const px = human.pos.x - H0.x, pz = human.pos.z - H0.z; x.save(); x.translate(X(px), Y(pz)); x.rotate(-LV.yaw + Math.PI);
+  x.beginPath(); x.moveTo(0, -7); x.lineTo(5, 6); x.lineTo(0, 3); x.lineTo(-5, 6); x.closePath(); x.fillStyle = '#33c3ff'; x.fill(); x.strokeStyle = '#04122e'; x.lineWidth = 1.5; x.stroke(); x.restore();
 }
 
 // ---------- interface ----------

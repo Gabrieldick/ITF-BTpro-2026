@@ -1466,3 +1466,6 @@ body.hub-page .mus-box { left: 12px; bottom: 44px; max-width: 226px; } /* no pé
 .lv-mis { max-height: 86vh; overflow-y: auto; }
 .lv-mis label { display: flex; align-items: center; gap: 8px; }
 .lv-mis label input { width: auto; }
+#livreMap { position: absolute; right: 14px; bottom: 74px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, .7); box-shadow: 0 8px 24px rgba(0, 0, 0, .4); pointer-events: auto; cursor: zoom-in; }
+#livreMap.big { cursor: zoom-out; }
+@media (max-width: 700px) { #livreMap { bottom: auto; top: 172px; right: 8px; } }
