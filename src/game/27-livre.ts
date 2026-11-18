@@ -1397,6 +1397,8 @@ function tick(dt) {
     if (d < R) { if (d > 1e-4) { px = cx + dx / d * R; pz = cz + dz / d * R; } else { px += R; } } }
   if (LV.ride === 'carro' && LV.roadR.length) { const d0 = roadDist(lx - LV.vel.x * dt, lz - LV.vel.z * dt), d1 = roadDist(px, pz); // o carro não sai da rua (fora dela, só volta para a rua)
     if (d1 > .6 && d1 > d0 - 1e-4) { px = lx - LV.vel.x * dt; pz = lz - LV.vel.z * dt; LV.vel.x *= -.2; LV.vel.z *= -.2; if (!LV.roadMsgT || LV.roadMsgT < performance.now()) { LV.roadMsgT = performance.now() + 4000; LV.msg('🚗 O carro só anda na rua.'); } } }
+  if (LV.ride && LV.ride !== 'pe') { const wet = (x, z) => z < -86.5 || (LV.pool && x > LV.pool[0] - .3 && x < LV.pool[2] + .3 && z > LV.pool[1] - .3 && z < LV.pool[3] + .3);
+    if (wet(px, pz) && !wet(lx - LV.vel.x * dt, lz - LV.vel.z * dt)) { px = lx - LV.vel.x * dt; pz = lz - LV.vel.z * dt; LV.vel.set(0, 0, 0); if (!LV.wetMsgT || LV.wetMsgT < performance.now()) { LV.wetMsgT = performance.now() + 4000; LV.msg('🌊 Desça do ' + ({ skate: 'skate', bike: 'bike', carro: 'carro' }[LV.ride]) + ' (V) para entrar na água.'); } } }
   human.pos.x = H0.x + px; human.pos.z = H0.z + pz; LV.gy = LV.swim ? 0 : groundY(px, pz);
   // para onde o corpo olha: para onde anda
   const sp = Math.hypot(LV.vel.x, LV.vel.z);
@@ -1500,6 +1502,7 @@ function cam(dt) {
       else LV.skK = Math.max(.62, LV.skK - dt * (il > .05 ? .12 : .25));
       R2.push += ((R2.pushing ? 1 : 0) - R2.push) * Math.min(1, dt * 9); }
     else R2.ph += dt * sp * 2.6; R2.air = airT; R2.lean = LV.leanS; R2.stand = RK === 'bike' && run && il > .05 ? 1 : 0; }
+  else if (LV.swim) { const R2 = human.ride && human.ride.k === 'swim' ? human.ride : (human.ride = { k: 'swim', ph: 0, t: 0, push: 0, air: 0, lean: 0 }); R2.ph += dt * (1.6 + sp * 2.2); R2.t += dt; }
   else human.ride = null;
   if (LV.rideMesh) { const RM = LV.rideMesh; RM.position.set(human.pos.x, (LV.gy || 0) + LV.jy, human.pos.z); RM.rotation.set(0, LV.yaw, 0);
     (RM.userData.wheels || []).forEach(w => { w.rotation.x -= sp * dt / (w.userData.r || .3); }); if (RM.userData.crank && human.ride) RM.userData.crank.rotation.x = -human.ride.ph; // (pedivela no mesmo giro dos pés)
@@ -1597,7 +1600,7 @@ function swimPose() {
 function rides() { return ['pe'].concat(crLife('skate') ? ['skate'] : [], crLife('bike') ? ['bike'] : [], crLife('carro') ? ['carro'] : []); }
 function cycleRide() {
   const L = rides(); if (L.length < 2) { LV.msg('Compre skate, bicicleta ou carro em Negócios para andar mais rápido (tecla V troca).'); return; }
-  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z; if (lx > -hw && lx < hw && lz > -hd && lz < hd) { LV.msg('Dentro de casa, só a pé.'); return; }
+  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z; if (lx > -hw && lx < hw && lz > -hd && lz < hd) { LV.msg('Dentro de casa, só a pé.'); return; } if (LV.swim || lz < -86.5) { LV.msg('Na água, só nadando.'); return; }
   LV.ride = L[(L.indexOf(LV.ride || 'pe') + 1) % L.length];
   if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; }
   if (LV.ride !== 'pe') { LV.rideMesh = rideMesh(LV.ride); scene.add(LV.rideMesh); }
