@@ -1481,3 +1481,6 @@ body.hub-page .mus-box { left: 12px; bottom: 44px; max-width: 226px; } /* no pé
 .pv-cv canvas { max-width: 100%; border-radius: 12px; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.14), rgba(255,255,255,0) 70%); }
 .pv-btn { flex: none; }
 .cr-row.locked { opacity: .55; }
+
+.cr-row .row-acts { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex: none; margin-left: auto; }
+.cr-row .row-acts .pv-btn { width: 34px; padding: 0; }

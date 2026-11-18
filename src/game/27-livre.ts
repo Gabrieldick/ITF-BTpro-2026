@@ -721,6 +721,7 @@ function refreshMarkers() {
     const bm = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 30, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#b44dff', transparent: true, opacity: .28, depthWrite: false })); bm.position.set(x, 15, z); LV.group.add(bm); LV.mkBeams.push(bm);
     const st = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex(), depthTest: false, transparent: true })); st.scale.set(2.4, 2.4, 1); st.position.set(x, 4.6, z); st.renderOrder = 9; LV.group.add(st); LV.mkBeams.push(st); });
 }
+const _bagV = new THREE.Vector3(), _bagP = new THREE.Vector3(), _bagS = new THREE.Vector3(), _bagQ = new THREE.Quaternion();
 let STAR_T = null; // estrela roxa: onde entregar
 function starTex() {
   if (STAR_T) return STAR_T; const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
@@ -1472,7 +1473,10 @@ function cam(dt) {
   { const bc = ($s.CR.cosm && $s.CR.cosm.bagOuro && $s.CR.bagGold !== false) ? ['#c9a227', '#111214'] : crBagCols() || bagOfRacket();
     const stk = Object.keys($s.CR.cosm || {}).filter(k => STICKERS[k]); if (!LV.bag || LV.bagKey !== bc.join() + stk.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); stickBag(LV.bag, stk); LV.bagKey = bc.join() + stk.join(); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
-    const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.1); LV.bag.rotateX(-.06); LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
+    { const sp2 = human.model && human.model.spine; // presa na coluna: acompanha o corpo agachado no skate, inclinado na bike, pulando…
+      if (sp2) { sp2.updateWorldMatrix(true, false); _bagV.set(0, .1, LV.bagOff + .02); sp2.localToWorld(_bagV); LV.bag.position.copy(_bagV); sp2.matrixWorld.decompose(_bagP, _bagQ, _bagS); LV.bag.quaternion.copy(_bagQ); if (_bagS.x < 0) LV.bag.rotateY(0); LV.bag.rotateX(-.06); }
+      else { const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); } }
+    LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
   // pulo (Espaço): a pé, de skate (às vezes sai uma manobra) e de bike (bunny hop); de carro não
   const RK = LV.ride || 'pe', run = !!k.shift, sp = Math.hypot(LV.vel.x, LV.vel.z), il = (k.w || k.a || k.s || k.d || k.arrowup || k.arrowdown || k.arrowleft || k.arrowright || LV.joy) ? 1 : 0, vmax = (run ? 5.2 : 3.8) * ({ skate: 1.45, bike: 2.1 }[RK] || 1);
   LV.jy = LV.jy || 0; LV.jv = LV.jv || 0;
