@@ -1044,9 +1044,10 @@ const BAG_BRANDS = [['Nux', '#111214', '#ffffff'], ["Herue's", '#e30613', '#ffff
 const BAG_VERS = [['Team', 180], ['Pro Tour', 450], ['Elite', 950]];
 const BAGS = BAG_BRANDS.flatMap(([b, c1, c2]) => BAG_VERS.map(([v, preco], i) => ({ id: b.toLowerCase().replace(/[^a-z]/g, '') + '_' + i, brand: b, nome: 'Raqueteira ' + b + ' ' + v, preco, cols: i === 0 ? [c1, c2] : i === 1 ? [c2 === '#ffffff' ? '#f4f4f4' : c2, c1] : ['#16171a', c1] })));
 const crBagPrice = b => ($s.CR.master && $s.CR.master.brand === b.brand ? 0 : b.preco);
-function crBagBuy(id) { const b = BAGS.find(x => x.id === id); if (!b) return; $s.CR.bags = $s.CR.bags || []; if ($s.CR.bags.includes(id)) { $s.CR.bag = id; return; }
+const crBagOk = b => !($s.CR && $s.CR.master) || $s.CR.master.brand === b.brand; // patrocínio master: só a raqueteira da marca
+function crBagBuy(id) { const b = BAGS.find(x => x.id === id); if (!b || !crBagOk(b)) return; $s.CR.bags = $s.CR.bags || []; if ($s.CR.bags.includes(id)) { $s.CR.bag = id; return; }
   const pr = crBagPrice(b); if ($s.CR.money < pr) { $s.CR.lastMsg = 'Dinheiro insuficiente para ' + b.nome + '.'; return; } $s.CR.money -= pr; $s.CR.bags.push(id); $s.CR.bag = id; $s.CR.lastMsg = (pr ? 'Comprada: ' : 'Presente do patrocinador: ') + b.nome + '.'; saveCareer(); }
-const crBagCols = () => { const b = $s.CR && BAGS.find(x => x.id === $s.CR.bag); return b ? b.cols : null; };
+const crBagCols = () => { const b = $s.CR && BAGS.find(x => x.id === $s.CR.bag); if (b && crBagOk(b)) return b.cols; const mb = $s.CR && $s.CR.master && BAGS.find(x => x.brand === $s.CR.master.brand); return mb ? mb.cols : b ? b.cols : null; }; // (com master, anda com a da marca)
 const crLife = id => !!(($s.CR.life || {})[id] || ($s.CR.lifeS || {})[id]);
 function crLifeBuy(id) {
   const it = LIFE.find(x => x.id === id); if (!it || crLife(id)) return;
@@ -2306,7 +2307,7 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crIsSemiOrFinal, crIsCentral, crTourDay, BAGS, crBagBuy, crBagCols, crBagPrice };
+export { crIsSemiOrFinal, crIsCentral, crTourDay, BAGS, crBagBuy, crBagCols, crBagPrice, crBagOk };
 export { crAddFama, crMood, crChemAdd, crMaybeSponsor, crNews };
 export { crRankingMode, crRankMode, crModePts, MODE_PAY };
 export { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };

@@ -201,7 +201,7 @@ function stickBag(o, keys) {
       c.font = 'bold ' + (a.length > 3 ? 26 : 46) + 'px sans-serif'; c.fillText(a, 64, 50); c.font = 'bold ' + (b.length > 7 ? 17 : 22) + 'px sans-serif'; c.fillText(b, 64, 92); });
     const m = new THREE.Mesh(new THREE.CircleGeometry(.07, 24), new THREE.MeshStandardMaterial({ map: t, roughness: .5, polygonOffset: true, polygonOffsetFactor: -2 })); const [x, y, z] = pos[i]; m.position.set(x, y, z + .005); m.rotation.z = (i % 2 ? -1 : 1) * .2; o.add(m); });
 }
-function racketBag(c) {
+function racketBag(c, brand?) {
   // mochila térmica de raquetes (como as de beach tennis): perfil com o topo arredondado (a cabeça da raquete), corpo
   // achatado com borda arredondada, faixa do zíper na cor da marca, bolso na frente, etiqueta da marca e alças
   const o = new THREE.Group(), [a, b] = c, W = .36, H = .74, R = .07;
@@ -215,6 +215,8 @@ function racketBag(c) {
   box(o, .2, .045, .01, 0, .07, .116, b); box(o, .012, .26, .012, 0, -.13, .13, '#d9d9d9', { metalness: .6, roughness: .3 }); // etiqueta da marca e zíper do bolso
   const ring = new THREE.Mesh(new THREE.TorusGeometry(.03, .008, 6, 12), mat('#d9d9d9', { metalness: .7 })); ring.position.set(0, H / 2 + .015, 0); o.add(ring); // alça de mão no topo
   [-1, 1].forEach(sd => { box(o, .045, .5, .012, sd * .1, .02, -.088, '#1d1d20'); box(o, .045, .012, .1, sd * .1, .27, -.13, '#1d1d20'); }); // alças de mochila (do lado do corpo)
+  if (brand) { const t = canvasTex(256, 64, (x2, W, H) => { x2.fillStyle = c[1]; x2.fillRect(0, 0, W, H); x2.fillStyle = c[0]; x2.font = 'bold 40px sans-serif'; x2.textAlign = 'center'; x2.textBaseline = 'middle'; x2.fillText(String(brand).toUpperCase(), W / 2, H / 2 + 2); });
+    const lb = new THREE.Mesh(new THREE.PlaneGeometry(.2, .05), new THREE.MeshStandardMaterial({ map: t, roughness: .5 })); lb.position.set(0, .07, .122); o.add(lb); } // etiqueta com o nome da marca
   o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
 }
 // faixa/placa com marca (painel com o nome, nas cores da marca)
@@ -1853,4 +1855,4 @@ addEventListener('auxclick', e => { if (LV.on && e.button === 1) e.preventDefaul
 { let pin = 0; addEventListener('touchmove', e => { if (!LV.on || e.touches.length !== 2) { pin = 0; return; } const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (pin) LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * pin / d)); pin = d; }, { passive: true }); addEventListener('touchend', () => { pin = 0; }); }
 
 if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0, FAN_LINES, missionEvent };
-export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam, pressCam, hubCam, hubOn, hubOff };
+export { racketBag, LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam, pressCam, hubCam, hubOn, hubOff };

@@ -1473,3 +1473,11 @@ body.hub-page .mus-box { left: 12px; bottom: 44px; max-width: 226px; } /* no pé
 #livreMap.big { cursor: zoom-out; }
 @media (max-width: 700px) { #livreMap { bottom: auto; top: 172px; right: 8px; } }
 #livreMap.big { border-radius: 16px; }
+
+.pv-modal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(4, 18, 46, .55); }
+.pv-modal[hidden] { display: none; }
+.pv-card { width: min(360px, 92vw); text-align: center; }
+.pv-cv { display: flex; justify-content: center; margin: 6px 0; }
+.pv-cv canvas { max-width: 100%; border-radius: 12px; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.14), rgba(255,255,255,0) 70%); }
+.pv-btn { flex: none; }
+.cr-row.locked { opacity: .55; }

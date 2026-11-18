@@ -7,13 +7,13 @@ import { S, NET } from './01-estado';
 import { RACKETS, SIG_PATTERNS, SIG_HOLES, makeRacket } from './05-atletas';
 import { human } from './06-modelos';
 import { HIST, renderTalk, persHTML } from './26-historias';
-import { LIVRE, livreEnter, livreExit, hubOn, hubOff } from './27-livre';
+import { LIVRE, livreEnter, livreExit, hubOn, hubOff, racketBag as livreBag } from './27-livre';
 import { ac, applyGfx } from './08-audio';
 import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharacters, makePreview, makeServePreview, faceOf, EYE_COLS } from './07-glb';
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { BAGS, crBagBuy, crBagPrice } from './14-carreira';
+import { BAGS, crBagBuy, crBagPrice, crBagOk } from './14-carreira';
 import { crRankingMode, crModePts, MODE_PAY, crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
@@ -505,6 +505,28 @@ function rkCmp(b) {
 }
 const rkKind = b => { const pos = k => Math.max(0, b[k] || 0), atk = pos('forca') + pos('smash') + pos('saque'), ctl = pos('def') + pos('curta') + pos('lob') + pos('backhand') + pos('vel'); return atk + ctl <= 2 ? ['🪵', 'Básica'] : atk > ctl + 2 ? ['⚡', 'Potência'] : ctl > atk + 2 ? ['🎯', 'Controle'] : ['⚖️', 'Equilíbrio']; };
 // raquete própria: desenho, cores e a distribuição dos pontos de bônus
+// prévia 3D de raquete ou raqueteira antes de comprar (janela por cima da loja; gira sozinha e com o arraste)
+const PV = { r: null, scene: null, cam: null, g: null, obj: null, rot: 0, drag: null, raf: 0, auto: true };
+function showPreview3D(t, id) {
+  let el = $('crPrev3d'); if (!el) { el = document.createElement('div'); el.id = 'crPrev3d'; el.className = 'pv-modal'; document.body.appendChild(el); }
+  const isR = t === 'r', R = isR ? RACKET_STATS[id] : null, B = isR ? null : BAGS.find(x => x.id === id); if (!R && !B) return;
+  el.innerHTML = '<div class="card pv-card"><div class="eyebrow">' + (isR ? 'Raquete' : 'Raqueteira') + ' · arraste para girar</div><h3>' + esc(isR ? R.nome : B.nome) + '</h3><div class="pv-cv"></div><p class="cr-note">' + esc(isR ? R.desc : (crBagPrice(B) ? money(crBagPrice(B)) : 'grátis (patrocinador master)')) + '</p><div class="cta-row"><button type="button" class="ghost" data-pvx>Fechar</button></div></div>';
+  el.hidden = false; const close = () => { el.hidden = true; cancelAnimationFrame(PV.raf); }; el.querySelector('[data-pvx]').onclick = close; el.onclick = e => { if (e.target === el) close(); };
+  if (!PV.r) {
+    PV.r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); PV.r.outputColorSpace = THREE.SRGBColorSpace; PV.r.toneMapping = THREE.ACESFilmicToneMapping; PV.r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); PV.r.setSize(300, 340);
+    PV.scene = new THREE.Scene(); PV.scene.add(new THREE.HemisphereLight(0xffffff, 0x6b7a90, 1.7)); const d = new THREE.DirectionalLight(0xffffff, 2.2); d.position.set(1, 2, 3); PV.scene.add(d);
+    PV.cam = new THREE.PerspectiveCamera(30, 300 / 340, .05, 10); PV.g = new THREE.Group(); PV.scene.add(PV.g);
+    const cv = PV.r.domElement; cv.style.cursor = 'grab'; cv.style.touchAction = 'none';
+    cv.addEventListener('pointerdown', e => { PV.drag = e.clientX; PV.auto = false; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', e => { if (PV.drag == null) return; PV.rot += (e.clientX - PV.drag) * .015; PV.drag = e.clientX; });
+    cv.addEventListener('pointerup', () => { PV.drag = null; });
+  }
+  if (PV.obj) PV.g.remove(PV.obj);
+  if (isR) { PV.obj = makeRacket(id); PV.obj.rotation.z = Math.PI; PV.cam.position.set(0, .3, 1.35); PV.cam.lookAt(0, .3, 0); }
+  else { PV.obj = livreBag(B.cols, B.brand); PV.obj.position.y = .02; PV.cam.position.set(0, .05, 1.9); PV.cam.lookAt(0, .02, 0); }
+  PV.g.add(PV.obj); PV.rot = 0; PV.auto = true; el.querySelector('.pv-cv').appendChild(PV.r.domElement); cancelAnimationFrame(PV.raf);
+  const loop = () => { if (el.hidden || !PV.r.domElement.isConnected) return; if (PV.auto) PV.rot += .012; PV.g.rotation.y = PV.rot; PV.r.render(PV.scene, PV.cam); PV.raf = requestAnimationFrame(loop); }; loop();
+}
 // prévia 3D da raquete própria (gira sozinha devagar e com o arraste): um renderizador só, que muda de lugar a cada tela
 const SG = { r: null, scene: null, cam: null, g: null, rk: null, rot: .3, drag: null, raf: 0 };
 function sigPreview3D() {
@@ -552,7 +574,7 @@ function crShopHTML() {
   const rk = list.map(([k, r]) => {
     const own = $s.CR.rackets.includes(k), eq = $s.CR.racket === k, price = Math.round(r.preco * (1 - disc));
     const bonus = bonusChips(r.b), tot = Object.values(r.b).reduce((t, v) => t + v, 0), kd = rkKind(r.b);
-    return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small>' + (eq ? '' : rkCmp(r.b)) + '</div>' + (eq ? '' : !crRacketOk(k) ? '<button class="ghost sm" disabled title="Patrocínio master: só raquetes da ' + $s.CR.master.brand + '">Só ' + esc($s.CR.master.brand) + '</button>' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : crMasterFree(k) ? '<button class="cta sm" data-mtake="' + k + '" title="A ' + $s.CR.master.brand + ' te dá esta raquete">Pegar grátis</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + (crMasterFree(k) === false && $s.CR.master ? ' title="Preço de tabela ' + money(r.preco) + ', acima do teto do contrato (' + money(crMasterCap()) + '): a marca não dá esta. Compre' + (price < r.preco ? ' com o seu desconto (' + money(price) + ')' : '') + ' ou ganhe mais fama para o teto subir"' : '') + '>' + money(price) + '</button>') + '</div>';
+    return '<div class="cr-row' + (eq ? ' me' : '') + '"><span class="cr-rk" data-r="' + k + '"></span><div><b>' + r.nome + (eq ? ' · em uso' : '') + ' <span class="rk-tag" title="' + kd[1] + '">' + kd[0] + ' ' + kd[1] + '</span> <span class="rk-tot ' + (tot >= 0 ? 'up' : 'dn') + '" title="Soma dos bônus">' + (tot > 0 ? '+' : '') + tot + '</span></b><small>' + r.desc + '</small><small class="rk-b">' + bonus + '</small>' + (eq ? '' : rkCmp(r.b)) + '</div><button type="button" class="ghost sm pv-btn" data-prev="r:' + k + '" title="Ver em 3D">👁</button>' + (eq ? '' : !crRacketOk(k) ? '<button class="ghost sm" disabled title="Patrocínio master: só raquetes da ' + $s.CR.master.brand + '">Só ' + esc($s.CR.master.brand) + '</button>' : own ? '<button class="ghost sm" data-equip="' + k + '">Usar</button>' : crMasterFree(k) ? '<button class="cta sm" data-mtake="' + k + '" title="A ' + $s.CR.master.brand + ' te dá esta raquete">Pegar grátis</button>' : '<button class="cta sm" data-buy="' + k + '"' + ($s.CR.money < price ? ' disabled' : '') + (crMasterFree(k) === false && $s.CR.master ? ' title="Preço de tabela ' + money(r.preco) + ', acima do teto do contrato (' + money(crMasterCap()) + '): a marca não dá esta. Compre' + (price < r.preco ? ' com o seu desconto (' + money(price) + ')' : '') + ' ou ganhe mais fama para o teto subir"' : '') + '>' + money(price) + '</button>') + '</div>';
   }).join('') || '<p class="cr-note">Nenhuma raquete com esses filtros.</p>';
   // equipamentos por categoria: um em uso de cada (como a raquete); comprar o melhor de uma categoria já põe em uso
   const on = new Set(gearOn($s.CR.gear, $s.CR.gearEq));
@@ -569,9 +591,10 @@ function crShopHTML() {
   const head = (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '') + '<div class="cr-tabs cr-shop-tabs">' + sub + '</div>';
   if (shopTab === 'raquetes') return head + crSigHTML() + '<p class="section-label">🎾 Raquetes (' + list.length + ' de ' + all.length + ')</p>' + tools + '<div class="cr-list rk-shop">' + rk + '</div>';
   if (shopTab === 'bolsas') { const own = $s.CR.bags || [];
-    return head + '<p class="section-label">🎒 Raqueteiras (você anda com ela nas costas no modo livre)</p><div class="cr-list">' + BAGS.map(b => { const o = own.includes(b.id), u = $s.CR.bag === b.id, pr = crBagPrice(b);
-      return '<div class="cr-row' + (u ? ' me' : '') + '"><span class="cr-ic" style="background:linear-gradient(135deg,' + b.cols[0] + ' 55%,' + b.cols[1] + ' 55%);border-radius:8px"></span><div><b>' + esc(b.nome) + (u ? ' · em uso' : '') + '</b><small>' + (pr ? money(pr) : 'grátis (patrocinador master)') + '</small></div>'
-        + (u ? '' : o ? '<button class="ghost sm" data-bag="' + b.id + '">Usar</button>' : '<button class="cta sm" data-bag="' + b.id + '"' + ($s.CR.money < pr ? ' disabled' : '') + '>Comprar</button>') + '</div>'; }).join('') + '</div>'; }
+    return head + '<p class="section-label">🎒 Raqueteiras (você anda com ela nas costas no modo livre)</p><div class="cr-list">' + BAGS.map(b => { const o = own.includes(b.id), u = $s.CR.bag === b.id, pr = crBagPrice(b), lock = !crBagOk(b);
+      return '<div class="cr-row' + (u ? ' me' : '') + (lock ? ' locked' : '') + '"><span class="cr-ic" style="background:linear-gradient(135deg,' + b.cols[0] + ' 55%,' + b.cols[1] + ' 55%);border-radius:8px"></span><div><b>' + esc(b.nome) + (u ? ' · em uso' : '') + '</b><small>' + (lock ? '🔒 Patrocínio master: só raqueteiras da ' + esc($s.CR.master.brand) : pr ? money(pr) : 'grátis (patrocinador master)') + '</small></div>'
+        + '<button type="button" class="ghost sm pv-btn" data-prev="b:' + b.id + '" title="Ver em 3D">👁</button>'
+        + (u ? '' : lock ? '<button class="ghost sm" disabled>Só ' + esc($s.CR.master.brand) + '</button>' : o ? '<button class="ghost sm" data-bag="' + b.id + '">Usar</button>' : '<button class="cta sm" data-bag="' + b.id + '"' + ($s.CR.money < pr ? ' disabled' : '') + '>' + (pr ? 'Comprar' : 'Pegar grátis') + '</button>') + '</div>'; }).join('') + '</div>'; }
   if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Um em uso por categoria, como a raquete (quanto melhor, mais caro). Somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
   return head + crClothesHTML(shopTab);
 }
@@ -857,6 +880,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-t-go]').forEach(bt => bt.addEventListener('click', () => { crTab = bt.dataset.tGo; renderCareer(); }));
   body.querySelectorAll('[data-shop]').forEach(bt => bt.addEventListener('click', () => { shopTab = bt.dataset.shop; renderCareer(); }));
   body.querySelectorAll('[data-bag]').forEach(bt => bt.addEventListener('click', () => { crBagBuy(bt.dataset.bag); renderCareer(); }));
+  body.querySelectorAll('[data-prev]').forEach(bt => bt.addEventListener('click', () => { const [t, id] = bt.dataset.prev.split(':'); showPreview3D(t, id); }));
   // raquete própria: prévia, cores, desenho e pontos
   sigPreview3D();
   ['bg', 'a1', 'a2', 'grip'].forEach(k => body.querySelectorAll('[data-sig-' + k + ']').forEach(bt => bt.addEventListener('click', () => { crSigLook(k, bt.getAttribute('data-sig-' + k)); renderCareer(); })));
