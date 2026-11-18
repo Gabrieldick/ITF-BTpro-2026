@@ -716,10 +716,37 @@ function starTex() {
   x.fillStyle = '#b44dff'; x.fill(); x.lineWidth = 7; x.strokeStyle = '#fff'; x.stroke();
   STAR_T = new THREE.CanvasTexture(c); STAR_T.colorSpace = THREE.SRGBColorSpace; return STAR_T;
 }
+// o que fazer, passo a passo, para cada tipo de missão (botão ⓘ na lista)
+function howTo(m) {
+  const LVN = ['Iniciante', 'Médio', 'Forte', 'Fera'], spotName = id => { const q = LV.spots.find(s2 => s2.id === id); return q ? q.title : id; }, gName = id => { const G = GIVERS.find(q => q.id === id); return G ? G.name : id; };
+  const plName = id => { const q = (LV.plazas || []).find(p2 => p2.id === id); return q ? q.name : id; }, lv = m.minLv ? ' A galera da quadra tem que ser nível ' + LVN[m.minLv] + ' ou mais forte (o nível aparece na placa da quadra).' : '';
+  const praca = 'Vá até uma praça com quadra (círculos verdes no mapa), chegue no círculo azul da quadra e aperte E para jogar com a galera. ';
+  switch (m.type) {
+    case 'talk': return 'Converse com pessoas andando pela rua: chegue perto de alguém e aperte E, escolha uma resposta e se despeça. Cada pessoa nova conta uma vez.';
+    case 'deliver': return 'Vá até ' + (m.target.giver ? gName(m.target.giver) : spotName(m.target.spot)) + ' (estrela roxa no mapa e no mundo). Chegar no círculo do lugar' + (m.target.giver ? ' e falar com a pessoa (E)' : '') + ' já conclui.';
+    case 'visit1': return 'Ande até ' + plName(m.place) + ' (ponto pulsando no mapa). Basta entrar na área da praça.';
+    case 'visit': return 'Passe por dentro das praças, parques e arenas que ainda não visitou (pontos pulsando no mapa).';
+    case 'pay': return 'Volte a falar com ' + gName(m.giver) + ' (E) e escolha pagar. Precisa ter $' + (m.cost || 0).toLocaleString('pt-BR') + ' em caixa.';
+    case 'train': return 'Faça um treino no mundo aberto: na academia de casa, na sua quadra, no CT ou na arena (chegue no círculo "Treinar" e aperte E). Cada treino conta 1. Treinos feitos pelo menu da carreira não contam.';
+    case 'swim': return 'Entre no mar (praia ao norte do bairro) e nade: o tempo dentro da água vai somando até ' + m.need + ' s.';
+    case 'praca': return praca + 'Cada vitória conta 1.' + lv;
+    case 'pracaLvl': return praca + 'Escolha uma quadra com galera ' + LVN[m.minLv] + ' ou mais forte e vença.' + (m.weak ? ' Tem que jogar com a opção "Dupla com o iniciante".' : '');
+    case 'chSimples': return praca + 'Escolha "Jogar simples" e vença.' + lv;
+    case 'chFraco': return praca + 'Escolha "Dupla com o iniciante" numa quadra nível Médio ou mais forte e vença.' + lv;
+    case 'chSmash': return praca + 'Vença a partida fazendo pelo menos ' + m.n + ' smashes vencedores.' + lv;
+    case 'chCurta': return praca + 'Vença fazendo pelo menos ' + m.n + ' pontos de curta.' + lv;
+    case 'chAce': return praca + 'Vença fazendo pelo menos ' + m.n + ' pontos de saque.' + lv;
+    case 'chVoleio': return praca + 'Vença fazendo pelo menos ' + m.n + ' pontos de voleio.' + lv;
+    case 'chLimpo': return praca + 'Vença com no máximo ' + m.n + ' erros não forçados.' + lv;
+    case 'chPneu': return praca + 'Vença sem perder nenhum game (6 a 0).' + lv;
+    case 'chForte': return praca + 'Escolha "Jogar simples" numa quadra nível Forte ou Fera e vença.';
+  }
+  return 'Fale com quem deu a missão para mais detalhes.';
+}
 // lista das missões (tecla M ou o botão 📋)
 function missionsPanel() {
   const C = $s.CR, L = C.missions || [], doneN = STORY.filter(n => storyDone(n.id)).length, open = storyOpen();
-  const row = m => { const G = GIVERS.find(q => q.id === m.giver); return '<div class="lv-look' + (m.story ? ' st' : '') + '"><div><b>' + (m.story ? '★ ' + STORY.find(n => n.id === m.story).title + ': ' : '') + m.text + '</b><br><small>' + (G ? G.name : '') + (m.need ? ' · ' + (m.seen ? m.seen.length : Math.floor(m.have || 0)) + '/' + m.need : '') + ' · ' + rwTxt(m.reward) + '</small></div></div>'; };
+  const row = m => { const G = GIVERS.find(q => q.id === m.giver); return '<div class="lv-look' + (m.story ? ' st' : '') + '"><div><b>' + (m.story ? '★ ' + STORY.find(n => n.id === m.story).title + ': ' : '') + m.text + '</b><br><small>' + (G ? G.name : '') + (m.need ? ' · ' + (m.seen ? m.seen.length : Math.floor(m.have || 0)) + '/' + m.need : '') + ' · ' + rwTxt(m.reward) + '</small><div class="lv-how" hidden>' + esc2(howTo(m)) + '</div></div><button type="button" class="ghost lv-info" title="Como completar" data-how>ⓘ</button></div>'; };
   const ownC = Object.keys(C.cosm || {});
   const el = talkBox();
   el.innerHTML = '<div class="card lv-fr lv-mis"><div class="eyebrow">História do bairro · ' + doneN + '/' + STORY.length + ' capítulos · ' + (C.missionsDone || 0) + ' missões cumpridas</div><h3>Missões</h3>'
@@ -729,6 +756,7 @@ function missionsPanel() {
     + (C.cosm && C.cosm.bagOuro ? '<label class="cr-note"><input type="checkbox" data-gold' + (C.bagGold !== false ? ' checked' : '') + '> Usar a raqueteira dourada</label>' : '')
     + '<p class="cr-note">Materiais: ' + matsHTML() + ' (venda na Pro Shop ou doe no projeto social).</p><div class="cta-row"><button type="button" class="ghost" data-x>Fechar</button></div></div>';
   el.hidden = false; LV.modal = true; el.querySelector('[data-x]').onclick = () => { el.hidden = true; LV.modal = false; };
+  el.querySelectorAll('[data-how]').forEach(b => b.onclick = () => { const h = b.parentElement.querySelector('.lv-how'); h.hidden = !h.hidden; b.classList.toggle('on', !h.hidden); });
   const gc = el.querySelector('[data-gold]'); if (gc) gc.onchange = () => { C.bagGold = gc.checked; saveCareer(); };
 }
 

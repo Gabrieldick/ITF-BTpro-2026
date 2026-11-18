@@ -1462,6 +1462,9 @@ body.hub-page .mus-box { left: 12px; bottom: 44px; max-width: 226px; } /* no pé
 .lv-opts button { text-align: left; }
 #livreHud #livreMis { background: rgba(6, 16, 40, .88); color: #fff; border: 1px solid rgba(255, 210, 63, .5); }
 .lv-look.st { border-left: 3px solid #ffd23f; }
+.lv-info { flex: none; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 16px; line-height: 1; }
+.lv-info.on { background: #ffd23f; color: #04122e; }
+.lv-how { margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: rgba(255,210,63,.12); font-size: 13px; line-height: 1.35; }
 .lv-story .eyebrow { color: #ffd23f; }
 .lv-mis { max-height: 86vh; overflow-y: auto; }
 .lv-mis label { display: flex; align-items: center; gap: 8px; }
