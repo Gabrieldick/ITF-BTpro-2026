@@ -1456,3 +1456,13 @@ body.hub-page .mus-box { left: 12px; bottom: 44px; max-width: 226px; } /* no pé
 .cr-card-main.in-hub .cr-strip > div { background: rgba(6, 16, 40, .94) !important; border-color: rgba(120, 160, 255, .22) !important; backdrop-filter: none; }
 .cr-card-main.in-hub .cr-strip small { opacity: .8; color: #c9d6ef; }
 .cr-card-main.in-hub .cr-msg { background: rgba(6, 16, 40, .94); }
+.lv-talk .lv-line { font-size: 17px; line-height: 1.45; margin: 4px 0 6px; }
+.lv-talk .lv-reply { font-style: italic; opacity: .9; }
+.lv-opts { display: grid; gap: 6px; }
+.lv-opts button { text-align: left; }
+#livreHud #livreMis { background: rgba(6, 16, 40, .88); color: #fff; border: 1px solid rgba(255, 210, 63, .5); }
+.lv-look.st { border-left: 3px solid #ffd23f; }
+.lv-story .eyebrow { color: #ffd23f; }
+.lv-mis { max-height: 86vh; overflow-y: auto; }
+.lv-mis label { display: flex; align-items: center; gap: 8px; }
+.lv-mis label input { width: auto; }

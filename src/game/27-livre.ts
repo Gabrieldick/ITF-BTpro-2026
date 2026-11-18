@@ -10,7 +10,7 @@ import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
 import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, TIERS } from './14-carreira';
-import { say, HIST } from './26-historias';
+import { say, hush, HIST } from './26-historias';
 import { assignCharacters, applyRackets, applyPlayerStyle } from './07-glb';
 import { mergeStatic, sea as SEA, ENV } from './03-cenario';
 import { arenaFor } from './09-interface';
@@ -354,7 +354,7 @@ function city(g, sp) {
 function npcTick(dt, px, pz) {
   const t = performance.now() / 1000;
   for (const n of LV.npcs || []) {
-    if (n.kind === 'walk') { n.x += n.v * dt; if (n.x > n.x1 || n.x < n.x0) { n.v = -n.v; n.x = Math.max(n.x0, Math.min(n.x1, n.x)); }
+    if (n.kind === 'walk') { if (n.pause) { n.o.rotation.y = Math.atan2(px - n.o.position.x, pz - n.o.position.z); continue; } n.x += n.v * dt; if (n.x > n.x1 || n.x < n.x0) { n.v = -n.v; n.x = Math.max(n.x0, Math.min(n.x1, n.x)); }
       // desvia do jogador
       const dz = Math.abs(n.x - px) < 1.2 && Math.abs(n.z - pz) < 1.2 ? (n.z > pz ? .8 : -.8) : 0;
       n.o.position.set(n.x, Math.abs(Math.sin(t * 7 + n.z)) * .04, n.z + dz); n.o.rotation.y = n.v > 0 ? -Math.PI / 2 : Math.PI / 2; }
@@ -374,7 +374,7 @@ function city2(g, sp) {
   road(340, 8, 115, 64); walk(340, 2.4, 115, 59.2); walk(340, 2.4, 115, 68.8); for (let i = -50; i < 285; i += 5) box(g, 2.2, .02, .18, i, .07, 64, '#f2f2f2', { noShadow: true });
   [-55, 25, 88].forEach(x => { road(8, 32, x, 44); walk(2.4, 32, x - 5.2, 44); walk(2.4, 32, x + 5.2, 44); for (let z = 30; z < 58; z += 5) box(g, .18, .02, 2.2, x, .07, z, '#f2f2f2', { noShadow: true }); });
   // casas: lado de baixo da segunda rua e lado de cima onde não tem nada
-  let k = 0; for (let x = -46; x < 280; x += 14) { if (x > 18 && x < 64) continue; const c = HOUSE_COLS[k++ % HOUSE_COLS.length], w = 9 + R() * 3; neighborHouse(g, x, 77, w, 8, c[0], c[1], -1); if (R() < .45) car(g, x + w / 2 + 2, 71.6, 0, FAN_COLS[k % FAN_COLS.length]); }
+  let k = 0; for (let x = -46; x < 280; x += 14) { if ((x > 18 && x < 64) || Math.abs(x - 88) < 10 || Math.abs(x + 55) < 10) continue; const c = HOUSE_COLS[k++ % HOUSE_COLS.length], w = 9 + R() * 3; neighborHouse(g, x, 77, w, 8, c[0], c[1], -1); if (R() < .45) car(g, x + w / 2 + 2, 71.6, 0, FAN_COLS[k % FAN_COLS.length]); }
   for (let x = 100; x < 280; x += 16) { const c = HOUSE_COLS[k++ % HOUSE_COLS.length]; neighborHouse(g, x, 51, 10, 7, c[0], c[1], 1); }
   for (let x = -40; x < 15; x += 15) { const c = HOUSE_COLS[k++ % HOUSE_COLS.length]; neighborHouse(g, x, 51, 9, 7, c[0], c[1], 1); }
   // praça: chafariz, árvores, bancos, parquinho e quiosque de coco
@@ -402,8 +402,316 @@ function city2(g, sp) {
     for (let i = 0; i < 2; i++) fan(g, ox - 3 + i * 3, oz + 1, Math.PI, 610 + i, false);
     for (let i = 0; i < 6; i++) box(g, .06, .7, .06, ox + 7 + i * .7, .35, oz, '#9aa0a8'); }
 }
+// ---------- cidade norte: terceira rua, casas e as praças com quadra pública (jogar com a galera, nível do dia) ----------
+const PLAZAS = [{ id: 'sol', name: 'Praça do Sol', x: 10, z: 160 }, { id: 'gaivotas', name: 'Praça das Gaivotas', x: 125, z: 160 }, { id: 'iemanja', name: 'Praça Iemanjá', x: 240, z: 160 }];
+const PRACA_LV = [{ n: 'Iniciante', ovr: [45, 58], diff: 'facil', money: 150, fama: .3 }, { n: 'Médio', ovr: [58, 70], diff: 'medio', money: 400, fama: .6 }, { n: 'Forte', ovr: [70, 80], diff: 'dificil', money: 900, fama: 1 }, { n: 'Fera', ovr: [80, 88], diff: 'dificil', money: 1600, fama: 1.5 }];
+const dayKey = () => { const C = $s.CR; return C.season + '-' + C.week + '-' + C.day; };
+// nível da galera em cada praça hoje (muda todo dia, sempre o mesmo no mesmo dia)
+function pracaLevel(pl) { const C = $s.CR; let h = (C.seed || 1) * 31 + C.season * 997 + C.week * 53 + C.day * 7; for (const ch of pl.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0; return h % PRACA_LV.length; }
+function city3(g, sp) {
+  const R = mulberry(($s.CR.seed || 9) * 13 + 5), road = (w, d, x, z) => box(g, w, .06, d, x, .03, z, '#3a3f47', { noShadow: true }), walk = (w, d, x, z) => box(g, w, .14, d, x, .07, z, '#cfcac0', { noShadow: true });
+  road(340, 8, 115, 124); walk(340, 2.4, 115, 119.2); walk(340, 2.4, 115, 128.8); for (let i = -50; i < 285; i += 5) box(g, 2.2, .02, .18, i, .07, 124, '#f2f2f2', { noShadow: true });
+  [-55, 88].forEach(x => { road(8, 52, x, 94); walk(2.4, 52, x - 5.2, 94); walk(2.4, 52, x + 5.2, 94); });
+  for (let x = -40; x <= 280; x += 12) { if (Math.abs(x + 55) < 8 || Math.abs(x - 88) < 8) continue; palm(g, x, 117.6, 4.4 + (Math.abs(x) % 3)); }
+  // casas entre a segunda e a terceira rua (de frente para a terceira)
+  let k = 0; for (let x = -44; x < 280; x += 15) { if ((x > 18 && x < 66) || Math.abs(x - 88) < 10 || Math.abs(x + 55) < 10) continue; const c = HOUSE_COLS[(k++ + 3) % HOUSE_COLS.length]; neighborHouse(g, x, 108, 10, 7, c[0], c[1], 1); if (R() < .35) car(g, x + 7, 115.6, 0, FAN_COLS[k % FAN_COLS.length]); }
+  // praças ao norte da terceira rua: grama, caminhos, árvores, bancos e a quadra pública com rede de verdade
+  LV.plazas = [];
+  PLAZAS.forEach((pl, i) => {
+    const { x, z } = pl, lv = PRACA_LV[pracaLevel(pl)]; LV.plazas.push(Object.assign({ w: 46, d: 36 }, pl));
+    box(g, 46, .08, 36, x, .05, z, '#7fb069', { noShadow: true }); box(g, 46, .1, 2.6, x, .06, z - 16, '#d8cdb5', { noShadow: true });
+    box(g, 14, .02, 22, x, .09, z + 2, '#f1e2b8', { noShadow: true }); [[8, .06, x, z - 6], [8, .06, x, z + 10], [.06, 16, x - 4, z + 2], [.06, 16, x + 4, z + 2]].forEach(([w, d, a, b]) => box(g, w, .02, d, a, .12, b, '#1f4fb8', { noShadow: true }));
+    realNet(g, x, z + 2, 8, 'x', pl.id === 'iemanja' && ($s.CR.cosm || {}).redeNome ? 'Quadra ' + nameOf($s.CR.me) : pl.name, ['#e63946', '#2457c5', '#2a9d8f'][i]);
+    if (pl.id === 'sol' && ($s.CR.cosm || {}).estatua) { box(g, 2, 1.2, 2, x + 12, .6, z - 13, '#d9d4c7'); const st = fan(g, x + 12, z - 13, 0, 17, false); st.position.y = 1.2; st.scale.setScalar(1.25); st.traverse(o => { if (o.isMesh) o.material = mat('#c9a227', { metalness: .8, roughness: .3 }); }); banner(g, 'Lenda do Bairro', x + 12, .7, z - 11.98, 1.8, .5, '#1d1d20', '#e8b923', 0, nameOf($s.CR.me)); solid(x + 11, z - 14, x + 13, z - 12); } solid(x - 4.4, z + 1.9, x + 4.4, z + 2.1);
+    for (let t = 0; t < 8; t++) { const tx = x - 20 + (t % 4) * 13.3, tz = z + (t < 4 ? -12 : 15); cyl(g, .18, .25, 2.6, tx, 1.3, tz, '#7a5a42'); const c = new THREE.Mesh(new THREE.SphereGeometry(1.5, 10, 8), mat(['#3f8f4a', '#4f9a52', '#2f7a3f'][t % 3])); c.position.set(tx, 3.3, tz); c.castShadow = true; g.add(c); solid(tx - .3, tz - .3, tx + .3, tz + .3); }
+    [[-14, -4], [-14, 8], [14, -4], [14, 8]].forEach(([a, b]) => bench(g, x + a, z + b));
+    for (let s2 = 0; s2 < 5; s2++) { const cx = x - 6.5, cz = z - 4 + s2 * 2.4; chair(g, cx, cz, Math.PI / 2, '#f4f4f4'); if (R() < .6) fan(g, cx, cz, Math.PI / 2, 700 + i * 9 + s2, true).position.y = -.05; }
+    banner(g, pl.name, x, 2.6, z - 17.2, 7, 1.1, ['#e63946', '#2457c5', '#2a9d8f'][i], '#ffffff', 0, 'quadra pública · beach tennis'); cyl(g, .06, .06, 2.6, x - 3.2, 1.3, z - 17.2, '#3a3f47'); cyl(g, .06, .06, 2.6, x + 3.2, 1.3, z - 17.2, '#3a3f47');
+    // a galera aquecendo na quadra (quanto mais forte o nível, mais gente assistindo)
+    [-1, 1].forEach(sd => [-1, 1].forEach(q => fan(g, x + q * 1.8, z + 2 + sd * 5, sd > 0 ? Math.PI : 0, 720 + i * 4 + q + sd, false)));
+    for (let w2 = 0; w2 < 3 + pracaLevel(pl) * 2; w2++) { const o = dyn2(sp, fan(new THREE.Group(), x - 18 + R() * 36, z - 13 + R() * 4, 0, 740 + i * 11 + w2, false)); LV.npcs.push({ kind: 'walk', o, x: o.position.x, z: o.position.z, v: (w2 % 2 ? 1 : -1) * (.5 + R() * .5), x0: x - 21, x1: x + 21 }); }
+    spot(sp, 'praca', x, z - 8.6, pl.name, 'Galera nível ' + lv.n + ' hoje'); LV.spots[LV.spots.length - 1].plaza = pl;
+  });
+  // gente andando na terceira rua
+  for (let i = 0; i < 10; i++) { const z = i % 2 ? 119.2 : 128.8, x0 = -50 + R() * 320, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 760 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: -55, x1: 285 }); }
+  givers(g, sp);
+}
+// jogar na praça: a galera do nível do dia (você escolhe só se topa); vale dinheiro e fama vencendo, uma vez por praça por dia
+function pracaPlay(pl) {
+  const C = $s.CR; C.pracaDay = C.pracaDay || {};
+  if (C.pracaDay[pl.id] === dayKey()) { LV.msg('🎾 Você já jogou na ' + pl.name + ' hoje. A galera pede revanche amanhã!'); return; }
+  const L = PRACA_LV[pracaLevel(pl)], fem = !!C.me.fem, pool = crWorld().filter(c => c.id !== 'crme' && c.id !== C.partner && !!c.fem === fem).map(c => ({ c, o: crCharOvr(c) })).filter(x => x.o >= L.ovr[0] && x.o <= L.ovr[1]);
+  if (pool.length < 3) { LV.msg('A quadra está vazia agora. Volte mais tarde.'); return; }
+  const pick3 = []; while (pick3.length < 3) { const x = pool[Math.floor(Math.random() * pool.length)]; if (!pick3.includes(x)) pick3.push(x); }
+  const ovrAvg = Math.round((pick3[1].o + pick3[2].o) / 2);
+  let el = document.getElementById('livreFriendly'); if (!el) { el = document.createElement('div'); el.id = 'livreFriendly'; el.className = 'overlay'; document.body.appendChild(el); }
+  el.innerHTML = '<div class="card lv-fr"><div class="eyebrow">' + pl.name + ' · quadra pública</div><h3>Galera nível ' + L.n + '</h3>'
+    + '<p>' + pick(['"Tá faltando um pra fechar a dupla, entra aí!"', '"Ó quem chegou! Bora um jogo?"', '"Aqui a regra é: quem perde paga o coco."', '"Joga com a gente? Só não vale smash na cabeça."']) + '</p>'
+    + '<p class="cr-note">Sua dupla: <b>' + esc2(nameOf(pick3[0].c)) + '</b> (OVR ' + pick3[0].o + ') · Adversários: <b>' + esc2(nameOf(pick3[1].c)) + '</b> e <b>' + esc2(nameOf(pick3[2].c)) + '</b> (OVR ~' + ovrAvg + ')</p>'
+    + '<p class="cr-note">Vencendo: +$' + L.money + ' e +' + String(L.fama).replace('.', ',') + ' de fama. Conta como o treino do dia.</p>'
+    + '<div class="cta-row"><button type="button" class="cta" data-go>Jogar</button><button type="button" class="ghost" data-x>Agora não</button></div></div>';
+  el.hidden = false; LV.modal = true;
+  el.querySelector('[data-x]').onclick = () => { el.hidden = true; LV.modal = false; };
+  el.querySelector('[data-go]').onclick = () => { el.hidden = true; LV.modal = false; C.pracaDay[pl.id] = dayKey(); saveCareer();
+    if (LV.actions.friendly) LV.actions.friendly({ mate: pick3[0].c.id, o1: pick3[1].c.id, o2: pick3[2].c.id, kind: 'praca', level: pracaLevel(pl), diff: L.diff, place: pl.id }); };
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const esc2 = t => String(t).replace(/[<>&]/g, '');
+LV.onFriendlyEnd = r => {
+  const C = $s.CR; if (!r || !r.played) return;
+  if (r.kind === 'praca') { const L = PRACA_LV[r.level || 0];
+    if (r.won) { C.money += L.money; crAddFama(L.fama); LV.msg('🏆 Vitória na praça! +$' + L.money + ' e +' + String(L.fama).replace('.', ',') + ' de fama. A galera já quer revanche.'); missionEvent('praca', { level: r.level }); }
+    else LV.msg('😅 A galera da praça venceu dessa vez. Amanhã tem mais!');
+    saveCareer(); setTimeout(() => hud(true), 0); }
+};
+
+// ---------- materiais (ganhos em missões): vende na Pro Shop ou doa no projeto social ----------
+const MATS = { overgrip: ['Overgrip', 40, '🩹'], bolas: ['Tubo de bolas', 60, '🎾'], munhequeira: ['Munhequeira', 50, '🧣'], protetor: ['Protetor solar', 30, '🧴'], viseira: ['Viseira autografada', 150, '🧢'], garrafa: ['Garrafa térmica', 80, '🥤'] };
+function matsHTML() { const M = $s.CR.mats || {}, ks = Object.keys(M).filter(k => M[k] > 0); return ks.length ? ks.map(k => MATS[k][2] + ' ' + MATS[k][0] + ' ×' + M[k]).join(' · ') : 'nenhum ainda'; }
+function matsSell() { const C = $s.CR, M = C.mats || {}; let tot = 0; for (const k in M) { tot += (MATS[k] ? MATS[k][1] : 0) * M[k]; } if (!tot) { LV.msg('Você não tem materiais para vender. Complete missões pela cidade.'); return; } C.mats = {}; C.money += tot; saveCareer(); LV.msg('🛒 A Bia comprou os seus materiais: +$' + tot + '.'); }
+function matsDonate() { const C = $s.CR, M = C.mats || {}; let n = 0; for (const k in M) n += M[k]; if (!n) { LV.msg('Sem materiais para doar agora. As missões dão materiais.'); return; } C.mats = {}; crAddFama(Math.min(4, n * .35)); saveCareer(); LV.msg('🤝 Você doou ' + n + ' materiais para a escolinha: a garotada fez festa (+' + String(Math.round(Math.min(4, n * .35) * 10) / 10).replace('.', ',') + ' de fama).'); }
+
+// ---------- história do bairro: missões principais em cadeia (cada uma libera as próximas) ----------
+// "A Copa do Bairro": a volta do atleta famoso ao bairro, a quadra abandonada, o quiosque em crise, o festival e a copa.
+// Recompensas principais são estéticas (mural, bandeira, rede com o seu nome, raqueteira dourada, estátua, título)
+const STORY = [
+  { id: 's1', req: [], giver: 'cida', title: 'Volta ao bairro', m: { type: 'talk', need: 3, text: 'Reencontrar o pessoal: conversar com 3 pessoas' },
+    ask: 'Você sumiu, menino! O bairro sente sua falta. Dá uma volta, conversa com o pessoal, mostra que continua o mesmo.', end: 'Viu? Todo mundo ainda te ama. Mas tem coisa errada por aqui… fala com o Léo e com o Jorge.', rw: { fama: .5, cosm: 'adesivoBairro' } },
+  { id: 's2a', req: ['s1'], giver: 'leo', title: 'A quadra esquecida', m: { type: 'visit1', place: 'iemanja', text: 'Ver como está a quadra da Praça Iemanjá' },
+    ask: 'A quadra da Praça Iemanjá tá caindo aos pedaços. Era lá que você aprendeu a jogar, lembra? Vai lá ver.', end: 'Triste, né? Rede rasgada, linha apagada… Mas eu tenho uma ideia.', rw: { pe: 1 } },
+  { id: 's2b', req: ['s1'], giver: 'jorge', title: 'O quiosque em crise', m: { type: 'deliver', target: { spot: 'barraca' }, text: 'Levar os últimos cocos do Seu Jorge para a Barraca do Zé' },
+    ask: 'O movimento caiu muito, meu filho. Se o Zé vender meus cocos lá no calçadão, eu respiro. Leva pra ele?', end: 'O Zé disse que vendeu tudo! E ainda falou de um tal festival…', rw: { money: 300, cosm: 'adesivoCoco' } },
+  { id: 's3a', req: ['s2a'], giver: 'leo', title: 'Reforma da quadra', m: { type: 'pay', cost: 2000, text: 'Bancar a reforma da quadra da Praça Iemanjá ($2.000)' },
+    ask: 'A prefeitura não ajuda. Se você bancar a reforma, a quadra fica nova e com o seu nome na rede. Topa?', end: 'Ficou linda! A molecada já tá jogando lá. Seu nome tá na rede, viu?', rw: { fama: 2, cosm: 'redeNome' } },
+  { id: 's3b', req: ['s2b'], giver: 'ze', title: 'Festival de verão', m: { type: 'praca', need: 1, text: 'Abrir o festival vencendo um jogo em qualquer praça' },
+    ask: 'Vou fazer um festival pra salvar o quiosque do Jorge, mas preciso de atração. Abre o festival ganhando um jogo na praça!', end: 'Que abertura! O calçadão lotou. O Jorge até chorou.', rw: { money: 600, cosm: 'mural' } },
+  { id: 's4', req: ['s3a', 's3b'], giver: 'bia', title: 'Copa do Bairro: inscrições', m: { type: 'talk', need: 5, text: 'Divulgar a Copa do Bairro: conversar com 5 pessoas' },
+    ask: 'Com a quadra nova e o festival, todo mundo tá falando em fazer uma Copa do Bairro! Me ajuda a divulgar?', end: 'Chave fechada! 16 duplas inscritas. Você é o cabeça de chave, claro.', rw: { fama: 1, mat: 'viseira' } },
+  { id: 's5a', req: ['s4'], giver: 'leo', title: 'Preparação', m: { type: 'train', need: 1, text: 'Fazer um treino de verdade antes da Copa' },
+    ask: 'Ser favorito é perigoso. Treina sério, que o bairro inteiro vai estar olhando.', end: 'Tá voando! Toma essa bandeira pra pendurar em casa: é do bairro.', rw: { pe: 2, cosm: 'bandeira' } },
+  { id: 's5b', req: ['s4'], giver: 'bia', title: 'Patrocinador da Copa', m: { type: 'deliver', target: { spot: 'restaurante' }, text: 'Convencer o Restaurante Maré a patrocinar a Copa (ir até lá)' },
+    ask: 'Falta o prêmio da Copa. O Restaurante Maré pode bancar. Vai lá conversar com eles?', end: 'Eles toparam! Jantar para a dupla campeã e camisetas para todo mundo.', rw: { money: 500, cosm: 'adesivoMare' } },
+  { id: 's6', req: ['s5a', 's5b'], giver: 'kai', title: 'Semifinal', m: { type: 'pracaLvl', need: 1, minLv: 2, text: 'Semifinal da Copa: vencer na praça com a galera Forte ou Fera' },
+    ask: 'Irmão, a semifinal é contra a galera brava das praças. Nível Forte pra cima. Vai com tudo!', end: 'Que jogo! Tô arrepiado. Toma, a raqueteira dourada da Copa é sua.', rw: { fama: 1.5, cosm: 'bagOuro' } },
+  { id: 's7', req: ['s6'], giver: 'cida', title: 'A grande final', m: { type: 'pracaLvl', need: 1, minLv: 3, text: 'Final da Copa do Bairro: vencer a galera Fera numa praça' },
+    ask: 'A final é contra a galera Fera. O bairro inteiro vai estar lá, até eu, com meu joelho. Vai lá e ganha pra gente!', end: 'CAMPEÃO DO BAIRRO! Fizemos uma estátua sua na Praça do Sol. Você é lenda aqui, pra sempre.', rw: { fama: 4, money: 2000, cosm: 'estatua' } },
+];
+const COSM = { adesivoBairro: '🏷️ Adesivo "Cria do bairro"', adesivoCoco: '🏷️ Adesivo do Quiosque do Jorge', adesivoMare: '🏷️ Adesivo do Restaurante Maré', redeNome: '🎾 Rede com o seu nome na Praça Iemanjá', mural: '🎨 Mural com o seu nome na frente de casa',
+  bandeira: '🚩 Bandeira do bairro no quintal', bagOuro: '🎒 Raqueteira dourada da Copa (liga e desliga aqui em Missões)', estatua: '🗿 Estátua na Praça do Sol + título "Lenda do Bairro"' };
+const storyDone = id => !!(($s.CR.story || {})[id]);
+const storyOpen = () => STORY.filter(n => !storyDone(n.id) && n.req.every(storyDone));
+// ---------- moradores que dão missões (com "!" em cima) ----------
+const GIVERS = [{ id: 'cida', name: 'Dona Cida', role: 'aposentada que caminha na praça', x: 44, z: 97, f: true }, { id: 'jorge', name: 'Seu Jorge', role: 'dono do quiosque de coco', x: 31.5, z: 100.5 },
+  { id: 'leo', name: 'Professor Léo', role: 'treinador da escolinha', x: 131, z: 153 }, { id: 'bia', name: 'Bia', role: 'gerente da Pro Shop', x: 136, z: 30.6, f: true },
+  { id: 'ze', name: 'Zé', role: 'dono da barraca da praia', x: 39, z: 11.6 }, { id: 'kai', name: 'Kai', role: 'surfista', x: 66, z: -78 }];
+let _mkTex = null;
+const MARK_TEX = () => _mkTex || (_mkTex = canvasTex(128, 128, (x, w, h) => { x.fillStyle = '#ffd23f'; x.beginPath(); x.arc(64, 64, 56, 0, Math.PI * 2); x.fill(); x.lineWidth = 8; x.strokeStyle = '#04122e'; x.stroke(); x.fillStyle = '#04122e'; x.font = '900 86px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('!', 64, 70); }, true));
+function givers(g, sp) {
+  LV.givers = [];
+  GIVERS.forEach((G, i) => { const o = dyn2(sp, fan(new THREE.Group(), G.x, G.z, Math.PI, 800 + i * 3, false));
+    const mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: MARK_TEX(), depthTest: false, transparent: true })); mk.scale.setScalar(.5); mk.position.set(0, 2.5, 0); mk.renderOrder = 6; o.add(mk);
+    LV.givers.push(Object.assign({ o, mk }, G)); });
+}
+// tipos de missão: o que fazer, quanto, e o texto de quem pede
+const MS_TEMPL = {
+  cida: [() => ({ type: 'visit1', place: 'sol', text: 'Levar o tricô da Dona Cida para a Praça do Sol', ask: 'Esqueci meu tricô no banco da Praça do Sol! Passa lá e dá uma olhada pra mim?' }),
+    () => ({ type: 'deliver', target: { spot: 'acai' }, text: 'Comprar um açaí para a neta da Dona Cida', ask: 'Minha neta só fala em açaí. Passa no Açaí da Praia e pega um pra ela? Eu pago.' }),
+    () => ({ type: 'deliver', target: { giver: 'jorge' }, text: 'Levar o bolo de fubá da Dona Cida para o Seu Jorge (quiosque de coco)', ask: 'Meu filho, fiz um bolo de fubá pro Jorge do quiosque, mas o joelho não ajuda. Leva pra mim?' }),
+    () => ({ type: 'talk', need: 4, text: 'Conversar com 4 pessoas do bairro', ask: 'O bairro anda tão calado… Puxa conversa com o pessoal, vai. Quatro pessoas já me deixam feliz.' })],
+  jorge: [() => ({ type: 'talk', need: 2, text: 'Recomendar o quiosque para 2 pessoas', ask: 'Fala bem do meu coco pro pessoal? Duas pessoas já ajudam.' }),
+    () => ({ type: 'deliver', target: { giver: 'kai' }, text: 'Levar coco gelado para o Kai na praia', ask: 'O Kai tá lá na praia faz horas. Leva um coco pra ele não desmaiar?' }),
+    () => ({ type: 'deliver', target: { spot: 'barraca' }, text: 'Levar 10 cocos para a Barraca do Zé (calçadão)', ask: 'O Zé ficou sem coco lá na barraca. Leva esse saco pra ele? Te pago bem.' }),
+    () => ({ type: 'swim', need: 15, text: 'Nadar 15 segundos no mar', ask: 'Atleta de areia não sabe nadar, é o que dizem por aí. Prova o contrário: 15 segundos no mar!' })],
+  leo: [() => ({ type: 'talk', need: 3, text: 'Convidar 3 crianças para a escolinha', ask: 'Tem muita criança na rua sem fazer nada. Convida três pra escolinha?' }),
+    () => ({ type: 'praca', need: 1, text: 'Vencer um jogo em qualquer praça', ask: 'A molecada da escolinha quer te ver jogando na praça. Ganha um jogo lá que eu trago todo mundo pra assistir.' }),
+    () => ({ type: 'pracaLvl', need: 1, minLv: 2, text: 'Vencer na praça com a galera Forte ou Fera', ask: 'Desafio de treinador: vence a galera forte de alguma praça. Nível Forte ou Fera, hein!' }),
+    () => ({ type: 'train', need: 1, text: 'Fazer um treino (arena, CT ou sua quadra)', ask: 'Ninguém chega lá sem treino. Faz uma sessão hoje e me conta como foi.' })],
+  bia: [() => ({ type: 'train', need: 1, text: 'Testar a raquete nova da loja num treino', ask: 'Chegou um modelo novo. Testa num treino e me diz o que achou?' }),
+    () => ({ type: 'praca', need: 1, text: 'Vencer na praça usando o grip novo da loja', ask: 'Quero uma foto sua ganhando na praça com o grip da loja. Marketing, né!' }),
+    () => ({ type: 'deliver', target: { giver: 'leo' }, text: 'Levar a caixa de overgrips da Bia para o Professor Léo (Praça das Gaivotas)', ask: 'Chegou a encomenda de overgrips da escolinha do Léo. Leva pra ele na Praça das Gaivotas?' }),
+    () => ({ type: 'visit', need: 3, text: 'Conhecer as três praças da cidade', ask: 'Tô montando um mapa das quadras públicas pra loja. Passa nas três praças e me diz como estão?' })],
+  ze: [() => ({ type: 'swim', need: 20, text: 'Buscar a boia que voou para o mar (nadar 20 s)', ask: 'O vento levou a boia da barraca pro mar! Nada lá e traz pra mim?' }),
+    () => ({ type: 'visit1', place: 'gaivotas', text: 'Levar o cardápio da barraca para a Praça das Gaivotas', ask: 'Quero fixar meu cardápio na Praça das Gaivotas. Leva lá?' }),
+    () => ({ type: 'deliver', target: { spot: 'restaurante' }, text: 'Levar o peixe fresco do Zé para o Restaurante Maré', ask: 'Pesquei demais hoje! Leva esse peixe pro Restaurante Maré antes que estrague?' }),
+    () => ({ type: 'praca', need: 2, text: 'Vencer dois jogos em praças', ask: 'Apostei com o pessoal que você ganha dois jogos seguidos na praça. Não me deixa na mão!' })],
+  kai: [() => ({ type: 'visit', need: 3, text: 'Dar um rolê pelas três praças', ask: 'Bora conhecer a cidade inteira? Passa nas três praças, cada uma tem uma vibe.' }),
+    () => ({ type: 'deliver', target: { spot: 'coco' }, text: 'Buscar água de coco para a galera do surf (quiosque da praça)', ask: 'A galera do surf tá desidratada. Passa no quiosque de coco da praça pra gente?' }),
+    () => ({ type: 'swim', need: 30, text: 'Nadar 30 segundos no mar', ask: 'Mar tá liso hoje, irmão! Cai na água comigo: 30 segundos e você entende a vibe.' }),
+    () => ({ type: 'talk', need: 3, text: 'Conversar com 3 pessoas na praia ou na cidade', ask: 'Tô juntando gente pro luau. Chama três pessoas pra mim? É só puxar papo.' })],
+};
+function missionReward() { const r = { money: 150 + Math.floor(Math.random() * 6) * 75, fama: Math.random() < .6 ? .5 + Math.floor(Math.random() * 3) * .5 : 0, pe: Math.random() < .4 ? 1 + Math.floor(Math.random() * 2) : 0 };
+  if (Math.random() < .7) { const ks = Object.keys(MATS); r.mat = ks[Math.floor(Math.random() * ks.length)]; } return r; }
+const rwTxt = r => [r.cosm ? COSM[r.cosm] : '', r.money ? '$' + r.money : '', r.fama ? '+' + String(r.fama).replace('.', ',') + ' de fama' : '', r.pe ? '+' + r.pe + ' de evolução' : '', r.mat ? MATS[r.mat][2] + ' ' + MATS[r.mat][0] : ''].filter(Boolean).join(' · ');
+function missionDone(m) {
+  const C = $s.CR, r = m.reward; C.money += r.money || 0; if (r.cosm) { C.cosm = C.cosm || {}; C.cosm[r.cosm] = true; LV.cosmChanged = true; } if (r.fama) crAddFama(r.fama); if (r.pe) C.pe = (C.pe || 0) + r.pe; if (r.mat) { C.mats = C.mats || {}; C.mats[r.mat] = (C.mats[r.mat] || 0) + 1; }
+  C.missions = C.missions.filter(x => x !== m); C.missionsDone = (C.missionsDone || 0) + 1; saveCareer();
+  if (m.story) { C.story = C.story || {}; C.story[m.story] = true; const N = STORY.find(q => q.id === m.story), G = GIVERS.find(q => q.id === N.giver), nx = storyOpen();
+    storyScene(G, N.end, 'Capítulo concluído: ' + N.title, 'Recompensa: ' + rwTxt(r) + (nx.length ? '<br>Novos capítulos: ' + nx.map(q => '<b>' + q.title + '</b> (' + GIVERS.find(g => g.id === q.giver).name + ')').join(', ') : ''));
+    if (LV.cosmChanged) { LV.cosmChanged = false; LV.built = ''; setTimeout(() => { const p0 = human.pos.clone(); build(); human.pos.copy(p0); }, 0); } }
+  else LV.msg('✅ Missão cumprida: ' + m.text + '. Recompensa: ' + rwTxt(r) + '.');
+  refreshMarkers(); setTimeout(() => hud(true), 0);
+}
+// algo aconteceu na cidade: avança as missões que dependem disso
+function missionEvent(type, data) {
+  const C = $s.CR; if (!C || !C.missions) return;
+  for (const m of C.missions.slice()) {
+    if (m.type === 'deliver' && type === 'deliver' && ((m.target.giver && m.target.giver === data.giver) || (m.target.spot && m.target.spot === data.spot))) { missionDone(m); continue; }
+    if (m.type === type && ['talk', 'praca', 'train'].includes(type)) { m.have = (m.have || 0) + 1; if (m.have >= m.need) missionDone(m); else LV.msg('📋 ' + m.text + ': ' + m.have + '/' + m.need); }
+    if (m.type === 'pracaLvl' && type === 'praca' && (data.level || 0) >= m.minLv) missionDone(m);
+    if (m.type === 'swim' && type === 'swim') { m.have = (m.have || 0) + data.dt; if (m.have >= m.need) missionDone(m); }
+    if (m.type === 'visit1' && type === 'visit' && data.id === m.place) { missionDone(m); continue; }
+    if (m.type === 'visit' && type === 'visit') { m.seen = m.seen || []; if (!m.seen.includes(data.id)) { m.seen.push(data.id); if (m.seen.length >= m.need) missionDone(m); else LV.msg('📋 ' + m.text + ': ' + m.seen.length + '/' + m.need); } }
+  }
+}
+function talkBox() { let el = document.getElementById('livreFriendly'); if (!el) { el = document.createElement('div'); el.id = 'livreFriendly'; el.className = 'overlay'; document.body.appendChild(el); } return el; }
+// cena de capítulo da história (fala de quem deu a missão + recompensa)
+function storyScene(G, line, title, sub) {
+  const el = talkBox(); el.innerHTML = '<div class="card lv-fr lv-talk lv-story"><div class="eyebrow">★ ' + title + '</div><p class="lv-line">' + (G ? '<b>' + G.name + ':</b> ' : '') + '"' + line + '"</p>' + (sub ? '<p class="cr-note">' + sub + '</p>' : '') + '<div class="cta-row"><button type="button" class="cta" data-x>Continuar</button></div></div>';
+  el.hidden = false; LV.modal = true; if (G) say(line, G.f ? 'f' : 'm', 3); el.querySelector('[data-x]').onclick = () => { el.hidden = true; LV.modal = false; hush(); };
+}
+function giverTalk(G) {
+  const C = $s.CR; C.missions = C.missions || []; C.giverDay = C.giverDay || {};
+  const el = talkBox(), close = () => { el.hidden = true; LV.modal = false; hush(); };
+  const hi = pick(['Ô, ' + nameOf(C.me).split(' ')[0] + '! ', 'Olha quem apareceu! ', 'E aí, ' + (C.me.fem ? 'campeã' : 'campeão') + '! ', 'Bom te ver por aqui. ']);
+  // 1) história: capítulo ativo deste morador (pagar, lembrar) ou capítulo novo liberado
+  const act = C.missions.find(m => m.story && m.giver === G.id), novo = !act && storyOpen().find(n => n.giver === G.id && !C.missions.some(m => m.story === n.id));
+  if (act || novo) {
+    const N = STORY.find(q => q.id === (act ? act.story : novo.id));
+    if (act && act.type === 'pay') {
+      el.innerHTML = '<div class="card lv-fr lv-talk lv-story"><div class="eyebrow">★ ' + N.title + ' · ' + G.name + '</div><p class="lv-line">"' + hi + 'E aí, vai bancar a reforma? São $' + act.cost.toLocaleString('pt-BR') + '."</p><div class="cta-row"><button type="button" class="cta" data-pay' + (C.money < act.cost ? ' disabled' : '') + '>Pagar $' + act.cost.toLocaleString('pt-BR') + '</button><button type="button" class="ghost" data-x>Depois</button></div></div>';
+      el.hidden = false; LV.modal = true; el.querySelector('[data-x]').onclick = close;
+      el.querySelector('[data-pay]').onclick = () => { close(); C.money -= act.cost; missionDone(act); }; return;
+    }
+    if (act) { el.innerHTML = '<div class="card lv-fr lv-talk lv-story"><div class="eyebrow">★ ' + N.title + ' · ' + G.name + '</div><p class="lv-line">"' + hi + 'Lembra: ' + act.text.charAt(0).toLowerCase() + act.text.slice(1) + '."</p><div class="cta-row"><button type="button" class="ghost" data-x>Tá bom!</button></div></div>'; el.hidden = false; LV.modal = true; el.querySelector('[data-x]').onclick = close; return; }
+    el.innerHTML = '<div class="card lv-fr lv-talk lv-story"><div class="eyebrow">★ História do bairro · ' + novo.title + '</div><p class="lv-line"><b>' + G.name + ':</b> "' + hi + novo.ask + '"</p><p class="cr-note">Missão: ' + novo.m.text + '<br>Recompensa: ' + rwTxt(novo.rw) + '</p><div class="cta-row"><button type="button" class="cta" data-ok>Aceitar</button><button type="button" class="ghost" data-x>Agora não</button></div></div>';
+    el.hidden = false; LV.modal = true; say(hi + novo.ask, G.f ? 'f' : 'm', 3); el.querySelector('[data-x]').onclick = close;
+    el.querySelector('[data-ok]').onclick = () => { close(); C.missions.unshift(Object.assign({}, novo.m, { story: novo.id, giver: G.id, have: 0, reward: novo.rw })); saveCareer(); refreshMarkers(); LV.msg('★ Capítulo novo: ' + novo.title + ' (M abre a lista).'); }; return;
+  }
+  // 2) missões do dia (até 3 ao mesmo tempo)
+  const side = C.missions.filter(m => !m.story), mine = side.find(m => m.giver === G.id), canGive = !mine && side.length < 3 && C.giverDay[G.id] !== dayKey();
+  const tmpl = MS_TEMPL[G.id], offer = canGive ? Object.assign(tmpl[Math.floor(Math.random() * tmpl.length)](), { giver: G.id, have: 0, reward: missionReward() }) : null;
+  const body = mine ? (mine.type === 'deliver' || mine.type === 'visit1' ? 'Ainda tá com aquilo? ' + mine.text + '.' : 'E aquela história? ' + mine.text + (mine.need ? ' (' + (mine.seen ? mine.seen.length : Math.floor(mine.have || 0)) + '/' + mine.need + ')' : '') + '.')
+    : offer ? offer.ask : side.length >= 3 ? 'Você já tá cheio de coisa pra fazer. Termina as outras e volta aqui!' : pick(['Hoje tá tranquilo, volta amanhã que eu sempre preciso de uma mão.', 'Nada pra hoje, obrigado por perguntar!', 'Por hoje é só papo mesmo. Amanhã tem novidade.']);
+  el.innerHTML = '<div class="card lv-fr lv-talk"><div class="eyebrow">' + G.name + ' · ' + G.role + '</div><p class="lv-line">"' + hi + body + '"</p>'
+    + (offer ? '<p class="cr-note">Recompensa: ' + rwTxt(offer.reward) + '</p><div class="cta-row"><button type="button" class="cta" data-ok>Aceitar</button><button type="button" class="ghost" data-x>Agora não</button></div>' : '<div class="cta-row"><button type="button" class="ghost" data-x>Tchau!</button></div>') + '</div>';
+  el.hidden = false; LV.modal = true; say(hi + body, G.f ? 'f' : 'm', 3);
+  el.querySelector('[data-x]').onclick = close;
+  const ok = el.querySelector('[data-ok]'); if (ok) ok.onclick = () => { close(); C.missions.push(offer); C.giverDay[G.id] = dayKey(); saveCareer(); refreshMarkers(); LV.msg('📋 Nova missão: ' + offer.text + ' (M abre a lista).'); };
+}
+// marcadores: "!" amarelo em quem tem missão para dar; coluna de luz amarela onde entregar
+function refreshMarkers() {
+  const C = $s.CR; if (!C || !LV.givers) return; C.missions = C.missions || [];
+  const side = C.missions.filter(m => !m.story), open = storyOpen();
+  LV.givers.forEach(G => { const st = open.some(n => n.giver === G.id && !C.missions.some(m => m.story === n.id)) || C.missions.some(m => m.story && m.giver === G.id && m.type === 'pay');
+    const sd = !side.some(m => m.giver === G.id) && side.length < 3 && (C.giverDay || {})[G.id] !== dayKey();
+    G.mk.visible = st || sd; G.mk.material.color.set(st ? '#ffd23f' : '#ffffff'); G.mk.scale.setScalar(st ? .75 : .5); });
+  if (LV.mkBeams) LV.mkBeams.forEach(b => b.parent && b.parent.remove(b)); LV.mkBeams = [];
+  C.missions.forEach(m => { if (m.type !== 'deliver') return; let x, z; if (m.target.giver) { const G = LV.givers.find(q => q.id === m.target.giver); if (!G) return; x = G.x; z = G.z; } else { const S3 = LV.spots.find(q => q.id === m.target.spot); if (!S3) return; x = S3.x; z = S3.z; }
+    const bm = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 30, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: .25, depthWrite: false })); bm.position.set(x, 15, z); LV.group.add(bm); LV.mkBeams.push(bm); });
+}
+// lista das missões (tecla M ou o botão 📋)
+function missionsPanel() {
+  const C = $s.CR, L = C.missions || [], doneN = STORY.filter(n => storyDone(n.id)).length, open = storyOpen();
+  const row = m => { const G = GIVERS.find(q => q.id === m.giver); return '<div class="lv-look' + (m.story ? ' st' : '') + '"><div><b>' + (m.story ? '★ ' + STORY.find(n => n.id === m.story).title + ': ' : '') + m.text + '</b><br><small>' + (G ? G.name : '') + (m.need ? ' · ' + (m.seen ? m.seen.length : Math.floor(m.have || 0)) + '/' + m.need : '') + ' · ' + rwTxt(m.reward) + '</small></div></div>'; };
+  const ownC = Object.keys(C.cosm || {});
+  const el = talkBox();
+  el.innerHTML = '<div class="card lv-fr lv-mis"><div class="eyebrow">História do bairro · ' + doneN + '/' + STORY.length + ' capítulos · ' + (C.missionsDone || 0) + ' missões cumpridas</div><h3>Missões</h3>'
+    + '<p class="section-label">★ História</p>' + (L.filter(m => m.story).map(row).join('') || '') + (open.filter(n => !L.some(m => m.story === n.id)).map(n => '<div class="lv-look st"><div><b>★ ' + n.title + '</b><br><small>Fale com ' + GIVERS.find(g => g.id === n.giver).name + ' (estrela amarela)</small></div></div>').join('')) + (doneN === STORY.length ? '<p class="cr-note">Você é a Lenda do Bairro. 🗿</p>' : '')
+    + '<p class="section-label">📋 Do dia</p>' + (L.filter(m => !m.story).map(row).join('') || '<p class="cr-note">Quem tem um "!" branco em cima tem pedido pra você: Dona Cida e Seu Jorge na praça da orla, o Professor Léo na Praça das Gaivotas, a Bia na Pro Shop, o Zé na barraca e o Kai na praia.</p>')
+    + '<p class="section-label">🎁 Conquistas</p><p class="cr-note">' + (ownC.length ? ownC.map(k => COSM[k]).join('<br>') : 'Nenhuma ainda: a história do bairro dá recompensas especiais.') + '</p>'
+    + (C.cosm && C.cosm.bagOuro ? '<label class="cr-note"><input type="checkbox" data-gold' + (C.bagGold !== false ? ' checked' : '') + '> Usar a raqueteira dourada</label>' : '')
+    + '<p class="cr-note">Materiais: ' + matsHTML() + ' (venda na Pro Shop ou doe no projeto social).</p><div class="cta-row"><button type="button" class="ghost" data-x>Fechar</button></div></div>';
+  el.hidden = false; LV.modal = true; el.querySelector('[data-x]').onclick = () => { el.hidden = true; LV.modal = false; };
+  const gc = el.querySelector('[data-gold]'); if (gc) gc.onchange = () => { C.bagGold = gc.checked; saveCareer(); };
+}
+
+// ---------- conversas com quem passa: personalidades diferentes e falas que dependem da sua carreira ----------
+const PERSONAS = ['fa', 'tio', 'crianca', 'turista', 'amador', 'critico', 'vizinha', 'surfista', 'vendedor', 'blogueiro', 'idosa', 'mae'];
+const PNAMES = { m: ['Carlinhos', 'Marcão', 'Juninho', 'Rafael', 'Seu Antônio', 'Thiago', 'Pedro', 'Diego', 'Lucas', 'Bruno', 'Gabriel', 'Fábio'], f: ['Ana', 'Dona Lurdes', 'Júlia', 'Camila', 'Fernanda', 'Bruna', 'Letícia', 'Carla', 'Paula', 'Marina', 'Sofia', 'Rita'] };
+const P_ROLE_F = { fa: 'fã do circuito', tio: 'frequentador da praia', crianca: 'aluna da escolinha', turista: 'turista', amador: 'jogadora amadora', critico: 'torcedora exigente', vizinha: 'vizinha', surfista: 'surfista', vendedor: 'vendedora ambulante', blogueiro: 'blogueira de beach tennis', idosa: 'aposentada', mae: 'mãe de aluno' };
+const P_ROLE = { fa: 'fã do circuito', tio: 'frequentador da praia', crianca: 'aluno da escolinha', turista: 'turista', amador: 'jogador amador', critico: 'torcedor exigente', vizinha: 'vizinha', surfista: 'surfista', vendedor: 'vendedor ambulante', blogueiro: 'blogueiro de beach tennis', idosa: 'aposentada', mae: 'mãe de aluno' };
+function talkCtx() {
+  const C = $s.CR, h = (C.history || [])[0], t = C.tour, p = C.partner ? crChar(C.partner) : null;
+  return { me: nameOf(C.me).split(' ')[0], rank: crRankLocal(), ult: h ? String(h.name).replace(/ · .*$/, '') : '', pos: h ? h.place : '', won: h && /campe/i.test(h.place || ''), prox: t && t.pending ? String(t.name).replace(/ · .*$/, '') : '', em: t && !t.pending && !t.done ? String(t.name).replace(/ · .*$/, '') : '',
+    dupla: p ? nameOf(p).split(' ')[0] : '', fama: C.fama || 0, titles: Object.values(C.titles || {}).reduce((a, b) => a + b, 0), pet: (C.pets || {}).cachorro || (C.pets || {}).gato || '', cansado: (C.energy || 0) < 35, rico: (C.money || 0) > 200000 };
+}
+function crRankLocal() { try { return (window.__pdoCR && window.__pdoCR.ranking ? window.__pdoCR.ranking().findIndex(x => x.id === 'crme') + 1 : 0) || 0; } catch (e) { return 0; } }
+// cada fala: [texto, opções]; opção: [rótulo, resposta, efeito]
+function talkLine(per, X) {
+  const pk = a => a[Math.floor(Math.random() * a.length)], L = [];
+  const add = (cond, txt, opts) => { if (cond) L.push([txt, opts]); };
+  const foto = ['Claro, bora!', 'Valeu demais! Vou postar agora.', { fama: .15 }], depois = ['Agora não dá, foi mal', 'Tranquilo, fica pra próxima!', {}];
+  if (per === 'fa') {
+    add(X.won, 'Ei, ' + X.me + '! Vi você ser campe' + 'ão no ' + X.ult + '! Que final foi aquela! Tira uma foto comigo?', [foto, depois]);
+    add(X.ult && !X.won, 'Acompanhei o ' + X.ult + '. ' + X.pos + ' ainda é muito bom, viu? Próxima é sua!', [['Valeu pela força!', 'Tô torcendo sempre!', { fama: .1 }], ['Doeu, mas faz parte', 'Cabeça erguida!', {}]]);
+    add(X.prox, 'Vai jogar o ' + X.prox + ' no sábado? Já comprei ingresso!', [['Vou sim, aparece lá!', 'Vou levar faixa com seu nome!', { fama: .1 }], ['Tô me preparando', 'Arrebenta!', {}]]);
+    add(X.rank && X.rank <= 20, 'Top ' + X.rank + ' do mundo andando no meu bairro… isso é real?', [foto, ['Sou gente como a gente', 'Haha, humilde ainda!', { fama: .05 }]]);
+    add(true, 'Não acredito, é ' + X.me + '! Autografa minha viseira?', [['Com prazer!', 'Vou guardar pra sempre!', { fama: .1 }], depois]);
+  } else if (per === 'tio') {
+    add(X.cansado, 'Tá com uma cara de cansado, hein. Descansa, que corpo de atleta também quebra.', [['Verdade, vou pegar leve', 'Isso! Quem descansa joga mais.', {}], ['Cansado nada!', 'Juventude… daqui a uns anos você me conta.', {}]]);
+    add(X.dupla, 'E o ' + X.dupla + '? Esse aí é bom de rede, hein. Segura ele!', [['É o melhor parceiro', 'Dupla boa vale mais que raquete cara.', {}], ['Tá jogando muito mesmo', 'Tô vendo tudo pela TV!', {}]]);
+    add(true, 'No meu tempo a bola era mais pesada e a areia mais quente. Hoje é moleza!', [['Conta como era', 'A gente jogava de chinelo, acredita?', {}], ['Haha, imagino', 'Pode rir, mas era raiz!', {}]]);
+    add(true, 'Joguei beach tennis uma vez. Uma! Nunca mais achei a bola.', [['Bora jogar na praça?', 'Só se você não mandar smash em mim!', {}], ['Acontece com todo mundo', 'Comigo aconteceu com estilo.', {}]]);
+  } else if (per === 'crianca') {
+    add(X.titles > 0, 'Você tem ' + X.titles + ' troféus?! Eu só tenho uma medalha de natação…', [['Medalha conta muito!', 'Sério? Vou mostrar pro meu pai!', { fama: .05 }], ['Treina que vem!', 'Vou treinar todo dia!', {}]]);
+    add(true, 'Como faz aquele smash que a bola some?', [['Salta e bate lá no alto', 'Vou tentar pular mais alto!', {}], ['Treino, muito treino', 'Ah… achei que era mágica.', {}]]);
+    add(true, 'Me ensina a sacar? Sempre vai na rede!', [['Joga a bola mais pra frente', 'Ahhh, por isso! Valeu!', { fama: .05 }], ['Vem na escolinha!', 'Eba! Vou pedir pra minha mãe!', { fama: .05 }]]);
+  } else if (per === 'turista') {
+    add(true, 'Com licença… onde é a praia boa pra foto?', [['No calçadão, perto do salva-vidas', 'Muito obrigado, vou lá!', {}], ['Na Praça Iemanjá tem vista linda', 'Anotado!', {}]]);
+    add(true, 'Disseram que aqui mora um atleta famoso. Você conhece?', [['Sou eu mesmo!', 'Sério?! Foto, por favor!', { fama: .1 }], ['Nunca ouvi falar', 'Hmm… você parece com ele.', {}]]);
+  } else if (per === 'amador') {
+    add(true, 'Tô travando no backhand alto. Alguma dica?', [['Pega a bola mais na frente do corpo', 'Faz sentido! Vou tentar hoje.', {}], ['Usa mais o ombro', 'Vou treinar isso, valeu!', {}]]);
+    add(true, 'Joguei na praça ontem e tomei pneu. Como melhora?', [['Começa com a galera iniciante', 'Boa, um degrau por vez!', {}], ['Joga comigo um dia', 'Sério? Seria uma honra!', { fama: .05 }]]);
+    add(X.prox, 'Vai no ' + X.prox + '? Eu vou na chave amadora do mesmo evento!', [['Boa sorte!', 'Pra você também!', {}], ['Vou te assistir', 'Aí eu morro de nervoso, haha.', {}]]);
+  } else if (per === 'critico') {
+    add(X.ult && !X.won, X.pos + ' no ' + X.ult + '? Esperava mais, hein. Tá devendo!', [['Vou dar a volta por cima', 'Quero ver!', {}], ['Respeito sua opinião', 'Hmm… educado, pelo menos.', {}]]);
+    add(X.won, 'Ganhou o ' + X.ult + ', tá. Agora quero ver ganhar dois seguidos.', [['Pode cobrar', 'Vou cobrar mesmo!', { fama: .05 }], ['Um de cada vez', 'Conversa de atleta…', {}]]);
+    add(true, 'Esse smash cruzado tá muito previsível.', [['Vou variar mais', 'Assim que se fala.', {}], ['Mas tá entrando', 'Por enquanto…', {}]]);
+    add(true, 'Tá jogando muito no fundo. Beach tennis se ganha na rede!', [['Vou subir mais', 'É isso! Rede!', {}], ['Depende do adversário', 'Desculpa de quem não sobe.', {}]]);
+  } else if (per === 'vizinha') {
+    add(X.pet, X.pet + ' passou aqui hoje de manhã todo feliz. Que bichinho educado!', [['Adora o bairro', 'Dá pra ver!', {}], ['Espero que não tenha aprontado', 'Que nada, um anjo!', {}]]);
+    add(X.rico, 'Vi a reforma da sua casa… tá podendo, hein!', [['Fruto de muito treino', 'Merecido!', {}], ['Vem tomar um café lá', 'Vou sim, levo bolo!', {}]]);
+    add(true, 'Vai ter festa junina na praça, viu? Aparece!', [['Vou aparecer!', 'Oba! Tem quentão!', {}], ['Se não tiver torneio…', 'Atleta não tem folga, né?', {}]]);
+    add(true, 'Esse calor tá impossível. Tá se hidratando?', [['Sempre, garrafa na mão', 'Muito bem!', {}], ['Aceito uma água', 'Toma, geladinha!', { energy: 1 }]]);
+  } else if (per === 'surfista') {
+    add(true, 'Mar tá liso hoje, irmão. Bom pra nadar!', [['Vou cair na água', 'Boa! Água fria renova.', { energy: 1 }], ['Prefiro areia', 'Cada um com sua onda.', {}]]);
+    add(true, 'Beach tennis e surf: os dois na areia, os dois na vibe.', [['E os dois exigem equilíbrio', 'Falou tudo, irmão!', {}], ['Mas o meu tem rede', 'Haha, e o meu tem tubarão.', {}]]);
+    add(true, 'O vento virou. Vai atrapalhar teu lob hoje, hein.', [['Valeu, vou baixar a bola', 'Isso aí, lê o vento!', {}], ['Uso o vento a favor', 'Pensamento de surfista!', {}]]);
+  } else if (per === 'vendedor') {
+    add(true, 'Olha o picolé! Pra atleta faço desconto!', [['Me vê um de coco ($5)', 'Saindo! Bom proveito!', { money: -5, energy: 1 }], ['Hoje não, valeu', 'Tranquilo, tô por aqui!', {}]]);
+    add(true, 'Queijo coalho na brasa, campeão?', [['Manda um ($8)', 'Com orégano, do jeito certo!', { money: -8, energy: 1 }], ['Depois do treino', 'Guardo um pra você!', {}]]);
+  } else if (per === 'blogueiro') {
+    add(true, 'Posso fazer uma pergunta rápida pro meu canal? Qual o segredo da sua evolução?', [['Treino e cabeça', 'Perfeito, vai bombar!', { fama: .2 }], ['Hoje não, foi mal', 'Sem problema, outra hora!', {}]]);
+    add(X.prox, 'Tô fazendo a prévia do ' + X.prox + '. Quem é o favorito?', [['Respeito todos, mas vim pra ganhar', 'Isso é manchete!', { fama: .15 }], ['Prefiro não palpitar', 'Diplomático, gostei.', {}]]);
+  } else if (per === 'idosa') {
+    add(true, 'Ando aqui todo dia às sete. Você devia vir, faz bem pro joelho.', [['Vou seguir o conselho', 'Isso, criança esperta!', {}], ['De manhã eu treino', 'Então já faz o seu, né.', {}]]);
+    add(true, 'Meu marido assistia todos os seus jogos. Ele ia adorar te conhecer.', [['Que bonito, obrigado', 'Ele tá vendo lá de cima, viu?', {}], ['Manda um abraço pra ele', 'Pode deixar, meu bem.', {}]]);
+  } else {
+    add(true, 'Meu filho treina na escolinha. Ele te imita até no jeito de andar!', [['Que honra!', 'Ele vai pirar quando eu contar!', { fama: .1 }], ['Manda um abraço pra ele', 'Pode deixar!', {}]]);
+    add(true, 'Vocês atletas são exemplo pra molecada. Obrigada!', [['A gente tenta', 'E consegue!', {}], ['Exemplo é a senhora', 'Ai, que gentil!', {}]]);
+  }
+  return L.length ? L[Math.floor(Math.random() * L.length)] : ['Bom dia!', [['Bom dia!', 'Até mais!', {}]]];
+}
+function npcTalk(n) {
+  const C = $s.CR, X = talkCtx(); X.fem = !!C.me.fem;
+  if (!n.per) { n.per = PERSONAS[Math.floor(Math.random() * PERSONAS.length)]; n.g = { idosa: 'f', vizinha: 'f', mae: 'f', tio: 'm' }[n.per] || (Math.random() < .5 ? 'f' : 'm');
+    const nm = n.per === 'crianca' ? { m: ['Joãozinho', 'Pedrinho', 'Davi', 'Enzo', 'Miguel'], f: ['Laurinha', 'Alice', 'Helena', 'Manu', 'Bia'] } : n.per === 'idosa' ? { f: ['Dona Lurdes', 'Dona Zezé', 'Dona Neide', 'Dona Teresa'] } : n.per === 'tio' ? { m: ['Seu Antônio', 'Seu Valdir', 'Tio Beto', 'Seu Osmar'] } : PNAMES;
+    n.name = nm[n.g][Math.floor(Math.random() * nm[n.g].length)]; if (n.per === 'crianca') n.o.scale.setScalar(.66); }
+  const [txt, opts] = talkLine(n.per, X); n.pause = true;
+  let el = document.getElementById('livreFriendly'); if (!el) { el = document.createElement('div'); el.id = 'livreFriendly'; el.className = 'overlay'; document.body.appendChild(el); }
+  el.innerHTML = '<div class="card lv-fr lv-talk"><div class="eyebrow">' + n.name + ' · ' + (n.g === 'f' ? P_ROLE_F[n.per] : P_ROLE[n.per]) + '</div><p class="lv-line">"' + esc2(txt) + '"</p><div class="lv-opts">' + opts.map((o, i) => '<button type="button" class="ghost" data-o="' + i + '">' + o[0] + '</button>').join('') + '</div></div>';
+  el.hidden = false; LV.modal = true; say(txt, n.g, 2);
+  const close = () => { el.hidden = true; LV.modal = false; n.pause = false; hush(); };
+  el.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = opts[+b.dataset.o], ef = o[2] || {};
+    C.talkDay = C.talkDay === dayKey() ? C.talkDay : dayKey(); if (C.talkDayKey !== dayKey()) { C.talkDayKey = dayKey(); C.talkFame = 0; }
+    if (ef.fama && (C.talkFame || 0) < 2) { crAddFama(ef.fama); C.talkFame = (C.talkFame || 0) + ef.fama; }
+    if (ef.money) C.money += ef.money; if (ef.energy) C.energy = Math.min(100, C.energy + ef.energy);
+    const first = !n.talked; n.talked = true;
+    el.querySelector('.lv-opts').outerHTML = '<p class="lv-reply">' + n.name + ': "' + esc2(o[1]) + '"</p><div class="cta-row"><button type="button" class="ghost" data-x>Tchau!</button></div>';
+    say(o[1], n.g, 2); el.querySelector('[data-x]').onclick = () => { close(); if (first) missionEvent('talk', {}); }; saveCareer(); }); // (a missão conta ao se despedir)
+}
 function build() {
-  const lvl = crInv('moradia'), key = ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social', 'skate', 'bike', 'cachorro', 'gato', 'trofeus'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
+  const lvl = crInv('moradia'), key = Object.keys($s.CR.cosm || {}).join() + ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social', 'skate', 'bike', 'cachorro', 'gato', 'trofeus'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   LV.built = key; LV.doors = []; LV.spots = []; LV.boxes = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
@@ -503,6 +811,9 @@ function build() {
   const fx = (lotW + 18) / 2 + (court ? 6 : 0), fx0 = (court ? 6 : 0) - (lotW + 18) / 2;
   if (lvl >= 2) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, -hD - 9.6, '#f0ebe1'); } // muro do fundo (para a praia, com portão)
   box(g, .3, 1, .3, 1.6, .5, hD + 6.2, '#3a3f47'); box(g, .5, .35, .3, 1.6, 1.15, hD + 6.2, '#c0392b');
+  // conquistas da história do bairro: mural na frente de casa e a bandeira do bairro no quintal
+  if (($s.CR.cosm || {}).mural) banner(g, nameOf($s.CR.me).split(' ')[0], -hW / 2, WH * .55, hD + .03, W * .4, WH * .7, '#ff6a00', '#ffffff', 0, 'cria do bairro · campeão do festival');
+  if (($s.CR.cosm || {}).bandeira) { cyl(g, .05, .05, 6, hW + 2, 3, hD + 3, '#cfd3d8'); const fl = banner(g, 'BAIRRO', hW + 3, 5.2, hD + 3, 2, 1.2, '#2a9d8f', '#ffd23f', 0, 'Copa do Bairro'); fl.userData.dyn = true; }
   // ---- garagem: carro, van (transporte) ----
   if (crLife('carro')) car(g, -hW - 3, hD + 3, Math.PI / 2, lvl >= 3 ? '#111214' : '#2457c5');
   if (crInv('jato') >= 1) car(g, -8, 22.2, 0, '#f2f2f2', true); else { box(g, .1, 2.4, .1, -8, 1.2, 20.2, '#3a3f47'); box(g, 1.2, .5, .06, -8, 2.4, 20.2, '#2457c5'); }
@@ -591,8 +902,8 @@ function build() {
   { const lc = '#1f4fb8'; [[8, .06, ax, az - 8], [8, .06, ax, az + 8], [.06, 16, ax - 4, az], [.06, 16, ax + 4, az]].forEach(([w, d, x, z]) => box(g, w, .02, d, x, .09, z, lc, { noShadow: true })); }
   S2('arenaTreino', ax - 7, az - 4, 'Treinar', 'Físico e técnico'); S2('arenaDesafio', ax + 7, az - 4, 'Desafio', 'Curta, defesa, smash…'); S2('aulas', ax, az + 5.5, 'Dar aulas', 'Renda extra'); S2('arenaJogo', ax, az - 6, 'Jogo-treino', crInv('eventos') >= 1 ? 'Na sua arena, de graça' : 'Alugar a quadra e chamar quem quiser');
   // limites do bairro
-  solid(-60, -97, -59, 112); solid(289, -97, 290, 112); solid(-60, 111, 290, 112);
-  city(g, sp); city2(g, sp);
+  solid(-60, -97, -59, 182); solid(289, -97, 290, 182); solid(-60, 181, 290, 182);
+  city(g, sp); city2(g, sp); city3(g, sp);
   // pet (o cachorro passeia com você; o gato fica por perto da casa)
   // pets: o cachorro passeia com você (ou fica, se você mandar); o gato fica pela casa, andando à toa
   LV.pets = []; ['cachorro', 'gato'].forEach((kind, i) => { if (!crLife(kind)) return; const o = dyn2(sp, petMesh(kind)), x = i ? -2 : 1.5, z = i ? -1 : 3; o.position.set(x, 0, z);
@@ -600,6 +911,7 @@ function build() {
   if ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) buildVenue(g, sp);
   // junta o cenário parado em poucos desenhos (os pontos de interação e os fãs ficam de fora)
   mergeStatic(g);
+  refreshMarkers();
 }
 
 // ---------- ações ----------
@@ -623,10 +935,13 @@ const ACT = {
     run: () => { const t = $s.CR.tour; if (t && t.pending) crRestUntil(); const u = $s.CR.tour; if (u && !u.pending && !u.done) goVenue(); else LV.actions.openCareer(); } },
   restaurante: { txt: () => 'Almoçar fora (+6 energia · $40)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.lunchDay === k) { LV.msg('Você já almoçou hoje.'); return; } C.lunchDay = k; C.money -= 40; C.energy = Math.min(100, C.energy + 6); LV.msg('🍽️ Peixe grelhado, salada e suco: +6 de energia.'); } },
   acai: { txt: () => 'Tomar um açaí ($15)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.acaiDay === k) { LV.msg('Um por dia já está bom.'); return; } C.acaiDay = k; C.money -= 15; C.energy = Math.min(100, C.energy + 2); LV.msg('🍧 Açaí com banana e granola: +2 de energia.'); } },
-  loja: { txt: () => 'Entrar na loja', run: () => LV.actions.openCareer() },
+  loja: { txt: () => 'Entrar na loja (Bia compra materiais)', run: () => { const M = $s.CR.mats || {}; if (Object.values(M).some(v => v > 0)) matsSell(); else LV.actions.openCareer(); } },
+  praca: { txt: () => { const S3 = LV.near && LV.near.plaza, L = S3 && PRACA_LV[pracaLevel(S3)]; return L ? 'Jogar com a galera (nível ' + L.n + ')' : 'Jogar'; }, run: () => { if (LV.near && LV.near.plaza) pracaPlay(LV.near.plaza); } },
+  npc: { txt: () => 'Conversar' + (LV.nearNpc && LV.nearNpc.name ? ' com ' + LV.nearNpc.name : ''), run: () => { if (LV.nearNpc) npcTalk(LV.nearNpc); } },
+  giver: { txt: () => (LV.nearGiver ? 'Falar com ' + LV.nearGiver.name : 'Falar'), run: () => { if (!LV.nearGiver) return; missionEvent('deliver', { giver: LV.nearGiver.id }); if (!LV.modal) giverTalk(LV.nearGiver); } },
   cinema: { txt: () => 'Ver um filme no cinema de casa (+2 energia)', run: () => { const C = $s.CR, k = C.season + '-' + C.week + '-' + C.day; if (C.cineDay === k) { LV.msg('Uma sessão por dia: já assistiu hoje.'); return; } C.cineDay = k; C.energy = Math.min(100, C.energy + 2); LV.msg('🍿 ' + ['Filme de ação com pipoca', 'Revendo a sua última final', 'Documentário do circuito', 'Comédia com a família'][Math.floor(Math.random() * 4)] + ': +2 de energia.'); } },
   armario: { txt: () => 'Abrir o ' + (crInv('moradia') >= 3 ? 'closet' : 'guarda-roupa'), run: () => wardrobe() },
-  social: { txt: () => 'Dar aula e jogar com a garotada', run: () => { const C = $s.CR, k = C.season + '-' + C.week; if (C.socialW === k) { LV.msg('Você já foi ao projeto esta semana. A garotada manda um abraço!'); return; } C.socialW = k; crAddFama(.8); C.energy = Math.max(0, C.energy - 3); LV.msg('🤝 Aula no projeto: as crianças jogaram com você e postaram tudo (+0,8 de fama).'); } },
+  social: { txt: () => (Object.values($s.CR.mats || {}).some(v => v > 0) ? 'Doar materiais para a escolinha' : 'Dar aula e jogar com a garotada'), run: () => { if (Object.values($s.CR.mats || {}).some(v => v > 0)) { matsDonate(); return; } const C = $s.CR, k = C.season + '-' + C.week; if (C.socialW === k) { LV.msg('Você já foi ao projeto esta semana. A garotada manda um abraço!'); return; } C.socialW = k; crAddFama(.8); C.energy = Math.max(0, C.energy - 3); LV.msg('🤝 Aula no projeto: as crianças jogaram com você e postaram tudo (+0,8 de fama).'); } },
   salaTrofeus: { txt: () => 'Ver a sala de troféus', run: () => { const L = trophyList(); LV.msg(L.length ? '🏆 ' + L.length + ' títulos. O maior: ' + ((TIERS[L[0]] && TIERS[L[0]].nome) || '') + ' (' + TROPHY_LOOK[L[0]] + '). Cada torneio tem o seu troféu: ' + [...new Set(L)].map(t => TIERS[t].curto + ' = ' + TROPHY_LOOK[t]).join(', ') + '.' : 'Os pedestais estão esperando o primeiro título.'); } },
   pet: { txt: () => { const P2 = LV.nearPet; if (!P2) return ''; return !P2.name ? 'Dar um nome ao ' + P2.kind : (P2.kind === 'cachorro' ? (P2.follow ? 'Brincar com ' + P2.name + ' · mandar ficar' : 'Brincar com ' + P2.name + ' · chamar') : 'Fazer carinho em ' + P2.name); }, run: () => petInteract() },
   ctJogo: { txt: () => 'Marcar um jogo-treino', run: () => friendlyPicker() },
@@ -711,6 +1026,14 @@ function tick(dt) {
     if (d < 4 && !f.walk) f.o.rotation.y += (Math.atan2(px - f.o.position.x, pz - f.o.position.z) - f.o.rotation.y) * Math.min(1, dt * 3); });
   LV.nearFan = nf; if (nf && !near) near = { id: 'fa' };
   npcTick(dt, px, pz);
+  // gente com quem dá para conversar (quem passa) e os moradores que dão missões
+  LV.nearNpc = null; LV.nearGiver = null;
+  if (!near && !LV.modal) { let bd = 1.6; for (const G of LV.givers || []) { const d = Math.hypot(px - G.x, pz - G.z); if (d < bd) { bd = d; LV.nearGiver = G; } }
+    if (LV.nearGiver) near = { id: 'giver' };
+    else { let nd2 = 1.5; for (const n of LV.npcs || []) { if (n.kind !== 'walk') continue; const d = Math.hypot(px - n.o.position.x, pz - n.o.position.z); if (d < nd2) { nd2 = d; LV.nearNpc = n; } } if (LV.nearNpc) near = { id: 'npc' }; } }
+  (LV.givers || []).forEach(G => { if (G.mk.visible) G.mk.position.y = 2.45 + Math.sin(performance.now() / 300) * .08; const d = Math.hypot(px - G.x, pz - G.z); if (d < 6) G.o.rotation.y = Math.atan2(px - G.x, pz - G.z); });
+  if (LV.swim && pz < -87) missionEvent('swim', { dt });
+  for (const pl of LV.plazas || []) if (Math.abs(px - pl.x) < pl.w / 2 && Math.abs(pz - pl.z) < pl.d / 2) { if (LV.inPlaza !== pl.id) { LV.inPlaza = pl.id; missionEvent('visit', { id: pl.id }); } break; } else if (LV.inPlaza === pl.id) LV.inPlaza = null;
   for (const D of LV.doors || []) { const want = Math.hypot(px - D.cx, pz - D.cz) < 2.3 || (LV.pets || []).some(q => Math.hypot(q.x - D.cx, q.z - D.cz) < 1.2) ? 1 : 0; D.open += (want - D.open) * Math.min(1, dt * 5); D.piv.rotation.y = -D.sign * D.open * 1.6; }
   // pets: o cachorro segue a uns 1,5 m (se não mandou ficar); o gato passeia pela casa e pelo quintal. Na água eles nadam
   LV.nearPet = null;
@@ -735,7 +1058,7 @@ function tick(dt) {
   if ((near && near.id) !== (LV.near && LV.near.id)) { LV.near = near; prompt(); } else LV.near = near;
   LV.spots.forEach(s => { const d = Math.hypot(px - s.x, pz - s.z); s.label.visible = d < 16; });
   // nome do lugar onde está
-  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : crLife('trofeus') && px > -hw - 8.6 && px < -hw && pz > -hd && pz < -hd + 7.4 ? 'Sala de troféus' : LV.swim ? 'Nadando' : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 && px > -15 && px < 15 ? 'Área da piscina' : px > VX - 53 && px < VX + 53 && pz > VZ - 51 && pz < VZ + 45 ? ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? String($s.CR.tour.name).replace(/ · .*$/, '') : 'Quadras da Orla') : pz < -12 ? 'Praia' : pz > 30 && px > 92 ? 'Comércio' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
+  { const [hw, hd] = LV.house || [6, 5], where = px > -hw && px < hw && pz > -hd && pz < hd ? 'Casa de ' + nameOf($s.CR.me).split(' ')[0] : crLife('trofeus') && px > -hw - 8.6 && px < -hw && pz > -hd && pz < -hd + 7.4 ? 'Sala de troféus' : LV.swim ? 'Nadando' : px > hw && px < hw + 16 && pz > -10 && pz < 12 ? 'Quintal' : pz < -hd && pz > -hd - 10 && px > -15 && px < 15 ? 'Área da piscina' : LV.inPlaza ? (PLAZAS.find(q => q.id === LV.inPlaza) || {}).name : px > VX - 53 && px < VX + 53 && pz > VZ - 51 && pz < VZ + 45 ? ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done ? String($s.CR.tour.name).replace(/ · .*$/, '') : 'Quadras da Orla') : pz < -12 ? 'Praia' : pz > 30 && px > 92 ? 'Comércio' : px > 33 && px < 59 && pz > 29 && pz < 47 ? 'Arena de treino' : px > 61 && px < 90 && pz > 29 ? 'Centro de treinamento' : pz > 17 && pz < 28 ? 'Rua da praia' : 'Bairro';
     if (where !== LV.where) { LV.where = where; const e = document.querySelector('#livreHud .lv-where'); if (e) e.textContent = where; } }
   // bússola para a sua quadra (no painel de cima): direção em relação à câmera e distância
   { const cp = document.getElementById('livreGo'); if (cp) { const mc = LV.myCourt && LV.nearVenue !== false ? LV.myCourt : null; cp.hidden = !mc;
@@ -759,7 +1082,7 @@ function cam(dt) {
   sun.target.position.set(human.pos.x, 0, human.pos.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 40);
   // andando pelo mundo: raquete guardada na raqueteira, nas costas
   if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
-  { const bc = crBagCols() || bagOfRacket();
+  { const bc = ($s.CR.cosm && $s.CR.cosm.bagOuro && $s.CR.bagGold !== false) ? ['#c9a227', '#111214'] : crBagCols() || bagOfRacket();
     if (!LV.bag || LV.bagKey !== bc.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); LV.bagKey = bc.join(); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
     const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.1); LV.bag.rotateX(-.06); LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
@@ -973,12 +1296,13 @@ function hud(on) {
     el = document.createElement('div'); el.id = 'livreHud';
     el.innerHTML = '<div class="lv-top"><div class="lv-stat"><div class="lv-cal"><small></small><b></b><span></span></div><div class="lv-info"><b class="lv-where"></b><div class="lv-week"></div><div class="lv-next"></div></div><div id="livreGo" class="lv-go" hidden title="Direção da sua quadra"><i>➤</i><small>sua quadra</small><b></b></div></div>'
       + '<div class="lv-res"><div class="lv-k lv-en" title="Energia"><span class="lv-ico">⚡</span><span class="lv-bar"><i></i></span><b></b><em class="lv-dl"></em></div><div class="lv-k lv-mo" title="Dinheiro"><span class="lv-ico">💰</span><b></b><em class="lv-dl"></em></div></div>'
-      + '<div class="lv-btns"><button type="button" class="ghost sm" id="livreCfg" title="Configurações">⚙️</button><button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div></div>'
+      + '<div class="lv-btns"><button type="button" class="ghost sm" id="livreMis" title="Missões (M)">📋 <span></span></button><button type="button" class="ghost sm" id="livreCfg" title="Configurações">⚙️</button><button type="button" class="ghost sm" id="livreExit">Voltar à carreira (Esc)</button></div></div>'
       + '<div id="livrePrompt" class="lv-prompt" hidden><kbd>E</kbd><span></span></div><div id="livreMsg" class="lv-msg" hidden></div>'
-      + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · V: skate/bike/carro · arrastar: girar · rodinha: zoom · clique da rodinha arrastando: girar e inclinar · Z/X: zoom · T/G: inclinação</div>'
+      + '<div class="lv-help">WASD: andar · Shift: correr · E: interagir · V: skate/bike/carro · M: missões · arrastar: girar · rodinha: zoom · clique da rodinha arrastando: girar e inclinar · Z/X: zoom · T/G: inclinação</div>'
       + '<div class="lv-joy" id="livreJoy"><i></i></div><button type="button" class="lv-act" id="livreAct">E</button>';
     document.body.appendChild(el);
     el.querySelector('#livreExit').addEventListener('click', () => exit(true));
+    el.querySelector('#livreMis').addEventListener('click', () => missionsPanel());
     el.querySelector('#livreCfg').addEventListener('click', () => { if (LV.actions.cfg) LV.actions.cfg(); });
     el.querySelector('#livreAct').addEventListener('click', interact);
     // joystick de toque
@@ -994,6 +1318,7 @@ function hud(on) {
 const WD = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 function hudStats(el) {
   const C = $s.CR; if (!C) return;
+  { const b = el.querySelector('#livreMis span'); if (b) { const nM = (C.missions || []).length; b.textContent = nM === 1 ? '1 missão' : nM ? nM + ' missões' : 'Missões'; } }
   const [wd, dm] = crDateTxt(C.season, C.week, C.day).split(', '), [dd, mm] = (dm || '').split(' ');
   el.querySelector('.lv-cal small').textContent = wd; el.querySelector('.lv-cal b').textContent = dd; el.querySelector('.lv-cal span').textContent = mm;
   const t = C.tour, tourOn = t && !t.done;
@@ -1017,11 +1342,13 @@ function prompt() {
   const b = document.getElementById('livreAct'); if (b) b.classList.toggle('on', !!a);
 }
 LV.msg = t => { const m = document.getElementById('livreMsg'); if (!m) return; m.textContent = t; m.hidden = !t; LV.msgT = 5; };
-const DAY_ACTS = new Set(['social', 'ctJogo', 'arenaJogo', 'orla', 'cama', 'piscina', 'gelo', 'quadraTreino', 'quadraDesafio', 'arenaTreino', 'arenaDesafio', 'aulas', 'academia', 'ct', 'podcast']);
+const DAY_ACTS = new Set(['praca', 'social', 'ctJogo', 'arenaJogo', 'orla', 'cama', 'piscina', 'gelo', 'quadraTreino', 'quadraDesafio', 'arenaTreino', 'arenaDesafio', 'aulas', 'academia', 'ct', 'podcast']);
 function interact() {
   const s = LV.near, a = s && ACT[s.id]; if (!a || !$s.CR) return;
   if (DAY_ACTS.has(s.id) && crTourDay()) { LV.msg('🏆 Hoje é dia de torneio: treino, aulas e descanso ficam para depois. Vá ao local do torneio (táxi/van na rua).'); return; }
+  if (s.id !== 'giver') missionEvent('deliver', { spot: s.id }); // entregas: chegar no lugar já entrega
   const before = $s.CR.lastMsg; a.run(); saveCareer();
+  if (['arenaTreino', 'ct', 'quadraTreino', 'academia'].includes(s.id) && $s.CR.lastMsg !== before && !/Lesionado|torneio|insuficiente/i.test($s.CR.lastMsg || '')) missionEvent('train', {});
   if (!LV.on) return; // a ação saiu do modo livre (carreira, desafio)
   if ($s.CR.lastMsg && $s.CR.lastMsg !== before) LV.msg($s.CR.lastMsg);
   hud(true); prompt();
@@ -1037,6 +1364,7 @@ addEventListener('keydown', e => {
   if (k === 'escape') { exit(true); return; }
   if (k === 'e' && !e.repeat) { interact(); e.preventDefault(); return; }
   if (k === 'v' && !e.repeat) { cycleRide(); e.preventDefault(); return; }
+  if (k === 'm' && !e.repeat) { missionsPanel(); e.preventDefault(); return; }
   LV.keys[k] = true; if (k === 'shift') LV.keys.shift = true;
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
 }, true);
@@ -1053,5 +1381,5 @@ addEventListener('contextmenu', e => { if (LV.on && e.target && e.target.tagName
 addEventListener('auxclick', e => { if (LV.on && e.button === 1) e.preventDefault(); });
 { let pin = 0; addEventListener('touchmove', e => { if (!LV.on || e.touches.length !== 2) { pin = 0; return; } const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); if (pin) LV.zoom = Math.max(2.2, Math.min(22, LV.zoom * pin / d)); pin = d; }, { passive: true }); addEventListener('touchend', () => { pin = 0; }); }
 
-if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0, FAN_LINES };
+if (typeof window !== 'undefined') window.__pdoLivre = { LV, enter, exit, tick, interact, P, H0, FAN_LINES, missionEvent };
 export { LV as LIVRE, enter as livreEnter, exit as livreExit, tick as livreTick, cam as livreCam, pressCam, hubCam, hubOn, hubOff };

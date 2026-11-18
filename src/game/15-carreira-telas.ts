@@ -53,16 +53,18 @@ HIST.rerender = () => renderCareer(); HIST.saveSettings = () => saveSettings();
 // jogo-treino marcado no modo livre: partida amistosa (sem ranking) com quem você escolheu; ao fim, conta como treino e volta a andar
 LIVRE.friendly = null;
 function friendlyStart(v) {
-  LIVRE.friendly = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, racket: S.settings.racket };
+  LIVRE.friendly = { pick: Object.assign({}, S.settings.pick), mode: S.settings.mode, racket: S.settings.racket, diff: S.settings.diff, kind: v.kind || 'treino', level: v.level, place: v.place };
+  if (v.diff) S.settings.diff = v.diff; // praça: a galera joga no nível do dia
   livreExit(false); crSyncChars();
   S.settings.mode = 'dupla'; S.settings.pick = Object.assign({}, S.settings.pick, { me: 'crme', mate: v.mate, o1: v.o1, o2: v.o2 }); S.settings.racket = $s.CR.racket;
   el.menu.hidden = true; $('career').hidden = true; newMatch();
 }
 function friendlyBack() {
   const f = LIVRE.friendly; if (!f) return false; LIVRE.friendly = null;
-  S.settings.pick = f.pick; S.settings.mode = f.mode; S.settings.racket = f.racket;
+  const won = S.matchWinner === 0, played = S.matchWinner === 0 || S.matchWinner === 1;
+  S.settings.pick = f.pick; S.settings.mode = f.mode; S.settings.racket = f.racket; S.settings.diff = f.diff;
   S.mode = 'menu'; S.paused = false; el.pause.hidden = true; el.over.hidden = true; hideBanner();
-  crTrain(); saveCareer(); openCareer(); livreEnter(); return true;
+  crTrain(); saveCareer(); openCareer(); livreEnter(); if (LIVRE.onFriendlyEnd) LIVRE.onFriendlyEnd({ kind: f.kind, level: f.level, place: f.place, won, played }); return true;
 }
 LIVRE.actions = { editLook: () => { livreExit(true); crTab = 'jogador'; renderCareer(); openEditor(); }, shopClothes: () => { livreExit(true); crTab = 'loja'; shopTab = 'cima'; renderCareer(); }, friendly: v => friendlyStart(v), cfg: () => { const m = $('menu'); m.hidden = false; menuStep('cfg'); menuPrev = 'livre'; }, play: () => { livreExit(false); crPlayMatch(); }, openCareer: () => livreExit(true), drill: () => { livreExit(false); openDrillFromCareer(); }, render: () => renderCareer(), talk: () => renderTalk() };
 // menu lateral (no lugar das abas): seções com ícone e sub-abas; no torneio, só o torneio
