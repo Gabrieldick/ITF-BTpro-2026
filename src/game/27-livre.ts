@@ -1228,7 +1228,7 @@ function build() {
   // quiosque na praia (gastronomia 1) e projeto social
   if (crInv('gastro') >= 1) { const kx = 12, kz = lvl >= 2 ? Math.min(-26, wallZ - 5) : -26; cyl(g, 1.8, 1.8, .9, kx, .45, kz, '#a77d55'); const r = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.4, 8), mat('#e9c46a')); r.position.set(kx, 3.2, kz); r.castShadow = true; g.add(r); [0, 1, 2, 3].forEach(i => cyl(g, .07, .07, 2.4, kx + Math.cos(i * 1.57 + .78) * 1.6, 1.6, kz + Math.sin(i * 1.57 + .78) * 1.6, '#8a6a45')); solid(kx - 1.8, kz - 1.8, kx + 1.8, kz + 1.8); sign(g, 'Quiosque', nameOf($s.CR.me).split(' ')[0], kx, 4.6, kz, 3.2); }
   const sdz = lvl >= 2 ? Math.min(0, wallZ - 10 + 22) : 0; // (o projeto social fica fora do muro da casa, na areia)
-  if (crLife('social')) { box(g, 8, .05, 16, -20, .05, (-22 + sdz), '#f1e2b8', { noShadow: true }); box(g, 8.4, .8, .03, -20, 1.1, (-22 + sdz), '#ffffff', { transparent: true, opacity: .45 }); sign(g, 'Projeto social', 'Escolinha de beach tennis', -20, 2.6, (-31 + sdz), 4);
+  if (crLife('social')) { box(g, 8, .05, 16, -20, .05, (-22 + sdz), '#f1e2b8', { noShadow: true }); realNet(g, -20, (-22 + sdz), 8.4, 'x', 'PROJETO ' + nameOf($s.CR.me).split(' ')[0].toUpperCase(), '#2a9d8f', '#ffffff'); sign(g, 'Projeto social', 'Escolinha de beach tennis', -20, 2.6, (-31 + sdz), 4);
     banner(g, 'Projeto ' + nameOf($s.CR.me).split(' ')[0], -20, 1.2, (-30.3 + sdz), 6, 1, '#2a9d8f', '#ffffff', 0, 'beach tennis para todos'); solid(-24.2, (-22.1 + sdz), -15.8, (-21.9 + sdz));
     // crianças treinando (trocam bola dos dois lados da rede) e o professor
     for (let k = 0; k < 4; k++) { const a = dyn2(sp, fan(new THREE.Group(), -22 + (k % 2) * 4, (-25.5 + sdz), 0, 300 + k, false)), b = dyn2(sp, fan(new THREE.Group(), -22 + (k % 2) * 4, (-18.5 + sdz), Math.PI, 310 + k, false)); a.scale.setScalar(.66); b.scale.setScalar(.66); LV.npcs.push({ kind: 'kids', a, b, z0: (-25.5 + sdz), z1: (-18.5 + sdz), ph: k * 1.3 }); }
@@ -1364,7 +1364,7 @@ function goHome() { LV.snap = true; human.pos.copy(P(0, 1.5)); human.vel.set(0, 
 function exit(toCareer = true) {
   if (!LV.on) return;
   { const t = $s.CR && $s.CR.tour; if ($s.CR) $s.CR.livrePos = { x: +(human.pos.x - H0.x).toFixed(2), z: +(human.pos.z - H0.z).toFixed(2), yaw: LV.yaw || 0, camYaw: LV.camYaw || 0, camPitch: LV.camPitch, zoom: LV.zoom, ride: LV.ride || 'pe', day: dayKey(), tour: t && !t.pending && !t.done ? String(t.name) : '' }; }
-  LV.on = false; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; envShow(); if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
+  LV.on = false; human.ride = null; LV.jy = 0; LV.jv = 0; LV.trick = null; LV.lastEn = LV.lastMo = null; if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; } LV.ride = 'pe'; human.model.group.visible = true; human.liftY = 0; if (LV.saved) SEA.visible = LV.saved.sea; envShow(); if (LV.bag) LV.bag.visible = false; S.mode = 'menu'; document.body.classList.remove('livre');
   [partner, cpuA, cpuB].forEach(p => { if (p) { p.livreHide = false; if (p.model) p.model.group.visible = true; } });
   human.pos.set(.9, 0, 5.5); human.vel.set(0, 0, 0); human.feet = null; human.forceYaw = null;
   if (LV.savedPick) { S.settings.pick = LV.savedPick; S.settings.racket = LV.savedRacket; LV.savedPick = null; assignCharacters(); applyRackets(); applyPlayerStyle(); } // volta o boneco da partida rápida
@@ -1471,10 +1471,35 @@ function cam(dt) {
     const stk = Object.keys($s.CR.cosm || {}).filter(k => STICKERS[k]); if (!LV.bag || LV.bagKey !== bc.join() + stk.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); stickBag(LV.bag, stk); LV.bagKey = bc.join() + stk.join(); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
     const fx = -Math.sin(LV.yaw), fz = -Math.cos(LV.yaw); LV.bag.position.set(human.pos.x - fx * LV.bagOff, 1.1 * hk, human.pos.z - fz * LV.bagOff); LV.bag.rotation.set(0, LV.yaw, 0); LV.bag.rotateZ(.1); LV.bag.rotateX(-.06); LV.bag.scale.setScalar(.72 * hk); } // em pé nas costas, encostada
-  if (LV.rideMesh) { LV.rideMesh.position.set(human.pos.x, LV.gy || 0, human.pos.z); LV.rideMesh.rotation.y = LV.yaw; }
+  // pulo (Espaço): a pé, de skate (às vezes sai uma manobra) e de bike (bunny hop); de carro não
+  const RK = LV.ride || 'pe', run = !!k.shift, sp = Math.hypot(LV.vel.x, LV.vel.z), il = (k.w || k.a || k.s || k.d || k.arrowup || k.arrowdown || k.arrowleft || k.arrowright || LV.joy) ? 1 : 0, vmax = (run ? 5.2 : 3.8) * ({ skate: 1.45, bike: 2.1 }[RK] || 1);
+  LV.jy = LV.jy || 0; LV.jv = LV.jv || 0;
+  if (k[' '] && !LV.jHeld && LV.jy <= 0 && RK !== 'carro' && !LV.swim) { LV.jHeld = true;
+    if (RK === 'pe') { human.jump = .55; human.jumpDur = .55; human.jumpH = .42; }
+    else { LV.jv = RK === 'skate' ? 4.6 : 4.1; LV.jy = .001; LV.trick = null;
+      if (RK === 'skate' && sp > 1 && Math.random() < .6) { LV.trick = ['kickflip', 'shove-it', 'heelflip', '360 flip', 'pop shove-it'][Math.floor(Math.random() * 5)]; LV.msg('🛹 ' + LV.trick + '!'); }
+      else if (RK === 'skate') LV.trick = 'ollie'; } }
+  if (!k[' ']) LV.jHeld = false;
+  if (LV.jy > 0) { LV.jv -= 13 * dt; LV.jy += LV.jv * dt; if (LV.jy <= 0) { LV.jy = 0; LV.jv = 0; LV.trick = null; } }
+  const airT = LV.jy > 0 ? Math.min(1, LV.jy / .5) : 0, tAir = LV.jv ? 1 - (LV.jv + 4.6) / 9.2 : 0; // (0 → 1 do salto até o pouso)
+  // veículos animados: rodas girando, pedalada no ritmo da velocidade, inclinação nas curvas, prancha girando nas manobras
+  const yawRate = ((LV.yaw - (LV.lastYaw ?? LV.yaw) + Math.PI * 3) % (Math.PI * 2) - Math.PI) / Math.max(dt, 1e-3); LV.lastYaw = LV.yaw;
+  LV.leanS = (LV.leanS || 0) + (Math.max(-1, Math.min(1, yawRate * sp * .08)) - (LV.leanS || 0)) * Math.min(1, dt * 6);
+  if (RK === 'bike' || RK === 'skate') { const R2 = human.ride || (human.ride = { k: RK, ph: 0, t: 0, push: 0, air: 0, lean: 0 }); R2.k = RK; R2.t += dt;
+    const accel = il > .05 && sp < vmax * .8; R2.push += ((RK === 'skate' && accel ? 1 : 0) - R2.push) * Math.min(1, dt * 4);
+    R2.ph += dt * (RK === 'bike' ? sp * 2.6 : (R2.push > .05 ? 6 : 0)); R2.air = airT; R2.lean = LV.leanS; R2.stand = RK === 'bike' && run && il > .05 ? 1 : 0; }
+  else human.ride = null;
+  if (LV.rideMesh) { const RM = LV.rideMesh; RM.position.set(human.pos.x, (LV.gy || 0) + LV.jy, human.pos.z); RM.rotation.set(0, LV.yaw, 0);
+    (RM.userData.wheels || []).forEach(w => { w.rotation.x -= sp * dt / (w.userData.r || .3); }); if (RM.userData.crank && human.ride) RM.userData.crank.rotation.x = -human.ride.ph; // (pedivela no mesmo giro dos pés)
+    if (RK === 'bike') { RM.rotateZ(-LV.leanS * .35); if (LV.jy > 0) RM.rotateX(Math.max(0, LV.jv) * .06); } // bunny hop: a frente sobe primeiro
+    if (RK === 'skate') { RM.rotateZ(-LV.leanS * .12);
+      if (LV.trick && LV.jy > 0) { const u = Math.max(0, Math.min(1, tAir)), T = LV.trick, e = u * u * (3 - 2 * u);
+        if (T === 'ollie') RM.rotateX(Math.sin(u * Math.PI) * .35); else if (T === 'kickflip') RM.rotateZ(e * Math.PI * 2); else if (T === 'heelflip') RM.rotateZ(-e * Math.PI * 2);
+        else if (T === 'shove-it') RM.rotateY(e * Math.PI); else if (T === 'pop shove-it') { RM.rotateY(e * Math.PI); RM.rotateX(Math.sin(u * Math.PI) * .3); } else { RM.rotateY(e * Math.PI * 2); RM.rotateZ(e * Math.PI * 2); }
+        RM.position.y += Math.sin(u * Math.PI) * .12; } } }
   // nadando: o corpo deita na água (as pernas batem e os braços giram como no crawl) e a raqueteira fica guardada
   if (LV.swim) { LV.bag.visible = false; swimPose(); }
-  human.liftY = (LV.gy || 0) + (LV.ride === 'skate' ? .1 : LV.ride === 'bike' ? .3 : 0);
+  human.liftY = (LV.gy || 0) + (LV.ride === 'skate' ? .1 : 0) + (LV.jy || 0);
   return true;
 }
 
@@ -1569,8 +1594,12 @@ function cycleRide() {
 }
 function rideMesh(kind) {
   const o = new THREE.Group();
-  if (kind === 'skate') { box(o, .22, .03, .8, 0, .09, 0, '#1d1d20'); [-1, 1].forEach(a => [-1, 1].forEach(b => { const w = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .04, 10), mat('#f2c14e')); w.rotation.z = Math.PI / 2; w.position.set(a * .08, .035, b * .28); o.add(w); })); }
-  else if (kind === 'bike') { [-1, 1].forEach(b => { const w = new THREE.Mesh(new THREE.TorusGeometry(.33, .025, 8, 22), mat('#151515')); w.rotation.y = Math.PI / 2; w.position.set(0, .35, b * .55); o.add(w); });
+  o.userData.wheels = [];
+  if (kind === 'skate') { box(o, .22, .03, .8, 0, .09, 0, '#1d1d20'); box(o, .2, .005, .74, 0, .107, 0, '#e63946'); [-1, 1].forEach(b => box(o, .17, .03, .05, 0, .06, b * .28, '#b8bec6'));
+    [-1, 1].forEach(a => [-1, 1].forEach(b => { const w = new THREE.Group(); w.position.set(a * .08, .035, b * .28); const c = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .04, 10), mat('#f2c14e')); c.rotation.z = Math.PI / 2; w.add(c); w.userData.r = .035; o.add(w); o.userData.wheels.push(w); })); }
+  else if (kind === 'bike') { [-1, 1].forEach(b => { const w = new THREE.Group(); w.position.set(0, .35, b * .55); const t2 = new THREE.Mesh(new THREE.TorusGeometry(.33, .025, 8, 22), mat('#151515')); t2.rotation.y = Math.PI / 2; w.add(t2);
+      for (let i = 0; i < 6; i++) { const sk = new THREE.Mesh(new THREE.CylinderGeometry(.004, .004, .64, 4), mat('#cfd3d8')); sk.rotation.x = i * Math.PI / 6; w.add(sk); } w.userData.r = .35; o.add(w); o.userData.wheels.push(w); });
+    const cr = new THREE.Group(); cr.position.set(0, .35, -.04); [-1, 1].forEach(sd => { const arm = box(cr, .02, .17, .03, sd * .07, 0, 0, '#3a3f47'); arm.position.y = sd * .085; box(cr, .1, .02, .05, sd * .12, sd * .17, 0, '#1d1d20'); }); cr.userData.r = .35 / 2.6 * 1.0; o.add(cr); o.userData.crank = cr;
     const fr = (l, x, y, z, rx) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, l, 6), mat('#e30613', { metalness: .5 })); m.position.set(x, y, z); m.rotation.x = rx; o.add(m); };
     fr(.75, 0, .55, 0, Math.PI / 2); fr(.5, 0, .55, .3, .5); fr(.5, 0, .55, -.3, -.4); box(o, .16, .05, .26, 0, .85, .15, '#111'); box(o, .5, .03, .03, 0, 1, -.5, '#3a3f47'); }
   else { car(o, 0, 0, Math.PI / 2, ($s.CR && crInv('moradia') >= 3) ? '#111214' : '#2457c5'); LV.boxes.pop(); }

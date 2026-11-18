@@ -332,6 +332,8 @@ function animateAthlete(p, dt) {
   const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
+  const RD = p.ride; // em cima do skate/bike (modo livre): sentado no selim ou agachado na prancha
+  if (RD) { if (RD.k === 'bike') m.hips.position.set(0, .86 + (RD.stand || 0) * .12, .16 - (RD.stand || 0) * .1); else m.hips.position.set(0, .8 - RD.air * .14 + (RD.push || 0) * .04 * Math.sin(RD.ph * 2), 0); }
   const idle = (1 - run) * (acting ? 0 : 1);
   if (!p.prevVel) p.prevVel = new V3();
   const acx = dt > 0 ? (p.vel.x - p.prevVel.x) / dt : 0, acz = dt > 0 ? (p.vel.z - p.prevVel.z) / dt : 0; p.prevVel.copy(p.vel);
@@ -345,6 +347,7 @@ function animateAthlete(p, dt) {
   m.hips.rotation.set(0, Math.cos(p.gait) * .11 * Math.max(run, p.rlx * .6) + p.hpY, Math.sin(p.gait) * .035 * Math.max(run, p.rlx * .6));
   // com o corpo já de lado, o tronco torce menos (senão gira demais)
   m.spine.rotation.set(-(pose.lean * (1 - .6 * p.rlx) + run * .17 + diveK * .75 + p.reachK * (.15 + reachLow * .35) + landK * .1 + (p.hgtK > 0 ? p.hgtK * .22 : p.hgtK * .12)) - accLean + Math.sin(p.breath * 1.9) * .012 * idle, pose.tw + p.bhTw * .65 + p.prep * .45 - Math.cos(p.gait) * .16 * Math.max(run, p.rlx * .6) * (1 - prA * .6), -pose.bend - Math.cos(p.gait) * .03 * run - accRoll - reachS * p.reachK * .32);
+  if (RD) { m.spine.rotation.x = RD.k === 'bike' ? -.5 + (RD.stand || 0) * .2 : -.22 - RD.air * .25; m.spine.rotation.z = RD.k === 'skate' ? 0 : -(RD.lean || 0) * .4; }
   _hq.copy(m.hips.quaternion).invert();
   m.group.updateMatrixWorld(true);
   // pernas: cada pé fica plantado no mundo até ficar longe de onde deveria estar (posição da pose + um pouco à frente, onde o
@@ -463,6 +466,10 @@ function animateAthlete(p, dt) {
     else if (F.st) { const t = Math.min(1, F.st.t); rollT = t < .4 ? .65 * (1 - t / .4) : 0; }
     else if (!p.dive && thr > 0) { const rr = wants[i] / thr; rollT = rr > .45 ? .75 * clamp((rr - .45) / .55, 0, 1) * Math.min(1, sp / 1.2) : 0; fy += Math.sin(L.roll || 0) * .14; } // saída: o calcanhar sobe e a ponta empurra (a perna de trás estica sem o quadril afundar)
     L.roll = (L.roll || 0) + (rollT - (L.roll || 0)) * Math.min(1, dt * 22);
+    if (RD) { // pés nos pedais (girando) ou na prancha (o de trás rema no chão para dar impulso; no ar, os joelhos encolhem)
+      if (RD.k === 'bike') { const a = RD.ph + (i ? Math.PI : 0); fx = s * .13; fy = .33 + Math.sin(a) * .17 + RD.air * .02; fz = -.04 + Math.cos(a) * .17; }
+      else { const back = s * mx < 0; fx = s * .25; fz = .02; fy = .07 + RD.air * .22;
+        if (back && RD.push > .05 && RD.air < .05) { const c = RD.ph % (Math.PI * 2); fx = s * (.08 + .3 * (.5 + .5 * Math.cos(c))); fz = -.2; fy = .07 - .1 * RD.push + Math.max(0, Math.sin(c)) * .12 * RD.push; } } }
     _a.set(fx - m.hips.position.x, fy - m.hips.position.y, fz - m.hips.position.z).applyQuaternion(_hq);
     _b.set(s * (.12 + .55 * clamp((Math.abs(fx) - .17) / .25, 0, 1)), 0, -1).applyQuaternion(_hq); // base aberta: joelho aponta para fora (sobre o pé), não para dentro
     ik2(L.thigh, L.knee, L.thigh.position, _a, _b, .42, .43);
@@ -551,6 +558,7 @@ function animateAthlete(p, dt) {
   // modo livre: sem raquete na mão (está na raqueteira): os dois braços soltos ao lado do corpo, balançando com o passo
   const noRk = (S.mode === 'livre' || S.mode === 'hub' || S.mode === 'press') && p.isHuman && swingU < 0;
   if (noRk && p.idl < .5) { const am = .06 + .14 * run; _e.set(.27 - .05 * run, -.02 + .1 * run, -.08 + Math.cos(p.gait) * am); _c.lerp(_e, 1 - p.idl); _b.set(.4, -.2, 1); }
+  if (RD) { if (RD.k === 'bike') { _c.set(.23, -.02, -.44); _b.set(.7, -.4, .4); } else { const sw = Math.sin(RD.t * 1.7) * .05; _c.set(.42, -.12 + RD.air * .3 + sw, -.06); _b.set(.3, -1, .2); } }
   armIK(p, m.armR, shR, _c, _b);
   { const rl = swingU < 0 && !p.charging ? (p.rlx || 0) : 0; let wx = lerp(pose.wx, RLX_WX, rl), wr = lerp(pose.wr, RLX_WR, rl);
     if (p.idl > .01) { const tw = idk === 'twirl' ? Math.sin(p.gT * 5 + ph) * 1.4 : 0; wx = lerp(wx, idk === 'hang' ? IDL_WX : .9, p.idl); wr = lerp(wr, (idk === 'hang' ? IDL_WR : .4) + tw, p.idl); }
@@ -579,6 +587,7 @@ function animateAthlete(p, dt) {
     if (idk === 'strings') { _e.set(.06, shL.y - .4 + Math.sin(p.gT * 3 + ph) * .03, -.42); _b.set(-.6, -.3, .6); }
     else { _e.set(shL.x - .06, shL.y - .52, -.02 + sw * .03); _b.set(-.4, -.2, 1); }
     _c.lerp(_e, p.idl); }
+  if (RD) { if (RD.k === 'bike') { _c.set(-.23, -.02, -.44); _b.set(-.7, -.4, .4); } else { const sw = Math.sin(RD.t * 1.7 + 1) * .05; _c.set(-.42, -.1 + RD.air * .3 + sw, .06); _b.set(-.3, -1, .2); } }
   armIK(p, m.armL, shL, _c, _b);
   m.armL.wrist.rotation.set(.2, 0, 0);
   // cabeça acompanha a bola
