@@ -1793,11 +1793,13 @@ function crInvBuy(k) {
 }
 // raquete própria (assinatura): vem do patrocínio master quando você tem fama (70) ou um título de BT200 ou maior; Zênite +
 // 2 nos seus três melhores atributos. Você escolhe as cores e o desenho; o logo é o do patrocinador master do momento
-// atributos da raquete própria: você distribui os pontos do nível dela (15 a 25) (até +SIG_MAX em cada um; dá para tirar até −2 de um para
+// atributos da raquete própria: você distribui os pontos do nível dela (15 até a soma da melhor raquete da loja) (até +SIG_MAX em cada um; dá para tirar até −2 de um para
 // pôr em outro). Sem escolha ainda: a Zênite com +2 nos seus três melhores atributos
 const SIG_PTS = 25, SIG_MAX = 7, SIG_ATTRS = ['forca', 'smash', 'saque', 'def', 'curta', 'lob', 'backhand', 'vel', 'voleio', 'leitura', 'folego'];
-// níveis da raquete própria: começa com 15 pontos e melhora (pagando à marca) até 25 no nível 7
-const SIG_LV_PTS = [15, 17, 18, 20, 22, 23, 25], SIG_LV_COST = [0, 25000, 45000, 70000, 100000, 140000, 190000];
+// níveis da raquete própria: começa com 15 pontos e melhora (pagando à marca) até a melhor raquete da loja no nível 7
+// o teto (nível 7) é a soma de bônus da melhor raquete à venda na loja: a sua nunca passa da melhor do mercado
+const SIG_BEST = Math.max(...Object.entries(RACKET_STATS).filter(([k]) => k !== 'assinatura').map(([, r]) => Object.values(r.b || {}).reduce((t, v) => t + v, 0)));
+const SIG_LV_PTS = [0, 1, 2, 3, 4, 5, 6].map(i => Math.round(Math.min(15, SIG_BEST - 4) + (SIG_BEST - Math.min(15, SIG_BEST - 4)) * i / 6)), SIG_LV_COST = [0, 25000, 45000, 70000, 100000, 140000, 190000];
 function crSigLv() {
   if ($s.CR.sigLv === undefined) { const S0 = $s.CR.sigB, used = S0 ? Object.values(S0).reduce((t, v) => t + v, 0) : 0; const i = SIG_LV_PTS.findIndex(x => x >= used); $s.CR.sigLv = S0 ? (i < 0 ? 7 : i + 1) : 1; } // (saves de antes: o nível que comporta os pontos já distribuídos)
   return $s.CR.sigLv;
@@ -1812,6 +1814,8 @@ function crSigB() {
   const S0 = $s.CR.sigB;
   const P = crSigPts();
   if (S0 && Object.values(S0).reduce((t, v) => t + v, 0) <= P) return Object.assign({}, S0);
+  if (S0) { const b = Object.assign({}, S0); let used = Object.values(b).reduce((t, v) => t + v, 0); // (save de antes do teto: tira 1 de cada vez do maior até caber)
+    while (used > P) { const k = Object.keys(b).sort((x, y) => b[y] - b[x])[0]; b[k]--; if (!b[k]) delete b[k]; used--; } return b; }
   // sem escolha (ou passou do nível): os pontos do nível espalhados nos seus 5 melhores atributos
   const b = {}, top = Object.entries($s.CR.me.a).filter(([k]) => SIG_ATTRS.includes(k)).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k]) => k);
   for (let i = 0; i < P; i++) { const k = top[i % top.length]; if ((b[k] || 0) < SIG_MAX) b[k] = (b[k] || 0) + 1; }

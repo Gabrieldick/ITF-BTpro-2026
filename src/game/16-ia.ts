@@ -476,6 +476,13 @@ function bestPlay(p, y) {
     smash: A.smashW * (y >= 2.1 ? 1 : y >= 1.45 ? .55 : .1) * clamp((7 - netD) / 3.5 + smK * .35, .15, 1.1) * (anyNet > .6 && y < 2.1 ? .75 : 1),
     defesa: A.defBase + defK * .1
   };
+  // Lendário: joga apertando — sem apuro, troca o lob alto pela acelerada/smash e pelo voleio rasante; o lob fica para quando
+  // está em apuros (ou como surpresa contra quem colou na rede)
+  if ((((p.skill && p.skill.up) || 0) >= .7) && !aiModeOf(p) && tr < .55) {
+    sc.lob *= anyNet > .6 ? .7 : .4;
+    if (y >= .85) sc.smash += .24 * (1 - tr);
+    if (y < .85 && netD < 3.8) sc.defesa += .14; // bola baixa na rede: voleio no pé em vez de levantar
+    if (y >= .6 && y < 1.6 && dMin > 4.2) sc.curta += .08; }
   // variedade: quem acabou de dar vários lobs seguidos passa a valorizar menos o lob (o adversário já está esperando), e contra
   // quem está na rede a acelerada no corpo e a bola rasante competem com ele — antes, contra um jogador que fica na frente,
   // o Lendário respondia quase só com lob
@@ -502,7 +509,10 @@ function bestPlay(p, y) {
   const rest = opts.filter(k => k !== fav); return rest[Math.floor(Math.random() * rest.length)];
 }
 // bola acima da cabeça (~2,2 m) não é defesa (bloqueio na frente do corpo): vira lob, como para quem joga
-function chooseAIShot(p, y) { const sh = chooseAIShot0(p, y); return sh === 'defesa' && y >= 2.2 * hScale(p) ? 'lob' : sh; }
+function chooseAIShot(p, y) { let sh = chooseAIShot0(p, y);
+  // Lendário mantém a pressão: sem estar em apuros, boa parte dos lobs vira acelerada/smash (bola média/alta) ou voleio no pé (baixa)
+  if (sh === 'lob' && ((p.skill && p.skill.up) || 0) >= .7 && !aiModeOf(p) && y < 2.2 * hScale(p)) { const tr = aiTrouble(p, y); if (tr < .6 && Math.random() < .6 - tr * .5) sh = y >= .85 ? 'smash' : 'defesa'; else if (tr < .88 && y < 1.7 && Math.random() < .55) sh = 'defesa'; } // (apertado mas não perdido: bloqueia firme em vez de levantar)
+  return sh === 'defesa' && y >= 2.2 * hScale(p) ? 'lob' : sh; }
 function chooseAIShot0(p, y) {
   if (aiModeOf(p) !== 'planejadora') return chooseShotRule(p, y);
   // IA Planejadora: a busca só assume quando enxerga uma bola quase vencedora; no resto, as regras treinadas
@@ -607,6 +617,8 @@ function homeOf(p) {
   // o companheiro vai smashar: adianta um pouco e fecha o meio para pegar a sobra (a devolução de defesa curta/no meio)
   if (mate && ball.state === 'live' && S.lastTeam === 1 - p.team && S.mode === 'rally' && assignee(p.team) === mate && mateSmash(mate)) { ahead += .9 + .5 * clamp(up * 2.5, 0, 1); x = lerp(x, mate.pos.x + Math.sign(p.slot - mate.slot || p.slot) * 1.7, .5); }
   if (A.rush && ball.state === 'live' && S.lastTeam === p.team) ahead += A.rush; // depois do próprio golpe: sobe para a rede
+  // Lendário: depois de uma bola de ataque própria (baixa/rápida), sobe junto para a rede e fecha o voleio (mantém a pressão)
+  if (up >= .7 && !aiModeOf(p) && ball.state === 'live' && S.lastTeam === p.team && S.mode === 'rally' && (ball.apex || 0) < 2.6) ahead += .8;
   // formação escolhida para a sua dupla: o parceiro (CPU) fica colado na rede ou no fundo
   const fm = p.team === 0 && !p.isHuman ? S.settings.formation : '';
   if (fm === 'rede' || fm === 'fundo') return [clamp(x, -C.halfW + .3, C.halfW - .3), s * clamp((fm === 'rede' ? 2.6 : 6.0) + ph * .6, 2.3, 6.6)];
