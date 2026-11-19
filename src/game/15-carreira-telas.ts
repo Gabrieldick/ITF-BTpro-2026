@@ -13,7 +13,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { BAGS, crBagBuy, crBagPrice, crBagOk } from './14-carreira';
+import { BAGS, crBagBuy, crBagPrice, crBagOk, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy } from './14-carreira';
 import { crRankingMode, crModePts, MODE_PAY, crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
@@ -595,11 +595,12 @@ function crShopHTML() {
       return '<div class="cr-row' + (u ? ' me' : '') + (lock ? ' locked' : '') + '"><span class="cr-ic" style="background:linear-gradient(135deg,' + b.cols[0] + ' 55%,' + b.cols[1] + ' 55%);border-radius:8px"></span><div><b>' + esc(b.nome) + (u ? ' · em uso' : '') + '</b><small>' + (lock ? '🔒 Patrocínio master: só raqueteiras da ' + esc($s.CR.master.brand) : pr ? money(pr) : 'grátis (patrocinador master)') + '</small></div>'
         + '<div class="row-acts"><button type="button" class="ghost sm pv-btn" data-prev="b:' + b.id + '" title="Ver em 3D">👁</button>'
         + (u ? '' : lock ? '<button class="ghost sm" disabled>Só ' + esc($s.CR.master.brand) + '</button>' : o ? '<button class="ghost sm" data-bag="' + b.id + '">Usar</button>' : '<button class="cta sm" data-bag="' + b.id + '"' + ($s.CR.money < pr ? ' disabled' : '') + '>' + (pr ? 'Comprar' : 'Pegar grátis') + '</button>') + '</div></div>'; }).join('') + '</div>'; }
+  if (shopTab === 'casa') return head + crHomeShopHTML();
   if (shopTab === 'equipe') return head + '<div class="cr-two"><div><p class="section-label">🧢 Equipe técnica (contrato até o fim da temporada)</p><div class="cr-list">' + st + '</div></div><div><p class="section-label">🎒 Equipamentos</p><p class="cr-note">Um em uso por categoria, como a raquete (quanto melhor, mais caro). Somando tudo, no máximo +' + GEAR_CAP + ' por atributo.</p><div class="cr-list">' + gr + '</div></div></div>';
   return head + crClothesHTML(shopTab);
 }
 // ---------- loja de roupas: parte de cima, de baixo, estampas, acessórios e a vitrine das exclusivas ----------
-const SHOP_TABS = [['raquetes', '🎾 Raquetes'], ['equipe', '🧢 Equipe e equipamentos'], ['cima', '👕 Parte de cima'], ['baixo', '🩳 Parte de baixo'], ['estampas', '🎨 Estampas'], ['acess', '🕶️ Acessórios'], ['bolsas', '🎒 Raqueteiras'], ['exclusivas', '💎 Exclusivas']];
+const SHOP_TABS = [['raquetes', '🎾 Raquetes'], ['casa', '🏠 Casa'], ['equipe', '🧢 Equipe e equipamentos'], ['cima', '👕 Parte de cima'], ['baixo', '🩳 Parte de baixo'], ['estampas', '🎨 Estampas'], ['acess', '🕶️ Acessórios'], ['bolsas', '🎒 Raqueteiras'], ['exclusivas', '💎 Exclusivas']];
 let shopTab = 'raquetes';
 const CLOTH_CAT = { tops: TOP_KINDS, bots: BOT_KINDS, pats: PATTERNS, acc: ACCESS };
 // exclusiva: pede posição no ranking, um título (nível do torneio) ou fama
@@ -653,8 +654,9 @@ function crClothesHTML(tab) {
   return '<p class="cr-note">Coleções limitadas: Carbono (top 100), Black Label (top 30), Fio de Ouro (top 10), Diamante (fama 80) e a Edição Mundial (só para campeões do Mundial).</p>'
     + ['tops', 'bots', 'pats', 'acc'].map(sl => { const h = list(sl, true); return h ? '<p class="section-label">' + { tops: '👕 Parte de cima', bots: '🩳 Parte de baixo', pats: '🎨 Estampas', acc: '🕶️ Acessórios' }[sl] + '</p><div class="cr-list cr-grid2">' + h + '</div>' : ''; }).join('');
 }
-function crBizHTML() {
-  const tracks = Object.entries(INVEST).map(([k, tr]) => {
+function invTrackHTML(k) { const tr = INVEST[k]; return crBizTracks([[k, tr]]); }
+function crBizTracks(list) {
+  return list.map(([k, tr]) => {
     const lv = crInv(k);
     const rows = tr.niveis.map((n, i) => {
       const done = i < lv, next = i === lv, why = next ? n.req() : '';
@@ -663,6 +665,23 @@ function crBizHTML() {
     }).join('');
     return '<p class="section-label">' + tr.nome + ' · nível ' + lv + '/' + tr.niveis.length + '</p><div class="cr-list">' + rows + '</div>';
   }).join('');
+}
+function crHomeShopHTML() {
+  const H = crHome(), own = H.own || {}, lv = INVEST.moradia ? crInv('moradia') : 0;
+  const sw = (L, kind) => '<div class="home-sw">' + L.map(([n, c, pr, mLv], i) => { const sel = H[kind] === i, has = !pr || own[kind + i], lock = (mLv || 0) > lv;
+    return '<button type="button" class="home-c' + (sel ? ' sel' : '') + '"' + (lock ? ' disabled title="Só na mansão"' : '') + ' data-hk="' + kind + ':' + i + '"><i style="background:' + c + '"></i><b>' + esc(n) + '</b><small>' + (lock ? '🔒 mansão' : sel ? 'em uso' : has ? 'usar' : money(pr)) + '</small></button>'; }).join('') + '</div>';
+  const cats = [...new Set(HOME_ITEMS.map(x => x.cat))];
+  const items = cats.map(cat => '<p class="section-label">' + esc(cat) + '</p><div class="cr-list">' + HOME_ITEMS.filter(x => x.cat === cat).map(it => {
+    const has = it.shape ? H.poolShape === it.shape || (!H.poolShape && it.shape === 'reta' && crHomeHas('piscina1')) : crHomeHas(it.id), why = crHomeWhy(it), hid = (H.hide || {})[it.id], shOwn = it.shape && (own['shape' + it.shape] || !it.preco);
+    const btn = it.shape ? (has ? '<span class="cr-own">em uso</span>' : why ? '<span class="cr-lock" title="' + esc(why) + '">🔒</span>' : '<button class="' + (shOwn ? 'ghost' : 'cta') + ' sm" data-hi="' + it.id + '"' + (!shOwn && $s.CR.money < it.preco ? ' disabled' : '') + '>' + (shOwn ? 'Usar' : money(it.preco)) + '</button>')
+      : has ? (H.hide && it.id in (H.hide) || ['planta1', 'planta2', 'suculentas', 'quadro1', 'quadro2', 'quadro3', 'quadro4', 'tapete', 'luminaria', 'jardim', 'muro'].includes(it.id) ? '<button class="ghost sm" data-hi="' + it.id + '">' + (hid ? 'Colocar' : 'Guardar') + '</button>' : '<span class="cr-own">comprado</span>')
+      : why ? '<span class="cr-lock" title="' + esc(why) + '">🔒</span>' : '<button class="cta sm" data-hi="' + it.id + '"' + ($s.CR.money < it.preco ? ' disabled' : '') + '>' + money(it.preco) + '</button>';
+    return '<div class="cr-row' + (has ? ' me' : '') + (why && !has ? ' locked' : '') + '"><span class="cr-ic">' + ({ Plantas: '🪴', Quadros: '🖼️', Sala: '🛋️', 'Cômodos': '🚪', 'Área externa': '🌳', Piscina: '🏊' })[cat] + '</span><div><b>' + esc(it.nome) + '</b><small>' + esc(it.desc) + (why && !has ? ' · <em class="dn">' + esc(why) + '</em>' : '') + '</small></div><div class="row-acts">' + btn + '</div></div>'; }).join('') + '</div>').join('');
+  return '<p class="cr-note">Tudo aparece na sua casa no modo livre (Mundo livre). Itens com 🔒 pedem uma moradia melhor ou outro item antes.</p>'
+    + (INVEST.moradia ? invTrackHTML('moradia') : '') + '<p class="section-label">🎨 Cor das paredes</p>' + sw(HOME_WALLS, 'wall') + '<p class="section-label">🪵 Piso</p>' + sw(HOME_FLOORS, 'floor') + items;
+}
+function crBizHTML() {
+  const tracks = crBizTracks(Object.entries(INVEST).filter(([k]) => k !== 'moradia')); // (a moradia fica na aba Casa da loja)
   const life = LIFE.map(it => { const own = crLife(it.id); return '<div class="cr-row' + (own ? ' me' : '') + '"><span class="cr-ic">' + ({ nutri: '🥗', imprensa: '📰', crio: '🧊', carro: '🚗', casa: '🏠', social: '🤝', skate: '🛹', bike: '🚲', cachorro: '🐕', gato: '🐈', trofeus: '🏆' }[it.id]) + '</span><div><b>' + it.nome + (it.temp ? ' · temporada' : '') + '</b><small>' + it.desc + '</small></div>' + (own ? '<span class="cr-own">' + (it.temp ? 'contratado' : 'comprado') + '</span>' : '<button class="cta sm" data-life="' + it.id + '"' + ($s.CR.money < it.preco ? ' disabled' : '') + '>' + money(it.preco) + '</button>') + '</div>'; }).join('');
   const sig = $s.CR.rackets.includes('assinatura') && $s.CR.racket !== 'assinatura' ? '<p class="cr-msg">Você não está usando a sua raquete própria. <button class="cta sm" data-equip="assinatura">Usar a assinatura</button></p>' : '';
   return sig + '<p class="cr-note">Investimentos permanentes (não acabam no fim da temporada). Cada nível exige o anterior e conquistas na carreira.</p>' + tracks
@@ -870,6 +889,8 @@ function bindCareerBody() {
   body.querySelectorAll('[data-rkme]').forEach(bt => bt.addEventListener('click', () => { const L = body.querySelector('.rk-long'), m = L && L.querySelector('.cr-row.me'); if (m) { L.scrollTop = m.offsetTop - L.offsetTop - L.clientHeight / 2 + m.offsetHeight / 2; m.classList.remove('flash'); void m.offsetWidth; m.classList.add('flash'); } }));
   body.querySelectorAll('[data-selcat]').forEach(bt => bt.addEventListener('click', () => { crSelCat = +bt.dataset.selcat; renderCareer(); }));
   body.querySelectorAll('[data-inv]').forEach(bt => bt.addEventListener('click', () => { crInvBuy(bt.dataset.inv); renderCareer(); }));
+  body.querySelectorAll('[data-hk]').forEach(bt => bt.addEventListener('click', () => { const [k, i] = bt.dataset.hk.split(':'); crHomeBuy(k, i); renderCareer(); }));
+  body.querySelectorAll('[data-hi]').forEach(bt => bt.addEventListener('click', () => { crHomeBuy('item', bt.dataset.hi); renderCareer(); }));
   body.querySelectorAll('[data-hire]').forEach(bt => bt.addEventListener('click', () => { crHire(bt.dataset.hire); renderCareer(); }));
   body.querySelectorAll('[data-ev]').forEach(bt => bt.addEventListener('click', () => { crResolveEvent(+bt.dataset.ev); renderCareer(); }));
   body.querySelectorAll('[data-sp-ok]').forEach(bt => bt.addEventListener('click', () => { const o = $s.CR.spOffers.splice(+bt.dataset.spOk, 1)[0]; if (o && $s.CR.sponsors.length < 2) { $s.CR.sponsors.push(Object.assign(o, { left: o.weeks })); $s.CR.lastMsg = 'Contrato assinado com ' + o.brand + '.'; } saveCareer(); renderCareer(); }));

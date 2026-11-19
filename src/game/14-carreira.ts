@@ -1039,6 +1039,50 @@ const LIFE = [
   { id: 'gato', nome: 'Gato de estimação', preco: 2000, desc: 'Fica em casa com você no modo livre. Você escolhe o nome.' },
   { id: 'trofeus', nome: 'Sala de troféus', preco: 35000, desc: 'Uma sala só para os troféus, com um pedestal para cada título que você ganhar.' },
 ];
+// ---------- casa: decoração, cômodos, piscina, jardim e terreno (aba Casa da loja) ----------
+// minLv: nível de moradia exigido (0 casa, 1 apartamento na orla, 2 casa com piscina, 3 mansão); need: outro item antes
+const HOME_WALLS = [['Branco gelo', '#f6f3ee', 0], ['Areia', '#e8dcc4', 800], ['Verde sálvia', '#b9c9b0', 1200], ['Azul praia', '#bcd6e6', 1200], ['Terracota', '#d9a58a', 1500], ['Amarelo sol', '#f3dc8f', 1200], ['Rosa antigo', '#e3bcbc', 1500], ['Grafite', '#4a4f57', 2500]];
+const HOME_FLOORS = [['Madeira clara', '#c49a6c', 0], ['Porcelanato', '#e4e1da', 2500], ['Cimento queimado', '#9a9a96', 1800], ['Madeira escura', '#6b4a33', 3000], ['Ladrilho hidráulico', '#c97b5a', 3500], ['Mármore', '#efeae2', 9000, 3]];
+const HOME_ITEMS = [
+  { id: 'planta1', cat: 'Plantas', nome: 'Costela-de-adão', preco: 600, desc: 'Vaso grande na entrada.' },
+  { id: 'planta2', cat: 'Plantas', nome: 'Palmeira-ráfia', preco: 900, desc: 'Do outro lado da porta.' },
+  { id: 'suculentas', cat: 'Plantas', nome: 'Suculentas na janela', preco: 300, desc: 'Vasinhos coloridos.' },
+  { id: 'vertical', cat: 'Plantas', nome: 'Jardim vertical', preco: 4000, minLv: 1, desc: 'Parede verde na fachada.' },
+  { id: 'quadro1', cat: 'Quadros', nome: 'Quadro abstrato', preco: 1500, desc: 'Na parede da sala.' },
+  { id: 'quadro2', cat: 'Quadros', nome: 'Pôr do sol na praia', preco: 1200, desc: 'Pintura da orla.' },
+  { id: 'quadro3', cat: 'Quadros', nome: 'Pôster do primeiro título', preco: 800, desc: 'Emoldurado na sala.' },
+  { id: 'quadro4', cat: 'Quadros', nome: 'Raquetes autografadas', preco: 6000, minLv: 2, desc: 'Moldura com duas raquetes de campeões.' },
+  { id: 'tapete', cat: 'Sala', nome: 'Tapete grande', preco: 1200, desc: 'Tapete no meio da sala.' },
+  { id: 'luminaria', cat: 'Sala', nome: 'Luminária de chão', preco: 700, desc: 'Luz quente ao lado do sofá.' },
+  { id: 'academia', cat: 'Cômodos', nome: 'Academia (cômodo novo)', preco: 25000, minLv: 1, need: 'terreno1', desc: 'Anexo com esteira, supino, halteres e espelho (precisa do terreno ampliado). Treinar nela conta como treino.' },
+  { id: 'jogos', cat: 'Cômodos', nome: 'Sala de jogos', preco: 35000, minLv: 2, need: 'terreno1', desc: 'Anexo com sinuca, fliperama e pebolim (precisa do terreno ampliado).' },
+  { id: 'suite', cat: 'Cômodos', nome: 'Quarto ampliado', preco: 40000, minLv: 2, desc: 'O quarto fica 2 m maior, com poltrona e closet.' },
+  { id: 'cinema', cat: 'Cômodos', nome: 'Sala de cinema', preco: 90000, minLv: 3, desc: 'Telão e poltronas em dois degraus. Só na mansão.' },
+  { id: 'jardim', cat: 'Área externa', nome: 'Jardim da frente', preco: 15000, desc: 'Canteiros de flores, arbustos podados, luzes no caminho e fonte (mansão).' },
+  { id: 'muro', cat: 'Área externa', nome: 'Muro em volta do terreno', preco: 12000, desc: 'Muro em todo o perímetro, com portão na frente.' },
+  { id: 'terreno1', cat: 'Área externa', nome: 'Terreno ampliado', preco: 60000, minLv: 1, desc: 'Compra os lotes vizinhos: o terreno fica 16 m mais largo.' },
+  { id: 'terreno2', cat: 'Área externa', nome: 'Terreno ampliado II', preco: 160000, minLv: 3, need: 'terreno1', desc: 'Mais 24 m de terreno para os anexos e o jardim.' },
+  { id: 'piscina1', cat: 'Piscina', nome: 'Piscina', preco: 20000, minLv: 1, desc: 'Piscina retangular no quintal (a casa com piscina já vem com ela).' },
+  { id: 'piscina2', cat: 'Piscina', nome: 'Piscina grande', preco: 45000, minLv: 1, need: 'piscina1', desc: 'Piscina maior, com deque (na mansão ela já é grande).' },
+  { id: 'piscina3', cat: 'Piscina', nome: 'Piscina gigante', preco: 140000, minLv: 3, desc: 'A maior piscina do bairro (24 m), só na mansão.' },
+  { id: 'formaOval', cat: 'Piscina', nome: 'Formato oval', preco: 8000, need: 'piscina1', shape: 'oval', desc: 'Piscina com cantos arredondados.' },
+  { id: 'formaRaia', cat: 'Piscina', nome: 'Formato raia (longa)', preco: 10000, need: 'piscina1', shape: 'raia', desc: 'Comprida e estreita, para nadar de verdade.' },
+  { id: 'formaReta', cat: 'Piscina', nome: 'Formato retangular', preco: 0, need: 'piscina1', shape: 'reta', desc: 'A clássica.' },
+];
+const crHome = () => { const C = $s.CR; C.home = C.home || { wall: 0, floor: 0, items: {} }; const H = C.home; H.items = H.items || {};
+  const lv = crInv('moradia'); if (lv >= 2) H.items.piscina1 = true; if (lv >= 3 && !H.cineGiven) { H.items.cinema = true; H.cineGiven = true; } return H; }; // (quem já tinha casa com piscina ou mansão continua com elas)
+const crHomeHas = id => !!crHome().items[id];
+const crHomeWhy = it => { const lv = crInv('moradia'), N = ['Casa', 'Apartamento na orla', 'Casa com piscina', 'Mansão']; if ((it.minLv || 0) > lv) return 'Precisa de ' + N[it.minLv] + ' (moradia)'; if (it.need && !crHomeHas(it.need)) return 'Precisa de ' + (HOME_ITEMS.find(x => x.id === it.need) || { nome: it.need }).nome; return ''; };
+function crHomeBuy(kind, id) {
+  const C = $s.CR, H = crHome();
+  if (kind === 'wall' || kind === 'floor') { const L = kind === 'wall' ? HOME_WALLS : HOME_FLOORS, i = +id, it = L[i]; if (!it) return; H.own = H.own || {}; const key = kind + i;
+    if ((it[3] || 0) > crInv('moradia')) { C.lastMsg = it[0] + ': só na mansão.'; return; }
+    if (!H.own[key] && it[2]) { if (C.money < it[2]) { C.lastMsg = 'Dinheiro insuficiente.'; return; } C.money -= it[2]; H.own[key] = true; } H[kind] = i; C.lastMsg = (kind === 'wall' ? 'Paredes: ' : 'Piso: ') + it[0] + '.'; saveCareer(); return; }
+  const it = HOME_ITEMS.find(x => x.id === id); if (!it) return; if (crHomeWhy(it)) { C.lastMsg = crHomeWhy(it) + '.'; return; }
+  if (it.shape) { if (!H.own || !H.own['shape' + it.shape]) { if (C.money < it.preco) { C.lastMsg = 'Dinheiro insuficiente.'; return; } C.money -= it.preco; H.own = H.own || {}; H.own['shape' + it.shape] = true; } H.poolShape = it.shape; C.lastMsg = 'Piscina: ' + it.nome.toLowerCase() + '.'; saveCareer(); return; }
+  if (H.items[id]) { if (['planta1', 'planta2', 'suculentas', 'quadro1', 'quadro2', 'quadro3', 'quadro4', 'tapete', 'luminaria', 'jardim', 'muro'].includes(id)) { H.hide = H.hide || {}; H.hide[id] = !H.hide[id]; C.lastMsg = it.nome + (H.hide[id] ? ' guardado.' : ' de volta no lugar.'); saveCareer(); } return; }
+  if (C.money < it.preco) { C.lastMsg = 'Dinheiro insuficiente para ' + it.nome + '.'; return; } C.money -= it.preco; H.items[id] = true; C.lastMsg = 'Comprado: ' + it.nome + '.'; saveCareer();
+}
 // raqueteiras: as marcas das raquetes, em três versões (a do seu patrocinador master sai de graça)
 const BAG_BRANDS = [['Nux', '#111214', '#ffffff'], ["Herue's", '#e30613', '#ffffff'], ['Kuna', '#ffd23f', '#111214'], ['Ana Sport', '#1f4fb8', '#ffffff'], ['Zanb', '#2a9d8f', '#ffffff'], ['Adibas', '#111214', '#e9e9e9'], ['Shank', '#0a7d3c', '#ffd23f'], ['Vizion', '#6b2fb8', '#ffffff'], ['Drop Shut', '#ff6a00', '#111214'], ['Mormaji', '#0b0b0b', '#f2c14e']];
 const BAG_VERS = [['Team', 180], ['Pro Tour', 450], ['Elite', 950]];
@@ -2307,7 +2351,7 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crIsSemiOrFinal, crIsCentral, crTourDay, BAGS, crBagBuy, crBagCols, crBagPrice, crBagOk };
+export { HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy, crIsSemiOrFinal, crIsCentral, crTourDay, BAGS, crBagBuy, crBagCols, crBagPrice, crBagOk };
 export { crAddFama, crMood, crChemAdd, crMaybeSponsor, crNews };
 export { crRankingMode, crRankMode, crModePts, MODE_PAY };
 export { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };
