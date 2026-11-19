@@ -250,7 +250,7 @@ function animateAthlete(p, dt) {
   const prA = Math.abs(p.prep); // (verônica: prep negativo, vira para o outro lado)
   // espera meio de lado quando a bola foi baixa para o adversário (ver expectSoft); de frente quando vem ataque
   { const dT = !busy && sp < 2.4 && !(p === human && fpBodyOn) ? expectSoft(p.team) : 0; p.diagK = (p.diagK || 0) + (dT - (p.diagK || 0)) * Math.min(1, dt * (dT > (p.diagK || 0) ? 8 : 9)); }
-  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.diagK * .5 * (p.lefty ? 1 : -1) * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + (pose.yw || 0) * (p.lefty ? -1 : 1) + p.moveTurn * (1 - prA) * (1 - p.rlx) + p.rlxTurn * (1 - prA);
+  let yaw = (p.team === 0 ? 0 : Math.PI) + p.yaw * (1 - p.rlx) + p.diagK * .85 * (p.lefty ? 1 : -1) * (1 - p.rlx) + p.prep * .95 * (p.lefty ? 1 : -1) + (pose.yw || 0) * (p.lefty ? -1 : 1) + p.moveTurn * (1 - prA) * (1 - p.rlx) + p.rlxTurn * (1 - prA);
   const cel = (S.mode === 'dead' || S.mode === 'ceremony') && S.celebrate && S.celebrate.team === p.team ? S.celebrate : null;
   const mateC = cel && $s.teams[p.team].length > 1 ? $s.teams[p.team].find(o => o !== p) : null;
   // comemoração entre pontos (tapa de mão / toque baixo / raquete com raquete): vira para o parceiro quando ele chega perto
@@ -289,7 +289,7 @@ function animateAthlete(p, dt) {
   if (p.burst > 0) p.burst = Math.max(0, p.burst - dt);
   // split step: pulinho com os dois pés quando o adversário bate, aterrissando abaixado e com as pernas abertas
   const spU = p.split > 0 ? 1 - p.split / SPLIT_T : -1;
-  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? 4 * (spU / .6) * (1 - spU / .6) * .11 : 0); // (pulinho de ~11 cm em ~0,26 s: o tempo de voo que essa altura pede; antes eram 15 cm em 0,16 s, rápido demais)
+  const jy = (p.jump > 0 ? Math.sin((1 - p.jump / (p.jumpDur || .35)) * Math.PI) * (p.jumpH || .3) : 0) + (spU >= 0 && spU < .6 ? 4 * (spU / .6) * (1 - spU / .6) * .15 : 0); // (split mais expressivo: ~15 cm) // (pulinho de ~11 cm em ~0,26 s: o tempo de voo que essa altura pede; antes eram 15 cm em 0,16 s, rápido demais)
   m.group.position.set(p.pos.x, jy + (p.liftY || 0), p.pos.z); // liftY: em cima do pódio
   if (tiltK > 0) { const D = p.dive, la = D.t < .26 ? Math.sin(Math.PI * D.t / .26) * .14 : 0, sh = Math.sin(tiltA) * .5; m.group.position.x -= D.dx * sh; m.group.position.z -= D.dz * sh; m.group.position.y += la + Math.sin(tiltA) * .05; } // voo curto na saída; o corpo deitado fica centrado onde o jogador está
   // passada: cresce e some aos poucos (sem o pé estalar no chão ao parar); a fase continua girando enquanto ainda há passada
@@ -328,7 +328,7 @@ function animateAthlete(p, dt) {
   if (S.mode === 'toss' && S.serverPlayer === p && !(p.jump > 0) && !p.serveJumped && S.serveType !== 'lob' && ((p.srvSt || {}).jump ?? .34) > .02) { const tl = (p.tossDur || TOSS_T) - .22 - (p.tossT || 0); if (tl >= 0 && tl < .2) srvLoad = smooth(0, 1, 1 - tl / .2); }
   const jumpCr = (jp0 >= 0 && jp0 < .14 ? (1 - jp0 / .14) * .16 : 0) * jH + landK * .24 + srvLoad * .14;
   const srvAir = p.jumpMode && p.jumpMode.serve && jy > .03 ? clamp(jy / .12, 0, 1) : 0; // saque no ar: as pernas empurraram, o quadril estende
-  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .16 + jumpCr + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + (p.hgtK > 0 ? p.hgtK * .15 : p.hgtK * .1) + p.lowK * .11 * (1 - run * .5) + defLow;
+  const crouch = pose.crouch * (1 - run * .6) * (1 - .8 * (p.rlx || 0)) * (1 - .9 * srvAir) + spLand * .24 + jumpCr + Math.abs(p.prep) * .05 + diveK * .42 + p.reachK * reachLow * .18 + (p.hgtK > 0 ? p.hgtK * .15 : p.hgtK * .1) + p.lowK * .11 * (1 - run * .5) + defLow;
   const crouchD = Math.min(.5, crouch) * (1 - .8 * tiltK); // deitado no peixinho: pernas esticadas · (no máximo agachamento fundo: o quadril nunca desce até a areia)
   const lungeA = Math.max(Math.abs(pose.lunge), diveK * .95, p.reachK * .85), lungeS = p.reachK * .85 > Math.abs(pose.lunge) ? reachS : Math.sign(pose.lunge) || 1;
   m.hips.position.set(lungeS * .2 * lungeA + reachS * p.reachK * .22 + (p.wsx || 0), Math.min(.92 - crouchD - .08 * lungeA, p.hipCap ?? 9) + (p.bobY || 0) - (p.dip || 0), -.05 * lungeA);
@@ -405,7 +405,7 @@ function animateAthlete(p, dt) {
   const wants = [0, 0], loc = [];
   for (let i = 0; i < 2; i++) {
     const s = i ? 1 : -1;
-    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + (spLand * .15 + (spU >= 0 && spU < .45 ? .1 : 0)) * (1 - .45 * (p.diagK || 0)) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = Math.max(pose.stag || 0, (p.diagK || 0) * .55 * (1 - run)) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
+    let fx = s * (1 - .7 * crossK) * (1 + .45 * shuf) * (.17 - .07 * p.rlx + (spLand * .21 + (spU >= 0 && spU < .45 ? .13 : 0)) * (1 - .45 * (p.diagK || 0)) + p.lowK * .07 * (1 - run)) * (pose.feet ?? 1), fz = Math.max(pose.stag || 0, (p.diagK || 0) * .9 * (1 - run)) * (s > 0 ? .36 : -.08); // stag: pé de trás (do lado da raquete) recuado
     if (lungeA > .01) { if (s === lungeS) { fx = s * (.19 + .55 * lungeA); fz = -.28 * lungeA; } else fz = .12 * lungeA; }
     loc.push([fx + lvx / spn * mx * leadD / hs, fz + lvz / spn * leadD / hs]); // onde o pé deveria estar (local)
   }
