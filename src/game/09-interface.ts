@@ -326,7 +326,12 @@ function rateFrom(wonB) {
 function matchRating(won) {
   if (!S.perf || S.spectate || NET.role) return null;
   // saldo de pontos pesa também (sozinho na simples mais que na dupla): perder de lavada não dá nota média
-  return rateFrom(won ? .35 : -.4);
+  const r0 = rateFrom(won ? .35 : -.4), sr = S.perf.simRest;
+  if (!sr || !sr.total) return r0;
+  // resto simulado: a parte simulada vale pelo placar final (vitória de lavada ~8,7; derrota de lavada ~4,5), na proporção dos pontos
+  const g = S.score.games || [0, 0], hi = Math.max(g[0], g[1]), lo = Math.min(g[0], g[1]), m = hi ? (hi - lo) / hi : .4;
+  const rs = clamp((won ? 7.6 + m * 1.1 : 7 - m * 2.5) + (Math.random() - .5) * .6, 3, 9.6), f = clamp(sr.played / sr.total, 0, 1);
+  return Math.round(clamp(r0 * f + rs * (1 - f), 1, 10) * 10) / 10;
 }
 // nota ao vivo (canto de cima à direita) nas partidas da carreira: a mesma conta da nota final, sem o bônus de vitória
 function updateLiveRating() {
@@ -858,8 +863,9 @@ function simulateRest() {
   if (!S.careerActive || NET.role || S.mode === 'over') return;
   const str = t => { const l = $s.teams[t] || []; return l.reduce((x, p) => x + (p.char ? overall(p.char.a) : 70), 0) / Math.max(1, l.length); };
   const stars = S.careerStars || 3, pA = clamp(1 / (1 + Math.exp(-(str(0) - str(1)) / 10)) - (stars - 3) * .03, .08, .92);
-  let r = null, n = 0;
+  let r = null, n = 0; const played = S.stats.pts[0] + S.stats.pts[1];
   while (r !== 'match' && n++ < 2000) r = awardPoint(Math.random() < pA ? 0 : 1);
+  if (S.perf) S.perf.simRest = { played, total: S.stats.pts[0] + S.stats.pts[1] }; // a nota mistura o que você jogou com o placar da parte simulada
   if (S.matchWinner === null || S.matchWinner === undefined) return;
   landRing.visible = false; S.mode = 'dead'; hideBanner();
   showOver();

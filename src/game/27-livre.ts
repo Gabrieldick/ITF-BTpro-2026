@@ -406,7 +406,7 @@ function city(g, sp) {
   // calçadas: gente caminhando (algumas com raqueteira), carros passando na rua
   for (let k = 0; k < 22; k++) { const z = (k % 2 ? 19.2 : 28.8) + (R() - .5) * .8, x0 = -50 + R() * 320, o = dyn(fan(new THREE.Group(), x0, z, 0, 200 + k, false));
     LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (k % 2 ? 1 : -1) * (.9 + R() * .6), x0: -55, x1: 285 }); }
-  for (let k = 0; k < 4; k++) { const tmp = new THREE.Group(), east = k % 2 === 0; car(tmp, 0, 0, 0, ['#e63946', '#f4f4f4', '#2457c5', '#ffd23f'][k], k === 3); LV.boxes.pop(); const o = dyn(tmp); o.position.set(-90 + k * 95, 0, east ? 22.6 : 25.4); o.rotation.y = east ? 0 : Math.PI;
+  for (let k = 0; k < 4; k++) { const tmp = new THREE.Group(), east = k % 2 === 0; car(tmp, 0, 0, 0, ['#e63946', '#f4f4f4', '#2457c5', '#ffd23f'][k], k === 3); LV.boxes.pop(); const o = dyn(tmp); o.position.set(-90 + k * 95, 0, east ? 25.4 : 22.6); // (mão da direita: indo para +x, faixa do lado +z) o.rotation.y = east ? 0 : Math.PI;
     LV.npcs.push({ kind: 'car', o, v: east ? 9 : -9 }); }
 }
 // a cada quadro: gente andando, frescobol, carros
@@ -450,7 +450,7 @@ function city2(g, sp) {
     spot(sp, 'coco', px0 - 13, pz0 + 10.6, 'Quiosque de coco', 'Água de coco (+2 energia)');
     for (let i = 0; i < 8; i++) { const o = dyn2(sp, fan(new THREE.Group(), px0 - 15 + R() * 30, pz0 - 12 + R() * 24, 0, 520 + i, false)); LV.npcs.push({ kind: 'walk', o, x: o.position.x, z: o.position.z, v: (i % 2 ? 1 : -1) * (.5 + R() * .4), x0: px0 - 18, x1: px0 + 18 }); } }
   for (let i = 0; i < 12; i++) { const z = i % 2 ? 59.2 : 68.8, x0 = -50 + R() * 320, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 540 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: -55, x1: 285 }); }
-  for (let i = 0; i < 2; i++) { const tmp = new THREE.Group(); car(tmp, 0, 0, 0, ['#6b4f7a', '#2a9d8f'][i]); LV.boxes.pop(); const o = dyn2(sp, tmp); o.position.set(-40 + i * 150, 0, i ? 65.8 : 62.2); o.rotation.y = i ? Math.PI : 0; LV.npcs.push({ kind: 'car', o, v: i ? -8 : 8 }); }
+  for (let i = 0; i < 2; i++) { const tmp = new THREE.Group(); car(tmp, 0, 0, 0, ['#6b4f7a', '#2a9d8f'][i]); LV.boxes.pop(); const o = dyn2(sp, tmp); o.position.set(-40 + i * 150, 0, i ? 62.2 : 65.8); o.rotation.y = i ? Math.PI : 0; LV.npcs.push({ kind: 'car', o, v: i ? -8 : 8 }); }
   // lado da praia da rua principal: calçadão de pedras portuguesas com barracas, salva-vidas, academia ao ar livre e bicicletário
   box(g, 340, .08, 4, 115, .05, 14, '#e9d7b0', { noShadow: true }); for (let x = -50; x < 285; x += 2) box(g, .9, .02, 3.6, x, .1, 14, x % 4 ? '#f4f4f4' : '#2b2d31', { noShadow: true });
   const kio = (x, z, col, nm) => { box(g, 3.2, 2.4, 2.4, x, 1.2, z, '#f4f0e6'); const aw = new THREE.Mesh(new THREE.BoxGeometry(3.8, .1, 1.6), mat(col)); aw.position.set(x, 2.5, z + 1.6); aw.rotation.x = .2; g.add(aw); banner(g, nm, x, 2.85, z + 1.22, 3, .45, col, '#ffffff'); solid(x - 1.6, z - 1.2, x + 1.6, z + 1.2);
@@ -1000,7 +1000,7 @@ function cityExtras(g, sp) {
   [-55, 88, 290].forEach(x => { road(8, 60, x, 158); walk(2.4, 60, x - 5.2, 158); walk(2.4, 60, x + 5.2, 158); });
   for (let x = -40; x <= 280; x += 16) { if (Math.abs(x + 55) < 8 || Math.abs(x - 88) < 8) continue; streetLamp(g, x, 185.8); }
   for (let i = 0; i < 10; i++) { const z = i % 2 ? 187.2 : 196.8, x0 = -50 + R() * 320, o = dyn2(sp, fan(new THREE.Group(), x0, z, 0, 1000 + i, false)); LV.npcs.push({ kind: 'walk', o, x: x0, z, v: (i % 2 ? 1 : -1) * (.9 + R() * .5), x0: -55, x1: 285 }); }
-  for (let k = 0; k < 3; k++) { const tmp = new THREE.Group(), east = k % 2 === 0; car(tmp, 0, 0, 0, ['#2457c5', '#ffd23f', '#e63946'][k]); LV.boxes.pop(); const o = dyn2(sp, tmp); o.position.set(-60 + k * 120, 0, east ? 190.6 : 193.4); o.rotation.y = east ? 0 : Math.PI; LV.npcs.push({ kind: 'car', o, v: east ? 8 : -8 }); }
+  for (let k = 0; k < 3; k++) { const tmp = new THREE.Group(), east = k % 2 === 0; car(tmp, 0, 0, 0, ['#2457c5', '#ffd23f', '#e63946'][k]); LV.boxes.pop(); const o = dyn2(sp, tmp); o.position.set(-60 + k * 120, 0, east ? 193.4 : 190.6); o.rotation.y = east ? 0 : Math.PI; LV.npcs.push({ kind: 'car', o, v: east ? 8 : -8 }); }
   // ---- além da quarta rua: prédios, a Praça da Matriz (igreja, coreto) e a Praça das Palmeiras (complexo de quadras) ----
   aptBlock(g, -38, 214, 20, 12, 12, '#e3d5c1'); aptBlock(g, 120, 214, 18, 12, 15, '#cfe3e8'); aptBlock(g, 262, 214, 22, 12, 9, '#f2c6b4');
   { const mx = 40, mz = 228; box(g, 50, .08, 40, mx, .05, mz, '#7fb069', { noShadow: true }); box(g, 3, .1, 40, mx, .06, mz, '#d8cdb5', { noShadow: true });
@@ -1211,7 +1211,7 @@ function build() {
   const lvl = crInv('moradia'), key = Object.keys($s.CR.cosm || {}).join() + ['quadra', 'ct', 'moradia', 'gastro', 'esports', 'midia', 'saude', 'jato', 'eventos'].map(crInv).join('') + ['carro', 'casa', 'crio', 'nutri', 'social', 'skate', 'bike', 'cachorro', 'gato', 'trofeus'].map(k => crLife(k) ? 1 : 0).join('') + '|' + Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0) + '|' + JSON.stringify($s.CR.home || {}) + '|' + (($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) ? $s.CR.tour.name + $s.CR.tour.round + $s.CR.tour.day + (crMyMatch() ? 1 : 0) : '');
   if (LV.group && LV.built === key) return;
   if (LV.group) { scene.remove(LV.group); LV.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  LV.built = key; LV.homeLot = null; LV.academy = null; LV.acadRoof = null; LV.doors = []; LV.spots = []; LV.boxes = []; LV.gnd = []; LV.roadR = []; LV.xRoads = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
+  LV.built = key; LV.garageGate = null; LV.homeLot = null; LV.academy = null; LV.acadRoof = null; LV.doors = []; LV.spots = []; LV.boxes = []; LV.gnd = []; LV.roadR = []; LV.xRoads = []; LV.noSpawn = []; LV.npcs = []; LV.pool = null;
   const g = new THREE.Group(); g.position.copy(H0); LV.group = g; scene.add(g);
   const sp = new THREE.Group(); g.add(sp); sp.userData.dyn = true; // pontos de interação (fora da junção)
   const S2 = (id, x, z, t, s, r) => spot(sp, id, x, z, t, s, r);
@@ -1278,7 +1278,7 @@ function build() {
   // sala: sofá e TV na parede do fundo, tapete
   const kLen = [0, 3.4, 4.6, 6.4][lvl], kEnd = lvl >= 1 ? .4 + kLen + .9 : 2.7, tvW = [2, 2.4, 3, 3.8][lvl], tvx = -hW + kEnd + 2.4 + tvW / 2, sofaW = [2.8, 3.4, 4.2, 5.2][lvl];
   tvSet(g, tvW, tvx, -hD + .4, 0, lvl >= 3);
-  sofa(g, sofaW, tvx, -hD + 3.9, 0, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
+  sofa(g, sofaW, tvx, -hD + 3.9, 2, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
   if (lvl >= 1) [-1, 1].forEach(sd => { if (sd > 0 && lvl < 3) return; sofa(g, lvl >= 3 ? 2.6 : 2.1, tvx + sd * (sofaW / 2 + .9), -hD + 2.4, sd < 0 ? 1 : 3, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]); }); // sofás laterais em U
   rug(g, sofaW + .8, 2.8 + lvl * .2, tvx, -hD + 2.5, ['#c9b79c', '#8fb3c4', '#e9dcc6', '#6b2737'][lvl]);
   S2('tv', tvx + 1.6, -hD + 2.2, 'TV', 'Notícias e entrevistas', .8);
@@ -1332,12 +1332,12 @@ function build() {
   let pw = [0, 8, 12, 18, 24][pT], pd = [0, 4, 5, 6.5, 8][pT]; if (shape === 'raia') { pw = Math.min(pw * 1.5, fx - fx0 - 10); pd *= .55; } const pz = -hD - pd / 2 - (lvl >= 3 ? 3.8 : 2.6);
   const muro = hv('muro'), wallZ = Math.min(lvl >= 3 ? -hD - 15 : lvl >= 2 ? -hD - 9.6 : -hD - 4, pT ? pz - pd / 2 - (lvl >= 3 ? 5.3 : 3) : 0); LV.backWall = lvl >= 2 || pT || muro ? wallZ : null;
   const frontZ = Math.min(17.6, 1 + (lotD + 6) / 2 - .3); LV.homeLot = [fx0, LV.backWall != null ? wallZ : -hD - 4, fx, frontZ + .5]; // (a cidade não constrói nada dentro do seu terreno)
-  if (muro) { const MC = '#e6dfd2', h = 2, seg = (x0, z0, x1, z1) => { box(g, Math.max(.25, Math.abs(x1 - x0)), h, Math.max(.25, Math.abs(z1 - z0)), (x0 + x1) / 2, h / 2, (z0 + z1) / 2, MC); solid(Math.min(x0, x1) - .12, Math.min(z0, z1) - .12, Math.max(x0, x1) + .12, Math.max(z0, z1) + .12); };
+  const buildMuro = xg => { if (muro) { const MC = '#e6dfd2', h = 2, seg = (x0, z0, x1, z1) => { box(g, Math.max(.25, Math.abs(x1 - x0)), h, Math.max(.25, Math.abs(z1 - z0)), (x0 + x1) / 2, h / 2, (z0 + z1) / 2, MC); solid(Math.min(x0, x1) - .12, Math.min(z0, z1) - .12, Math.max(x0, x1) + .12, Math.max(z0, z1) + .12); };
     seg(fx0, wallZ, fx0, frontZ); seg(fx, wallZ, fx, frontZ); // laterais
-    const gates = [[-1.8, 1.8]].concat(crLife('carro') ? [[-hW - 5.6, -hW - .4]] : []).sort((a, b) => a[0] - b[0]); let x = fx0; gates.forEach(([a, b]) => { if (a > x) seg(x, frontZ, a, frontZ); x = Math.max(x, b); }); seg(x, frontZ, fx, frontZ); // frente com portões
+    const gates = [[-1.8, 1.8]].concat(crCarCur() && !xg ? [[-hW - 5.6, -hW - .4]] : [], xg ? [xg] : []).sort((a, b) => a[0] - b[0]); let x = fx0; gates.forEach(([a, b]) => { if (a > x) seg(x, frontZ, a, frontZ); x = Math.max(x, b); }); seg(x, frontZ, fx, frontZ); // frente com portões
     [-1.8, 1.8].forEach(sd => { box(g, .45, h + .4, .45, sd, (h + .4) / 2, frontZ, '#cfc6b5'); const l = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 8), mat('#fff3d6', glow('#ffd98a', 1.2))); l.position.set(sd, h + .55, frontZ); g.add(l); });
-    seg(fx0, wallZ, -1.8, wallZ); seg(1.8, wallZ, fx, wallZ); } // fundo (portão para a praia)
-  else if (lvl >= 2 || pT) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, wallZ, '#f0ebe1'); box(g, fx - fx0, .05, -hD - wallZ, (fx + fx0) / 2, .03, (wallZ - hD) / 2, lvl >= 3 ? '#5f9e52' : '#6aa65a', { noShadow: true }); }
+    seg(fx0, wallZ, -1.8, wallZ); seg(1.8, wallZ, fx, wallZ); } }; // fundo (portão para a praia) — o muro sai depois da garagem (portão dela na frente)
+  if (!muro && (lvl >= 2 || pT)) { box(g, fx - fx0, 1.2, .25, (fx + fx0) / 2, .6, wallZ, '#f0ebe1'); box(g, fx - fx0, .05, -hD - wallZ, (fx + fx0) / 2, .03, (wallZ - hD) / 2, lvl >= 3 ? '#5f9e52' : '#6aa65a', { noShadow: true }); }
   if (muro && (lvl >= 2 || pT)) box(g, fx - fx0, .05, -hD - wallZ, (fx + fx0) / 2, .03, (wallZ - hD) / 2, lvl >= 3 ? '#5f9e52' : '#6aa65a', { noShadow: true }); // muro do fundo (para a praia) e o gramado do quintal
   box(g, .3, 1, .3, 1.6, .5, hD + 6.2, '#3a3f47'); box(g, .5, .35, .3, 1.6, 1.15, hD + 6.2, '#c0392b');
   // conquistas da história do bairro
@@ -1363,14 +1363,23 @@ function build() {
   // ---- garagem: carro, van (transporte) ----
   if (crCarCur() && !crHomeHas('garagem')) { const cc = crCarCur(); car(g, -hW - 3, hD + 3, Math.PI / 2, cc.col, false, cc.model); }
   // garagem (comprada): prédio de portão aberto para a rua, com a coleção de carros; heliponto e estátua
-  { const FS = (w, d, pref) => { const L2 = LV.homeLot; if (!L2) return null; const occ2 = LV.boxes.concat(pT ? [[-pw / 2 - (lvl >= 3 ? 11 : 2), pz - pd / 2 - 3, pw / 2 + (lvl >= 3 ? 5.5 : 2), pz + pd / 2 + 3]] : [], (LV.wing || []).map(r => [r.x0, r.z0, r.x1, r.z1]), [[-hW - 1, -hD - 1, hW + 1, hD + 1]], court ? [[hW + 3.5, -9.5, hW + 14.5, 9.5]] : [], [[-2.5, hD, 2.5, frontZ + 1]]); // (piscina e área gourmet, quadra e o caminho da porta)
+  { const occ2 = LV.boxes.concat(pT ? [[-pw / 2 - (lvl >= 3 ? 11 : 2), pz - pd / 2 - 3, pw / 2 + (lvl >= 3 ? 5.5 : 2), pz + pd / 2 + 3]] : [], (LV.wing || []).map(r => [r.x0, r.z0, r.x1, r.z1]), [[-hW - 1, -hD - 1, hW + 1, hD + 1]], court ? [[hW + 3.5, -9.5, hW + 14.5, 9.5]] : [], [[-2.5, hD, 2.5, frontZ + 1]]); // (piscina e área gourmet, quadra e o caminho da porta)
+    const FS = (w, d, pref) => { const L2 = LV.homeLot; if (!L2) return null;
       const ok = (x0, z0) => !occ2.some(([a, b, c, d2]) => x0 - 1 < c && x0 + w + 1 > a && z0 - 1 < d2 && z0 + d + 1 > b);
       const zs = []; for (let z = L2[1] + 1; z + d < L2[3] - 1; z += .5) zs.push(z); if (pref === 'front') zs.reverse();
       for (const z of zs) for (let x = L2[0] + 1; x + w < L2[2] - 1; x += .5) if (ok(x, z)) return [x, z]; return null; };
-    if (crHomeHas('garagem')) { const at = FS(13, 7.5, 'front'); if (at) { LV.garageAt = at; const [gx0, gz0] = at, gx1 = gx0 + 13, gz1 = gz0 + 7.5, gcx = gx0 + 6.5, gcz = gz0 + 3.75, GH = 3.2;
-        box(g, 13, .06, 7.5, gcx, .04, gcz, '#8f949b', { noShadow: true }); wall(g, gx0, gz0, gx1, gz0, GH, '#e6dfd2'); wall(g, gx0, gz0, gx0, gz1, GH, '#e6dfd2'); wall(g, gx1, gz0, gx1, gz1, GH, '#e6dfd2'); // frente aberta (+z)
-        box(g, 13.4, .25, 7.9, gcx, GH + .12, gcz, '#cfcac0'); banner(g, 'Garagem', gcx, GH - .35, gz1 + .05, 3.4, .5, '#1d1d20', '#ffffff');
-        const owned = CARS.filter(c => crCarOwned(c.id)).slice(0, 3); owned.forEach((c, i) => car(g, gx0 + 2.2 + i * 4.3, gcz - .3, Math.PI / 2, c.col, false, c.model)); } }
+    let gGate = null;
+    if (crHomeHas('garagem')) { // garagem de 4 vagas encostada na frente do terreno: o portão dela abre direto para a calçada e a rua
+      const GW = 18, GD = 9; let at = null; const z0f = frontZ - GD - .05;
+      for (let x = fx0 + 1; x + GW < fx - 1 && !at; x += .5) if (!occ2.some(([a, b, c, d2]) => x - .6 < c && x + GW + .6 > a && z0f - .6 < d2 && frontZ > b)) at = [x, z0f];
+      if (!at) at = FS(GW, GD, 'front');
+      if (at) { LV.garageAt = at; const [gx0, gz0] = at, gx1 = gx0 + GW, gz1 = gz0 + GD, gcx = gx0 + GW / 2, gcz = gz0 + GD / 2, GH = 3.4;
+        box(g, GW, .06, GD, gcx, .04, gcz, '#8f949b', { noShadow: true }); wall(g, gx0, gz0, gx1, gz0, GH, '#e6dfd2'); wall(g, gx0, gz0, gx0, gz1, GH, '#e6dfd2'); wall(g, gx1, gz0, gx1, gz1, GH, '#e6dfd2'); // frente aberta (+z, para a rua)
+        box(g, GW + .4, .25, GD + .4, gcx, GH + .12, gcz, '#cfcac0'); banner(g, 'Garagem', gcx, GH - .35, gz1 + .06, 3.6, .55, '#1d1d20', '#ffffff');
+        for (let i = 1; i < 4; i++) box(g, .08, .02, GD - 1.5, gx0 + i * GW / 4, .08, gcz + .3, '#f2f2f2', { noShadow: true }); // faixas das vagas
+        if (frontZ < 18) box(g, GW - 1, .05, 18.2 - frontZ, gcx, .05, (frontZ + 18.2) / 2, '#a9adb3', { noShadow: true }); // entrada de carros até a calçada
+        CARS.filter(c => crCarOwned(c.id)).slice(0, 4).forEach((c, i) => car(g, gx0 + GW / 8 + i * GW / 4, gcz - .4, Math.PI / 2, c.col, false, c.model));
+        gGate = [gx0 + .3, gx1 - .3]; LV.garageGate = [gx0 - 1, gx1 + 1]; } }
     if (crHomeHas('heliponto')) { const at = FS(14, 14, 'back'); if (at) { const hx = at[0] + 7, hz = at[1] + 7;
         cyl(g, 6.5, 6.5, .1, hx, .06, hz, '#3a3f47', { noShadow: true }, 40); const rg = new THREE.Mesh(new THREE.RingGeometry(5.4, 5.8, 40), mat('#ffd23f')); rg.rotation.x = -Math.PI / 2; rg.position.set(hx, .13, hz); g.add(rg);
         [[-1.2, 0, .5, 3.4], [1.2, 0, .5, 3.4], [0, 0, 2.4, .5]].forEach(([dx, dz, w2, d2]) => box(g, w2, .02, d2, hx + dx, .13, hz + dz, '#ffffff', { noShadow: true })); // H
@@ -1381,7 +1390,7 @@ function build() {
         solid(hx - 2.2, hz - 1.2, hx + 2.2, hz + 1.6); spot(sp, 'torneio', hx + 3.6, hz + 3.2, 'Helicóptero', 'Ir ao torneio voando'); } }
     if (crHomeHas('estatua')) { const sx = hW * .45, sz = hD + 3; box(g, 1.6, 1.2, 1.6, sx, .6, sz, '#d9d4c7'); box(g, 1.8, .12, 1.8, sx, 1.26, sz, '#cfc6b5'); solid(sx - .9, sz - .9, sx + .9, sz + .9);
       const st = fan(g, sx, sz, Math.PI, 17, false); st.position.y = 1.32; st.scale.setScalar(1.5); const BR = mat('#8c6239', { metalness: .75, roughness: .35 }); st.traverse(o2 => { if (o2.isMesh) o2.material = BR; });
-      cup(g, sx, 1.32 + 2.7, sz, 9); banner(g, nameOf($s.CR.me).split(' ')[0] + ' · ' + trophyList().length + ' títulos', sx, .7, sz + .82, 1.5, .4, '#2b2118', '#e8b923'); } }
+      cup(g, sx, 1.32 + 2.7, sz, 9); banner(g, nameOf($s.CR.me).split(' ')[0] + ' · ' + trophyList().length + ' títulos', sx, .7, sz + .82, 1.5, .4, '#2b2118', '#e8b923'); }  buildMuro(gGate); }
   if (crInv('jato') >= 1) car(g, -8, 22.2, 0, '#f2f2f2', true); else { box(g, .1, 2.4, .1, -8, 1.2, 20.2, '#3a3f47'); box(g, 1.2, .5, .06, -8, 2.4, 20.2, '#2457c5'); }
   S2('torneio', -8, 19.6, crInv('jato') >= 1 ? 'Van da equipe' : 'Ponto de táxi', 'Ir ao torneio');
   // ---- piscina (casa com piscina e mansão), atrás da casa ----
@@ -1467,7 +1476,7 @@ function build() {
   // praia: guarda-sóis e cadeiras, palmeiras na orla
   [[-30, -28, '#ff6a00'], [-14, -30, '#33c3ff'], [30, -27, '#ffd23f'], [44, -29, '#e63946'], [58, -26, '#2a9d8f']].forEach(([x, z, c]) => { umbrella(g, x, z, c); lounger(g, x + 1, z + .8, .3, '#ffffff'); });
   // rua: palmeiras, postes, bancos, carros estacionados
-  for (let x = -40; x <= 280; x += 12) { palm(g, x, 17.4, 4.8 + (Math.abs(x) % 3)); streetLamp(g, x + 6, 18.3); }
+  for (let x = -40; x <= 280; x += 12) { const GG = LV.garageGate, inG = v => GG && v > GG[0] && v < GG[1]; if (!inG(x)) palm(g, x, 17.4, 4.8 + (Math.abs(x) % 3)); if (!inG(x + 6)) streetLamp(g, x + 6, 18.3); } // (livre na frente da garagem)
   [[-26, 30.4], [6, 30.4], [32, 30.4]].forEach(([x, z]) => bench(g, x, z));
   [[-30, 26.4, '#e63946'], [20, 21.6, '#f4f4f4'], [62, 26.4, '#2a9d8f'], [-46, 21.6, '#ffd23f']].forEach(([x, z, c]) => car(g, x, z, 0, c));
   // ---- arena de treino no fim da rua ----
@@ -1685,9 +1694,13 @@ function cam(dt) {
   if (!LV.on) return false;
   const k = LV.keys;
   if (k.z) LV.zoom = Math.max(2.2, LV.zoom * (1 - dt * 1.4)); if (k.x) LV.zoom = Math.min(22, LV.zoom * (1 + dt * 1.4)); if (k.t) LV.camPitch = Math.min(1.45, LV.camPitch + dt * .9); if (k.g) LV.camPitch = Math.max(.08, LV.camPitch - dt * .9);
-  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, inside = lx > -hw && lx < hw && lz > -hd && lz < hd;
-  // zoom e inclinação escolhidos pelo jogador; dentro de casa a câmera nunca fica mais baixa que as paredes (vista de cima)
-  const dist = LV.zoom, pitch = inside ? Math.max(LV.camPitch, .78) : LV.camPitch, h = 1.2;
+  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z, RM = [[-hw, -hd, hw, hd]].concat((LV.wing || []).map(r => [r.x0, r.z0, r.x1, r.z1]));
+  const room = RM.find(([a, b, c, d]) => lx > a && lx < c && lz > b && lz < d), inside = !!room;
+  // zoom e inclinação livres como na rua (roda do mouse e arraste); dentro de casa, com a câmera baixa, ela chega mais perto
+  // para não atravessar a parede do cômodo (de cima, as paredes não atrapalham e o teto some)
+  let dist = LV.zoom; const pitch = LV.camPitch, h = 1.2;
+  if (room && Math.sin(pitch) * dist + h < (LV.houseH || 2.8) + .4) { const [a, b, c, d] = room, fx = Math.sin(LV.camYaw) * Math.cos(pitch), fz = Math.cos(LV.camYaw) * Math.cos(pitch);
+    for (let k = 0; k < 40 && dist > 1.2; k++) { const cxp = lx + fx * dist, czp = lz + fz * dist; if (cxp > a + .25 && cxp < c - .25 && czp > b + .25 && czp < d - .25) break; dist *= .92; } }
   _v.set(human.pos.x + Math.sin(LV.camYaw) * Math.cos(pitch) * dist, h + Math.sin(pitch) * dist, human.pos.z + Math.cos(LV.camYaw) * Math.cos(pitch) * dist);
   const kk = LV.snap ? 1 : 1 - Math.exp(-dt * 6); if (LV.snap) { LV.look = null; LV.snap = false; } // depois do táxi/van: a câmera já aparece no lugar
   camera.position.lerp(_v, kk); _w.set(human.pos.x, 1.1, human.pos.z);

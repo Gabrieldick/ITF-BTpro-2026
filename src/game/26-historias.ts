@@ -131,6 +131,59 @@ const QA = {
   ],
 };
 
+// ---------- perguntas que dependem do seu momento (ranking, fama, títulos, sequência, nível do torneio, notas, idade) ----------
+// k: em que entrevistas aparece; w: quando faz sentido. Escolhidas antes das genéricas na maioria das vezes (sem nomes no
+// texto, para a voz gravada valer em todas as carreiras)
+const X = (k, w, q, a) => Object.assign(Q(q, a), { k, w });
+const QX = [
+  // ---- número 1 / topo do ranking
+  X(['titulo', 'vitoria'], D => D.no1, 'Você é [a|o] número um do mundo. Pesa carregar esse posto em cada torneio?', { c: 'Pesa nada. Eu trabalhei para estar aqui e quero ficar muito tempo.', h: 'Pesa um pouco, sim. Todo mundo joga o melhor jogo da vida contra a gente.', t: 'Muda a forma como os outros jogam contra mim. Tenho que me adaptar mais rápido.', b: 'Pesa na mala: agora tem mais troféu para carregar.', e: 'Às vezes eu ainda não acredito. Lembro de quando eu sonhava com isso.' }),
+  X(['titulo'], D => D.no1, 'Mais um título como líder do ranking. Qual é a próxima meta para quem já está no topo?', { c: 'Ficar no topo por tanto tempo que vão ter que inventar outro ranking.', h: 'Continuar evoluindo. O topo não é lugar de descanso.', t: 'Melhorar a devolução de saque. Ainda perco pontos bobos ali.', e: 'Deixar um legado. Quero que as crianças da praia sonhem com isso também.', po: 'Ganhar o que ainda falta. E calar quem diz que eu tive sorte.' }),
+  X(['pre'], D => D.no1, 'Você chega como cabeça de chave número um. Todos querem derrubar [a líder|o líder]. Como lida com isso?', { c: 'Que venham. Eu gosto de ser o alvo.', h: 'Com respeito a todo mundo. Qualquer dupla aqui pode ganhar de qualquer uma.', t: 'Estudando os adversários. Quem está no topo não pode ser surpreendido.', b: 'Vou pintar um alvo na camiseta para facilitar.', r: 'Jogando. Não tem muito o que falar antes.' }),
+  X(['derrota'], D => D.no1, '[A número um|O número um] caiu cedo. Foi um tropeço ou sinal de alerta?', { h: 'Um tropeço. Eles jogaram melhor e eu preciso aceitar.', c: 'Tropeço. Na semana que vem eu volto a ganhar.', t: 'Alerta para alguns detalhes. Errei muito na devolução e isso tem conserto.', po: 'Sinal de alerta só para quem torce contra mim.', e: 'Dói. Mas é isso que me faz querer voltar mais forte.' }),
+  X(['titulo', 'vitoria', 'pre'], D => D.top3 && !D.no1, 'Você está [colada|colado] no topo do ranking. A liderança é questão de tempo?', { c: 'É. E o tempo está acabando para quem está lá em cima.', h: 'Ainda falta muito. Tem que ganhar semana após semana.', t: 'É questão de regularidade. Chegar longe em todo torneio grande.', b: 'Já estou treinando o discurso de número um, só por garantia.', po: 'Se o ranking fosse justo, eu já estaria lá.' }),
+  X(['titulo', 'vitoria'], D => D.top10 && !D.top3, 'Você entrou de vez no grupo das dez melhores. O que mudou no seu jogo?', { t: 'A consistência. Erro bem menos bolas fáceis do que antes.', h: 'Muito trabalho de quem está do meu lado. Eu só fiz a minha parte.', c: 'Nada mudou: o mundo só demorou para perceber.', e: 'A cabeça. Hoje eu acredito que pertenço a esse lugar.' }),
+  X(['titulo', 'vitoria', 'zebra'], D => D.rk > 50, 'Pouca gente conhecia você antes desta semana. Como é virar notícia de repente?', { e: 'É um sonho. Meu celular não para de tocar.', h: 'Estranho, mas muito bom. Espero continuar dando motivo.', b: 'Até a minha mãe descobriu que eu jogo de verdade.', c: 'Era questão de oportunidade. Agora todo mundo sabe quem eu sou.', t: 'Muda pouca coisa. Tenho que ganhar de novo na semana que vem.' }),
+  // ---- fama
+  X(['vida', 'titulo', 'pre'], D => D.fama >= 75, 'Você virou [uma das atletas mais conhecidas|um dos atletas mais conhecidos] do esporte. Ainda consegue andar na praia tranquila?', { b: 'Só de boné, óculos e bigode falso.', h: 'Consigo, e adoro parar para tirar foto. Sem o público, nada disso existe.', r: 'Prefiro preservar esse lado. Tem horas que eu só quero o meu silêncio.', e: 'Toda vez que uma criança me pede foto, eu lembro de quando era eu pedindo.', c: 'Não, e tudo bem. Faz parte de ser [a melhor|o melhor].' }),
+  X(['vida'], D => D.fama >= 60, 'Muitas marcas querem você. Como escolhe os patrocínios?', { t: 'Só aceito o que faz sentido para o meu jogo e para a minha rotina de treino.', c: 'Escolho quem paga o que eu valho.', h: 'Gosto de marcas que apoiam a base. O esporte precisa crescer.', po: 'Recuso muita coisa. Não vou vender qualquer produto só porque pagam bem.', b: 'A que me der mais protetor solar ganha.' }),
+  X(['vida', 'pre'], D => D.fama < 20 && D.rk > 30, 'Você ainda está construindo o nome no circuito. Como se mantém financeiramente?', { h: 'Dando aula de manhã e treinando à tarde. É puxado, mas vale a pena.', e: 'Minha família ajuda muito. Um dia quero devolver tudo isso.', b: 'Com muito miojo e muita fé.', t: 'Planejando bem o calendário: escolho torneios em que a viagem compensa.', c: 'Por pouco tempo. Logo os patrocinadores vão chegar.' }),
+  // ---- títulos e sequências
+  X(['titulo'], D => D.firstTitle, 'Primeiro título da carreira! Você imaginou esse momento muitas vezes?', { e: 'Mil vezes. E foi melhor do que todas.', h: 'Imaginei, mas não achei que seria tão cedo. Estou muito [grata|grato].', b: 'Imaginei, mas no sonho eu não estava tão suada.', c: 'Imaginei e treinei para ele. Agora quero o segundo.', t: 'Imaginei. E na hora só pensei em fazer o básico bem feito.' }),
+  X(['titulo'], D => D.firstAtTier && !D.firstTitle, 'Primeiro título neste nível. Dá para dizer que você subiu de patamar?', { c: 'Dá. E não pretendo descer.', h: 'É um passo importante, mas ainda tenho muito a provar aqui.', t: 'Os jogos aqui são mais rápidos. Precisei ajustar a posição na rede, e funcionou.', e: 'É o tipo de vitória que muda a carreira. Estou muito [emocionada|emocionado].' }),
+  X(['titulo'], D => D.titleStreak >= 3, 'Mais um título, e a sequência só cresce. Alguém consegue parar você?', { c: 'Por enquanto, não. E eu não estou [cansada|cansado].', h: 'Claro que consegue. Uma hora a sequência acaba, e tudo bem.', b: 'Só se colocarem areia movediça do meu lado da quadra.', t: 'Sequência é consequência de rotina. Treino, descanso e foco no próximo jogo.', po: 'Os outros estão preocupados demais comigo e esquecem de jogar.' }),
+  X(['titulo'], D => D.titles >= 20, 'São muitos títulos na carreira. Algum ainda tem gosto especial?', { e: 'Todos. Mas este tem gosto de que ainda dá para mais.', h: 'Cada um tem uma história. Não consigo escolher.', c: 'O próximo. É sempre o próximo.', b: 'O que veio com o maior cheque. Brincadeira… ou não.', t: 'Os conquistados contra duplas que eu nunca tinha vencido. São os que mais ensinam.' }),
+  X(['vice'], D => D.viceStreak >= 2, 'Mais uma final perdida. Existe um bloqueio na hora de fechar?', { h: 'Talvez exista. Vou trabalhar a cabeça para as finais.', c: 'Bloqueio nenhum. É questão de tempo até virar.', t: 'Nas finais eu jogo mais [travada|travado]. Preciso arriscar mais nos pontos importantes.', e: 'Dói muito. Mas chegar em tantas finais também diz alguma coisa.', po: 'Bloqueio é o que a arbitragem teve hoje.' }),
+  X(['derrota'], D => D.lossStreak >= 3, 'Vários torneios sem passar das primeiras rodadas. O que está acontecendo?', { h: 'Fase ruim. Acontece com todo mundo, e eu vou sair dela trabalhando.', t: 'Estou errando demais na transição para a rede. Já sei onde preciso corrigir.', c: 'Nada que um título não resolva. E ele vem.', r: 'Prefiro não falar sobre isso agora.', e: 'Está difícil, não vou mentir. Mas eu não desisto.' }),
+  // ---- nível do torneio
+  X(['titulo'], D => D.tier >= 9, '[Campeã|Campeão] mundial! O que significa este título?', { e: 'Significa tudo. Desde criança eu sonhava com esse troféu.', c: 'Significa que eu sou [a melhor|o melhor] do mundo. Simples assim.', h: 'Significa que todo o esforço valeu. Divido com todo mundo que me ajudou.', b: 'Significa que agora eu posso pedir desconto em qualquer quiosque.', t: 'Que o trabalho do ano inteiro deu certo no momento mais importante.' }),
+  X(['titulo'], D => D.tier === 8, 'Título de Sand Series, a elite do circuito. Você se vê entre [as favoritas|os favoritos] ao Mundial?', { c: 'Me vejo como [a favorita|o favorito].', h: 'Entre [as favoritas|os favoritos], sim. Mas o Mundial é outra história.', t: 'Se eu mantiver esse nível de saque, sim.', b: 'Vou começar a ensaiar o discurso só para garantir.', e: 'Ainda estou processando este título. O Mundial vem depois.' }),
+  X(['titulo'], D => D.tier === 7, 'Título de BT400, um dos torneios mais fortes do ano. Qual foi a chave?', { t: 'A regularidade. Não tive nenhum jogo muito abaixo.', c: 'Eu era a melhor dupla da chave. Fiz o que tinha que fazer.', h: 'A chave foi pesada. Tive um pouco de sorte nos momentos certos.', pa: 'A sintonia com a minha dupla. A gente quase não precisou conversar.' }),
+  X(['pre'], D => D.tier >= 9, 'É o Mundial. Dá para dormir na véspera?', { b: 'Dormir eu durmo. Sonho com bola de beach tennis a noite toda.', h: 'Pouco, sinceramente. Mas a ansiedade é boa.', c: 'Durmo como sempre. É mais um jogo.', t: 'Tenho uma rotina fixa: jantar cedo, alongamento e celular desligado.', e: 'Não muito. É o torneio que todo mundo sonha jogar.' }),
+  X(['derrota'], D => D.tier >= 8, 'Cair num torneio desse nível dói mais?', { h: 'Dói, porque são os torneios que todo mundo quer. Mas aprendo muito aqui.', c: 'Dói, mas eu volto. Esse é o meu lugar.', t: 'Aqui qualquer detalhe decide. Perdi dois pontos de saque que custaram o jogo.', e: 'Dói demais. Eu me preparei muito para esta semana.' }),
+  // ---- notas e atuação no torneio
+  X(['titulo', 'vice'], D => D.avg >= 8.6, 'As suas atuações nesta semana foram impecáveis. Foi o melhor tênis da sua carreira?', { c: 'Foi. E ainda tenho mais para mostrar.', h: 'Talvez. Tudo encaixou, e isso é raro.', t: 'Errei muito pouco. Quando o erro some, o resto aparece.', e: 'Senti a bola grande a semana toda. Queria guardar essa sensação.', b: 'Vou pedir para repetirem a semana toda.' }),
+  X(['titulo'], D => D.avg > 0 && D.avg < 7.2, 'Você foi [campeã|campeão] mesmo sem jogar o seu melhor. Como explica?', { h: 'Ganhei no detalhe e na luta. Não foi bonito, mas foi suficiente.', c: '[Campeã|Campeão] ganha até nos dias ruins. É isso que separa [as melhores|os melhores].', t: 'Quando o jogo não flui, a gente simplifica: bola no meio e paciência.', b: 'Joguei feio, mas o troféu é bonito.', pa: 'Minha dupla segurou nos dias em que eu não estava bem.' }),
+  X(['derrota'], D => D.lastR > 0 && D.lastR < 6.2, 'Foi uma das suas piores atuações. O que aconteceu hoje?', { h: 'Foi um dia ruim mesmo. Peço desculpas a quem veio torcer.', t: 'Errei a altura do lob e eles me castigaram no smash. Preciso rever isso.', r: 'Não estava bem. Vou descansar e pensar.', po: 'Teve coisa estranha hoje que eu prefiro não comentar.', e: 'Saí [frustrada|frustrado]. Eu sei que posso muito mais.' }),
+  X(['vitoria'], D => D.lastR >= 8.8, 'Foi um show. Você sente quando está num dia assim?', { c: 'Sinto desde o aquecimento. Hoje a bola ia onde eu queria.', e: 'Sinto, e é a melhor sensação do mundo.', t: 'Quando o primeiro saque entra muito, tudo fica mais fácil.', b: 'Sinto. Pena que não dá para avisar antes para a torcida apostar.', h: 'Às vezes. Mas não dá para contar com isso todo dia.' }),
+  // ---- idade e carreira longa
+  X(['vida', 'titulo'], D => D.age >= 32, 'Você está entre [as mais experientes|os mais experientes] do circuito. Já pensa em aposentadoria?', { c: 'Enquanto eu estiver ganhando, ninguém vai me aposentar.', h: 'Penso, mas ainda não. O corpo e a cabeça estão bem.', t: 'Hoje eu treino menos e melhor. Isso prolonga a carreira.', e: 'Quando parar, quero parar bem. Ainda não é a hora.', b: 'Só quando a areia ficar mais mole que os meus joelhos.' }),
+  X(['vida', 'titulo', 'vitoria'], D => D.age <= 21, 'Tão jovem e já com resultados grandes. Como lida com a expectativa?', { h: 'Tento não pensar muito. Ainda tenho muito a aprender.', c: 'Expectativa é bom sinal. Quero superar todas.', e: 'Às vezes dá medo, mas a minha família me ajuda a manter os pés no chão.', b: 'Lido bem, a minha mãe ainda me manda arrumar o quarto.', t: 'Foco no processo. Cada torneio é uma aula.' }),
+  // ---- ritmo da temporada
+  X(['vida', 'pre'], D => D.tourneys >= 10, 'Você jogou muitos torneios nesta temporada. O corpo está aguentando?', { t: 'Planejamos pausas e recuperação. Gelo, fisioterapia e sono.', h: 'Está cansado, mas é o preço de estar sempre competindo.', c: 'Aguenta. Eu treino para isso.', b: 'O corpo reclama, mas eu finjo que não ouço.', e: 'Tem semana que eu acordo [moída|moído], mas a vontade de jogar fala mais alto.' }),
+  X(['vida'], D => D.money >= 500000, 'Com os prêmios e patrocínios, sua vida mudou bastante. O que você fez de mais especial?', { e: 'Dei uma casa para os meus pais. Nada paga isso.', h: 'Investi no projeto social do meu bairro. É o que mais me orgulha.', b: 'Comprei um freezer só para água de coco.', c: 'Construí a estrutura de que eu precisava para ser a melhor.', r: 'Isso eu prefiro guardar para mim.' }),
+];
+// gênero nas falas: [feminino|masculino] (a voz gravada tem as duas versões)
+const gsel = (s, fem) => String(s).replace(/\[([^|\]]*)\|([^\]]*)\]/g, (m, a, b) => fem ? a : b);
+// o seu momento na carreira, para escolher as perguntas: ranking, fama, títulos, sequências, nível do torneio, notas, idade
+function ctxStats(D, t) {
+  const C = $s.CR, H = C.history || [], titles = Object.values(C.titles || {}).reduce((x, y) => x + y, 0), lead = re => { let n = 0; for (const h of H) { if (re.test(h.place || '')) n++; else break; } return n; };
+  let rk = 0; try { rk = crRank() || 0; } catch (e) {}
+  Object.assign(D, { rk, no1: rk === 1, top3: rk > 0 && rk <= 3, top10: rk > 0 && rk <= 10, fama: C.fama || 0, titles, firstTitle: titles === 1, money: C.money || 0, age: C.age || 25,
+    titleStreak: lead(/campe/i), viceStreak: lead(/vice/i), lossStreak: lead(/^(?!.*(campe|vice|semi)).*$/i), tourneys: H.filter(h => h.s === C.season).length,
+    tier: t ? (t.tier || 0) : 0, firstAtTier: !!(t && (C.titles || {})[t.tier] === 1), avg: t && t.rN ? t.rS / t.rN : 0, lastR: t && t.lastRating ? t.lastRating.r : 0, fem: !!(C.me && C.me.fem) });
+  return D;
+}
 const Q_OPEN = { vitoria: ['', '', 'Parabéns! ', 'Com essa torcida toda… ', 'Ainda sem fôlego, né? '], zebra: ['', 'Que zebra! ', 'Que resultado! '], derrota: ['', '', 'Sei que é um momento difícil, mas… ', 'Rapidinho: '],
   titulo: ['', 'Campeão! ', 'Que semana! ', 'Com o troféu na mão: '], vice: ['', 'Parabéns pela campanha. ', 'Semana enorme. '], pre: ['', 'Bem-vindo! ', 'Último treino antes da estreia. ', 'Você parece tranquilo. '],
   vida: ['', 'Num papo mais leve: ', 'Fora das quadras: ', 'Pergunta dos seguidores: '], rival: ['', 'Não dá para não perguntar: ', 'O assunto da semana: '], parceiro: ['', 'Sobre a dupla: ', 'Muita gente quer saber: '] };
@@ -143,8 +196,12 @@ function fill(s, D) { return s.replace(/\{(\w)\}/g, (m, k) => D[k] || '').replac
 function join(pre, txt, D) { const base = fill(txt, D); pre = pre.replace(/\{(\w)\}/g, (m, k) => D[k] || ''); return pre + (pre && /([,:]|\bmas)\s*$/.test(pre) && !/^\{/.test(txt) && !/^[A-Z]{2}/.test(base) ? base.charAt(0).toLowerCase() + base.slice(1) : base); }
 function makeInterview(kind, D, extra) {
   // sem parceiro (simples) ou sem rival: só perguntas que não dependem deles
-  const ok = x => (D.p || !/\{p\}|\bvocês\b|juntos/i.test(x.q)) && (D.r || !/\{r\}/.test(x.q)), pool = (QA[kind] || QA.vitoria).filter(ok);
-  const it = pickFresh(pool.length ? pool : QA.vida, 'q' + kind);
+  const ok = x => (D.p || !/\{p\}|\bvocês\b|juntos/i.test(x.q)) && (D.r || !/\{r\}/.test(x.q)) && !(D.top3 && /muda no ranking/.test(x.q)), pool = (QA[kind] || QA.vitoria).filter(ok);
+  // perguntas do seu momento (número um, sequência de títulos, Mundial, notas da semana, idade…) vêm na maioria das vezes
+  if (D.rk === undefined) ctxStats(D, null);
+  const cx = QX.filter(x => x.k.includes(kind) && ok(x) && (() => { try { return x.w(D); } catch (e) { return false; } })());
+  const it0 = cx.length && Math.random() < .72 ? pickFresh(cx, 'x' + kind) : pickFresh(pool.length ? pool : QA.vida, 'q' + kind);
+  const it = { q: gsel(it0.q, D.fem), a: Object.fromEntries(Object.entries(it0.a).map(([k, v]) => [k, gsel(v, D.fem)])) };
   let tones = Object.keys(it.a).filter(t => (D.p || !/\{p\}/.test(it.a[t])) && (t !== 'parceiro' || D.p) && (t !== 'polemico' || Math.random() < .85));
   tones.sort(() => Math.random() - .5); tones = tones.slice(0, 3);
   const [out, ico] = pickFresh(OUTLETS, 'o'), [rep, rg] = pickFresh(REPORTERS, 'r');
@@ -256,13 +313,14 @@ const absW = () => ($s.CR.season - 1) * 52 + $s.CR.week;
 HIST.afterMatch = (won, opp, tour) => {
   if (!$s.CR || !tour || tour.done) return;
   const D = ctx(); D.o = opp ? opp : 'o adversário';
+  if (tour.lastRating) { tour.rS = (tour.rS || 0) + tour.lastRating.r; tour.rN = (tour.rN || 0) + 1; } ctxStats(D, tour);
   const upset = won && tour.teams && tour.teams[tour.me] && opp && tour.zebra;
   if (Math.random() < (upset ? .8 : won ? .22 : .15)) queue(makeInterview(upset ? 'zebra' : won ? 'vitoria' : 'derrota', D, { big: false }));
 };
 // fim do torneio: coletiva (sempre em título ou final; às vezes nas outras fases)
 HIST.afterTour = (t, place) => {
   if (!$s.CR || !t) return;
-  const D = ctx(); D.t = t.name; D.o = 'eles';
+  const D = ctx(); D.t = t.name; D.o = 'a outra dupla'; ctxStats(D, t);
   const big = (t.tier || 0) >= 5 || t.special;
   if (place === 0) queue(makeInterview('titulo', D, { big }));
   else if (place === 1) queue(makeInterview('vice', D, { big }));
@@ -285,7 +343,7 @@ HIST.week = () => {
   if (p.temp >= 70 && !C.feud && Math.random() < .08) queueStory('redes', 'a', ctx());
 };
 // inscrição num torneio grande: coletiva de abertura
-HIST.preTour = (t) => { if (!$s.CR || !t || !((t.tier || 0) >= 6 || t.special) || Math.random() > .55) return; const D = ctx(); D.t = t.name; queue(makeInterview('pre', D, { big: true })); };
+HIST.preTour = (t) => { if (!$s.CR || !t || !((t.tier || 0) >= 6 || t.special) || Math.random() > .55) return; const D = ctx(); D.t = t.name; ctxStats(D, t); queue(makeInterview('pre', D, { big: true })); };
 HIST.effects = persEffects;
 function queueStory(sid, step, D) { const st = STORIES[sid], s = st.steps[step]; queue({ type: 'historia', sid, step, title: st.title, D, text: fill(s.t(), D), opts: s.o.map(o => ({ txt: fill(o[0], D) })) }); }
 
@@ -368,5 +426,5 @@ function persHTML() {
   return '<p class="section-label">Personalidade · ' + persWord() + '</p><div class="pers">' + AXES.map(([k, a, b]) => '<div class="pers-row"><span>' + a + '</span><span class="pers-bar"><i style="left:' + p[k] + '%"></i></span><span>' + b + '</span></div>').join('') + '</div>'
     + '<p class="cr-note">Muda com as respostas em entrevistas e as escolhas nas histórias. ' + (ef.txt.length ? 'Efeitos agora: ' + ef.txt.join(' · ') + '.' : 'Equilibrado: sem efeitos.') + '</p>';
 }
-if (typeof window !== 'undefined') window.__pdoHist = { STORIES, QA, A_OPEN, Q_OPEN, makeInterview, queueStory, answerTalk, closeTalk, pers, persEffects, renderTalk, ctx };
+if (typeof window !== 'undefined') window.__pdoHist = { QX, gsel, ctxStats, STORIES, QA, A_OPEN, Q_OPEN, makeInterview, queueStory, answerTalk, closeTalk, pers, persEffects, renderTalk, ctx };
 export { HIST, renderTalk, persHTML, persEffects, say, hush };
