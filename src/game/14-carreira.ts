@@ -1624,6 +1624,7 @@ function crSimPerf(mm, won) {
   const bal = (ptsW - ptsL) / Math.max(8, ptsN);
   let r = 6 + (pos - neg) * fk + (won ? .35 : -.4) + bal * (mate == null ? 1.2 : .55);
   r += Math.max(0, 1 - errors * .25) * clamp(winners / 8, 0, 1) * 1.2 * clamp(n / 24, 0, 1);
+  if (!won) r -= (hi - lo) / Math.max(1, hi) * 1.4; // derrota de lavada pesa: 6–0/6–1 fica perto de 4,5–5
   if (r > 7.5) r = 7.5 + (r - 7.5) * .55; if (r > 8.6) r = 8.6 + (r - 8.6) * .5;
   r = Math.round(clamp(r, 3, 9.8) * 10) / 10;
   const stats = { winners, sm, cu, lo: lo2, vo, defs, errors, pts: ptsN };
