@@ -279,7 +279,7 @@ function whoName(p) {
 }
 // nota da partida: o que o SEU jogador fez de bom (defesas, smashes, curtas certos, winners) e de ruim (erros por golpe)
 const PERF_TXT = { defBoa: 'defesas boas', defLevantou: 'defesas que levantaram', curtaTop: 'curtas matadoras', curtaBoa: 'curtas boas', curtaLenta: 'curtas lentas',
-  smashPerf: 'smashes perfeitos', smashRuim: 'smashes fora do tempo', defDescontrolou: 'defesas descontroladas', curtaRuim: 'curtas descontroladas', lobChutado: 'lobs chutados perfeitos', finaliz: 'finalizações', winner: 'pontos vencedores', ptBola: 'pontos com a sua bola',
+  smashPerf: 'smashes perfeitos', smashRuim: 'smashes fora do tempo', defDescontrolou: 'defesas descontroladas', curtaRuim: 'curtas descontroladas', lobChutado: 'lobs chutados perfeitos', finaliz: 'finalizações', winner: 'pontos vencedores', ptBola: 'pontos com a sua bola', ptDupla: 'pontos da dupla com a sua participação',
   furou: 'bolas furadas', erroF: 'erros forçados', e_curta: 'erros de curta', e_lob: 'erros de lob', e_smash: 'erros de smash', e_defesa: 'erros de defesa',
   e_drive: 'erros de drive', e_voleio: 'erros de voleio', e_saque: 'saques errados', defIn: 'defesas que passaram', lobIn: 'lobs que passaram' };
 const WIN_V = { smash: .42, curta: .7, lob: .6, defesa: .5, voleio: .5, drive: .5, saque: .5 };
@@ -294,10 +294,10 @@ function perfAdd(p, v, key) { if (!perfOn(p)) return; const lk = perfLvK(); v *=
 function perfHitHook(p) { const d = S.defPend; if (!d) return; S.defPend = null; if (p.team !== d.team) perfAdd(d.p, 0, d.key); }
 // golpe dado pelo seu jogador (chamado na hora da batida)
 // seu saque também é "a sua bola": se o adversário errar a devolução, o ponto conta para a sua nota (ptBola)
-function perfServe(p, r) { if (perfOn(p) && !r.mis) S.perf.myHit = S.hitId; }
+function perfServe(p, r) { if (perfOn(p) && !r.mis) { S.perf.myHit = S.hitId; S.perf.touch = true; } }
 function perfShot(p, sw, r) {
   if (!perfOn(p) || r.mis) return; // erro conta no fim do ponto
-  S.perf.myHit = S.hitId; // a sua última bola (para o ponto que ela ganhar mesmo sem ser vencedora)
+  S.perf.myHit = S.hitId; S.perf.touch = true; // a sua última bola (para o ponto que ela ganhar mesmo sem ser vencedora)
   if (sw.type === 'defesa' || sw.type === 'lob') S.defPend = { p, team: p.team, key: sw.type === 'lob' ? 'lobIn' : 'defIn' };
   // defesa: verde soma bem, amarelo soma um pouco; levantou ou descontrolou não tira na hora (se der erro, o erro do ponto já conta)
   if (sw.type === 'defesa' && r.pressure > .25 && !r.wild && !r.pop) perfAdd(p, r.grade < .7 ? .15 : .35, 'defBoa');
@@ -318,7 +318,7 @@ function rateFrom(wonB) {
   let r = 6 + S.perf.sum * fk + wonB + bal * (dupla() ? .55 : 1.2);
   // jogo limpo: muitas jogadas boas e (quase) nenhum erro seu ganha um bônus (até +1,2); cada erro seu tira 1/4 dele (forçado, 1/8)
   { const ev = S.perf.ev, cnt = re => Object.entries(ev).reduce((t, [k, n]) => t + (re.test(k) ? n : 0), 0);
-    const errs = cnt(/^(e_|furou)/) + cnt(/^erroF$/) * .5, good = cnt(/^(w_|finaliz|ptBola|smashPerf|defBoa|curtaTop|curtaBoa|lobChutado)/);
+    const errs = cnt(/^(e_|furou)/) + cnt(/^erroF$/) * .5, good = cnt(/^(w_|finaliz|ptBola|ptDupla|smashPerf|defBoa|curtaTop|curtaBoa|lobChutado)/);
     r += Math.max(0, 1 - errs * .25 * lerp(.6, 1, perfLvK())) * clamp(good / 8, 0, 1) * 1.2 * clamp(S.perf.n / 24, 0, 1); } // o bônus só vale de verdade com a partida andando (poucos pontos não dão nota alta)
   if (r > 7.5) r = 7.5 + (r - 7.5) * .55; // acima de 7,5 sobe devagar: 10 só numa partida quase perfeita
   return Math.round(clamp(r, 1, 10) * 10) / 10;
@@ -590,14 +590,17 @@ function pointTo(w, reason, kind) {
   if (S.mode === 'dead') return;
   if (S.drill) { drillResult(w, kind); return; }
   if (S.defPend) { const d = S.defPend; S.defPend = null; if (kind === 'in' && w === d.team) { perfAdd(d.p, 0, d.key); updateLiveRating(); } }
-  if (S.perf) S.perf.n++;
   S.streak = S.streak && S.streak.team === w ? { team: w, n: S.streak.n + 1 } : { team: w, n: 1 };
   const sum0 = S.perf ? S.perf.sum : 0;
   const credit = creditPoint(w, kind);
   // ponto da sua dupla que nasceu da SUA bola (o adversário errou nela ou logo depois dela), mesmo amarela/vermelha:
   // nunca tira nota (antes o ponto só entrava na média e baixava a nota)
   if (S.perf && w === human.team && S.perf.sum === sum0 && S.perf.myHit && S.hitId - S.perf.myHit <= 1) perfAdd(human, .4, 'ptBola'); // (erro não forçado do adversário na sua bola, inclusive no seu saque)
-  if (S.perf) S.perf.myHit = 0;
+  // ponto da sua dupla em que você participou (bateu na bola durante o ponto) e o parceiro fechou: soma um pouco (participação);
+  // ponto que o parceiro ganhou sem você tocar na bola não entra na média (não dilui a sua nota)
+  if (S.perf && w === human.team && S.perf.sum === sum0 && S.perf.touch) perfAdd(human, .12, 'ptDupla');
+  if (S.perf && !(w === human.team && !S.perf.touch && dupla())) S.perf.n++;
+  if (S.perf) { S.perf.myHit = 0; S.perf.touch = false; }
   if (credit) reason = credit[0].toUpperCase() + credit.slice(1) + '.';
   S.lastPoint = { w, kind, text: reason, cat: S.lastHit && S.lastHit.cat, rally: S.rally, dive: !!S.hadDive };
   S.mode = 'dead'; S.deadT = 2.0;
