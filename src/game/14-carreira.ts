@@ -1566,6 +1566,8 @@ function crAfterMyMatch(won) {
     else if (!wasRival && crRivalOf(opp)) { /* a rivalidade por jogador já avisa */ } }
   if (won) { [opp.a, opp.b].filter(Boolean).forEach(id => { $s.CR.beat[id] = ($s.CR.beat[id] || 0) + 1; t.beaten.push(id); }); }
   else t.alive = false;
+  const SS = t.lastSimStats; t.lastSimStats = null;
+  if (SS && t.lastRating) t.log.push('Sua atuação: ' + SS.winners + ' pontos vencedores (' + SS.sm + ' smashes, ' + SS.cu + ' curtas, ' + SS.vo + ' voleios, ' + SS.lo + ' lobs), ' + SS.defs + ' defesas boas, ' + SS.errors + ' erros');
   t.log.push((won ? 'Vitória' : 'Derrota') + ' ' + mm.score + ' contra ' + crTeamName(opp) + (t.lastRating ? ' · nota ' + t.lastRating.r.toFixed(1).replace('.', ',') + (rb > 0 ? ' (+' + String(rb).replace('.', ',') + ' PE pela nota)' : '') + (t.lastRating.g > .005 ? ' · potencial +' + t.lastRating.g.toFixed(2).replace('.', ',') : '') : ''));
   t.lastRating = null;
   crAdvance();
@@ -1597,16 +1599,35 @@ function crSkipByes() {
 // nota da partida simulada, como se tivesse sido jogada: resultado e placar (lavada vale mais que apertado), força do
 // adversário (ganhar de quem é mais forte vale mais; perder para quem é bem mais forte pesa menos) e um pouco de variação
 // de atuação; acima de 9 sobe devagar
-function crSimRating(mm, won) {
-  const t = $s.CR.tour, A = t.teams[mm.a], B = t.teams[mm.b], mine = A && A.me ? A : B, opp = mine === A ? B : A;
-  const sc = String(mm.score || '').match(/(\d+)\D+(\d+)/), hi = sc ? Math.max(+sc[1], +sc[2]) : 6, lo = sc ? Math.min(+sc[1], +sc[2]) : 3;
-  const margin = hi ? (hi - lo) / hi : .4;
-  let dOvr = 0; try { if (!t.mixed && mine && opp) dOvr = crTeamOvr(opp) - crTeamOvr(mine); } catch (e) {}
-  // na mesma faixa das notas jogadas: vitória apertada ~7,7, normal ~8,1, lavada ~8,7; derrota apertada ~6,6, de lavada ~5,8
-  let r = won ? 7.4 + margin * 1.3 : 6.9 - margin * 1.1;
-  r += clamp(dOvr / 10, -.5, .5) * (won ? .6 : .4) + gauss() * .4;
-  if (r > 9) r = 9 + (r - 9) * .5;
-  return Math.round(clamp(r, 3, 9.6) * 10) / 10;
+function crSimRating(mm, won) { return crSimPerf(mm, won).r; }
+// atuação simulada ponto a ponto: quantos pontos a partida teve (pelo placar), quantos passaram por você (o seu nível perto do
+// parceiro decide quanto você joga), vencedores por golpe (pelos atributos), defesas boas, erros (menos com overall alto e mais
+// contra adversário forte) e o "dia" (bom ou ruim) — depois a mesma conta da nota das partidas jogadas
+function crSimPerf(mm, won) {
+  const t = $s.CR.tour, A = t.teams[mm.a], B = t.teams[mm.b], mine = A && A.me ? A : B, opp = mine === A ? B : A, a = $s.CR.me.a;
+  const sc = String(mm.score || '').match(/(\d+)\D+(\d+)/), hi = sc ? Math.max(+sc[1], +sc[2]) : 6, lo = sc ? Math.min(+sc[1], +sc[2]) : 3, myG = won ? hi : lo, opG = won ? lo : hi;
+  const me = crMeOvr(), mateId = mine ? (mine.a === 'crme' ? mine.b : mine.a) : null, mate = mateId && mateId !== 'crme' ? crCharOvr(crChar(mateId)) : null;
+  let oppO = me; try { if (opp) oppO = crTeamOvr(opp); } catch (e) {}
+  const day = clamp(gauss() * .8, -1.6, 1.6); // o dia: bom (+) ou ruim (−)
+  const ptsN = Math.round((myG + opG) * (5.2 + Math.random() * 1.4)), wonShare = clamp(myG / (myG + opG) + (Math.random() - .5) * .06, .2, .8);
+  const ptsW = Math.round(ptsN * wonShare), ptsL = ptsN - ptsW;
+  const share = mate == null ? .8 : clamp(.5 + (me - mate) / 70 + day * .04, .3, .7); // quanto da partida passou por você
+  const lv = clamp((me - 55) / 40, 0, 1), dO = clamp((oppO - me) / 12, -1, 1);
+  const winRate = clamp(.3 + lv * .15 + day * .07 - dO * .04, .12, .6), errRate = clamp(.1 - lv * .03 - day * .025 + dO * .03, .025, .22); // (erros por bola jogada: até quem vence de lavada erra algumas)
+  const winners = Math.round(ptsW * share * winRate), errors = Math.round(ptsN * share * errRate);
+  const wSm = (a.smash || 60) + (a.forca || 60) * .5, wCu = (a.curta || 60) * 1.1, wLo = (a.lob || 60) * .7, wVo = (a.voleio || 60) * .8, wT = wSm + wCu + wLo + wVo;
+  const sm = Math.round(winners * wSm / wT), cu = Math.round(winners * wCu / wT), lo2 = Math.round(winners * wLo / wT), vo = Math.max(0, winners - sm - cu - lo2);
+  const defs = Math.round(ptsN * share * clamp(.1 + ((a.def || 60) - 60) / 300 + day * .03, .03, .25)), ptBola = Math.round(ptsW * share * .15);
+  // a mesma conta da nota jogada (vencedores valem mais por golpe, erros pesam mais; partida curta pesa menos; jogo limpo dá bônus)
+  const lk = clamp((me - 50) / 35, 0, 1), pos = (sm * .42 + cu * .7 + lo2 * .6 + vo * .5 + defs * .3 + ptBola * .4) * (lk < 1 ? 1 + .25 * (1 - lk) : 1), neg = errors * .75 * (lk < 1 ? .6 + .4 * lk : 1);
+  const n = Math.max(1, Math.round(ptsN * (mate == null ? 1 : .7))), fk = n <= 45 ? 1.85 / Math.sqrt(Math.max(20, n)) : 1.85 * Math.sqrt(45) / n;
+  const bal = (ptsW - ptsL) / Math.max(8, ptsN);
+  let r = 6 + (pos - neg) * fk + (won ? .35 : -.4) + bal * (mate == null ? 1.2 : .55);
+  r += Math.max(0, 1 - errors * .25) * clamp(winners / 8, 0, 1) * 1.2 * clamp(n / 24, 0, 1);
+  if (r > 7.5) r = 7.5 + (r - 7.5) * .55; if (r > 8.6) r = 8.6 + (r - 8.6) * .5;
+  r = Math.round(clamp(r, 3, 9.8) * 10) / 10;
+  const stats = { winners, sm, cu, lo: lo2, vo, defs, errors, pts: ptsN };
+  t.lastSimStats = stats; return { r, stats };
 }
 function crPlaySim() {
   const mm = crMyMatch(); if (!mm) return;
