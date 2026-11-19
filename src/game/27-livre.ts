@@ -738,20 +738,22 @@ function paintingTex(id) {
   });
 }
 // anexos no terreno ampliado: academia e sala de jogos (cômodos com paredes, porta virada para a rua e o interior)
-function annex(g, sp, kind, x0, z0, w, d, wc, floor, WH) {
-  const x1 = x0 + w, z1 = z0 + d, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+function annex(g, sp, r, wc, WH) {
+  const kind = r.k, x0 = r.x0, x1 = r.x1, z0 = r.z0, z1 = r.z1, w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   box(g, w, .08, d, cx, .04, cz, kind === 'jogos' ? '#6b4a33' : '#3a3f47', { noShadow: true });
-  wall(g, x0, z0, x1, z0, WH, wc, [], true); wall(g, x0, z0, x0, z1, WH, wc, [], true); wall(g, x1, z0, x1, z1, WH, wc, [], true); wall(g, x0, z1, x1, z1, WH, wc, [[cx - 1, cx + 1]], true);
-  box(g, w + .4, .2, d + .4, cx, WH + .1, cz, '#cfcac0');
-  banner(g, kind === 'jogos' ? 'Sala de jogos' : 'Academia', cx, WH - .45, z1 + .08, Math.min(w - 1, 4), .55, kind === 'jogos' ? '#6b2fb8' : '#111214', '#ffffff');
-  if (kind === 'academia') { gym(g, cx - 1.2, cz - .5); box(g, w - 1.2, 1.8, .05, cx, 1.2, z0 + .1, '#cfe8f5', { metalness: .9, roughness: .05 }); // espelho
-    for (let i = 0; i < 6; i++) box(g, .22, .22, .22, x0 + .5 + i * .35, .11, z0 + .5, '#2b2b2b'); box(g, 2.4, .05, 1.2, cx + 1.2, .1, cz + 1, '#2a9d8f', { noShadow: true }); // halteres e colchonete
-    spot(sp, 'academia', cx, z1 - 1.4, 'Academia', 'Treino físico', .8); }
-  else { box(g, 2.4, .8, 1.3, cx, .45, cz - .6, '#4a3628'); box(g, 2.2, .04, 1.1, cx, .87, cz - .6, '#1f7a3a'); solid(cx - 1.25, cz - 1.3, cx + 1.25, cz + .1); // sinuca
-    box(g, .8, 1.7, .7, x0 + .6, .85, z0 + .5, '#1d1d20'); box(g, .6, .45, .05, x0 + .6, 1.35, z0 + .86, '#33c3ff', glow('#33c3ff', 1.4)); solid(x0 + .2, z0 + .15, x0 + 1, z0 + .85); // fliperama
-    box(g, 1.3, .8, .7, x1 - .9, .4, z0 + .6, '#2457c5'); box(g, 1.2, .04, .6, x1 - .9, .82, z0 + .6, '#3fae5a'); solid(x1 - 1.55, z0 + .25, x1 - .25, z0 + .95); // pebolim
-    spot(sp, 'jogos', cx, z1 - 1.3, 'Sala de jogos', 'Sinuca, fliperama e pebolim', .8); }
-  solid(x0 - .1, z0 - .1, x1 + .1, z0 + .1); solid(x0 - .1, z0, x0 + .1, z1); solid(x1 - .1, z0, x1 + .1, z1); solid(x0 - .1, z1 - .1, cx - 1, z1 + .1); solid(cx + 1, z1 - .1, x1 + .1, z1 + .1);
+  if (!r.prev) wall(g, x0, z0, x1, z0, WH, wc, [], true); // (colado no cômodo de trás: a parede é a dele)
+  wall(g, x0, z1, x1, z1, WH, wc, r.next ? [[cx - 1.1, cx + 1.1]] : [], true);
+  wall(g, x0, z0, x0, z1, WH, wc, r.sideDoor ? [r.sideDoor] : [], true);
+  wall(g, x1, z0, x1, z1, WH, wc, r.door ? [r.door] : [], !r.door);
+  if (r.door) door(sp, x1, r.door[0], 2, 'z', 1, '#5a3a28');
+  banner(g, kind === 'jogos' ? 'Sala de jogos' : 'Academia', cx, WH - .45, z0 + .25, Math.min(w - 1, 4), .55, kind === 'jogos' ? '#6b2fb8' : '#111214', '#ffffff');
+  if (kind === 'academia') { gym(g, cx - 1.6, cz); box(g, .05, 1.8, d - 1.6, x0 + .12, 1.2, cz, '#cfe8f5', { metalness: .9, roughness: .05 }); // espelho
+    for (let i = 0; i < 6; i++) box(g, .22, .22, .22, x0 + .5, .11, z0 + .8 + i * .4, '#2b2b2b'); box(g, 1.2, .05, 2.4, cx + 1.4, .1, cz - 1, '#2a9d8f', { noShadow: true }); // halteres e colchonete
+    spot(sp, 'academia', cx + .6, cz + 1.6, 'Academia', 'Treino físico', .8); }
+  else { box(g, 1.3, .8, 2.4, cx - .4, .45, cz, '#4a3628'); box(g, 1.1, .04, 2.2, cx - .4, .87, cz, '#1f7a3a'); solid(cx - 1.1, cz - 1.25, cx + .3, cz + 1.25); // sinuca
+    box(g, .7, 1.7, .8, x0 + .5, .85, z0 + .7, '#1d1d20'); box(g, .05, .45, .6, x0 + .86, 1.35, z0 + .7, '#33c3ff', glow('#33c3ff', 1.4)); solid(x0 + .15, z0 + .3, x0 + .85, z0 + 1.1); // fliperama
+    box(g, .7, .8, 1.3, x0 + .5, .4, z1 - 1.2, '#2457c5'); box(g, .6, .04, 1.2, x0 + .5, .82, z1 - 1.2, '#3fae5a'); solid(x0 + .15, z1 - 1.85, x0 + .85, z1 - .55); // pebolim
+    spot(sp, 'jogos', cx + 1.6, cz, 'Sala de jogos', 'Sinuca, fliperama e pebolim', .8); }
 }
 let STAR_T = null; // estrela roxa: onde entregar
 function starTex() {
@@ -1127,8 +1129,19 @@ function build() {
   box(g, W, .08, D, 0, .04, 0, floor, { noShadow: true, roughness: lvl >= 3 ? .3 : .8 });
   if (lvl >= 1) box(g, W + .6, .3, D + .6, 0, -.05, 0, '#d8d2c6', { noShadow: true });
   wall(g, -hW, -hD, hW, -hD, WH, wc, lvl >= 2 ? [[-1.4, 1.4]] : [], true);           // fundo (na mansão e na casa com piscina: porta para a área da piscina)
-  const tcz = -hD + 3.7; // sala de troféus (comprada): passagem direto da sala de estar
-  wall(g, -hW, -hD, -hW, hD, WH, wc, crLife('trofeus') ? [[tcz - 1, tcz + 1]] : [], true); wall(g, hW, -hD, hW, hD, WH, wc, [], true);
+  // ala da esquerda: sala de troféus, academia e sala de jogos são cômodos colados na casa, um ao lado do outro, com passagem por
+  // dentro (porta na parede da casa ou no cômodo vizinho): nada fica solto no quintal nem obriga a sair para a rua
+  const WING = [], wantW = [crLife('trofeus') && 'trofeus', crHomeHas('academia') && ext && 'academia', crHomeHas('jogos') && ext && 'jogos'].filter(Boolean);
+  { let z = -hD, col = 1; wantW.forEach(k => { const d = k === 'trofeus' ? 7.4 : 7; if (col === 1 && WING.length && z + d > hD + .5) { col = 2; z = -hD; }
+      const prev = WING.filter(r => r.col === col).slice(-1)[0], x0 = col === 1 ? -hW - 8.6 : -hW - 17.4, x1 = col === 1 ? -hW - .2 : -hW - 8.8;
+      WING.push({ k, col, x0, x1, z0: z, z1: z + d, prev }); z += d; });
+    WING.forEach(r => { r.next = WING.find(q => q.prev === r); const zc = (Math.max(r.z0, -hD) + Math.min(r.z1, hD)) / 2;
+      if (r.col === 1) { const sw = lvl >= 3 ? 3.4 : 2.2, s0 = hD - 2.4 - sw / 2 - .25, s1 = hD - 2.4 + sw / 2 + .25, lo = Math.max(r.z0, -hD + .3) + 1.1, hi = Math.min(r.z1, hD - .3) - 1.1; let best = null; // porta para a casa, fora da estante de troféus
+        for (let m = lo; m <= hi + 1e-6; m += .1) if ((m + 1 < s0 || m - 1 > s1) && (best == null || Math.abs(m - zc) < Math.abs(best - zc))) best = m; r.door = best == null ? null : [best - 1, best + 1]; }
+      else { const nb = WING.find(q => q.col === 1 && q.z0 < r.z1 - 1 && q.z1 > r.z0 + 1); if (nb) { const a = Math.max(nb.z0, r.z0) + 1.1, b = Math.min(nb.z1, r.z1) - 1.1, m = nb.k === 'trofeus' && nb.z0 + 4.6 >= a && nb.z0 + 4.6 <= b ? nb.z0 + 4.6 : (a + b) / 2; r.door = [m - 1, m + 1]; nb.sideDoor = r.door; } } }); }
+  LV.wing = WING;
+  const tcz = -hD + 3.7, houseGaps = WING.filter(r => r.col === 1 && r.door).map(r => r.door); // (passagens da sala de estar para a ala)
+  wall(g, -hW, -hD, -hW, hD, WH, wc, houseGaps, true); wall(g, hW, -hD, hW, hD, WH, wc, [], true);
   wall(g, -hW, hD, hW, hD, WH, wc, [[-1.2, 1.2]], true);
   if (lvl >= 2) [-1, 1].forEach(s => box(g, .25, WH + .1, .25, s * 1.5, (WH + .1) / 2, hD + .12, '#c9a97c')); // batentes da porta grandes
   // quarto (fundo à direita)
@@ -1177,7 +1190,7 @@ function build() {
   S2('pc', pcx - 1.6, pcz, crInv('esports') >= 1 ? 'Setup gamer' : 'Computador', 'Agenda da carreira', .8);
   if (crInv('midia') >= 1) { const qx2 = lvl >= 3 ? hW - 12 : hW - 2.8, qz2 = lvl >= 3 ? hD - 5.5 : hD - 4.2; podcast(g, qx2, qz2); S2('podcast', qx2 - .2, qz2 + 1.2, 'Estúdio', crInv('midia') >= 2 ? 'Gravar o podcast' : 'Gravar vídeo', .7); }
   // academia em casa (mansão ou CT) e banheira de gelo (crioterapia ou clínica)
-  if (lvl >= 3 || crInv('ct') >= 1) { gym(g, -hW + 2, 0); S2('academia', -hW + 3.5, 1.8, 'Academia', 'Treino físico', .8); }
+  if ((lvl >= 3 || crInv('ct') >= 1) && !WING.some(r => r.k === 'academia')) { gym(g, -hW + 2, 0); S2('academia', -hW + 3.5, 1.8, 'Academia', 'Treino físico', .8); }
   if (crLife('crio') || crInv('saude') >= 1) { iceBath(g, bx - 1.1, -hD + .8); S2('gelo', bx - 1.1, -hD + 2.1, 'Banheira de gelo', 'Recuperar', .7); }
   // mesa de jantar (a partir do apartamento): na frente, à esquerda
   if (lvl >= 1) { const tx = -hW + (lvl >= 3 ? 6 : 4.2), tz = hD - (lvl >= 3 ? 5.2 : 3.6), n = lvl >= 3 ? 3 : 2;
@@ -1235,8 +1248,7 @@ function build() {
     const fm = new THREE.MeshStandardMaterial({ map: t, side: THREE.DoubleSide, transparent: true, alphaTest: .1, roughness: .8 }), fg = new THREE.PlaneGeometry(1.2, .75, 8, 1); fg.translate(.6, 0, 0);
     const fl = new THREE.Mesh(fg, fm); fl.position.set(bx, 2.15, bz); g.add(fl); fl.userData.dyn = true; LV.flag = fl; solid(bx - .1, bz - .1, bx + .1, bz + .1); }
   // cômodos anexos (terreno ampliado, à esquerda da casa) e jardim da frente
-  { const ax0 = -hW - 9.4 - 8, aD = 7; if (crHomeHas('academia') && ext) annex(g, sp, 'academia', ax0, -hD, 8, aD, wc, floor, Math.min(WH, 3));
-    if (crHomeHas('jogos') && ext) annex(g, sp, 'jogos', ax0, -hD + aD + .8, 8, aD, wc, floor, Math.min(WH, 3)); }
+  WING.filter(r => r.k !== 'trofeus').forEach(r => annex(g, sp, r, wc, WH));
   if (hv('jardim')) { // canteiros dos dois lados do caminho, arbustos podados, luzinhas no caminho e (mansão) fonte
     const z0 = hD + 1, z1 = frontZ - .6; for (let z = z0 + .5; z < z1; z += 1.6) [-1, 1].forEach(sd => { const l = cyl(g, .05, .06, .45, sd * 1.4, .22, z, '#3a3f47'); const b2 = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat('#fff3d6', glow('#ffd98a', 1.4))); b2.position.set(sd * 1.4, .5, z); g.add(b2); });
     [-1, 1].forEach(sd => { box(g, 1.2, .25, z1 - z0, sd * 2.4, .12, (z0 + z1) / 2, '#6b4f3a'); for (let z = z0 + .4; z < z1; z += .5) { const f = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 5), mat(['#e63946', '#ffd23f', '#b07ac9', '#ff8fab', '#ffffff'][Math.floor(Math.abs(z * 7 + sd * 3)) % 5])); f.position.set(sd * 2.4 + Math.sin(z * 5) * .3, .36, z); g.add(f); } });
@@ -1305,9 +1317,10 @@ function build() {
     fan(g, -15.2, (-22 + sdz), -Math.PI / 2, 333, false);
     S2('social', -14.5, (-17.5 + sdz), 'Projeto social', 'Dar aula e jogar com a garotada'); }
   if (crLife('trofeus')) { // sala de troféus ao lado da casa: um pedestal por título (os maiores no centro), luz de vitrine
-    const x0 = -hW - 8.6, x1 = -hW - .2, z0 = -hD, z1 = -hD + 7.4, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const TR = WING.find(r => r.k === 'trofeus'), x0 = TR.x0, x1 = TR.x1, z0 = TR.z0, z1 = TR.z1, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     box(g, x1 - x0, .08, z1 - z0, cx, .04, cz, '#3a2a20', { noShadow: true });
-    wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a'); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); door(sp, cx - 1.1, z1, 1.1, 'x', 1, '#5a3a28'); door(sp, cx + 1.1, z1, 1.1, 'x', -1, '#5a3a28'); wall(g, x1, z0, x1, z1, WH, '#1d2a4a', [[cz - 1, cz + 1]]); door(sp, x1, cz - 1, 2, 'z', 1, '#5a3a28');
+    wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a', TR.sideDoor ? [TR.sideDoor] : []); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); if (!TR.next) { door(sp, cx - 1.1, z1, 1.1, 'x', 1, '#5a3a28'); door(sp, cx + 1.1, z1, 1.1, 'x', -1, '#5a3a28'); }
+    if (TR.door) { wall(g, x1, z0, x1, z1, WH, '#1d2a4a', [TR.door]); door(sp, x1, TR.door[0], 2, 'z', 1, '#5a3a28'); } else wall(g, x1, z0, x1, z1, WH, '#1d2a4a');
     banner(g, 'Sala de Troféus', cx, WH - .45, z0 + .2, 5, .7, '#0b1a3a', '#e8b923');
     const L = trophyList(); L.slice(0, 18).forEach((t, i) => { const r = Math.floor(i / 6), c = i % 6, px2 = x0 + 1 + c * ((x1 - x0 - 2) / 5), pz2 = z0 + 1.6 + r * 2;
       box(g, .5, .9, .5, px2, .45, pz2, '#f2efe9'); cup(g, px2, .9, pz2, t); solid(px2 - .3, pz2 - .3, px2 + .3, pz2 + .3);
@@ -1669,7 +1682,7 @@ function swimPose() {
 function rides() { return ['pe'].concat(crLife('skate') ? ['skate'] : [], crLife('bike') ? ['bike'] : [], crLife('carro') ? ['carro'] : []); }
 function cycleRide() {
   const L = rides(); if (L.length < 2) { LV.msg('Compre skate, bicicleta ou carro em Negócios para andar mais rápido (tecla V troca).'); return; }
-  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z; if (lx > -hw && lx < hw && lz > -hd && lz < hd) { LV.msg('Dentro de casa, só a pé.'); return; } if (LV.swim || lz < -86.5) { LV.msg('Na água, só nadando.'); return; }
+  const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z; if ((lx > -hw && lx < hw && lz > -hd && lz < hd) || (LV.wing || []).some(r => lx > r.x0 && lx < r.x1 && lz > r.z0 && lz < r.z1)) { LV.msg('Dentro de casa, só a pé.'); return; } if (LV.swim || lz < -86.5) { LV.msg('Na água, só nadando.'); return; }
   LV.ride = L[(L.indexOf(LV.ride || 'pe') + 1) % L.length];
   if (LV.rideMesh) { scene.remove(LV.rideMesh); LV.rideMesh = null; }
   if (LV.ride !== 'pe') { LV.rideMesh = rideMesh(LV.ride); scene.add(LV.rideMesh); }
