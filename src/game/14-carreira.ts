@@ -1964,7 +1964,7 @@ function crTrain() {
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
   if ($s.CR.energy < 10) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
   crLoad(.3); const inj = crInjuryRoll(.2);
-  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0) + (crInv('moradia') >= 3 ? .5 : 0)) * crXpMul(); $s.CR.pe += g;
+  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0) + (crInv('moradia') >= 3 ? .5 : 0)) * crXpMul() * (1 + crUpCostBase(overall($s.CR.me.a)) / 14); $s.CR.pe += g; // (o treino acompanha o custo de evoluir: no topo rende ~6–8 pontos, não ~1)
   crWlog($s.CR.day, 'Treino');
   crNextDay('Dia de treino: +' + fmt1(g) + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
