@@ -13,7 +13,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { BAGS, crBagBuy, crBagPrice, crBagOk, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy } from './14-carreira';
+import { BAG_TYPES, BAGS, crBagBuy, crBagPrice, crBagOk, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy } from './14-carreira';
 import { crRankingMode, crModePts, MODE_PAY, crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
@@ -523,7 +523,7 @@ function showPreview3D(t, id) {
   }
   if (PV.obj) PV.g.remove(PV.obj);
   if (isR) { PV.obj = makeRacket(id); PV.obj.rotation.z = Math.PI; PV.cam.position.set(0, .3, 1.35); PV.cam.lookAt(0, .3, 0); }
-  else { PV.obj = livreBag(B.cols, B.brand); PV.obj.position.y = .02; PV.cam.position.set(0, .05, 1.9); PV.cam.lookAt(0, .02, 0); }
+  else { PV.obj = livreBag(B.cols, B.brand, B); PV.obj.position.y = .02; PV.cam.position.set(0, .05, 1.9); PV.cam.lookAt(0, .02, 0); }
   PV.g.add(PV.obj); PV.rot = 0; PV.auto = true; el.querySelector('.pv-cv').appendChild(PV.r.domElement); cancelAnimationFrame(PV.raf);
   const loop = () => { if (el.hidden || !PV.r.domElement.isConnected) return; if (PV.auto) PV.rot += .012; PV.g.rotation.y = PV.rot; PV.r.render(PV.scene, PV.cam); PV.raf = requestAnimationFrame(loop); }; loop();
 }
@@ -591,8 +591,8 @@ function crShopHTML() {
   const head = (disc ? '<p class="cr-msg">Promoção ativa: ' + Math.round(disc * 100) + '% de desconto na próxima raquete.</p>' : '') + '<div class="cr-tabs cr-shop-tabs">' + sub + '</div>';
   if (shopTab === 'raquetes') return head + crSigHTML() + '<p class="section-label">🎾 Raquetes (' + list.length + ' de ' + all.length + ')</p>' + tools + '<div class="cr-list rk-shop">' + rk + '</div>';
   if (shopTab === 'bolsas') { const own = $s.CR.bags || [];
-    return head + '<p class="section-label">🎒 Raqueteiras (você anda com ela nas costas no modo livre)</p><div class="cr-list">' + BAGS.map(b => { const o = own.includes(b.id), u = $s.CR.bag === b.id, pr = crBagPrice(b), lock = !crBagOk(b);
-      return '<div class="cr-row' + (u ? ' me' : '') + (lock ? ' locked' : '') + '"><span class="cr-ic" style="background:linear-gradient(135deg,' + b.cols[0] + ' 55%,' + b.cols[1] + ' 55%);border-radius:8px"></span><div><b>' + esc(b.nome) + (u ? ' · em uso' : '') + '</b><small>' + (lock ? '🔒 Patrocínio master: só raqueteiras da ' + esc($s.CR.master.brand) : pr ? money(pr) : 'grátis (patrocinador master)') + '</small></div>'
+    return head + '<p class="section-label">🎒 Raqueteiras (você anda com ela nas costas no modo livre)</p><div class="pills" style="margin-bottom:8px">' + [['all', 'Todas']].concat(Object.entries(BAG_TYPES)).map(([k, n]) => '<button type="button" class="ghost sm' + (bagF === k ? ' sel' : '') + '" data-bagf="' + k + '">' + n + '</button>').join('') + '</div><div class="cr-list">' + BAGS.filter(b => bagF === 'all' || b.type === bagF).map(b => { const o = own.includes(b.id), u = $s.CR.bag === b.id, pr = crBagPrice(b), lock = !crBagOk(b);
+      return '<div class="cr-row' + (u ? ' me' : '') + (lock ? ' locked' : '') + '"><span class="cr-ic" style="background:linear-gradient(135deg,' + b.cols[0] + ' 55%,' + b.cols[1] + ' 55%);border-radius:8px"></span><div><b>' + esc(b.nome) + (u ? ' · em uso' : '') + '</b><small>' + ({ liso: 'lisa', faixa: 'faixa', matelasse: 'matelassê', logo: 'logo grande', degrade: 'degradê', camuflado: 'camuflada' }[b.pat] || '') + ' · ' + (b.sz > 1.05 ? 'grande' : b.sz < .9 ? 'pequena' : 'média') + ' · ' + (lock ? '🔒 Patrocínio master: só raqueteiras da ' + esc($s.CR.master.brand) : pr ? money(pr) : 'grátis (patrocinador master)') + '</small></div>'
         + '<div class="row-acts"><button type="button" class="ghost sm pv-btn" data-prev="b:' + b.id + '" title="Ver em 3D">👁</button>'
         + (u ? '' : lock ? '<button class="ghost sm" disabled>Só ' + esc($s.CR.master.brand) + '</button>' : o ? '<button class="ghost sm" data-bag="' + b.id + '">Usar</button>' : '<button class="cta sm" data-bag="' + b.id + '"' + ($s.CR.money < pr ? ' disabled' : '') + '>' + (pr ? 'Comprar' : 'Pegar grátis') + '</button>') + '</div></div>'; }).join('') + '</div>'; }
   if (shopTab === 'casa') return head + crHomeShopHTML();
@@ -600,6 +600,7 @@ function crShopHTML() {
   return head + crClothesHTML(shopTab);
 }
 // ---------- loja de roupas: parte de cima, de baixo, estampas, acessórios e a vitrine das exclusivas ----------
+let bagF = 'all';
 const SHOP_TABS = [['raquetes', '🎾 Raquetes'], ['casa', '🏠 Casa'], ['equipe', '🧢 Equipe e equipamentos'], ['cima', '👕 Parte de cima'], ['baixo', '🩳 Parte de baixo'], ['estampas', '🎨 Estampas'], ['acess', '🕶️ Acessórios'], ['bolsas', '🎒 Raqueteiras'], ['exclusivas', '💎 Exclusivas']];
 let shopTab = 'raquetes';
 const CLOTH_CAT = { tops: TOP_KINDS, bots: BOT_KINDS, pats: PATTERNS, acc: ACCESS };
@@ -901,6 +902,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-t-go]').forEach(bt => bt.addEventListener('click', () => { crTab = bt.dataset.tGo; renderCareer(); }));
   body.querySelectorAll('[data-shop]').forEach(bt => bt.addEventListener('click', () => { shopTab = bt.dataset.shop; renderCareer(); }));
   body.querySelectorAll('[data-bag]').forEach(bt => bt.addEventListener('click', () => { crBagBuy(bt.dataset.bag); renderCareer(); }));
+  body.querySelectorAll('[data-bagf]').forEach(bt => bt.addEventListener('click', () => { bagF = bt.dataset.bagf; renderCareer(); }));
   body.querySelectorAll('[data-prev]').forEach(bt => bt.addEventListener('click', () => { const [t, id] = bt.dataset.prev.split(':'); showPreview3D(t, id); }));
   // raquete própria: prévia, cores, desenho e pontos
   sigPreview3D();

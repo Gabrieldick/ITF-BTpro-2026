@@ -9,7 +9,7 @@ import { $s } from '../state';
 import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, crHome, crHomeHas, HOME_WALLS, HOME_FLOORS, TIERS } from './14-carreira';
+import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, crBagCur, crHome, crHomeHas, HOME_WALLS, HOME_FLOORS, TIERS } from './14-carreira';
 import { say, hush, HIST } from './26-historias';
 import { assignCharacters, applyRackets, applyPlayerStyle } from './07-glb';
 import { mergeStatic, sea as SEA, ENV } from './03-cenario';
@@ -205,7 +205,34 @@ function stickBag(o, keys) {
       c.font = 'bold ' + (a.length > 3 ? 26 : 46) + 'px sans-serif'; c.fillText(a, 64, 50); c.font = 'bold ' + (b.length > 7 ? 17 : 22) + 'px sans-serif'; c.fillText(b, 64, 92); });
     const m = new THREE.Mesh(new THREE.CircleGeometry(.07, 24), new THREE.MeshStandardMaterial({ map: t, roughness: .5, polygonOffset: true, polygonOffsetFactor: -2 })); const [x, y, z] = pos[i]; m.position.set(x, y, z + .005); m.rotation.z = (i % 2 ? -1 : 1) * .2; o.add(m); });
 }
-function racketBag(c, brand?) {
+// estampa da frente da raqueteira (faixa, matelassê, logo grande, degradê, camuflado)
+const BAGPAT_T = {};
+function bagPatTex(pat, a, b, brand) {
+  const k = pat + a + b + (brand || ''); if (BAGPAT_T[k]) return BAGPAT_T[k];
+  return BAGPAT_T[k] = canvasTex(256, 512, (c, W, H) => { c.clearRect(0, 0, W, H);
+    if (pat === 'faixa') { c.fillStyle = b; c.beginPath(); c.moveTo(0, H * .55); c.lineTo(W, H * .3); c.lineTo(W, H * .42); c.lineTo(0, H * .67); c.fill(); c.globalAlpha = .6; c.beginPath(); c.moveTo(0, H * .7); c.lineTo(W, H * .45); c.lineTo(W, H * .49); c.lineTo(0, H * .74); c.fill(); }
+    else if (pat === 'matelasse') { c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 3; for (let i = -H; i < W + H; i += 38) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + H, H); c.stroke(); c.beginPath(); c.moveTo(i, H); c.lineTo(i + H, 0); c.stroke(); } }
+    else if (pat === 'logo') { c.save(); c.translate(W * .5, H * .5); c.rotate(-Math.PI / 2); c.fillStyle = b; c.font = 'bold 92px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(brand || '').toLowerCase(), 0, 0); c.restore(); }
+    else if (pat === 'degrade') { const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, b); c.fillStyle = gr; c.fillRect(0, 0, W, H); }
+    else if (pat === 'camuflado') { const cs = ['#3b4a24', '#6b6b3a', '#2a2f1c', '#8a7a4a']; for (let i = 0; i < 60; i++) { c.fillStyle = cs[i % 4]; c.beginPath(); c.ellipse((i * 97) % W, (i * 151) % H, 18 + (i % 5) * 7, 10 + (i % 3) * 6, i, 0, 6.3); c.fill(); } }
+  });
+}
+function racketBag(c, brand?, st?) {
+  const T = (st && st.type) || 'mochila', PT = (st && st.pat) || 'liso', SZ = (st && st.sz) || 1;
+  if (T === 'tote' || T === 'saco') { const o = new THREE.Group(), [a, b] = c;
+    if (T === 'tote') { box(o, .42, .38, .14, 0, -.05, 0, a); box(o, .43, .05, .15, 0, .13, 0, b); [-1, 1].forEach(sd => { const h = new THREE.Mesh(new THREE.TorusGeometry(.08, .012, 6, 14, Math.PI), mat(b)); h.position.set(sd * .1, .15, 0); o.add(h); });
+      const rk = cyl(o, .018, .018, .32, -.13, .26, -.02, '#1d1d20'); rk.rotation.z = .25; const hd = new THREE.Mesh(new THREE.SphereGeometry(.12, 12, 8), mat(b)); hd.scale.set(1, 1.2, .25); hd.position.set(-.07, .02, -.03); o.add(hd); } // cabo da raquete aparecendo
+    else { const bd = cyl(o, .2, .16, .46, 0, 0, 0, a, null, 14); bd.scale.z = .32; [-1, 1].forEach(sd => { const cd = cyl(o, .006, .006, .5, sd * .14, -.02, -.07, '#e9e9e9', null, 4); cd.rotation.z = sd * .28; });
+      const bl = new THREE.Mesh(new THREE.SphereGeometry(.035, 10, 8), mat('#ff7a1a')); bl.position.set(.08, .25, 0); o.add(bl); }
+    if (PT !== 'liso') { const dm = new THREE.Mesh(new THREE.PlaneGeometry(T === 'tote' ? .4 : .32, T === 'tote' ? .36 : .42), new THREE.MeshStandardMaterial({ map: bagPatTex(PT, a, b, brand), transparent: true, roughness: .6, polygonOffset: true, polygonOffsetFactor: -1 })); dm.position.set(0, T === 'tote' ? -.05 : 0, T === 'tote' ? .072 : .066); o.add(dm); }
+    if (brand) { const t = canvasTex(256, 64, (x2, W, H) => { x2.fillStyle = b; x2.font = 'bold 40px sans-serif'; x2.textAlign = 'center'; x2.textBaseline = 'middle'; x2.fillText(String(brand).toUpperCase(), W / 2, H / 2 + 2); });
+      const lb = new THREE.Mesh(new THREE.PlaneGeometry(.2, .05), new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: .5 })); lb.position.set(0, T === 'tote' ? -.16 : -.1, T === 'tote' ? .074 : .07); o.add(lb); }
+    o.scale.setScalar(SZ * 1.15); o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o; }
+  const o0 = racketBagBody(c, brand, PT, T); if (T === 'termica') { const w = new THREE.Group(); o0.rotation.z = Math.PI / 2; o0.scale.set(.95, 1.05, 1.1); w.add(o0); const sp2 = box(w, .04, .9, .01, .1, 0, -.13, '#1d1d20'); sp2.rotation.z = .9; w.scale.setScalar(SZ); return w; }
+  if (T === 'mochilao') { o0.scale.set(1.12 * SZ, 1.14 * SZ, 1.3 * SZ); [-1, 1].forEach(sd => box(o0, .03, .3, .1, sd * .2, -.15, 0, c[1])); return o0; } // bolsos laterais
+  o0.scale.setScalar(SZ); return o0;
+}
+function racketBagBody(c, brand, PT, T) {
   // mochila térmica de raquetes (como as de beach tennis): perfil com o topo arredondado (a cabeça da raquete), corpo
   // achatado com borda arredondada, faixa do zíper na cor da marca, bolso na frente, etiqueta da marca e alças
   const o = new THREE.Group(), [a, b] = c, W = .36, H = .74, R = .07;
@@ -219,6 +246,7 @@ function racketBag(c, brand?) {
   box(o, .2, .045, .01, 0, .07, .116, b); box(o, .012, .26, .012, 0, -.13, .13, '#d9d9d9', { metalness: .6, roughness: .3 }); // etiqueta da marca e zíper do bolso
   const ring = new THREE.Mesh(new THREE.TorusGeometry(.03, .008, 6, 12), mat('#d9d9d9', { metalness: .7 })); ring.position.set(0, H / 2 + .015, 0); o.add(ring); // alça de mão no topo
   [-1, 1].forEach(sd => { box(o, .045, .5, .012, sd * .1, .02, -.088, '#1d1d20'); box(o, .045, .012, .1, sd * .1, .27, -.13, '#1d1d20'); }); // alças de mochila (do lado do corpo)
+  if (PT && PT !== 'liso') { const dm = new THREE.Mesh(new THREE.PlaneGeometry(W * .92, H * .9), new THREE.MeshStandardMaterial({ map: bagPatTex(PT, a, b, brand), transparent: true, roughness: .6, polygonOffset: true, polygonOffsetFactor: -1 })); dm.position.set(0, .0, .081); o.add(dm); } // estampa da frente
   if (brand) { const t = canvasTex(256, 64, (x2, W, H) => { x2.fillStyle = c[1]; x2.fillRect(0, 0, W, H); x2.fillStyle = c[0]; x2.font = 'bold 40px sans-serif'; x2.textAlign = 'center'; x2.textBaseline = 'middle'; x2.fillText(String(brand).toUpperCase(), W / 2, H / 2 + 2); });
     const lb = new THREE.Mesh(new THREE.PlaneGeometry(.2, .05), new THREE.MeshStandardMaterial({ map: t, roughness: .5 })); lb.position.set(0, .07, .122); o.add(lb); } // etiqueta com o nome da marca
   o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
@@ -1124,7 +1152,7 @@ function build() {
   [19.2, 28.8].forEach(z => { box(g, 400, .14, 2.4, 100, .07, z, '#cfcac0', { noShadow: true }); box(g, 400, .16, .12, 100, .08, z + (z < 24 ? 1.2 : -1.2), '#9e9a92', { noShadow: true }); });
   box(g, 2.2, .05, 13, 0, .05, 12.5, '#cfcac0', { noShadow: true }); // caminho até a porta
   // ---- casa ----
-  const W = [12, 14, 18, 34][lvl], D = [10, 11, 13, 22][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.6][lvl]; // (a mansão é bem maior: suíte, sala de cinema, escritório)
+  const W = [12, 14, 18, 34][lvl], D = [10, 11, 13, 22][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.6][lvl]; LV.houseH = WH - .02; // (a mansão é bem maior: suíte, sala de cinema, escritório)
   const wc = HM.wall ? HOME_WALLS[HM.wall][1] : ['#e9e2d4', '#f1ece2', '#f6f3ee', '#fbfaf7'][lvl], floor = HM.floor ? HOME_FLOORS[HM.floor][1] : ['#a77d55', '#b98b5e', '#c49a6c', '#d6cdbf'][lvl]; // (cor das paredes e piso comprados na aba Casa)
   box(g, W, .08, D, 0, .04, 0, floor, { noShadow: true, roughness: lvl >= 3 ? .3 : .8 });
   if (lvl >= 1) box(g, W + .6, .3, D + .6, 0, -.05, 0, '#d8d2c6', { noShadow: true });
@@ -1220,7 +1248,7 @@ function build() {
   if (hv('vertical')) { const x = hW * .55, w = Math.min(3.4, hW * .7); box(g, w, WH * .78, .12, x, WH * .42, hD + .08, '#2f6b35'); for (let k = 0; k < 40; k++) { const lf = new THREE.Mesh(new THREE.SphereGeometry(.16 + (k % 3) * .05, 6, 5), mat(['#3f8f4a', '#5aa64f', '#2f7d3a', '#7fb069'][k % 4])); lf.position.set(x - w / 2 + ((k * 37) % 100) / 100 * w, .2 + ((k * 53) % 100) / 100 * WH * .76, hD + .17); g.add(lf); } }
   // fora: jardim, cerca/muro, caixa de correio
   [-1, 1].forEach(s => { for (let i = 0; i < 2 + lvl; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(.45, 10, 8), mat('#4f9a52')); b.position.set(s * (2 + i * 1.3), .35, hD + 1.4); b.scale.y = .8; b.castShadow = true; g.add(b); } });
-  const fx = (lotW + 18) / 2 + (court ? 6 : 0), fx0 = (court ? 6 : 0) - (lotW + 18) / 2 - ext;
+  const fx = Math.min((lotW + 18) / 2 + (court ? 6 : 0), 33.4), fx0 = (court ? 6 : 0) - (lotW + 18) / 2 - ext; // (à direita o terreno para antes da Barraca do Zé)
   // piscina: comprada (ou da casa com piscina), em três tamanhos e três formatos; a da mansão já é grande
   const pT = crHomeHas('piscina3') ? 4 : crHomeHas('piscina1') ? Math.max(crHomeHas('piscina2') ? 2 : 1, lvl >= 3 ? 3 : 0) : 0, shape = HM.poolShape || 'reta';
   let pw = [0, 8, 12, 18, 24][pT], pd = [0, 4, 5, 6.5, 8][pT]; if (shape === 'raia') { pw = Math.min(pw * 1.5, fx - fx0 - 10); pd *= .55; } const pz = -hD - pd / 2 - (lvl >= 3 ? 3.8 : 2.6);
@@ -1359,6 +1387,10 @@ function build() {
     LV.pets.push({ o, kind, name: (($s.CR.pets || {})[kind]) || '', x, z, jump: 0, follow: kind === 'cachorro' && !($s.CR.petStay || {})[kind], tx: x, tz: z, wt: 0 }); });
   if ($s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done) buildVenue(g, sp);
   // junta o cenário parado em poucos desenhos (os pontos de interação e os fãs ficam de fora)
+  // tetos: com a câmera perto (abaixo do teto) aparecem como forro; de cima (zoom afastado) somem para ver dentro
+  LV.roofs = []; const roof = (x0, z0, x1, z1, y) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), new THREE.MeshStandardMaterial({ color: '#f4f1ea', side: THREE.DoubleSide, transparent: true, opacity: 0, depthWrite: false, roughness: .9 }));
+    m.rotation.x = Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.userData.dyn = true; m.visible = false; g.add(m); LV.roofs.push({ m, y }); };
+  if (LV.house) { const [hw2, hd2] = LV.house; roof(-hw2, -hd2, hw2, hd2, LV.houseH || 2.8); (LV.wing || []).forEach(r => roof(r.x0, r.z0, r.x1, r.z1, LV.houseH || 2.8)); }
   gndIndex(); mergeStatic(g);
   refreshMarkers();
 }
@@ -1549,13 +1581,14 @@ function cam(dt) {
   const kk = LV.snap ? 1 : 1 - Math.exp(-dt * 6); if (LV.snap) { LV.look = null; LV.snap = false; } // depois do táxi/van: a câmera já aparece no lugar
   camera.position.lerp(_v, kk); _w.set(human.pos.x, 1.1, human.pos.z);
   LV.look = (LV.look || _w.clone()).lerp(_w, kk); camera.lookAt(LV.look);
+  for (const R of LV.roofs || []) { const op = Math.max(0, Math.min(1, (R.y + .35 - camera.position.y) / .6)); R.m.material.opacity = op; R.m.visible = op > .02; R.m.material.depthWrite = op > .95; } // forro só visto de baixo
   if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix(); }
   sun.target.position.set(human.pos.x, 0, human.pos.z); sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 40);
   // andando pelo mundo: raquete guardada na raqueteira, nas costas
   if (human.model) human.model.group.visible = LV.ride !== 'carro'; if (human.model && human.model.armR) { human.model.armR.el.visible = true; human.model.armL.el.visible = true; }
   if (human.skin) human.skin.racket.visible = false; if (human.model && human.model.racket) human.model.racket.visible = false;
-  { const bc = ($s.CR.cosm && $s.CR.cosm.bagOuro && $s.CR.bagGold !== false) ? ['#c9a227', '#111214'] : crBagCols() || bagOfRacket();
-    const stk = Object.keys($s.CR.cosm || {}).filter(k => STICKERS[k]); if (!LV.bag || LV.bagKey !== bc.join() + stk.join()) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc); stickBag(LV.bag, stk); LV.bagKey = bc.join() + stk.join(); scene.add(LV.bag); }
+  { const gold = $s.CR.cosm && $s.CR.cosm.bagOuro && $s.CR.bagGold !== false, BC = gold ? null : crBagCur(), bc = gold ? ['#c9a227', '#111214'] : (BC && BC.cols) || bagOfRacket();
+    const stk = Object.keys($s.CR.cosm || {}).filter(k => STICKERS[k]); if (!LV.bag || LV.bagKey !== bc.join() + stk.join() + (BC ? BC.id : '')) { if (LV.bag) scene.remove(LV.bag); LV.bag = racketBag(bc, BC ? BC.brand : '', BC || undefined); stickBag(LV.bag, stk); LV.bagKey = bc.join() + stk.join() + (BC ? BC.id : ''); scene.add(LV.bag); }
     LV.bag.visible = LV.ride !== 'carro'; const hk = ((human.char && human.char.alt) || 180) / 180;
     { const sp2 = human.model && human.model.spine; // presa na coluna: acompanha o corpo agachado no skate, inclinado na bike, pulando…
       if (sp2) { sp2.updateWorldMatrix(true, false); _bagV.set(0, .1, LV.bagOff + .02); sp2.localToWorld(_bagV); LV.bag.position.copy(_bagV); sp2.matrixWorld.decompose(_bagP, _bagQ, _bagS); LV.bag.quaternion.copy(_bagQ); if (_bagS.x < 0) LV.bag.rotateY(0); LV.bag.rotateX(-.06); }
