@@ -9,7 +9,7 @@ import { $s } from '../state';
 import { S } from './01-estado';
 import { camera, canvasTex, mat, scene, sun, SUN_DIR } from './02-render';
 import { cpuA, cpuB, human, partner } from './06-modelos';
-import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, crBagCur, crHome, crHomeHas, HOME_WALLS, HOME_FLOORS, TIERS } from './14-carreira';
+import { crInv, crLife, crTrain, crRest, crRestUntil, crCoach, crDateTxt, crTourT, crMyMatch, saveCareer, crSyncChars, crPlayMatch, crPartnerAct, crIsSemiOrFinal, crIsCentral, crTourDay, crTeamName, crNRounds, crRoundNames, crAddFama, crWorld, crCharOvr, crChar, crMeOvr, crBagCols, crBagCur, CARS, crCarOwned, crCarCur, crHome, crHomeHas, HOME_WALLS, HOME_FLOORS, TIERS } from './14-carreira';
 import { say, hush, HIST } from './26-historias';
 import { assignCharacters, applyRackets, applyPlayerStyle } from './07-glb';
 import { mergeStatic, sea as SEA, ENV } from './03-cenario';
@@ -145,8 +145,9 @@ function kitchen(g, x0, z, len, level) { // bancada ao longo de x, de x0 até x0
   box(g, len, .9, .65, x0 + len / 2, .45, z + .33, level >= 2 ? '#f2f2f2' : '#d9cfc0'); box(g, len, .05, .7, x0 + len / 2, .92, z + .33, level >= 2 ? '#2b2d31' : '#8a7a68');
   box(g, len, .7, .38, x0 + len / 2, 1.85, z + .2, level >= 2 ? '#f2f2f2' : '#d9cfc0'); solid(x0, z, x0 + len, z + .7);
   box(g, .75, 1.95, .7, x0 + len + .4, .98, z + .36, '#cfd3d8', { metalness: .5, roughness: .3 }); solid(x0 + len, z, x0 + len + .8, z + .72);
-  if (level >= 2) { box(g, 2.2, .92, .9, x0 + len / 2, .46, z + 2.1, '#2b2d31'); box(g, 2.3, .05, 1, x0 + len / 2, .94, z + 2.1, '#f2f2f2'); solid(x0 + len / 2 - 1.15, z + 1.6, x0 + len / 2 + 1.15, z + 2.6);
-    [-1, 0, 1].forEach(i => cyl(g, .17, .17, .7, x0 + len / 2 + i * .7, .35, z + 2.85, '#c97b4a')); }
+  if (level >= 1) { const iw = level >= 3 ? 3.6 : level >= 2 ? 2.6 : 1.8, n = Math.round(iw / .7) - 1; box(g, iw, .92, .9, x0 + len / 2, .46, z + 2.1, level >= 2 ? '#2b2d31' : '#a77d55'); box(g, iw + .1, .05, 1, x0 + len / 2, .94, z + 2.1, '#f2f2f2'); solid(x0 + len / 2 - iw / 2 - .05, z + 1.6, x0 + len / 2 + iw / 2 + .05, z + 2.6);
+    for (let i = 0; i < n; i++) cyl(g, .17, .17, .7, x0 + len / 2 - (n - 1) * .35 + i * .7, .35, z + 2.85, '#c97b4a'); // ilha com banquetas
+    if (level >= 2) { box(g, .9, .02, .5, x0 + len - 1, .93, z + .33, '#1d1d20'); for (let i = 0; i < 3; i++) { const lt = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 8), mat('#fff3d6', glow('#ffe1a8', 1.2))); lt.position.set(x0 + len / 2 - .9 + i * .9, 2.3, z + 2.1); g.add(lt); } } } // cooktop e pendentes
   cyl(g, .2, .14, .12, x0 + .6, .99, z + .35, '#ffffff'); [0, 1, 2].forEach(i => { const f = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), mat(['#ff6b3d', '#ffd23f', '#7cc95b'][i])); f.position.set(x0 + .55 + i * .06, 1.07, z + .35); g.add(f); });
 }
 function gym(g, x, z) { // esteira, banco e halteres
@@ -156,9 +157,14 @@ function gym(g, x, z) { // esteira, banco e halteres
 function iceBath(g, x, z) { box(g, 1.4, .6, .8, x, .3, z, '#e9edf2'); box(g, 1.25, .02, .65, x, .58, z, '#9fdcff', { transparent: true, opacity: .8, ...glow('#bfeaff', .3) }); solid(x - .7, z - .4, x + .7, z + .4); }
 function podcast(g, x, z) { box(g, 1.2, .74, .7, x, .37, z, '#2b2b2b'); [-1, 1].forEach(s => { cyl(g, .015, .015, .4, x + s * .35, .95, z, '#111'); cyl(g, .04, .04, .14, x + s * .35, 1.18, z, '#555', { metalness: .6 }); });
   cyl(g, .02, .02, 1.7, x + 1.1, .85, z - .2, '#111'); const ring = new THREE.Mesh(new THREE.TorusGeometry(.28, .04, 8, 24), mat('#ffffff', glow('#ffffff', 1.8))); ring.position.set(x + 1.1, 1.75, z - .2); g.add(ring); solid(x - .6, z - .35, x + 1.2, z + .35); }
-function car(g, x, z, rot, color, van) {
-  const o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); const L = van ? 4.6 : 4, H = van ? 1.9 : 1.35;
-  box(o, L, H * .55, 1.8, 0, .25 + H * .27, 0, color); box(o, van ? L * .8 : L * .55, H * .45, 1.7, van ? -.3 : -.15, .25 + H * .55 + H * .22, 0, color); box(o, van ? .05 : L * .5, H * .38, 1.72, van ? L * .5 - .75 : -.15, .25 + H * .77, 0, '#25313f', { metalness: .4, roughness: .2 });
+const CAR_M = { hatch: [4, 1.35, .55, -.15, 1], sedan: [4.7, 1.3, .5, -.1, 1], suv: [4.6, 1.75, .62, -.25, 1], picape: [5.2, 1.6, .34, .9, 1], classic: [4.5, 1.2, .34, -.3, 0], conv: [4.3, 1.1, .3, -.3, 0], sport: [4.4, 1, .38, -.2, 1] };
+function car(g, x, z, rot, color, van, model?) {
+  const M = CAR_M[model || 'hatch'] || CAR_M.hatch, o = new THREE.Group(); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); const L = van ? 4.6 : M[0], H = van ? 1.9 : M[1];
+  box(o, L, H * .55, 1.8, 0, .25 + H * .27, 0, color);
+  if (van || M[4]) { box(o, van ? L * .8 : L * M[2], H * .45, 1.7, van ? -.3 : M[3], .25 + H * .55 + H * .22, 0, color); box(o, van ? .05 : L * M[2] * .9, H * .38, 1.72, van ? L * .5 - .75 : M[3], .25 + H * .77, 0, '#25313f', { metalness: .4, roughness: .2 }); }
+  else { const ws = box(o, .06, H * .35, 1.6, M[3] + L * .18, .25 + H * .72, 0, '#9fd3ea', { transparent: true, opacity: .6 }); ws.rotation.z = .35; [-1, 1].forEach(sd => box(o, .6, .5, .6, M[3] - .3, .25 + H * .6, sd * .42, '#3a2a20')); } // conversível: para-brisa e bancos
+  if (model === 'picape') box(o, L * .4, .3, 1.7, -L * .28, .25 + H * .62, 0, '#1d1d20'); // caçamba
+  if (model === 'sport') box(o, .3, .06, 1.6, -L / 2 + .2, .25 + H * .75, 0, '#1d1d20'); // aerofólio
   [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([a, b]) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(.34, .34, .24, 14), mat('#151515')); w.rotation.x = Math.PI / 2; w.position.set(a * (L / 2 - .7), .34, b * .82); o.add(w); });
   const c = Math.cos(rot), s = Math.sin(rot), ex = Math.abs(c) * L / 2 + Math.abs(s) * .95, ez = Math.abs(s) * L / 2 + Math.abs(c) * .95; solid(x - ex, z - ez, x + ex, z + ez);
 }
@@ -775,9 +781,16 @@ function annex(g, sp, r, wc, WH) {
   wall(g, x1, z0, x1, z1, WH, wc, r.door ? [r.door] : [], !r.door);
   if (r.door) door(sp, x1, r.door[0], 2, 'z', 1, '#5a3a28');
   banner(g, kind === 'jogos' ? 'Sala de jogos' : 'Academia', cx, WH - .45, z0 + .25, Math.min(w - 1, 4), .55, kind === 'jogos' ? '#6b2fb8' : '#111214', '#ffffff');
-  if (kind === 'academia') { gym(g, cx - 1.6, cz); box(g, .05, 1.8, d - 1.6, x0 + .12, 1.2, cz, '#cfe8f5', { metalness: .9, roughness: .05 }); // espelho
-    for (let i = 0; i < 6; i++) box(g, .22, .22, .22, x0 + .5, .11, z0 + .8 + i * .4, '#2b2b2b'); box(g, 1.2, .05, 2.4, cx + 1.4, .1, cz - 1, '#2a9d8f', { noShadow: true }); // halteres e colchonete
-    spot(sp, 'academia', cx + .6, cz + 1.6, 'Academia', 'Treino físico', .8); }
+  if (kind === 'academia') { gym(g, cx - 1.6, z0 + 2.4); box(g, .05, 1.8, d - 1.6, x0 + .12, 1.2, cz, '#cfe8f5', { metalness: .9, roughness: .05 }); // espelho
+    for (let i = 0; i < 6; i++) box(g, .22, .22, .22, x0 + .5, .11, z0 + .8 + i * .4, '#2b2b2b'); box(g, 1.2, .05, 2.4, cx + 1.6, .1, z0 + 2, '#2a9d8f', { noShadow: true }); // halteres e colchonete
+    // circuito funcional (metade da frente): escada de agilidade, cones em zigue-zague, caixas de salto, cordas navais e kettlebells
+    box(g, 4.4, .06, .02, x0 + 3.4, .07, z1 - 2.6, '#ffd23f', { noShadow: true }); box(g, 4.4, .06, .02, x0 + 3.4, .07, z1 - 2, '#ffd23f', { noShadow: true }); for (let i = 0; i < 9; i++) box(g, .03, .05, .6, x0 + 1.2 + i * .55, .07, z1 - 2.3, '#ffd23f', { noShadow: true });
+    for (let i = 0; i < 5; i++) { const c2 = new THREE.Mesh(new THREE.ConeGeometry(.12, .3, 10), mat('#ff6a00')); c2.position.set(x0 + 1.4 + i * 1, .15, z1 - 3.6 + (i % 2) * .6); g.add(c2); }
+    [[.5, .6], [.6, .45], [.75, .3]].forEach(([h, w2], i) => { box(g, .6, h, .6, x1 - 1 - i * .75, h / 2, z1 - 4.6, ['#2457c5', '#e63946', '#2a9d8f'][i]); solid(x1 - 1.3 - i * .75, z1 - 4.9, x1 - .7 - i * .75, z1 - 4.3, h); });
+    box(g, .2, .5, .2, x1 - .4, .25, z1 - 1.6, '#3a3f47'); [-1, 1].forEach(sd => { const rp = cyl(g, .04, .04, 3.2, x1 - 2, .06, z1 - 1.6 + sd * .2, '#1d1d20', null, 6); rp.rotation.z = Math.PI / 2; }); // cordas naváis
+    for (let i = 0; i < 4; i++) { const kb = new THREE.Mesh(new THREE.SphereGeometry(.12 + i * .02, 10, 8), mat('#1d1d20')); kb.position.set(x1 - .6, .14 + i * .02, z0 + 4.6 + i * .4); g.add(kb); }
+    banner(g, 'Circuito funcional', cx, 2.2, z1 - .15, 3.4, .45, '#ff6a00', '#ffffff', Math.PI);
+    spot(sp, 'academia', cx + .4, cz, 'Academia', 'Treino físico e circuito funcional', .8); }
   else { box(g, 1.3, .8, 2.4, cx - .4, .45, cz, '#4a3628'); box(g, 1.1, .04, 2.2, cx - .4, .87, cz, '#1f7a3a'); solid(cx - 1.1, cz - 1.25, cx + .3, cz + 1.25); // sinuca
     box(g, .7, 1.7, .8, x0 + .5, .85, z0 + .7, '#1d1d20'); box(g, .05, .45, .6, x0 + .86, 1.35, z0 + .7, '#33c3ff', glow('#33c3ff', 1.4)); solid(x0 + .15, z0 + .3, x0 + .85, z0 + 1.1); // fliperama
     box(g, .7, .8, 1.3, x0 + .5, .4, z1 - 1.2, '#2457c5'); box(g, .6, .04, 1.2, x0 + .5, .82, z1 - 1.2, '#3fae5a'); solid(x0 + .15, z1 - 1.85, x0 + .85, z1 - .55); // pebolim
@@ -1211,13 +1224,13 @@ function build() {
   solid(-60, -97, 290, -96); // dá para entrar no mar (até onde dá pé)
   // beira do mar (o mar é o da cena, o mesmo da quadra: some a emenda com o local do torneio)
   const HM = crHome(), hv = id => crHomeHas(id) && !(HM.hide || {})[id], ext = (crHomeHas('terreno1') ? 16 : 0) + (crHomeHas('terreno2') ? 24 : 0); // (terreno ampliado: cresce para a esquerda)
-  const lotW = [14, 17, 22, 46][lvl], lotD = [12, 14, 18, 30][lvl];
+  const lotW = [16, 20, 26, 50][lvl], lotD = [13, 16, 20, 30][lvl];
   box(g, lotW + 18 + ext, .05, lotD + 6, (court ? 6 : 0) - ext / 2, .02, 1, lvl >= 2 ? '#6aa65a' : '#7fb069', { noShadow: true });
   box(g, 400, .06, 8, 100, .03, 24, '#3a3f47', { noShadow: true }); for (let i = -98; i < 300; i += 5) box(g, 2.2, .02, .18, i, .07, 24, '#f2f2f2', { noShadow: true });
   [19.2, 28.8].forEach(z => { box(g, 400, .14, 2.4, 100, .07, z, '#cfcac0', { noShadow: true }); box(g, 400, .16, .12, 100, .08, z + (z < 24 ? 1.2 : -1.2), '#9e9a92', { noShadow: true }); });
   box(g, 2.2, .05, 13, 0, .05, 12.5, '#cfcac0', { noShadow: true }); // caminho até a porta
   // ---- casa ----
-  const W = [12, 14, 18, 34][lvl], D = [10, 11, 13, 22][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.6][lvl]; LV.houseH = WH - .02; // (a mansão é bem maior: suíte, sala de cinema, escritório)
+  const W = [14, 17, 22, 38][lvl], D = [11, 13, 15, 22][lvl], hW = W / 2, hD = D / 2; LV.house = [hW, hD]; const WH = [2.6, 2.8, 3, 3.6][lvl]; LV.houseH = WH - .02; // (a mansão é bem maior: suíte, sala de cinema, escritório)
   const wc = HM.wall ? HOME_WALLS[HM.wall][1] : ['#e9e2d4', '#f1ece2', '#f6f3ee', '#fbfaf7'][lvl], floor = HM.floor ? HOME_FLOORS[HM.floor][1] : ['#a77d55', '#b98b5e', '#c49a6c', '#d6cdbf'][lvl]; // (cor das paredes e piso comprados na aba Casa)
   box(g, W, .08, D, 0, .04, 0, floor, { noShadow: true, roughness: lvl >= 3 ? .3 : .8 });
   if (lvl >= 1) box(g, W + .6, .3, D + .6, 0, -.05, 0, '#d8d2c6', { noShadow: true });
@@ -1225,7 +1238,7 @@ function build() {
   // ala da esquerda: sala de troféus, academia e sala de jogos são cômodos colados na casa, um ao lado do outro, com passagem por
   // dentro (porta na parede da casa ou no cômodo vizinho): nada fica solto no quintal nem obriga a sair para a rua
   const WING = [], wantW = [crLife('trofeus') && 'trofeus', crHomeHas('academia') && ext && 'academia', crHomeHas('jogos') && ext && 'jogos'].filter(Boolean);
-  { let z = -hD, col = 1; wantW.forEach(k => { const d = k === 'trofeus' ? 7.4 : 7; if (col === 1 && WING.length && z + d > hD + .5) { col = 2; z = -hD; }
+  { let z = -hD, col = 1; wantW.forEach(k => { const d = k === 'trofeus' ? 10.4 : k === 'academia' ? 10 : 7; if (col === 1 && WING.length && z + d > hD + .5) { col = 2; z = -hD; }
       const prev = WING.filter(r => r.col === col).slice(-1)[0], x0 = col === 1 ? -hW - 8.6 : -hW - 17.4, x1 = col === 1 ? -hW - .2 : -hW - 8.8;
       WING.push({ k, col, x0, x1, z0: z, z1: z + d, prev }); z += d; });
     WING.forEach(r => { r.next = WING.find(q => q.prev === r); const zc = (Math.max(r.z0, -hD) + Math.min(r.z1, hD)) / 2;
@@ -1263,20 +1276,20 @@ function build() {
     if (lvl >= 3) box(g, .03, 1.6, .7, wx + .33, 1.2, wz - L / 2 + .45, '#cfe8f5', { metalness: .9, roughness: .05 }); // espelho do closet
     S2('armario', wx + 1.1, wz, lvl >= 3 ? 'Closet' : 'Guarda-roupa', 'Looks salvos e visual', .8); }
   // sala: sofá e TV na parede do fundo, tapete
-  const tvx = -hW + (lvl >= 2 ? 6.5 : 3.6);
-  tvSet(g, [1.6, 2, 2.4, 3][lvl], tvx, -hD + .4, 0, lvl >= 3);
-  sofa(g, [2.4, 2.8, 3.4, 4.2][lvl], tvx, -hD + 3.5, 0, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
-  if (lvl >= 2) sofa(g, 2, tvx - 2.6, -hD + 2.2, 1, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
-  rug(g, 3.4 + lvl * .4, 2.2 + lvl * .2, tvx, -hD + 2.4, ['#c9b79c', '#8fb3c4', '#e9dcc6', '#6b2737'][lvl]);
+  const kLen = [0, 3.4, 4.6, 6.4][lvl], kEnd = lvl >= 1 ? .4 + kLen + .9 : 2.7, tvW = [2, 2.4, 3, 3.8][lvl], tvx = -hW + kEnd + 2.4 + tvW / 2, sofaW = [2.8, 3.4, 4.2, 5.2][lvl];
+  tvSet(g, tvW, tvx, -hD + .4, 0, lvl >= 3);
+  sofa(g, sofaW, tvx, -hD + 3.9, 0, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]);
+  if (lvl >= 1) [-1, 1].forEach(sd => { if (sd > 0 && lvl < 3) return; sofa(g, lvl >= 3 ? 2.6 : 2.1, tvx + sd * (sofaW / 2 + .9), -hD + 2.4, sd < 0 ? 1 : 3, ['#e07a5f', '#4a7c8c', '#c9a97c', '#2f3e46'][lvl]); }); // sofás laterais em U
+  rug(g, sofaW + .8, 2.8 + lvl * .2, tvx, -hD + 2.5, ['#c9b79c', '#8fb3c4', '#e9dcc6', '#6b2737'][lvl]);
   S2('tv', tvx + 1.6, -hD + 2.2, 'TV', 'Notícias e entrevistas', .8);
   // troféus (na mansão, parede inteira)
   const nT = Object.values($s.CR.titles || {}).reduce((a, b) => a + b, 0);
   shelfTrophies(g, -hW + .35, hD - 2.4, 1, nT, lvl >= 3);
   S2('trofeus', -hW + 1.6, hD - 2.4, 'Troféus', nT + ' títulos', .8);
   // cozinha (a partir do apartamento)
-  if (lvl >= 1) kitchen(g, lvl >= 2 ? -hW + .4 : -hW + .3, -hD + .02, lvl >= 3 ? 4 : lvl >= 2 ? 3.2 : 2.4, lvl);
+  if (lvl >= 1) kitchen(g, -hW + .4, -hD + .02, kLen, lvl);
   else { box(g, 1.6, .9, .6, -hW + 1, .45, -hD + .35, '#d9cfc0'); box(g, .7, 1.7, .6, -hW + 2.3, .85, -hD + .35, '#cfd3d8'); solid(-hW, -hD, -hW + 2.7, -hD + .7); }
-  S2('cozinha', -hW + 2, -hD + (lvl >= 2 ? 3.7 : 1.6), 'Cozinha', crLife('nutri') ? 'Cardápio do nutricionista' : 'Fazer um lanche', .8);
+  S2('cozinha', -hW + .4 + (lvl >= 1 ? kLen / 2 : 1.6), -hD + (lvl >= 1 ? 3.7 : 1.6), 'Cozinha', crLife('nutri') ? 'Cardápio do nutricionista' : 'Fazer um lanche', .8);
   // canto do computador: comum, gamer (time de eSports) ou estúdio de podcast (mídia)
   const pcx = lvl >= 3 ? hW - 12 : hW - 1.6, pcz = hD - 1.6; // (na mansão o canto da direita é a sala de cinema)
   desk(g, pcx, pcz, 2, crInv('esports') >= 1);
@@ -1300,7 +1313,7 @@ function build() {
     [[-4.5, 2.2], [1.5, 2.2]].forEach(([x, z]) => { cyl(g, .25, .25, WH, x, WH / 2, z, '#f3efe6'); solid(x - .25, z - .25, x + .25, z + .25); }); rug(g, 4, 3, 4, hD - 3, '#8b1e3f'); }
   // plantas, luminárias e quadros
   [[-hW + .5, -hD + .5 + (lvl >= 1 ? 4 : 1.5)], [hW - .5, hD - .5 - 3.5], [bx - .5, -hD + .5]].forEach(([x, z], i) => { if (i < 1 + lvl) plant(g, x, z, .9 + lvl * .1); });
-  if (lvl >= 1) lamp(g, tvx - 2.3, -hD + 4.4); if (lvl >= 2) lamp(g, tvx + 2.3, -hD + 4.4);
+  if (lvl >= 1) lamp(g, tvx - sofaW / 2 - .4, -hD + 4.6); if (lvl >= 2) lamp(g, tvx + sofaW / 2 + .4, -hD + 4.6);
   { const QS = ['quadro1', 'quadro2', 'quadro3', 'quadro4'].filter(hv), slots = [-hW + 3, 2.8, -hW + 5.6, 5.2, -hW + 8.2, -hW + 10.8].filter(x => Math.abs(x) > 2 && Math.abs(x) < hW - .9 && !(lvl >= 3 && crHomeHas('cinema') && x > hW - 10.3));
     slots.slice(0, Math.max(QS.length, 1 + lvl)).forEach((x, i) => { const q = QS[i]; if (q) { const pt = paintingTex(q); const pm = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .95), new THREE.MeshStandardMaterial({ map: pt, roughness: .7 })); pm.rotation.y = Math.PI; pm.position.set(x, 1.75, hD - .14); g.add(pm); box(g, 1.42, 1.07, .04, x, 1.75, hD - .1, '#2b2118'); }
       else box(g, 1, .7, .04, x, 1.7, hD - .12, ['#ff6a00', '#33c3ff', '#b6ff3c', '#f2c14e'][i % 4], { noShadow: true }); }); }
@@ -1346,9 +1359,29 @@ function build() {
     const z0 = hD + 1, z1 = frontZ - .6; for (let z = z0 + .5; z < z1; z += 1.6) [-1, 1].forEach(sd => { const l = cyl(g, .05, .06, .45, sd * 1.4, .22, z, '#3a3f47'); const b2 = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), mat('#fff3d6', glow('#ffd98a', 1.4))); b2.position.set(sd * 1.4, .5, z); g.add(b2); });
     [-1, 1].forEach(sd => { box(g, 1.2, .25, z1 - z0, sd * 2.4, .12, (z0 + z1) / 2, '#6b4f3a'); for (let z = z0 + .4; z < z1; z += .5) { const f = new THREE.Mesh(new THREE.SphereGeometry(.16, 6, 5), mat(['#e63946', '#ffd23f', '#b07ac9', '#ff8fab', '#ffffff'][Math.floor(Math.abs(z * 7 + sd * 3)) % 5])); f.position.set(sd * 2.4 + Math.sin(z * 5) * .3, .36, z); g.add(f); } });
     for (let i = 0; i < 4; i++) [-1, 1].forEach(sd => { const tp = new THREE.Mesh(new THREE.ConeGeometry(.45, 1.5, 10), mat('#2f6b35')); tp.position.set(sd * (hW - .8 - i * 1.8), .75, hD + .9); tp.castShadow = true; g.add(tp); });
-    if (lvl >= 2) { const fx2 = hW * .55, fz2 = (hD + frontZ) / 2; cyl(g, 1.5, 1.6, .5, fx2, .25, fz2, '#d9d4c7'); cyl(g, 1.3, 1.3, .05, fx2, .48, fz2, '#3fb6e8', { transparent: true, opacity: .85 }); cyl(g, .18, .25, 1.2, fx2, .9, fz2, '#d9d4c7'); cyl(g, .5, .3, .15, fx2, 1.5, fz2, '#d9d4c7'); solid(fx2 - 1.5, fz2 - 1.5, fx2 + 1.5, fz2 + 1.5); } }
+    if (lvl >= 2) { const fx2 = crHomeHas('estatua') ? hW * .8 : hW * .55, fz2 = (hD + frontZ) / 2; cyl(g, 1.5, 1.6, .5, fx2, .25, fz2, '#d9d4c7'); cyl(g, 1.3, 1.3, .05, fx2, .48, fz2, '#3fb6e8', { transparent: true, opacity: .85 }); cyl(g, .18, .25, 1.2, fx2, .9, fz2, '#d9d4c7'); cyl(g, .5, .3, .15, fx2, 1.5, fz2, '#d9d4c7'); solid(fx2 - 1.5, fz2 - 1.5, fx2 + 1.5, fz2 + 1.5); } }
   // ---- garagem: carro, van (transporte) ----
-  if (crLife('carro')) car(g, -hW - 3, hD + 3, Math.PI / 2, lvl >= 3 ? '#111214' : '#2457c5');
+  if (crCarCur() && !crHomeHas('garagem')) { const cc = crCarCur(); car(g, -hW - 3, hD + 3, Math.PI / 2, cc.col, false, cc.model); }
+  // garagem (comprada): prédio de portão aberto para a rua, com a coleção de carros; heliponto e estátua
+  { const FS = (w, d, pref) => { const L2 = LV.homeLot; if (!L2) return null; const occ2 = LV.boxes.concat(pT ? [[-pw / 2 - (lvl >= 3 ? 11 : 2), pz - pd / 2 - 3, pw / 2 + (lvl >= 3 ? 5.5 : 2), pz + pd / 2 + 3]] : [], (LV.wing || []).map(r => [r.x0, r.z0, r.x1, r.z1]), [[-hW - 1, -hD - 1, hW + 1, hD + 1]], court ? [[hW + 3.5, -9.5, hW + 14.5, 9.5]] : [], [[-2.5, hD, 2.5, frontZ + 1]]); // (piscina e área gourmet, quadra e o caminho da porta)
+      const ok = (x0, z0) => !occ2.some(([a, b, c, d2]) => x0 - 1 < c && x0 + w + 1 > a && z0 - 1 < d2 && z0 + d + 1 > b);
+      const zs = []; for (let z = L2[1] + 1; z + d < L2[3] - 1; z += .5) zs.push(z); if (pref === 'front') zs.reverse();
+      for (const z of zs) for (let x = L2[0] + 1; x + w < L2[2] - 1; x += .5) if (ok(x, z)) return [x, z]; return null; };
+    if (crHomeHas('garagem')) { const at = FS(13, 7.5, 'front'); if (at) { LV.garageAt = at; const [gx0, gz0] = at, gx1 = gx0 + 13, gz1 = gz0 + 7.5, gcx = gx0 + 6.5, gcz = gz0 + 3.75, GH = 3.2;
+        box(g, 13, .06, 7.5, gcx, .04, gcz, '#8f949b', { noShadow: true }); wall(g, gx0, gz0, gx1, gz0, GH, '#e6dfd2'); wall(g, gx0, gz0, gx0, gz1, GH, '#e6dfd2'); wall(g, gx1, gz0, gx1, gz1, GH, '#e6dfd2'); // frente aberta (+z)
+        box(g, 13.4, .25, 7.9, gcx, GH + .12, gcz, '#cfcac0'); banner(g, 'Garagem', gcx, GH - .35, gz1 + .05, 3.4, .5, '#1d1d20', '#ffffff');
+        const owned = CARS.filter(c => crCarOwned(c.id)).slice(0, 3); owned.forEach((c, i) => car(g, gx0 + 2.2 + i * 4.3, gcz - .3, Math.PI / 2, c.col, false, c.model)); } }
+    if (crHomeHas('heliponto')) { const at = FS(14, 14, 'back'); if (at) { const hx = at[0] + 7, hz = at[1] + 7;
+        cyl(g, 6.5, 6.5, .1, hx, .06, hz, '#3a3f47', { noShadow: true }, 40); const rg = new THREE.Mesh(new THREE.RingGeometry(5.4, 5.8, 40), mat('#ffd23f')); rg.rotation.x = -Math.PI / 2; rg.position.set(hx, .13, hz); g.add(rg);
+        [[-1.2, 0, .5, 3.4], [1.2, 0, .5, 3.4], [0, 0, 2.4, .5]].forEach(([dx, dz, w2, d2]) => box(g, w2, .02, d2, hx + dx, .13, hz + dz, '#ffffff', { noShadow: true })); // H
+        const hel = dyn2(sp, new THREE.Group()); hel.position.set(hx, 0, hz + .2); const bd = new THREE.Mesh(new THREE.CapsuleGeometry(.9, 2.2, 6, 14), mat('#f4f4f4')); bd.rotation.z = Math.PI / 2; bd.position.y = 1.4; hel.add(bd);
+        const glass = new THREE.Mesh(new THREE.SphereGeometry(.85, 14, 10), mat('#25313f', { metalness: .4, roughness: .15 })); glass.position.set(1.3, 1.5, 0); glass.scale.set(.9, .8, .95); hel.add(glass);
+        const tail = cyl(hel, .12, .25, 4, -3, 1.6, 0, '#e30613'); tail.rotation.z = Math.PI / 2; box(hel, .1, .9, .6, -4.9, 2, 0, '#e30613'); [-1, 1].forEach(sd => { box(hel, 3, .08, .08, 0, .25, sd * .8, '#3a3f47'); [-1, 1].forEach(a => box(hel, .08, .6, .08, a * 1, .55, sd * .8, '#3a3f47')); });
+        cyl(hel, .08, .08, .5, 0, 2.55, 0, '#3a3f47'); const rot2 = new THREE.Group(); rot2.position.set(0, 2.8, 0); hel.add(rot2); [0, 1].forEach(i => { const bl = box(rot2, 7, .04, .25, 0, 0, 0, '#1d1d20'); bl.rotation.y = i * Math.PI / 2; }); LV.heliRotor = rot2;
+        solid(hx - 2.2, hz - 1.2, hx + 2.2, hz + 1.6); spot(sp, 'torneio', hx + 3.6, hz + 3.2, 'Helicóptero', 'Ir ao torneio voando'); } }
+    if (crHomeHas('estatua')) { const sx = hW * .45, sz = hD + 3; box(g, 1.6, 1.2, 1.6, sx, .6, sz, '#d9d4c7'); box(g, 1.8, .12, 1.8, sx, 1.26, sz, '#cfc6b5'); solid(sx - .9, sz - .9, sx + .9, sz + .9);
+      const st = fan(g, sx, sz, Math.PI, 17, false); st.position.y = 1.32; st.scale.setScalar(1.5); const BR = mat('#8c6239', { metalness: .75, roughness: .35 }); st.traverse(o2 => { if (o2.isMesh) o2.material = BR; });
+      cup(g, sx, 1.32 + 2.7, sz, 9); banner(g, nameOf($s.CR.me).split(' ')[0] + ' · ' + trophyList().length + ' títulos', sx, .7, sz + .82, 1.5, .4, '#2b2118', '#e8b923'); } }
   if (crInv('jato') >= 1) car(g, -8, 22.2, 0, '#f2f2f2', true); else { box(g, .1, 2.4, .1, -8, 1.2, 20.2, '#3a3f47'); box(g, 1.2, .5, .06, -8, 2.4, 20.2, '#2457c5'); }
   S2('torneio', -8, 19.6, crInv('jato') >= 1 ? 'Van da equipe' : 'Ponto de táxi', 'Ir ao torneio');
   // ---- piscina (casa com piscina e mansão), atrás da casa ----
@@ -1415,9 +1448,20 @@ function build() {
     wall(g, x0, z0, x1, z0, WH, '#1d2a4a'); wall(g, x0, z0, x0, z1, WH, '#1d2a4a', TR.sideDoor ? [TR.sideDoor] : []); wall(g, x0, z1, x1, z1, WH, '#1d2a4a', [[cx - 1.1, cx + 1.1]]); if (!TR.next) { door(sp, cx - 1.1, z1, 1.1, 'x', 1, '#5a3a28'); door(sp, cx + 1.1, z1, 1.1, 'x', -1, '#5a3a28'); }
     if (TR.door) { wall(g, x1, z0, x1, z1, WH, '#1d2a4a', [TR.door]); door(sp, x1, TR.door[0], 2, 'z', 1, '#5a3a28'); } else wall(g, x1, z0, x1, z1, WH, '#1d2a4a');
     banner(g, 'Sala de Troféus', cx, WH - .45, z0 + .2, 5, .7, '#0b1a3a', '#e8b923');
-    const L = trophyList(); L.slice(0, 18).forEach((t, i) => { const r = Math.floor(i / 6), c = i % 6, px2 = x0 + 1 + c * ((x1 - x0 - 2) / 5), pz2 = z0 + 1.6 + r * 2;
+    // até 100 troféus: os 12 maiores em pedestais no centro (duas fileiras), o resto nas estantes iluminadas das paredes
+    const L = trophyList().slice(0, 100); L.slice(0, 12).forEach((t, i) => { const r = Math.floor(i / 4), c = i % 4, px2 = cx - 2.4 + c * 1.6, pz2 = z0 + [2.4, 6.4, 8.4][r]; // (corredor livre em z0 + 4,6, da porta lateral)
       box(g, .5, .9, .5, px2, .45, pz2, '#f2efe9'); cup(g, px2, .9, pz2, t); solid(px2 - .3, pz2 - .3, px2 + .3, pz2 + .3);
       banner(g, (TIERS[t] && TIERS[t].curto) || 'Título', px2, .55, pz2 + .26, .46, .16, '#0b1a3a', '#e8b923'); });
+    { const rest = L.slice(12), runs = []; // estantes: parede do fundo e paredes laterais (sem tapar as portas)
+      const gapsOf = (a, b, gs) => { let seg = [[a, b]]; (gs || []).forEach(([g0, g1]) => { seg = seg.flatMap(([p, q]) => g1 <= p || g0 >= q ? [[p, q]] : [[p, g0 - .2], [g1 + .2, q]].filter(([u, v]) => v - u > .8)); }); return seg; };
+      gapsOf(x0 + .4, x1 - .4, []).forEach(([a, b]) => runs.push({ ax: 'x', a, b, c: z0 + .3, f: 1 }));
+      gapsOf(z0 + .9, z1 - .5, TR.sideDoor ? [TR.sideDoor] : []).forEach(([a, b]) => runs.push({ ax: 'z', a, b, c: x0 + .3, f: 1 }));
+      gapsOf(z0 + .9, z1 - .5, TR.door ? [TR.door] : []).forEach(([a, b]) => runs.push({ ax: 'z', a, b, c: x1 - .3, f: -1 }));
+      let k = 0; runs.forEach(R => { const len = R.b - R.a, m = (R.a + R.b) / 2, slots = Math.floor(len / .42);
+        if (R.ax === 'x') box(g, len, 2.3, .12, m, 1.15, R.c - .15 * R.f, '#2a2118'); else box(g, .12, 2.3, len, R.c - .15 * R.f, 1.15, m, '#2a2118'); // fundo da estante
+        for (let t = 0; t < 4; t++) { if (R.ax === 'x') box(g, len, .04, .45, m, .45 + t * .5, R.c + .08 * R.f, '#cfc6b5', { transparent: true, opacity: .7 }); else box(g, .45, .04, len, R.c + .08 * R.f, .45 + t * .5, m, '#cfc6b5', { transparent: true, opacity: .7 });
+          for (let i = 0; i < slots && k < rest.length; i++, k++) { const u = R.a + .21 + i * .42; if (R.ax === 'x') cup(g, u, .47 + t * .5, R.c + .1 * R.f, rest[k]); else cup(g, R.c + .1 * R.f, .47 + t * .5, u, rest[k]); } }
+        if (R.ax === 'x') solid(R.a, R.c - .25, R.b, R.c + .25); else solid(R.c - .25, R.a, R.c + .25, R.b); }); }
     for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), mat('#fff3d6', glow('#ffe1a8', 1.4))); c.position.set(x0 + 1.5 + i * (x1 - x0 - 3) / 2, WH - .2, cz); g.add(c); }
     S2('salaTrofeus', cx, z1 - 1.2, 'Sala de troféus', L.length + ' títulos', .9); }
   // praia: guarda-sóis e cadeiras, palmeiras na orla
@@ -1567,7 +1611,7 @@ function tick(dt) {
   const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
   // direção relativa à câmera
   const cy = Math.cos(LV.camYaw), sy = Math.sin(LV.camYaw), tx = ix * cy + iz * sy, tz = -ix * sy + iz * cy;
-  const RV = ({ pe: 1, skate: 1.45, bike: 2.1, carro: 3.4 }[LV.ride || 'pe'] || 1) * (LV.ride === 'skate' ? (LV.skK ?? 1) : 1), vmax = (run ? 5.2 : 1.9) * (LV.swim ? .5 : LV.ride && LV.ride !== 'pe' ? RV * (run ? 1 : 2) : 1), acc = il > .05 ? (LV.ride === 'carro' ? 4 : 9) : 12;
+  const RV = ({ pe: 1, skate: 1.45, bike: 2.1, carro: 3.4 * ((crCarCur() || { vel: 1 }).vel) }[LV.ride || 'pe'] || 1) * (LV.ride === 'skate' ? (LV.skK ?? 1) : 1), vmax = (run ? 5.2 : 1.9) * (LV.swim ? .5 : LV.ride && LV.ride !== 'pe' ? RV * (run ? 1 : 2) : 1), acc = il > .05 ? (LV.ride === 'carro' ? 4 : 9) : 12;
   LV.vel.x += (tx * vmax - LV.vel.x) * Math.min(1, dt * acc); LV.vel.z += (tz * vmax - LV.vel.z) * Math.min(1, dt * acc);
   human.vel.set(LV.vel.x, 0, LV.vel.z); if (LV.ride && LV.ride !== 'pe') human.vel.set(0, 0, 0); // em cima do skate/bike: o corpo não caminha
   human.pos.x += LV.vel.x * dt; human.pos.z += LV.vel.z * dt;
@@ -1594,7 +1638,7 @@ function tick(dt) {
     const d = Math.hypot(px - f.o.position.x, pz - f.o.position.z); if (!f.done && d < nfd) { nfd = d; nf = f; }
     if (d < 4 && !f.walk) f.o.rotation.y += (Math.atan2(px - f.o.position.x, pz - f.o.position.z) - f.o.rotation.y) * Math.min(1, dt * 3); });
   LV.nearFan = nf; if (nf && !near) near = { id: 'fa' };
-  npcTick(dt, px, pz); if (LV.flag) { const tt = performance.now() / 1000, pa = LV.flag.geometry.attributes.position; LV.flag.rotation.y = Math.sin(tt * 1.4) * .25; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i); pa.setZ(i, Math.sin(tt * 5 - x * 4) * .08 * x); } pa.needsUpdate = true; } // a flâmula tremula com o vento
+  npcTick(dt, px, pz); if (LV.heliRotor) LV.heliRotor.rotation.y += dt * 1.2; if (LV.flag) { const tt = performance.now() / 1000, pa = LV.flag.geometry.attributes.position; LV.flag.rotation.y = Math.sin(tt * 1.4) * .25; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i); pa.setZ(i, Math.sin(tt * 5 - x * 4) * .08 * x); } pa.needsUpdate = true; } // a flâmula tremula com o vento
   // gente com quem dá para conversar (quem passa) e os moradores que dão missões
   LV.nearNpc = null; LV.nearGiver = null;
   if (!near && !LV.modal) { let bd = 1.6; for (const G of LV.givers || []) { const d = Math.hypot(px - G.x, pz - G.z); if (d < bd) { bd = d; LV.nearGiver = G; } }
@@ -1779,7 +1823,7 @@ function swimPose() {
   const k = human.skin; if (k && human.skinOn) { _qf.setFromAxisAngle(_ay, k.faceFix || 0); k.holder.quaternion.copy(m.group.quaternion).multiply(_qf); k.holder.position.set(bx, y, bz); k.racket.visible = false; }
 }
 // jeito de andar: a pé, skate, bicicleta ou carro (os que você comprou em Negócios); tecla V troca
-function rides() { return ['pe'].concat(crLife('skate') ? ['skate'] : [], crLife('bike') ? ['bike'] : [], crLife('carro') ? ['carro'] : []); }
+function rides() { return ['pe'].concat(crLife('skate') ? ['skate'] : [], crLife('bike') ? ['bike'] : [], crCarCur() ? ['carro'] : []); }
 function cycleRide() {
   const L = rides(); if (L.length < 2) { LV.msg('Compre skate, bicicleta ou carro em Negócios para andar mais rápido (tecla V troca).'); return; }
   const [hw, hd] = LV.house || [6, 5], lx = human.pos.x - H0.x, lz = human.pos.z - H0.z; if ((lx > -hw && lx < hw && lz > -hd && lz < hd) || (LV.wing || []).some(r => lx > r.x0 && lx < r.x1 && lz > r.z0 && lz < r.z1)) { LV.msg('Dentro de casa, só a pé.'); return; } if (LV.swim || lz < -86.5) { LV.msg('Na água, só nadando.'); return; }
@@ -1799,7 +1843,7 @@ function rideMesh(kind) {
     const cr = new THREE.Group(); cr.position.set(0, .35, -.04); [-1, 1].forEach(sd => { const arm = box(cr, .02, .17, .03, sd * .07, 0, 0, '#3a3f47'); arm.position.y = sd * .085; box(cr, .1, .02, .05, sd * .12, sd * .17, 0, '#1d1d20'); }); cr.userData.r = .35 / 2.6 * 1.0; o.add(cr); o.userData.crank = cr;
     const fr = (l, x, y, z, rx) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, l, 6), mat('#e30613', { metalness: .5 })); m.position.set(x, y, z); m.rotation.x = rx; o.add(m); };
     fr(.75, 0, .55, 0, Math.PI / 2); fr(.5, 0, .55, .3, .5); fr(.5, 0, .55, -.3, -.4); box(o, .16, .05, .26, 0, .85, .15, '#111'); box(o, .5, .03, .03, 0, 1, -.5, '#3a3f47'); }
-  else { car(o, 0, 0, Math.PI / 2, ($s.CR && crInv('moradia') >= 3) ? '#111214' : '#2457c5'); LV.boxes.pop(); }
+  else { const cc = crCarCur(); car(o, 0, 0, Math.PI / 2, cc ? cc.col : '#2457c5', false, cc ? cc.model : 'hatch'); LV.boxes.pop(); }
   o.traverse(m => { if (m.isMesh) m.castShadow = true; }); return o;
 }
 

@@ -1003,7 +1003,7 @@ function crPartnerAct(k) {
   if ($s.CR.pact[k] === absWeek()) { $s.CR.lastMsg = 'Já fizeram isso esta semana.'; return; }
   const n = nameOf(crChar($s.CR.partner));
   if (k === 'jantar') { const c = 150 * (crMaxTier() + 1); if ($s.CR.money < c) { $s.CR.lastMsg = 'Dinheiro insuficiente.'; return; } $s.CR.money -= c; $s.CR.lastMsg = crMood(8, 'Jantar com ' + n + ': o clima melhorou (+8 de humor).'); }
-  if (k === 'treino') { if ($s.CR.energy < 15) { $s.CR.lastMsg = 'Energia baixa demais.'; return; } $s.CR.energy -= 10; const g = Math.round(2 * crXpMul()); $s.CR.pe += g; crChemAdd(4); $s.CR.lastMsg = crMood(4, 'Treino em dupla com ' + n + ': +' + g + ' pontos de evolução, +4 de humor e +4 de química.'); }
+  if (k === 'treino') { if ($s.CR.energy < 15) { $s.CR.lastMsg = 'Energia baixa demais.'; return; } $s.CR.energy -= 10; const g = Math.round(2 * crXpMul() * crLvGainK()); $s.CR.pe += g; crChemAdd(4); $s.CR.lastMsg = crMood(4, 'Treino em dupla com ' + n + ': +' + g + ' pontos de evolução, +4 de humor e +4 de química.'); }
   if (k === 'conversa') { const up = $s.CR.mood < 50 ? 6 : 3; $s.CR.lastMsg = crMood(up, 'Conversa franca com ' + n + ' sobre o calendário: +' + up + ' de humor.'); }
   $s.CR.pact[k] = absWeek(); crSyncChars(); saveCareer();
 }
@@ -1058,6 +1058,9 @@ const HOME_ITEMS = [
   { id: 'jogos', cat: 'Cômodos', nome: 'Sala de jogos', preco: 35000, minLv: 2, need: 'terreno1', desc: 'Anexo com sinuca, fliperama e pebolim (precisa do terreno ampliado).' },
   { id: 'suite', cat: 'Cômodos', nome: 'Quarto ampliado', preco: 40000, minLv: 2, desc: 'O quarto fica 2 m maior, com poltrona e closet.' },
   { id: 'cinema', cat: 'Cômodos', nome: 'Sala de cinema', preco: 90000, minLv: 3, desc: 'Telão e poltronas em dois degraus. Só na mansão.' },
+  { id: 'garagem', cat: 'Área externa', nome: 'Garagem', preco: 30000, minLv: 1, desc: 'Garagem para a sua coleção de carros: depois dela dá para comprar outros modelos e escolher qual levar para a rua.' },
+  { id: 'estatua', cat: 'Área externa', nome: 'Estátua sua no jardim', preco: 60000, minLv: 1, desc: 'Estátua de bronze erguendo o troféu, num pedestal com os seus títulos.' },
+  { id: 'heliponto', cat: 'Área externa', nome: 'Heliponto', preco: 250000, minLv: 3, need: 'terreno1', desc: 'Heliponto com helicóptero no terreno: dá para ir aos torneios voando.' },
   { id: 'jardim', cat: 'Área externa', nome: 'Jardim da frente', preco: 15000, desc: 'Canteiros de flores, arbustos podados, luzes no caminho e fonte (mansão).' },
   { id: 'muro', cat: 'Área externa', nome: 'Muro em volta do terreno', preco: 12000, desc: 'Muro em todo o perímetro, com portão na frente.' },
   { id: 'terreno1', cat: 'Área externa', nome: 'Terreno ampliado', preco: 60000, minLv: 1, desc: 'Compra os lotes vizinhos: o terreno fica 16 m mais largo.' },
@@ -1083,6 +1086,23 @@ function crHomeBuy(kind, id) {
   if (H.items[id]) { if (['planta1', 'planta2', 'suculentas', 'quadro1', 'quadro2', 'quadro3', 'quadro4', 'tapete', 'luminaria', 'jardim', 'muro'].includes(id)) { H.hide = H.hide || {}; H.hide[id] = !H.hide[id]; C.lastMsg = it.nome + (H.hide[id] ? ' guardado.' : ' de volta no lugar.'); saveCareer(); } return; }
   if (C.money < it.preco) { C.lastMsg = 'Dinheiro insuficiente para ' + it.nome + '.'; return; } C.money -= it.preco; H.items[id] = true; C.lastMsg = 'Comprado: ' + it.nome + '.'; saveCareer();
 }
+// carros da garagem: modelo, preço e velocidade no modo livre (o primeiro vem com o "Carro e motorista" do estilo de vida)
+const CARS = [
+  { id: 'hatch', nome: 'Hatch', preco: 0, vel: 1, model: 'hatch', col: '#2457c5' },
+  { id: 'sedan', nome: 'Sedã executivo', preco: 45000, vel: 1.1, model: 'sedan', col: '#2b2d31' },
+  { id: 'picape', nome: 'Picape', preco: 60000, vel: 1.05, model: 'picape', col: '#c0392b' },
+  { id: 'suv', nome: 'SUV', preco: 80000, vel: 1.12, model: 'suv', col: '#f4f4f4' },
+  { id: 'classico', nome: 'Clássico conversível', preco: 90000, vel: .95, model: 'classic', col: '#2a9d8f' },
+  { id: 'eletrico', nome: 'Elétrico', preco: 120000, vel: 1.25, model: 'sedan', col: '#cfe8f5' },
+  { id: 'conv', nome: 'Conversível', preco: 150000, vel: 1.3, model: 'conv', col: '#ffd23f' },
+  { id: 'esportivo', nome: 'Esportivo', preco: 220000, vel: 1.5, model: 'sport', col: '#e30613' },
+];
+const crCarOwned = id => id === 'hatch' ? crLife('carro') : (($s.CR.cars || []).includes(id));
+const crCarCur = () => { const c = CARS.find(x => x.id === $s.CR.carSel); return c && crCarOwned(c.id) ? c : CARS.find(x => crCarOwned(x.id)) || null; };
+function crCarBuy(id) { const c = CARS.find(x => x.id === id); if (!c) return; const C = $s.CR;
+  if (crCarOwned(id)) { C.carSel = id; C.lastMsg = 'Carro para a rua: ' + c.nome + '.'; saveCareer(); return; }
+  if (!crHomeHas('garagem')) { C.lastMsg = 'Compre a garagem primeiro.'; return; } if (C.money < c.preco) { C.lastMsg = 'Dinheiro insuficiente para ' + c.nome + '.'; return; }
+  C.money -= c.preco; C.cars = (C.cars || []).concat(id); C.carSel = id; C.lastMsg = 'Comprado: ' + c.nome + ' (já na garagem).'; saveCareer(); }
 // raqueteiras: as marcas das raquetes, em três versões (a do seu patrocinador master sai de graça)
 const BAG_BRANDS = [['Nux', '#111214', '#ffffff'], ["Herue's", '#e30613', '#ffffff'], ['Kuna', '#ffd23f', '#111214'], ['Ana Sport', '#1f4fb8', '#ffffff'], ['Zanb', '#2a9d8f', '#ffffff'], ['Adibas', '#111214', '#e9e9e9'], ['Shank', '#0a7d3c', '#ffd23f'], ['Vizion', '#6b2fb8', '#ffffff'], ['Drop Shut', '#ff6a00', '#111214'], ['Mormaji', '#0b0b0b', '#f2c14e']];
 // [versão, preço, modelo, estampa, tamanho]: modelos mochila, mochilão, térmica (horizontal), sacola (tote) e saco de cordão
@@ -1951,7 +1971,7 @@ function crWlog(d, txt) { $s.CR.wlog = $s.CR.wlog || {}; $s.CR.wlog[d] = txt; }
 // recompensa do treino na quadra com desafio (conta como o dia); cumprir a meta também dá um pouco de potencial
 function crDrillReward(ok, pass, rew) {
   rew = rew || 1; // nível do desafio: mais difícil, mais recompensa
-  const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew;
+  const g = (ok * .3 + (pass ? 1.5 : 0)) * crXpMul() * rew * crLvGainK();
   $s.CR.pe += g; $s.CR.energy = Math.max(0, $s.CR.energy - 5);
   const pg = pass && $s.CR.potCur < 90 ? Math.min(.03 * rew * clamp(1 - ($s.CR.potCur - 65) / 40, .3, 1) * clamp(1 - ($s.CR.potCur - overall($s.CR.me.a) - 4) / 6, .03, 1), Math.min(crPotMax(), crGate().cap) - $s.CR.potCur) : 0; if (pg > 0) $s.CR.potCur += pg;
   crWlog($s.CR.day, 'Quadra'); crLoad(.3);
@@ -1961,6 +1981,9 @@ function crDrillReward(ok, pass, rew) {
 // dia de torneio (o torneio já começou e não acabou): não dá para descansar o dia, treinar ou dar aulas — o dia é do torneio
 const crTourDay = () => !!($s.CR && $s.CR.tour && !$s.CR.tour.pending && !$s.CR.tour.done);
 const TOUR_DAY_MSG = 'Hoje é dia de torneio: o dia é dos jogos. Treino, aulas e descanso ficam para depois.';
+// pontos de um treino: acompanham o custo de evoluir no seu nível (no topo ~6–8, não ~1)
+const crLvGainK = () => 1 + crUpCostBase(overall($s.CR.me.a)) / 14;
+const crTrainGain = () => (.9 + (crInv('quadra') ? .6 : 0) + (crInv('moradia') >= 3 ? .5 : 0)) * crXpMul() * crLvGainK();
 function crTrain() {
   if (crTourDay()) { $s.CR.lastMsg = TOUR_DAY_MSG; return; }
   if ($s.CR.injury) { $s.CR.lastMsg = 'Lesionado: nada de treino pesado. Descanse ou faça fisioterapia.'; return; }
@@ -1968,7 +1991,7 @@ function crTrain() {
   if ($s.CR.money < cost) { $s.CR.lastMsg = 'Treino custa $' + cost + '.'; return; }
   if ($s.CR.energy < 10) { $s.CR.lastMsg = 'Energia baixa demais para treinar: descanse.'; return; }
   crLoad(.3); const inj = crInjuryRoll(.2);
-  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = (.9 + (crInv('quadra') ? .6 : 0) + (crInv('moradia') >= 3 ? .5 : 0)) * crXpMul() * (1 + crUpCostBase(overall($s.CR.me.a)) / 14); $s.CR.pe += g; // (o treino acompanha o custo de evoluir: no topo rende ~6–8 pontos, não ~1)
+  $s.CR.money -= cost; $s.CR.energy -= crInv('quadra') >= 2 ? 4 : 6; const g = crTrainGain(); $s.CR.pe += g; // (o treino acompanha o custo de evoluir: no topo rende ~6–8 pontos, não ~1)
   crWlog($s.CR.day, 'Treino');
   crNextDay('Dia de treino: +' + fmt1(g) + ' pontos de evolução.' + (inj ? ' ' + inj : ''));
 }
@@ -2360,7 +2383,7 @@ function crResolveEvent(i) {
   $s.CR.event = null; $s.CR.lastMsg = EVENTS[ev.id].resolve(i, ev.data || {}) || ''; crSyncChars(); saveCareer();
 }
 
-export { crBagCur, BAG_TYPES, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy, crIsSemiOrFinal, crIsCentral, crTourDay, BAGS, crBagBuy, crBagCols, crBagPrice, crBagOk };
+export { CARS, crCarOwned, crCarCur, crCarBuy, crTrainGain, crBagCur, BAG_TYPES, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy, crIsSemiOrFinal, crIsCentral, crTourDay, BAGS, crBagBuy, crBagCols, crBagPrice, crBagOk };
 export { crAddFama, crMood, crChemAdd, crMaybeSponsor, crNews };
 export { crRankingMode, crRankMode, crModePts, MODE_PAY };
 export { crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, MASTER, rkBrand, crMasterCap, crMasterFree, crRacketOk, crMaybeMaster, crMasterSign, crMasterTake, crMasterEnd, crPotProg, crPotBarHTML, crAgeOf, crPairs, crPairBoard, crPeMax, clCareerChars, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, sbRest, clToken, SB_URL, SB_KEY, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crCharFromSave, crSlotChar, crCharFromJSON, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, flushSaves, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, crWlog, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crUf, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crIsFinal, crFamaTarget, INVEST, crInv, crInvBuy, crInvWeek, crBoardTitle, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr };

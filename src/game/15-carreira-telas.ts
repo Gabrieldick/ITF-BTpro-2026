@@ -13,7 +13,7 @@ import { BALL_STYLES, setBallStyle, applyPlayerStyle, applyRackets, assignCharac
 import * as THREE from 'three';
 import { $, el, feedback, hideBanner, newMatch, startDrill, DRILL_LVL, DRILLS, simulateRest } from './09-interface';
 import { renderBinds, applyCam, readMenu, saveSettings, setPaused, syncMenu, toggleCam, togglePause, toggleSound, applyMeterLook } from './12-controles';
-import { BAG_TYPES, BAGS, crBagBuy, crBagPrice, crBagOk, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy } from './14-carreira';
+import { CARS, crCarOwned, crCarCur, crCarBuy, crTrainGain, BAG_TYPES, BAGS, crBagBuy, crBagPrice, crBagOk, HOME_WALLS, HOME_FLOORS, HOME_ITEMS, crHome, crHomeHas, crHomeWhy, crHomeBuy } from './14-carreira';
 import { crRankingMode, crModePts, MODE_PAY, crAllPts, crCatRanking, crSigLv, crSigPts, crSigUp, SIG_LV_PTS, SIG_LV_COST, tieRank, crResLabel, crOverload, SIG_PTS, SIG_MAX, SIG_ATTRS, crSigB, crSigSet, crSigLook, crSigReady, crMasterCap, crMasterFree, crRacketOk, crMasterSign, crMasterTake, crMasterEnd, crPotBarHTML, crPairBoard, crSnapBase, ACH, crAchCheck, crTitlesN, crH2HP, crRivalP, crNemesis, crRivalsIn, crChem, crChemLv, CHEM_NOME, clRecover, clNewPassword, clFromLink, CL, clSignUp, clSignIn, clSignOut, clList, clPull, clRemove, clSyncAll, clFlush, clTime, clLocalTime, crGate, crBandTarget, crNatural, crEquipB, crSkipByes, crAutoDays, crSimTour, crUf, crStateSquad, crCatN, crMinCat, crCatPts, CAT_NAMES, crStartTarget, crPresetAttrs, crFormWord, crEnergyMod, crCanUp, DAY_NAMES, DAY_FULL, crDate, crDateTxt, crSeasonCal, crUpcoming, crNextDay, crRestUntil, crAvgRating, npcPts, RANK_BEST, crDay1Rounds, HAIRS, SEASON_WEEKS, SKINS, TIERS, careerMatchEnded, crCap, crChar, crCharOvr, crCoach, crCreate, crEnter, crGearBonus, crHire, crLessonIncome, crMaxTier, crMeOvr, crMigrate, crMyMatch, crNRounds, crNextWeek, crPlayMatch, crPlaySim, crPts, crRank, crRanking, crResolveEvent, crRest, crRoundNames, crSetPartner, crSyncChars, crTeamName, crTeamOvr, crTierUnlocked, crTrain, crUpCost, crUpgrade, crWeekOptions, crWillPartner, crWorld, crXpMul, saveCareer, crSlots, crLoadSlot, crCloseSlot, crDeleteSlot, crExportData, crImportData, crRepoSaves, crImportUrl, SAVE_REPO, SAVE_DIR, crSaveErr , INVEST, crInv, crInvBuy, crFamaTarget, STATE_INFO, crStateRanking, crDrillReward, crH2H, crRivalOf, STATES, crTourT, crTravel, LIFE, crLife, crLifeBuy, crGoalOptions, crPickGoal, crGoalDone, crMoodWord, crMoodBonus, crPartnerAct, crPeMax, crPairs, crAgeOf } from './14-carreira';
 import { playStyleOf } from './16-ia';
 import { COUNTRIES, flagSVG } from '../flags';
@@ -177,7 +177,7 @@ function crAgendaHTML() {
     return '<div class="cr-day' + (k === d ? ' today' : k < d ? ' past' : '') + (regDays.includes(k) ? ' tour' : '') + '"><b>' + n + '</b><small>' + dt.getDate() + '/' + (dt.getMonth() + 1) + '</small><span>' + esc(what) + '</span></div>'; }).join('');
   const T0 = TIERS[crMaxTier()];
   const acts = '<p class="section-label">Hoje · ' + DAY_FULL[d - 1] + '</p><div class="cr-cards">'
-    + '<div class="cr-card cr-act act-fis">' + ACT_ART.fis + '<div class="eyebrow">Treino físico e técnico</div><b>Treinar</b><span>+' + (Math.round((.9 + (crInv('quadra') ? .6 : 0)) * crXpMul() * 10) / 10).toString().replace('.', ',') + ' ponto de evolução · −6 energia</span><span>Custo: ' + money(crInv('quadra') ? 0 : 20 * (crMaxTier() + 1)) + '</span><button class="ghost sm" id="crTrain"' + ($s.CR.injury ? ' disabled' : '') + '>Treinar hoje</button></div>'
+    + '<div class="cr-card cr-act act-fis">' + ACT_ART.fis + '<div class="eyebrow">Treino físico e técnico</div><b>Treinar</b><span>+' + (Math.round(crTrainGain() * 10) / 10).toString().replace('.', ',') + ' ponto de evolução · −6 energia</span><span>Custo: ' + money(crInv('quadra') ? 0 : 20 * (crMaxTier() + 1)) + '</span><button class="ghost sm" id="crTrain"' + ($s.CR.injury ? ' disabled' : '') + '>Treinar hoje</button></div>'
     + '<div class="cr-card cr-act act-des">' + ACT_ART.des + '<div class="eyebrow">Treino com desafio</div><b>Treinar na quadra</b><span>Curtas, defesa, smash, saque ou combinados: evolução por acerto; cumprindo a meta, um pouco de potencial · −5 energia</span><button class="ghost sm" id="crDrill"' + ($s.CR.injury ? ' disabled' : '') + '>Escolher desafio</button></div>'
     + '<div class="cr-card cr-act act-aula">' + ACT_ART.aula + '<div class="eyebrow">Renda extra</div><b>Dar aulas</b><span>+' + money(Math.round(crLessonIncome() * .3 / 10) * 10) + ' · −2 energia</span><button class="ghost sm" id="crCoach">Dar aulas hoje</button></div>'
     + '<div class="cr-card cr-act act-desc">' + ACT_ART.desc + '<div class="eyebrow">Recuperação</div><b>Descansar</b><span>+14 de energia' + (crLife('crio') ? ' (+6 da crioterapia)' : '') + '. 3 dias de descanso na semana aceleram a volta de lesão.</span><div class="cta-row"><button class="ghost sm" id="crRest">Descansar hoje</button><button class="ghost sm" id="crRestUntil">' + (reg ? 'Descansar até o torneio' : 'Descansar até o fim da semana') + '</button><button class="ghost sm" id="crAuto" title="Treina enquanto a energia deixa e descansa o necessário para chegar inteiro ao torneio">' + (reg ? 'Dias automáticos até o torneio' : 'Semana automática') + '</button></div></div></div>';
@@ -667,6 +667,13 @@ function crBizTracks(list) {
     return '<p class="section-label">' + tr.nome + ' · nível ' + lv + '/' + tr.niveis.length + '</p><div class="cr-list">' + rows + '</div>';
   }).join('');
 }
+function carsHTML() { // garagem: compra de carros e o escolhido para a rua
+  if (!crHomeHas('garagem')) return '';
+  const cur = crCarCur();
+  return '<p class="section-label">🚗 Garagem · carro para a rua (V no modo livre)</p><div class="cr-list">' + CARS.map(c => { const own = crCarOwned(c.id), sel = cur && cur.id === c.id;
+    return '<div class="cr-row' + (sel ? ' me' : '') + '"><span class="cr-ic" style="background:' + c.col + ';border-radius:8px"></span><div><b>' + esc(c.nome) + (sel ? ' · na rua' : '') + '</b><small>velocidade ' + Math.round(c.vel * 100) + '%' + (c.id === 'hatch' && !own ? ' · vem com "Carro e motorista" (Negócios)' : '') + '</small></div><div class="row-acts">'
+      + (sel ? '' : own ? '<button class="ghost sm" data-car="' + c.id + '">Usar</button>' : c.id === 'hatch' ? '<span class="cr-lock">🔒</span>' : '<button class="cta sm" data-car="' + c.id + '"' + ($s.CR.money < c.preco ? ' disabled' : '') + '>' + money(c.preco) + '</button>') + '</div></div>'; }).join('') + '</div>';
+}
 function crHomeShopHTML() {
   const H = crHome(), own = H.own || {}, lv = INVEST.moradia ? crInv('moradia') : 0;
   const sw = (L, kind) => '<div class="home-sw">' + L.map(([n, c, pr, mLv], i) => { const sel = H[kind] === i, has = !pr || own[kind + i], lock = (mLv || 0) > lv;
@@ -679,7 +686,7 @@ function crHomeShopHTML() {
       : why ? '<span class="cr-lock" title="' + esc(why) + '">🔒</span>' : '<button class="cta sm" data-hi="' + it.id + '"' + ($s.CR.money < it.preco ? ' disabled' : '') + '>' + money(it.preco) + '</button>';
     return '<div class="cr-row' + (has ? ' me' : '') + (why && !has ? ' locked' : '') + '"><span class="cr-ic">' + ({ Plantas: '🪴', Quadros: '🖼️', Sala: '🛋️', 'Cômodos': '🚪', 'Área externa': '🌳', Piscina: '🏊' })[cat] + '</span><div><b>' + esc(it.nome) + '</b><small>' + esc(it.desc) + (why && !has ? ' · <em class="dn">' + esc(why) + '</em>' : '') + '</small></div><div class="row-acts">' + btn + '</div></div>'; }).join('') + '</div>').join('');
   return '<p class="cr-note">Tudo aparece na sua casa no modo livre (Mundo livre). Itens com 🔒 pedem uma moradia melhor ou outro item antes.</p>'
-    + (INVEST.moradia ? invTrackHTML('moradia') : '') + '<p class="section-label">🎨 Cor das paredes</p>' + sw(HOME_WALLS, 'wall') + '<p class="section-label">🪵 Piso</p>' + sw(HOME_FLOORS, 'floor') + items;
+    + (INVEST.moradia ? invTrackHTML('moradia') : '') + carsHTML() + '<p class="section-label">🎨 Cor das paredes</p>' + sw(HOME_WALLS, 'wall') + '<p class="section-label">🪵 Piso</p>' + sw(HOME_FLOORS, 'floor') + items;
 }
 function crBizHTML() {
   const tracks = crBizTracks(Object.entries(INVEST).filter(([k]) => k !== 'moradia')); // (a moradia fica na aba Casa da loja)
@@ -891,6 +898,7 @@ function bindCareerBody() {
   body.querySelectorAll('[data-selcat]').forEach(bt => bt.addEventListener('click', () => { crSelCat = +bt.dataset.selcat; renderCareer(); }));
   body.querySelectorAll('[data-inv]').forEach(bt => bt.addEventListener('click', () => { crInvBuy(bt.dataset.inv); renderCareer(); }));
   body.querySelectorAll('[data-hk]').forEach(bt => bt.addEventListener('click', () => { const [k, i] = bt.dataset.hk.split(':'); crHomeBuy(k, i); renderCareer(); }));
+  body.querySelectorAll('[data-car]').forEach(bt => bt.addEventListener('click', () => { crCarBuy(bt.dataset.car); renderCareer(); }));
   body.querySelectorAll('[data-hi]').forEach(bt => bt.addEventListener('click', () => { crHomeBuy('item', bt.dataset.hi); renderCareer(); }));
   body.querySelectorAll('[data-hire]').forEach(bt => bt.addEventListener('click', () => { crHire(bt.dataset.hire); renderCareer(); }));
   body.querySelectorAll('[data-ev]').forEach(bt => bt.addEventListener('click', () => { crResolveEvent(+bt.dataset.ev); renderCareer(); }));
